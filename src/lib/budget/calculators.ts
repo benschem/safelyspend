@@ -4,6 +4,7 @@ import type {
   Expense,
   ProjectedIncome,
   BudgetedExpense,
+  SavingsBucket,
 } from '../../types';
 
 export function calculateTotalSpent(expenses: Expense[]) {
@@ -16,13 +17,19 @@ export function calculateTotalIncomeReceived(incomes: Income[]) {
   return total;
 }
 
-export function calculateCurrentBankBalance(bankBalance: number, expenses: Expense[], incomes: Income[]) {
+export function calculateCurrentBankBalance(bankBalance: number, expenses: Expense[], incomes: Income[], savingsBuckets: savingsBucket[]) {
   if (bankBalance == null) return 0;
 
+  const totalSaved = calculateTotalSaved(savingsBuckets)
   const totalSpent = calculateTotalSpent(expenses);
   const totalReceived = calculateTotalIncomeReceived(incomes);
-  const balance = bankBalance - totalSpent + totalReceived;
+  const balance = bankBalance - totalSpent + totalReceived - totalSaved;
   return balance;
+}
+
+export function calculateTotalSaved(savingsBuckets: SavingsBucket[]) {
+  const total = savingsBuckets.reduce((sum, bucket) => sum + bucket.amount, 0);
+  return total
 }
 
 export function calculateProjectedIncome(projectedIncomes: ProjectedIncome[]) {

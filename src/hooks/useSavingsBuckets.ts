@@ -11,7 +11,6 @@ export default function useSavingsBuckets() {
     name: string,
     amount: number,
     goal: number,
-    categoryId?: string,
   ) => {
     setSavingsBuckets((prev: SavingsBucket[]) => [
       ...prev,
@@ -20,7 +19,6 @@ export default function useSavingsBuckets() {
         name,
         amount,
         goal,
-        ...(categoryId !== undefined && { categoryId }),
       },
     ]);
   };

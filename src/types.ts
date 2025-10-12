@@ -55,5 +55,4 @@ export interface SavingsBucket {
   name: string;
   amount: number;
   goal: number;
-  categoryId?: string
 }
