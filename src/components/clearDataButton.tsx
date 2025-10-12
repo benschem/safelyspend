@@ -1,22 +1,13 @@
-import { useContext } from 'react';
-import { BudgetContext } from '../App';
 
-export default function ExportDataButton() {
-  const budgetData = useContext(BudgetContext);
 
-  if (!budgetData) {
-    throw new Error('SaveDataButton must be used within a BudgetContext.Provider');
-  }
 
-  return(
-    <button
-      type="button"
-      onClick={() => {
-        window.localStorage.removeItem('budgetData');
-        location.reload();
-      }}
-    >
-      Clear Data
-    </button>
-  )
+export default function ClearDataButton() {
+  const handleClear = () => {
+    if (confirm('Are you sure you want to delete all budget data?')) {
+      localStorage.clear();
+      window.location.reload();
+    }
+  };
+
+  return <button onClick={handleClear}>Clear All Data</button>;
 }

@@ -1,12 +1,11 @@
-import { useContext } from 'react';
-import { BudgetContext } from '../App';
-import { exportBudgetToJson } from '../lib/budget/repository'
+import useBudgetData from '../hooks/useBudgetData';
+import { exportBudgetToJson } from '../lib/budget/importExport'
 
 export default function ExportDataButton() {
-  const budgetData = useContext(BudgetContext);
+  const { budgetData } = useBudgetData();
 
   if (!budgetData) {
-    throw new Error('SaveDataButton must be used within a BudgetContext.Provider');
+    throw new Error('Cannot export nothing');
   }
 
   return(
@@ -16,7 +15,7 @@ export default function ExportDataButton() {
         exportBudgetToJson(budgetData);
       }}
     >
-      Export Budget Data
+      Export Budget
     </button>
   )
 }

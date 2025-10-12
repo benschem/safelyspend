@@ -1,15 +1,12 @@
 import type { BudgetData } from '../../types';
 
-export async function loadDummyData(): Promise<BudgetData | null> {
+export async function importBudgetFromJson(file: File): Promise<BudgetData | null> {
   try {
-    const response = await fetch('/dummyBudgetData.json'); // Path relative to the public/dist folder
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const jsonData = await response.json();
+    const text = await file.text();
+    const jsonData = JSON.parse(text) as BudgetData;
     return jsonData;
   } catch (error) {
-    console.error('Failed to parse budget from dummy file', error);
+    console.error('Failed to parse uploaded JSON file', error);
     return null;
   }
 }
