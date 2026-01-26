@@ -18,8 +18,8 @@ export function DashboardPage() {
   const { periods } = usePeriods();
   const { activeAccounts } = useAccounts();
   const activePeriod = periods.find((p) => p.id === activePeriodId) ?? null;
-  const { transactions, incomeTransactions, expenseTransactions } = useTransactions(activePeriod);
-  const { forecasts, incomeForecasts, expenseForecasts } = useForecasts(activePeriodId);
+  const { incomeTransactions, expenseTransactions } = useTransactions(activePeriod);
+  const { incomeForecasts, expenseForecasts } = useForecasts(activePeriodId);
   const { getBalanceForAccount } = useOpeningBalances(activePeriodId);
   const { savingsGoals } = useSavingsGoals(activePeriodId);
 
@@ -57,7 +57,9 @@ export function DashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">{formatDate(activePeriod.startDate)} - {formatDate(activePeriod.endDate)}</h1>
+      <h1 className="text-2xl font-bold">
+        {formatDate(activePeriod.startDate)} - {formatDate(activePeriod.endDate)}
+      </h1>
       <p className="text-muted-foreground">Your money at a glance</p>
 
       <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
