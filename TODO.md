@@ -1,8 +1,10 @@
 [ ] Add button to dashboard to load demo data, that adds a permanent flash telling you it's demo data and gives you a clear data button to delete all demo data and start entering your own data
 
-[ ] Dashboard should also show how you're tracking against the budget for each category
+[ ] Recurring items is clunky both setting them up in the time period page and how you need to import them is unclear and badly signed
 
-[ ] Add a savings option along with income and expense in transaction and forecasts. Right now, adding to a savings goal can only be done by editing the goal - this should not be possible. Users cannot edit the momey amount of a savings goal, only add transactions and forecasts with type savings
+[X] Dashboard should also show how you're tracking against the budget for each category
+
+[ ] Add a savings select option along with income and expense in transaction and forecasts and all the plumbing along with it. Right now, adding to a savings goal can only be done by editing the goal - this should not be possible. Users should not be able to edit the momey amount of a savings goal, but they should be able to add transactions and forecasts with type savings that counts toward the total savings both on the index and dashboard, the savings are also included as a separate line item on the transactions and forecasts cards and counts toward a net plus.
 
 [ ] Then dashboard should show forecast savings alongside actual savings for a goal. Savings are not "Available to spend"
 
