@@ -16,7 +16,9 @@ import {
 import { ArrowLeft } from 'lucide-react';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
+import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { formatCents, formatDate, parseCentsFromInput } from '@/lib/utils';
+import type { ForecastType } from '@/lib/types';
 
 interface OutletContext {
   activePeriodId: string | null;
@@ -28,15 +30,17 @@ export function ForecastDetailPage() {
   const { activePeriodId } = useOutletContext<OutletContext>();
   const { forecasts, updateForecast, deleteForecast } = useForecasts(activePeriodId);
   const { categories, activeCategories } = useCategories();
+  const { savingsGoals } = useSavingsGoals(activePeriodId);
 
   const forecast = forecasts.find((f) => f.id === id);
 
   const [editing, setEditing] = useState(false);
-  const [type, setType] = useState<'income' | 'expense'>(forecast?.type ?? 'expense');
+  const [type, setType] = useState<ForecastType>(forecast?.type ?? 'expense');
   const [date, setDate] = useState(forecast?.date ?? '');
   const [description, setDescription] = useState(forecast?.description ?? '');
   const [amount, setAmount] = useState(forecast ? (forecast.amountCents / 100).toFixed(2) : '');
   const [categoryId, setCategoryId] = useState(forecast?.categoryId ?? '');
+  const [savingsGoalId, setSavingsGoalId] = useState(forecast?.savingsGoalId ?? '');
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -58,6 +62,8 @@ export function ForecastDetailPage() {
 
   const getCategoryName = (catId: string | null) =>
     catId ? (categories.find((c) => c.id === catId)?.name ?? 'Unknown') : '-';
+  const getSavingsGoalName = (goalId: string | null) =>
+    goalId ? (savingsGoals.find((g) => g.id === goalId)?.name ?? 'Unknown') : '-';
 
   const handleSave = () => {
     setError(null);
@@ -74,13 +80,18 @@ export function ForecastDetailPage() {
       setError('Amount must be greater than 0');
       return;
     }
+    if (type === 'savings' && !savingsGoalId) {
+      setError('Savings goal is required');
+      return;
+    }
 
     updateForecast(forecast.id, {
       type,
       date,
       description: description.trim(),
       amountCents: parseCentsFromInput(amount),
-      categoryId: categoryId || null,
+      categoryId: type === 'savings' ? null : categoryId || null,
+      savingsGoalId: type === 'savings' ? savingsGoalId : null,
     });
     setEditing(false);
   };
@@ -100,6 +111,7 @@ export function ForecastDetailPage() {
     setDescription(forecast.description);
     setAmount((forecast.amountCents / 100).toFixed(2));
     setCategoryId(forecast.categoryId ?? '');
+    setSavingsGoalId(forecast.savingsGoalId ?? '');
     setEditing(true);
   };
 
@@ -120,6 +132,8 @@ export function ForecastDetailPage() {
             <h1 className="text-2xl font-bold">{forecast.description}</h1>
             {forecast.type === 'income' ? (
               <Badge variant="success">Income</Badge>
+            ) : forecast.type === 'savings' ? (
+              <Badge variant="secondary">Savings</Badge>
             ) : (
               <Badge variant="destructive">Expense</Badge>
             )}
@@ -128,10 +142,10 @@ export function ForecastDetailPage() {
         </div>
         <div
           className={`text-2xl font-bold ${
-            forecast.type === 'income' ? 'text-green-600' : 'text-red-600'
+            forecast.type === 'expense' ? 'text-red-600' : 'text-green-600'
           }`}
         >
-          {forecast.type === 'income' ? '+' : '-'}
+          {forecast.type === 'expense' ? '-' : '+'}
           {formatCents(forecast.amountCents)}
         </div>
       </div>
@@ -157,7 +171,7 @@ export function ForecastDetailPage() {
               <Label>Type</Label>
               <RadioGroup
                 value={type}
-                onValueChange={(v) => setType(v as 'income' | 'expense')}
+                onValueChange={(v) => setType(v as ForecastType)}
                 className="flex gap-4"
               >
                 <div className="flex items-center space-x-2">
@@ -170,6 +184,12 @@ export function ForecastDetailPage() {
                   <RadioGroupItem value="income" id="income" />
                   <Label htmlFor="income" className="font-normal">
                     Income
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="savings" id="savings" />
+                  <Label htmlFor="savings" className="font-normal">
+                    Savings
                   </Label>
                 </div>
               </RadioGroup>
@@ -201,25 +221,43 @@ export function ForecastDetailPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select
-                value={categoryId || '__none__'}
-                onValueChange={(v) => setCategoryId(v === '__none__' ? '' : v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">None</SelectItem>
-                  {activeCategories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {type === 'savings' ? (
+              <div className="space-y-2">
+                <Label htmlFor="savingsGoal">Savings Goal</Label>
+                <Select value={savingsGoalId} onValueChange={setSavingsGoalId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select savings goal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {savingsGoals.map((goal) => (
+                      <SelectItem key={goal.id} value={goal.id}>
+                        {goal.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Select
+                  value={categoryId || '__none__'}
+                  onValueChange={(v) => setCategoryId(v === '__none__' ? '' : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {activeCategories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="flex gap-2">
               <Button onClick={handleSave}>Save</Button>
@@ -232,7 +270,11 @@ export function ForecastDetailPage() {
           <div className="mt-4 space-y-2 text-sm">
             <p>
               <span className="text-muted-foreground">Type:</span>{' '}
-              {forecast.type === 'income' ? 'Income' : 'Expense'}
+              {forecast.type === 'income'
+                ? 'Income'
+                : forecast.type === 'savings'
+                  ? 'Savings'
+                  : 'Expense'}
             </p>
             <p>
               <span className="text-muted-foreground">Date:</span> {formatDate(forecast.date)}
@@ -244,10 +286,17 @@ export function ForecastDetailPage() {
               <span className="text-muted-foreground">Amount:</span>{' '}
               {formatCents(forecast.amountCents)}
             </p>
-            <p>
-              <span className="text-muted-foreground">Category:</span>{' '}
-              {getCategoryName(forecast.categoryId)}
-            </p>
+            {forecast.type === 'savings' ? (
+              <p>
+                <span className="text-muted-foreground">Savings Goal:</span>{' '}
+                {getSavingsGoalName(forecast.savingsGoalId)}
+              </p>
+            ) : (
+              <p>
+                <span className="text-muted-foreground">Category:</span>{' '}
+                {getCategoryName(forecast.categoryId)}
+              </p>
+            )}
           </div>
         )}
       </section>

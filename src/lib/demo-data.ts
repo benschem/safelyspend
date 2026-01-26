@@ -201,6 +201,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 450000,
       description: 'Salary',
       categoryId: null,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -213,6 +214,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 450000,
       description: 'Salary',
       categoryId: null,
+      savingsGoalId: null,
     },
     // Expenses
     {
@@ -226,6 +228,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 180000,
       description: 'Monthly rent',
       categoryId: rentCatId,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -238,6 +241,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 15600,
       description: 'Woolworths',
       categoryId: groceriesCatId,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -250,6 +254,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 8500,
       description: 'Electricity bill',
       categoryId: utilitiesCatId,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -262,6 +267,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 4500,
       description: 'Uber',
       categoryId: transportCatId,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -274,6 +280,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 12300,
       description: 'Coles',
       categoryId: groceriesCatId,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -286,6 +293,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 6500,
       description: 'Netflix + Spotify',
       categoryId: entertainmentCatId,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -298,6 +306,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 4800,
       description: 'Lunch with friends',
       categoryId: diningCatId,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -310,6 +319,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 9800,
       description: 'Aldi',
       categoryId: groceriesCatId,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -322,6 +332,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 3500,
       description: 'Bus pass',
       categoryId: transportCatId,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -334,6 +345,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 7200,
       description: 'Dinner date',
       categoryId: diningCatId,
+      savingsGoalId: null,
     },
   ];
 
@@ -351,6 +363,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 450000,
       description: 'Salary',
       categoryId: null,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -363,6 +376,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 450000,
       description: 'Salary',
       categoryId: null,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -375,6 +389,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 450000,
       description: 'Salary',
       categoryId: null,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -387,6 +402,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 450000,
       description: 'Salary',
       categoryId: null,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -399,6 +415,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 450000,
       description: 'Salary',
       categoryId: null,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -411,6 +428,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 450000,
       description: 'Salary',
       categoryId: null,
+      savingsGoalId: null,
     },
     // Expense forecasts
     {
@@ -424,6 +442,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 180000,
       description: 'Rent',
       categoryId: rentCatId,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -436,6 +455,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 180000,
       description: 'Rent',
       categoryId: rentCatId,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -448,6 +468,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 180000,
       description: 'Rent',
       categoryId: rentCatId,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -460,6 +481,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 15000,
       description: 'Groceries',
       categoryId: groceriesCatId,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -472,6 +494,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 15000,
       description: 'Groceries',
       categoryId: groceriesCatId,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -484,6 +507,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 15000,
       description: 'Groceries',
       categoryId: groceriesCatId,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -496,6 +520,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 25000,
       description: 'Utilities',
       categoryId: utilitiesCatId,
+      savingsGoalId: null,
     },
     {
       id: generateId(),
@@ -508,6 +533,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 25000,
       description: 'Utilities',
       categoryId: utilitiesCatId,
+      savingsGoalId: null,
     },
   ];
 

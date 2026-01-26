@@ -14,7 +14,9 @@ import {
 import { ArrowLeft } from 'lucide-react';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
+import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { today, parseCentsFromInput } from '@/lib/utils';
+import type { ForecastType } from '@/lib/types';
 
 interface OutletContext {
   activePeriodId: string | null;
@@ -25,12 +27,14 @@ export function ForecastNewPage() {
   const { activePeriodId } = useOutletContext<OutletContext>();
   const { addForecast } = useForecasts(activePeriodId);
   const { activeCategories } = useCategories();
+  const { savingsGoals } = useSavingsGoals(activePeriodId);
 
-  const [type, setType] = useState<'income' | 'expense'>('expense');
+  const [type, setType] = useState<ForecastType>('expense');
   const [date, setDate] = useState(today());
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [savingsGoalId, setSavingsGoalId] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   if (!activePeriodId) {
@@ -58,6 +62,10 @@ export function ForecastNewPage() {
       setError('Amount must be greater than 0');
       return;
     }
+    if (type === 'savings' && !savingsGoalId) {
+      setError('Savings goal is required');
+      return;
+    }
 
     const forecast = addForecast({
       periodId: activePeriodId,
@@ -65,7 +73,8 @@ export function ForecastNewPage() {
       date,
       description: description.trim(),
       amountCents: parseCentsFromInput(amount),
-      categoryId: categoryId || null,
+      categoryId: type === 'savings' ? null : categoryId || null,
+      savingsGoalId: type === 'savings' ? savingsGoalId : null,
     });
 
     navigate(`/forecast/${forecast.id}`);
@@ -92,7 +101,7 @@ export function ForecastNewPage() {
           <Label>Type</Label>
           <RadioGroup
             value={type}
-            onValueChange={(v) => setType(v as 'income' | 'expense')}
+            onValueChange={(v) => setType(v as ForecastType)}
             className="flex gap-4"
           >
             <div className="flex items-center space-x-2">
@@ -105,6 +114,12 @@ export function ForecastNewPage() {
               <RadioGroupItem value="income" id="income" />
               <Label htmlFor="income" className="font-normal">
                 Income
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="savings" id="savings" />
+              <Label htmlFor="savings" className="font-normal">
+                Savings
               </Label>
             </div>
           </RadioGroup>
@@ -138,25 +153,43 @@ export function ForecastNewPage() {
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="category">Category {type === 'income' && '(optional)'}</Label>
-          <Select
-            value={categoryId || '__none__'}
-            onValueChange={(v) => setCategoryId(v === '__none__' ? '' : v)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">None</SelectItem>
-              {activeCategories.map((category) => (
-                <SelectItem key={category.id} value={category.id}>
-                  {category.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {type === 'savings' ? (
+          <div className="space-y-2">
+            <Label htmlFor="savingsGoal">Savings Goal</Label>
+            <Select value={savingsGoalId} onValueChange={setSavingsGoalId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select savings goal" />
+              </SelectTrigger>
+              <SelectContent>
+                {savingsGoals.map((goal) => (
+                  <SelectItem key={goal.id} value={goal.id}>
+                    {goal.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Label htmlFor="category">Category {type === 'income' && '(optional)'}</Label>
+            <Select
+              value={categoryId || '__none__'}
+              onValueChange={(v) => setCategoryId(v === '__none__' ? '' : v)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">None</SelectItem>
+                {activeCategories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <div className="flex gap-2 pt-4">
           <Button type="submit">Create Forecast</Button>

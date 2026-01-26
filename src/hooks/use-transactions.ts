@@ -23,6 +23,10 @@ export function useTransactions(period: Period | null) {
     () => transactions.filter((t) => t.type === 'expense'),
     [transactions],
   );
+  const savingsTransactions = useMemo(
+    () => transactions.filter((t) => t.type === 'savings'),
+    [transactions],
+  );
 
   const addTransaction = useCallback(
     (data: CreateEntity<Transaction>) => {
@@ -62,6 +66,7 @@ export function useTransactions(period: Period | null) {
     transactions,
     incomeTransactions,
     expenseTransactions,
+    savingsTransactions,
     addTransaction,
     updateTransaction,
     deleteTransaction,

@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/table';
 import { Plus } from 'lucide-react';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
+import { usePeriods } from '@/hooks/use-periods';
+import { useTransactions } from '@/hooks/use-transactions';
 import { formatCents, formatDate } from '@/lib/utils';
 
 interface OutletContext {
@@ -19,6 +21,14 @@ interface OutletContext {
 export function SavingsIndexPage() {
   const { activePeriodId } = useOutletContext<OutletContext>();
   const { savingsGoals, globalGoals, periodGoals } = useSavingsGoals(activePeriodId);
+  const { periods } = usePeriods();
+  const activePeriod = periods.find((p) => p.id === activePeriodId) ?? null;
+  const { savingsTransactions } = useTransactions(activePeriod);
+
+  const getSavedAmount = (goalId: string) =>
+    savingsTransactions
+      .filter((t) => t.savingsGoalId === goalId)
+      .reduce((sum, t) => sum + t.amountCents, 0);
 
   if (!activePeriodId) {
     return (
@@ -73,7 +83,8 @@ export function SavingsIndexPage() {
                 </TableHeader>
                 <TableBody>
                   {periodGoals.map((goal) => {
-                    const progress = getProgress(goal.currentAmountCents, goal.targetAmountCents);
+                    const savedAmount = getSavedAmount(goal.id);
+                    const progress = getProgress(savedAmount, goal.targetAmountCents);
                     return (
                       <TableRow key={goal.id}>
                         <TableCell className="font-medium">{goal.name}</TableCell>
@@ -90,8 +101,7 @@ export function SavingsIndexPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          {formatCents(goal.currentAmountCents)} /{' '}
-                          {formatCents(goal.targetAmountCents)}
+                          {formatCents(savedAmount)} / {formatCents(goal.targetAmountCents)}
                         </TableCell>
                         <TableCell>
                           <Button variant="outline" size="sm" asChild>
@@ -124,7 +134,8 @@ export function SavingsIndexPage() {
                 </TableHeader>
                 <TableBody>
                   {globalGoals.map((goal) => {
-                    const progress = getProgress(goal.currentAmountCents, goal.targetAmountCents);
+                    const savedAmount = getSavedAmount(goal.id);
+                    const progress = getProgress(savedAmount, goal.targetAmountCents);
                     return (
                       <TableRow key={goal.id}>
                         <TableCell className="font-medium">{goal.name}</TableCell>
@@ -141,8 +152,7 @@ export function SavingsIndexPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          {formatCents(goal.currentAmountCents)} /{' '}
-                          {formatCents(goal.targetAmountCents)}
+                          {formatCents(savedAmount)} / {formatCents(goal.targetAmountCents)}
                         </TableCell>
                         <TableCell>
                           <Button variant="outline" size="sm" asChild>

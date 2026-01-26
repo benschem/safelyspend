@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, Link, useNavigate, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft } from 'lucide-react';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
+import { usePeriods } from '@/hooks/use-periods';
+import { useTransactions } from '@/hooks/use-transactions';
+import { useForecasts } from '@/hooks/use-forecasts';
 import { formatCents, formatDate, parseCentsFromInput } from '@/lib/utils';
 
 interface OutletContext {
@@ -17,16 +20,33 @@ export function SavingsDetailPage() {
   const navigate = useNavigate();
   const { activePeriodId } = useOutletContext<OutletContext>();
   const { savingsGoals, updateSavingsGoal, deleteSavingsGoal } = useSavingsGoals(activePeriodId);
+  const { periods } = usePeriods();
+  const activePeriod = periods.find((p) => p.id === activePeriodId) ?? null;
+  const { savingsTransactions } = useTransactions(activePeriod);
+  const { savingsForecasts } = useForecasts(activePeriodId);
 
   const goal = savingsGoals.find((g) => g.id === id);
+
+  // Calculate current amount from savings transactions
+  const currentAmountFromTransactions = useMemo(() => {
+    if (!goal) return 0;
+    return savingsTransactions
+      .filter((t) => t.savingsGoalId === goal.id)
+      .reduce((sum, t) => sum + t.amountCents, 0);
+  }, [savingsTransactions, goal]);
+
+  // Calculate forecasted amount
+  const forecastedAmount = useMemo(() => {
+    if (!goal) return 0;
+    return savingsForecasts
+      .filter((f) => f.savingsGoalId === goal.id)
+      .reduce((sum, f) => sum + f.amountCents, 0);
+  }, [savingsForecasts, goal]);
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(goal?.name ?? '');
   const [targetAmount, setTargetAmount] = useState(
     goal ? (goal.targetAmountCents / 100).toFixed(2) : '',
-  );
-  const [currentAmount, setCurrentAmount] = useState(
-    goal ? (goal.currentAmountCents / 100).toFixed(2) : '',
   );
   const [deadline, setDeadline] = useState(goal?.deadline ?? '');
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +71,7 @@ export function SavingsDetailPage() {
   const progress =
     goal.targetAmountCents === 0
       ? 100
-      : Math.min(Math.round((goal.currentAmountCents / goal.targetAmountCents) * 100), 100);
+      : Math.min(Math.round((currentAmountFromTransactions / goal.targetAmountCents) * 100), 100);
 
   const handleSave = () => {
     setError(null);
@@ -68,7 +88,6 @@ export function SavingsDetailPage() {
     updateSavingsGoal(goal.id, {
       name: name.trim(),
       targetAmountCents: parseCentsFromInput(targetAmount),
-      currentAmountCents: parseCentsFromInput(currentAmount),
       ...(deadline ? { deadline } : {}),
     });
     setEditing(false);
@@ -86,7 +105,6 @@ export function SavingsDetailPage() {
   const startEditing = () => {
     setName(goal.name);
     setTargetAmount((goal.targetAmountCents / 100).toFixed(2));
-    setCurrentAmount((goal.currentAmountCents / 100).toFixed(2));
     setDeadline(goal.deadline ?? '');
     setEditing(true);
   };
@@ -125,9 +143,14 @@ export function SavingsDetailPage() {
           />
         </div>
         <div className="mt-2 flex justify-between text-sm text-muted-foreground">
-          <span>{formatCents(goal.currentAmountCents)}</span>
+          <span>{formatCents(currentAmountFromTransactions)}</span>
           <span>{formatCents(goal.targetAmountCents)}</span>
         </div>
+        {forecastedAmount > 0 && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            +{formatCents(forecastedAmount)} forecasted
+          </p>
+        )}
       </div>
 
       {error && <div className="mt-4 rounded-lg bg-red-100 p-3 text-red-800">{error}</div>}
@@ -165,18 +188,6 @@ export function SavingsDetailPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="currentAmount">Current Amount ($)</Label>
-              <Input
-                id="currentAmount"
-                type="number"
-                step="0.01"
-                min="0"
-                value={currentAmount}
-                onChange={(e) => setCurrentAmount(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="deadline">Deadline</Label>
               <Input
                 id="deadline"
@@ -203,9 +214,15 @@ export function SavingsDetailPage() {
               {formatCents(goal.targetAmountCents)}
             </p>
             <p>
-              <span className="text-muted-foreground">Current:</span>{' '}
-              {formatCents(goal.currentAmountCents)}
+              <span className="text-muted-foreground">Saved:</span>{' '}
+              {formatCents(currentAmountFromTransactions)}
             </p>
+            {forecastedAmount > 0 && (
+              <p>
+                <span className="text-muted-foreground">Forecasted:</span>{' '}
+                +{formatCents(forecastedAmount)}
+              </p>
+            )}
             <p>
               <span className="text-muted-foreground">Deadline:</span>{' '}
               {goal.deadline ? formatDate(goal.deadline) : 'None'}

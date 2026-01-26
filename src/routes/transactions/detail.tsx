@@ -18,7 +18,9 @@ import { usePeriods } from '@/hooks/use-periods';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useAccounts } from '@/hooks/use-accounts';
 import { useCategories } from '@/hooks/use-categories';
+import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { formatCents, formatDate, parseCentsFromInput, today } from '@/lib/utils';
+import type { TransactionType } from '@/lib/types';
 
 interface OutletContext {
   activePeriodId: string | null;
@@ -33,11 +35,12 @@ export function TransactionDetailPage() {
   const { transactions, updateTransaction, deleteTransaction } = useTransactions(activePeriod);
   const { accounts, activeAccounts } = useAccounts();
   const { categories, activeCategories } = useCategories();
+  const { savingsGoals } = useSavingsGoals(activePeriodId);
 
   const transaction = transactions.find((t) => t.id === id);
 
   const [editing, setEditing] = useState(false);
-  const [type, setType] = useState<'income' | 'expense'>(transaction?.type ?? 'expense');
+  const [type, setType] = useState<TransactionType>(transaction?.type ?? 'expense');
   const [date, setDate] = useState(transaction?.date ?? '');
   const [description, setDescription] = useState(transaction?.description ?? '');
   const [amount, setAmount] = useState(
@@ -45,6 +48,7 @@ export function TransactionDetailPage() {
   );
   const [accountId, setAccountId] = useState(transaction?.accountId ?? '');
   const [categoryId, setCategoryId] = useState(transaction?.categoryId ?? '');
+  const [savingsGoalId, setSavingsGoalId] = useState(transaction?.savingsGoalId ?? '');
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -67,6 +71,8 @@ export function TransactionDetailPage() {
   const getAccountName = (accId: string) => accounts.find((a) => a.id === accId)?.name ?? 'Unknown';
   const getCategoryName = (catId: string | null) =>
     catId ? (categories.find((c) => c.id === catId)?.name ?? 'Unknown') : '-';
+  const getSavingsGoalName = (goalId: string | null) =>
+    goalId ? (savingsGoals.find((g) => g.id === goalId)?.name ?? 'Unknown') : '-';
 
   const todayDate = today();
 
@@ -93,6 +99,10 @@ export function TransactionDetailPage() {
       setError('Account is required');
       return;
     }
+    if (type === 'savings' && !savingsGoalId) {
+      setError('Savings goal is required');
+      return;
+    }
 
     updateTransaction(transaction.id, {
       type,
@@ -100,7 +110,8 @@ export function TransactionDetailPage() {
       description: description.trim(),
       amountCents: parseCentsFromInput(amount),
       accountId,
-      categoryId: categoryId || null,
+      categoryId: type === 'savings' ? null : categoryId || null,
+      savingsGoalId: type === 'savings' ? savingsGoalId : null,
     });
     setEditing(false);
   };
@@ -121,6 +132,7 @@ export function TransactionDetailPage() {
     setAmount((transaction.amountCents / 100).toFixed(2));
     setAccountId(transaction.accountId);
     setCategoryId(transaction.categoryId ?? '');
+    setSavingsGoalId(transaction.savingsGoalId ?? '');
     setEditing(true);
   };
 
@@ -141,6 +153,8 @@ export function TransactionDetailPage() {
             <h1 className="text-2xl font-bold">{transaction.description}</h1>
             {transaction.type === 'income' ? (
               <Badge variant="success">Income</Badge>
+            ) : transaction.type === 'savings' ? (
+              <Badge variant="secondary">Savings</Badge>
             ) : (
               <Badge variant="destructive">Expense</Badge>
             )}
@@ -151,10 +165,10 @@ export function TransactionDetailPage() {
         </div>
         <div
           className={`text-2xl font-bold ${
-            transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+            transaction.type === 'expense' ? 'text-red-600' : 'text-green-600'
           }`}
         >
-          {transaction.type === 'income' ? '+' : '-'}
+          {transaction.type === 'expense' ? '-' : '+'}
           {formatCents(transaction.amountCents)}
         </div>
       </div>
@@ -180,7 +194,7 @@ export function TransactionDetailPage() {
               <Label>Type</Label>
               <RadioGroup
                 value={type}
-                onValueChange={(v) => setType(v as 'income' | 'expense')}
+                onValueChange={(v) => setType(v as TransactionType)}
                 className="flex gap-4"
               >
                 <div className="flex items-center space-x-2">
@@ -193,6 +207,12 @@ export function TransactionDetailPage() {
                   <RadioGroupItem value="income" id="income" />
                   <Label htmlFor="income" className="font-normal">
                     Income
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="savings" id="savings" />
+                  <Label htmlFor="savings" className="font-normal">
+                    Savings
                   </Label>
                 </div>
               </RadioGroup>
@@ -246,25 +266,43 @@ export function TransactionDetailPage() {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select
-                value={categoryId || '__none__'}
-                onValueChange={(v) => setCategoryId(v === '__none__' ? '' : v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">None</SelectItem>
-                  {activeCategories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {type === 'savings' ? (
+              <div className="space-y-2">
+                <Label htmlFor="savingsGoal">Savings Goal</Label>
+                <Select value={savingsGoalId} onValueChange={setSavingsGoalId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select savings goal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {savingsGoals.map((goal) => (
+                      <SelectItem key={goal.id} value={goal.id}>
+                        {goal.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Select
+                  value={categoryId || '__none__'}
+                  onValueChange={(v) => setCategoryId(v === '__none__' ? '' : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {activeCategories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="flex gap-2">
               <Button onClick={handleSave}>Save</Button>
@@ -277,7 +315,11 @@ export function TransactionDetailPage() {
           <div className="mt-4 space-y-2 text-sm">
             <p>
               <span className="text-muted-foreground">Type:</span>{' '}
-              {transaction.type === 'income' ? 'Income' : 'Expense'}
+              {transaction.type === 'income'
+                ? 'Income'
+                : transaction.type === 'savings'
+                  ? 'Savings'
+                  : 'Expense'}
             </p>
             <p>
               <span className="text-muted-foreground">Date:</span> {formatDate(transaction.date)}
@@ -293,10 +335,17 @@ export function TransactionDetailPage() {
               <span className="text-muted-foreground">Account:</span>{' '}
               {getAccountName(transaction.accountId)}
             </p>
-            <p>
-              <span className="text-muted-foreground">Category:</span>{' '}
-              {getCategoryName(transaction.categoryId)}
-            </p>
+            {transaction.type === 'savings' ? (
+              <p>
+                <span className="text-muted-foreground">Savings Goal:</span>{' '}
+                {getSavingsGoalName(transaction.savingsGoalId)}
+              </p>
+            ) : (
+              <p>
+                <span className="text-muted-foreground">Category:</span>{' '}
+                {getCategoryName(transaction.categoryId)}
+              </p>
+            )}
           </div>
         )}
       </section>

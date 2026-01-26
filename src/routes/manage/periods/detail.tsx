@@ -107,6 +107,7 @@ export function PeriodDetailPage() {
           amountCents: preview.amountCents,
           description: preview.description,
           categoryId: preview.categoryId,
+          savingsGoalId: null,
           ...(preview.notes && { notes: preview.notes }),
         });
         imported++;

@@ -21,8 +21,9 @@ export function DashboardPage() {
   const { periods } = usePeriods();
   const { activeAccounts } = useAccounts();
   const activePeriod = periods.find((p) => p.id === activePeriodId) ?? null;
-  const { incomeTransactions, expenseTransactions } = useTransactions(activePeriod);
-  const { incomeForecasts, expenseForecasts } = useForecasts(activePeriodId);
+  const { incomeTransactions, expenseTransactions, savingsTransactions } =
+    useTransactions(activePeriod);
+  const { incomeForecasts, expenseForecasts, savingsForecasts } = useForecasts(activePeriodId);
   const { getBalanceForAccount } = useOpeningBalances(activePeriodId);
   const { savingsGoals } = useSavingsGoals(activePeriodId);
   const { getBudgetForCategory } = useBudgetLines(activePeriodId);
@@ -48,16 +49,19 @@ export function DashboardPage() {
 
   const actualIncome = incomeTransactions.reduce((sum, t) => sum + t.amountCents, 0);
   const actualExpenses = expenseTransactions.reduce((sum, t) => sum + t.amountCents, 0);
-  const actualNet = actualIncome - actualExpenses;
+  const actualSavings = savingsTransactions.reduce((sum, t) => sum + t.amountCents, 0);
+  const actualNet = actualIncome - actualExpenses - actualSavings;
 
   const forecastedIncome = incomeForecasts.reduce((sum, f) => sum + f.amountCents, 0);
   const forecastedExpenses = expenseForecasts.reduce((sum, f) => sum + f.amountCents, 0);
-  const forecastedNet = forecastedIncome - forecastedExpenses;
+  const forecastedSavings = savingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
+  const forecastedNet = forecastedIncome - forecastedExpenses - forecastedSavings;
 
   const currentBalance = totalOpeningBalance + actualNet;
   const projectedEndBalance = totalOpeningBalance + actualNet + forecastedNet;
 
-  const totalSaved = savingsGoals.reduce((sum, g) => sum + g.currentAmountCents, 0);
+  // Total saved is from savings transactions (actual savings)
+  const totalSaved = actualSavings;
   const totalTarget = savingsGoals.reduce((sum, g) => sum + g.targetAmountCents, 0);
 
   // Calculate budget tracking per category
@@ -133,6 +137,10 @@ export function DashboardPage() {
               <span className="text-muted-foreground">Expenses</span>
               <span className="font-mono text-red-600">-{formatCents(actualExpenses)}</span>
             </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Savings</span>
+              <span className="font-mono text-blue-600">-{formatCents(actualSavings)}</span>
+            </div>
             <div className="border-t pt-2">
               <div className="flex justify-end font-semibold">
                 <span className={actualNet >= 0 ? 'text-green-600' : 'text-red-600'}>
@@ -159,6 +167,10 @@ export function DashboardPage() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Expenses</span>
               <span className="font-mono text-red-600">-{formatCents(forecastedExpenses)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Savings</span>
+              <span className="font-mono text-blue-600">-{formatCents(forecastedSavings)}</span>
             </div>
             <div className="border-t pt-2">
               <div className="flex justify-end font-semibold">
@@ -230,9 +242,12 @@ export function DashboardPage() {
           ) : (
             <div className="mt-4 space-y-3">
               {savingsGoals.map((goal) => {
+                const savedAmount = savingsTransactions
+                  .filter((t) => t.savingsGoalId === goal.id)
+                  .reduce((sum, t) => sum + t.amountCents, 0);
                 const progress =
                   goal.targetAmountCents > 0
-                    ? Math.min(100, (goal.currentAmountCents / goal.targetAmountCents) * 100)
+                    ? Math.min(100, (savedAmount / goal.targetAmountCents) * 100)
                     : 0;
                 return (
                   <div key={goal.id}>
@@ -244,7 +259,7 @@ export function DashboardPage() {
                         )}
                       </Link>
                       <span className="text-muted-foreground">
-                        {formatCents(goal.currentAmountCents)} / {formatCents(goal.targetAmountCents)}
+                        {formatCents(savedAmount)} / {formatCents(goal.targetAmountCents)}
                       </span>
                     </div>
                     <Progress value={progress} className="mt-1 h-2" />

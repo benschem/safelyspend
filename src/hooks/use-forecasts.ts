@@ -20,6 +20,10 @@ export function useForecasts(periodId: string | null) {
     () => forecasts.filter((f) => f.type === 'expense'),
     [forecasts],
   );
+  const savingsForecasts = useMemo(
+    () => forecasts.filter((f) => f.type === 'savings'),
+    [forecasts],
+  );
 
   const addForecast = useCallback(
     (data: CreateEntity<Forecast>) => {
@@ -59,6 +63,7 @@ export function useForecasts(periodId: string | null) {
     forecasts,
     incomeForecasts,
     expenseForecasts,
+    savingsForecasts,
     addForecast,
     updateForecast,
     deleteForecast,

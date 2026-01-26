@@ -198,6 +198,7 @@ export function useRecurringItems() {
             amountCents: item.amountCents,
             description: item.name,
             categoryId: item.categoryId,
+            savingsGoalId: null,
             ...(item.notes && { notes: item.notes }),
             recurringItemId: item.id,
           });

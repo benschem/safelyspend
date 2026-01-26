@@ -63,10 +63,10 @@ export interface BudgetLine extends BaseEntity {
 }
 
 // -----------------------------------------------------------------------------
-// Forecast - Unified income and expense forecasts
+// Forecast - Unified income, expense, and savings forecasts
 // -----------------------------------------------------------------------------
 
-export type ForecastType = 'income' | 'expense';
+export type ForecastType = 'income' | 'expense' | 'savings';
 
 export interface Forecast extends BaseEntity {
   periodId: string;
@@ -75,14 +75,15 @@ export interface Forecast extends BaseEntity {
   amountCents: number;
   description: string;
   categoryId: string | null; // Required if type === 'expense'
+  savingsGoalId: string | null; // Required if type === 'savings'
   notes?: string;
 }
 
 // -----------------------------------------------------------------------------
-// Transaction - Actual income and expenses
+// Transaction - Actual income, expenses, and savings
 // -----------------------------------------------------------------------------
 
-export type TransactionType = 'income' | 'expense';
+export type TransactionType = 'income' | 'expense' | 'savings';
 
 export interface Transaction extends BaseEntity {
   accountId: string;
@@ -90,7 +91,8 @@ export interface Transaction extends BaseEntity {
   date: string;
   amountCents: number;
   description: string;
-  categoryId: string | null; // Optional for expenses, null for income
+  categoryId: string | null; // Optional for expenses, null for income/savings
+  savingsGoalId: string | null; // Required if type === 'savings'
   notes?: string;
 }
 
