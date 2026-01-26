@@ -185,17 +185,26 @@ export function DashboardPage() {
               </Link>
             </div>
           ) : (
-            <div className="mt-4 space-y-2">
-              {budgetRows.map((row) => (
-                <div key={row.id} className="flex justify-between text-sm">
-                  <span>{row.name}</span>
-                  <span
-                    className={`font-mono ${row.remaining >= 0 ? 'text-muted-foreground' : 'text-red-600'}`}
-                  >
-                    {formatCents(row.remaining)} / {formatCents(row.budgeted)}
-                  </span>
-                </div>
-              ))}
+            <div className="mt-4 space-y-3">
+              {budgetRows.map((row) => {
+                const progress =
+                  row.budgeted > 0 ? Math.min(100, (row.actual / row.budgeted) * 100) : 0;
+                const isOver = row.remaining < 0;
+                return (
+                  <div key={row.id}>
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium">{row.name}</span>
+                      <span className={`text-muted-foreground ${isOver ? 'text-red-600' : ''}`}>
+                        {formatCents(row.remaining)} / {formatCents(row.budgeted)}
+                      </span>
+                    </div>
+                    <Progress
+                      value={progress}
+                      className={`mt-1 h-2 ${isOver ? '[&>div]:bg-red-600' : ''}`}
+                    />
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
