@@ -4,9 +4,9 @@
 
 [X] Dashboard should also show how you're tracking against the budget for each category
 
-[ ] Add a savings select option along with income and expense in transaction and forecasts and all the plumbing along with it. Right now, adding to a savings goal can only be done by editing the goal - this should not be possible. Users should not be able to edit the momey amount of a savings goal, but they should be able to add transactions and forecasts with type savings that counts toward the total savings both on the index and dashboard, the savings are also included as a separate line item on the transactions and forecasts cards and counts toward a net plus.
+[X] Add a savings select option along with income and expense in transaction and forecasts and all the plumbing along with it. Right now, adding to a savings goal can only be done by editing the goal - this should not be possible. Users should not be able to edit the momey amount of a savings goal, but they should be able to add transactions and forecasts with type savings that counts toward the total savings both on the index and dashboard, the savings are also included as a separate line item on the transactions and forecasts cards and counts toward a net plus.
 
-[ ] Then dashboard should show forecast savings alongside actual savings for a goal. Savings are not "Available to spend"
+[X] Then dashboard should show forecast savings alongside actual savings for a goal. Savings are not "Available to spend"
 
 [ ] Would withdrawing from a saver by entering a negative amount in a transaction work? Check what happens if user enters negative amounts for other things
 
