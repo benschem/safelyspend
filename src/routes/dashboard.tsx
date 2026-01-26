@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { Link, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { usePeriods } from '@/hooks/use-periods';
 import { useAccounts } from '@/hooks/use-accounts';
 import { useTransactions } from '@/hooks/use-transactions';
@@ -75,16 +74,27 @@ export function DashboardPage() {
     return spending;
   }, [expenseTransactions]);
 
+  const forecastedByCategory = useMemo(() => {
+    const forecasted: Record<string, number> = {};
+    for (const f of expenseForecasts) {
+      if (f.categoryId) {
+        forecasted[f.categoryId] = (forecasted[f.categoryId] ?? 0) + f.amountCents;
+      }
+    }
+    return forecasted;
+  }, [expenseForecasts]);
+
   const budgetRows = useMemo(() => {
     return activeCategories
       .map((category) => {
         const budgeted = getBudgetForCategory(category.id);
         const actual = spendingByCategory[category.id] ?? 0;
-        const remaining = budgeted - actual;
-        return { id: category.id, name: category.name, budgeted, actual, remaining };
+        const forecasted = forecastedByCategory[category.id] ?? 0;
+        const remaining = budgeted - actual - forecasted;
+        return { id: category.id, name: category.name, budgeted, actual, forecasted, remaining };
       })
-      .filter((row) => row.budgeted > 0 || row.actual > 0);
-  }, [activeCategories, getBudgetForCategory, spendingByCategory]);
+      .filter((row) => row.budgeted > 0 || row.actual > 0 || row.forecasted > 0);
+  }, [activeCategories, getBudgetForCategory, spendingByCategory, forecastedByCategory]);
 
   // Colors for breakdown segments
   const segmentColors = [
@@ -454,9 +464,14 @@ export function DashboardPage() {
           ) : (
             <div className="mt-4 space-y-3">
               {budgetRows.map((row) => {
-                const progress =
+                const actualPercent =
                   row.budgeted > 0 ? Math.min(100, (row.actual / row.budgeted) * 100) : 0;
+                const forecastedPercent =
+                  row.budgeted > 0
+                    ? Math.min(100 - actualPercent, (row.forecasted / row.budgeted) * 100)
+                    : 0;
                 const isOver = row.remaining < 0;
+                const willBeOver = row.budgeted - row.actual - row.forecasted < 0;
                 return (
                   <div key={row.id}>
                     <div className="flex justify-between text-sm">
@@ -465,10 +480,20 @@ export function DashboardPage() {
                         {formatCents(row.remaining)} / {formatCents(row.budgeted)}
                       </span>
                     </div>
-                    <Progress
-                      value={progress}
-                      className={`mt-1 h-2 ${isOver ? '[&>div]:bg-red-600' : ''}`}
-                    />
+                    <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                      <div className="flex h-full">
+                        <div
+                          className={`${isOver ? 'bg-red-600' : 'bg-primary'} transition-all`}
+                          style={{ width: `${actualPercent}%` }}
+                        />
+                        {forecastedPercent > 0 && (
+                          <div
+                            className={`${willBeOver ? 'bg-red-300' : 'bg-primary/40'} transition-all`}
+                            style={{ width: `${forecastedPercent}%` }}
+                          />
+                        )}
+                      </div>
+                    </div>
                   </div>
                 );
               })}
@@ -500,9 +525,16 @@ export function DashboardPage() {
                 const savedAmount = savingsTransactions
                   .filter((t) => t.savingsGoalId === goal.id)
                   .reduce((sum, t) => sum + t.amountCents, 0);
-                const progress =
+                const forecastedAmount = savingsForecasts
+                  .filter((f) => f.savingsGoalId === goal.id)
+                  .reduce((sum, f) => sum + f.amountCents, 0);
+                const actualPercent =
                   goal.targetAmountCents > 0
                     ? Math.min(100, (savedAmount / goal.targetAmountCents) * 100)
+                    : 0;
+                const forecastedPercent =
+                  goal.targetAmountCents > 0
+                    ? Math.min(100 - actualPercent, (forecastedAmount / goal.targetAmountCents) * 100)
                     : 0;
                 return (
                   <div key={goal.id}>
@@ -517,7 +549,20 @@ export function DashboardPage() {
                         {formatCents(savedAmount)} / {formatCents(goal.targetAmountCents)}
                       </span>
                     </div>
-                    <Progress value={progress} className="mt-1 h-2" />
+                    <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                      <div className="flex h-full">
+                        <div
+                          className="bg-blue-600 transition-all"
+                          style={{ width: `${actualPercent}%` }}
+                        />
+                        {forecastedPercent > 0 && (
+                          <div
+                            className="bg-blue-300 transition-all"
+                            style={{ width: `${forecastedPercent}%` }}
+                          />
+                        )}
+                      </div>
+                    </div>
                   </div>
                 );
               })}
