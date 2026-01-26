@@ -96,12 +96,23 @@ export function DashboardPage() {
       <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-lg border p-4">
           <p className="text-sm text-muted-foreground">Everyday Balance</p>
-          <p className="text-2xl font-bold"> {formatCents(currentBalance)}</p>
+          <p className="text-2xl font-bold">{formatCents(currentBalance)}</p>
+          {totalOpeningBalance !== 0 && (
+            <p className={`text-sm ${actualNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {actualNet >= 0 ? '+' : ''}
+              {((actualNet / totalOpeningBalance) * 100).toFixed(1)}%
+            </p>
+          )}
         </div>
 
         <div className="rounded-lg border p-4">
           <p className="text-sm text-muted-foreground">Total Savings</p>
           <p className="text-2xl font-bold">{formatCents(totalSaved)}</p>
+          {totalSaved > 0 && totalTarget > 0 && (
+            <p className="text-sm text-green-600">
+              +{((totalSaved / totalTarget) * 100).toFixed(1)}%
+            </p>
+          )}
         </div>
 
         <div className="rounded-lg border p-4">
@@ -111,6 +122,14 @@ export function DashboardPage() {
           >
             {formatCents(projectedEndBalance)}
           </p>
+          {totalOpeningBalance !== 0 && (
+            <p
+              className={`text-sm ${actualNet + forecastedNet >= 0 ? 'text-green-600' : 'text-red-600'}`}
+            >
+              {actualNet + forecastedNet >= 0 ? '+' : ''}
+              {(((actualNet + forecastedNet) / totalOpeningBalance) * 100).toFixed(1)}%
+            </p>
+          )}
         </div>
 
         <div className="rounded-lg border p-4">
