@@ -7,6 +7,7 @@ import {
   PiggyBank,
   CalendarDays,
   Wallet,
+  Repeat,
   Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -101,6 +102,9 @@ export function Sidebar() {
           </NavItem>
           <NavItem to="/manage/periods" icon={<CalendarDays className="h-4 w-4" />}>
             Time Periods
+          </NavItem>
+          <NavItem to="/manage/recurring" icon={<Repeat className="h-4 w-4" />}>
+            Recurring
           </NavItem>
         </NavSection>
       </div>
