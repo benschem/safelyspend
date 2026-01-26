@@ -22,6 +22,9 @@ import { PeriodDetailPage } from '@/routes/manage/periods/detail';
 import { AccountsIndexPage } from '@/routes/manage/accounts/index';
 import { AccountNewPage } from '@/routes/manage/accounts/new';
 import { AccountDetailPage } from '@/routes/manage/accounts/detail';
+import { RecurringIndexPage } from '@/routes/manage/recurring/index';
+import { RecurringNewPage } from '@/routes/manage/recurring/new';
+import { RecurringDetailPage } from '@/routes/manage/recurring/detail';
 import { SettingsPage } from '@/routes/settings';
 
 const router = createBrowserRouter([
@@ -67,6 +70,11 @@ const router = createBrowserRouter([
       { path: 'manage/accounts', element: <AccountsIndexPage /> },
       { path: 'manage/accounts/new', element: <AccountNewPage /> },
       { path: 'manage/accounts/:id', element: <AccountDetailPage /> },
+
+      // Manage - Recurring
+      { path: 'manage/recurring', element: <RecurringIndexPage /> },
+      { path: 'manage/recurring/new', element: <RecurringNewPage /> },
+      { path: 'manage/recurring/:id', element: <RecurringDetailPage /> },
 
       // Settings
       { path: 'settings', element: <SettingsPage /> },
