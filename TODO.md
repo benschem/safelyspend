@@ -15,3 +15,5 @@
 
 [ ] Data - add Savings with id, categoryId, goalAmount, monthlyContribution
 and have it calculate on the fly how long it will take to reach the goal at this amount of monthly contribution. Think about whether BudgetedExpense can go to Savings with a SavingId? or whether we need a new type BudgetedSaving
+
+[ ] After importing from JSON, page needs to be refreshed to see imported data

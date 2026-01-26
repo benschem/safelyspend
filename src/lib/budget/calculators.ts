@@ -4,7 +4,7 @@ import type {
   Expense,
   ProjectedIncome,
   BudgetedExpense,
-  SavingsBucket,
+  SavingsAccount,
 } from '../../types';
 
 export function calculateTotalSpent(expenses: Expense[]) {
@@ -17,19 +17,36 @@ export function calculateTotalIncomeReceived(incomes: Income[]) {
   return total;
 }
 
-export function calculateCurrentBankBalance(bankBalance: number, expenses: Expense[], incomes: Income[], savingsBuckets: savingsBucket[]) {
-  if (bankBalance == null) return 0;
+export function calculateTotalSavedForAccount() {}
 
-  const totalSaved = calculateTotalSaved(savingsBuckets)
-  const totalSpent = calculateTotalSpent(expenses);
-  const totalReceived = calculateTotalIncomeReceived(incomes);
-  const balance = bankBalance - totalSpent + totalReceived - totalSaved;
-  return balance;
+export function calculateTotalSaved(
+  savingsAccounts: SavingsAccount[],
+  savingsWithdrawals: SavingsWithdrawal[],
+  savingsDeposit: SavingsAccount[]
+){
+  const startingBalance = savingsAccounts.reduce((accumulator: number, account: SavingsAccount) => accumulator + account.startingAmount, 0);
+  let total = 0;
+  savingsAccounts.forEach((account) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expectedDate = new Date(account.date);
+    if (account.categoryId === category.id && expectedDate <= today) {
+      total += account.amount;
+    }
+  });
+  return total;
+
+  return total
 }
 
-export function calculateTotalSaved(savingsBuckets: SavingsBucket[]) {
-  const total = savingsBuckets.reduce((sum, bucket) => sum + bucket.amount, 0);
-  return total
+export function calculateCurrentBankBalance(startingBankBalance: number, expenses: Expense[], incomes: Income[], savingsAccounts: SavingsAccount[]) {
+  if (startingBankBalance == null) return 0;
+
+  const totalSaved = calculateTotalSaved(savingsAccounts)
+  const totalSpent = calculateTotalSpent(expenses);
+  const totalReceived = calculateTotalIncomeReceived(incomes);
+  const balance = startingBankBalance + totalReceived - totalSpent - totalSaved;
+  return balance;
 }
 
 export function calculateProjectedIncome(projectedIncomes: ProjectedIncome[]) {
@@ -61,16 +78,15 @@ export function calculateBudgetedExpenses(budgetedExpenses: BudgetedExpense[]) {
 }
 
 export function calculateAvailableToSpend(
-  incomes: Income[],
-  bankBalance: number,
-  expenses: Expense[],
+  current: number,
   projectedIncomes: ProjectedIncome[],
   budgetedExpenses: BudgetedExpense[],
+  savingsAccounts: SavingsAccount[],
 ) {
-  const current = calculateCurrentBankBalance(bankBalance, expenses, incomes);
   const comingIn = calculateProjectedIncome(projectedIncomes);
   const goingOut = calculateBudgetedExpenses(budgetedExpenses);
-  const available = current + comingIn - goingOut;
+  const totalSaved = calculateTotalSaved(savingsAccounts)
+  const available = current + comingIn - goingOut - totalSaved;
   return available;
 }
 

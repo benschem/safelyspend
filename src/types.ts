@@ -1,14 +1,15 @@
-export interface BankBalance {
+export interface StartingBankBalance {
   amount: number;
+  date: string; // ISO date string
 }
 export interface BudgetData {
-  bankBalance: BankBalance;
+  startingBankBalance: StartingBankBalance;
   incomes: Income[];
   expenses: Expense[];
   projectedIncomes: ProjectedIncome[];
   budgetedExpenses: BudgetedExpense[];
   categories: Category[];
-  savingsBuckets: SavingsBucket[];
+  savingsAccounts: SavingsAccount[];
 }
 
 export interface BudgetedExpense {
@@ -50,9 +51,32 @@ export interface ProjectedIncome {
   recurrence_group_id?: string;
 }
 
-export interface SavingsBucket {
+export interface SavingsWithdrawal {
+  id: string; // crypto.randomUUID()
+  savingsAccountId: string; // crypto.randomUUID()
+  amount: number;
+  date: string; // ISO date string
+  notes?: string;
+}
+
+export interface SavingsDeposit {
+  id: string; // crypto.randomUUID()
+  savingsAccountId: string; // crypto.randomUUID()
+  amount: number;
+  date: string; // ISO date string
+}
+export interface ProjectedSavingsDeposit {
+  id: string; // crypto.randomUUID()
+  savingsAccountId: string; // crypto.randomUUID()
+  amount: number;
+  date: string; // ISO date string
+}
+
+export interface SavingsAccount {
   id: string; // crypto.randomUUID()
   name: string;
-  amount: number;
+  startingAmount: number;
+  startingDate: string // ISO date string
+  // interestRate: number;
   goal: number;
 }

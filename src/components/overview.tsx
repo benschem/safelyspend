@@ -3,36 +3,39 @@ import {
   calculateProjectedIncome,
   calculateBudgetedExpenses,
   calculateAvailableToSpend,
+  calculateTotalSaved,
 } from '../lib/budget/calculators';
+import type { SavingsAccount } from '../types';
 
-import useBankBalance from '../hooks/useBankBalance';
+import useStartingBankBalance from '../hooks/useStartingBankBalance';
 import useExpenses from '../hooks/useExpenses';
 import useBudgetedExpenses from '../hooks/useBudgetedExpenses';
 import useIncomes from '../hooks/useIncomes';
 import useProjectedIncomes from '../hooks/useProjectedIncomes';
-import useSavingsBuckets from '../hooks/useSavingsBuckets';
+import useSavingsAccounts from '../hooks/useSavingsAccounts';
 
 export default function Overview() {
-  const { bankBalance } = useBankBalance();
+  const { startingBankBalance } = useStartingBankBalance();
   const { expenses } = useExpenses();
   const { budgetedExpenses } = useBudgetedExpenses();
   const { incomes } = useIncomes();
   const { projectedIncomes } = useProjectedIncomes();
-  const { savingsBuckets } = useSavingsBuckets();
+  const { savingsAccounts } = useSavingsAccounts();
 
-  const startingBalance = bankBalance.amount;
-  const balance = calculateCurrentBankBalance(startingBalance, expenses, incomes);
+  const startingBalance = startingBankBalance.amount;
+  const balance = calculateCurrentBankBalance(startingBalance, expenses, incomes, savingsAccounts);
   const projectedIncome = calculateProjectedIncome(projectedIncomes);
   const allocated = calculateBudgetedExpenses(budgetedExpenses);
   const free = calculateAvailableToSpend(
-    incomes,
-    startingBalance,
-    expenses,
+    balance,
     projectedIncomes,
     budgetedExpenses,
+    savingsAccounts,
   );
-  const weeksUntilEofy = 39;
-  const available = free / weeksUntilEofy;
+  const calculateSavingsInAccount = (account: SavingsAccount) => {
+    const saved = calculateTotalSaved([account])
+    return saved
+  }
 
   const format = (number: number) => {
     return number.toLocaleString('en', {
@@ -43,18 +46,17 @@ export default function Overview() {
 
   return (
     <div>
-      <p>You currently should have ${format(balance)} in the bank</p>
-      <h2>Until EOFY:</h2>
+      <h2>Overview (Until EOFY)</h2>
       <ul>
+        <li>You currently have ${format(balance)} in the bank</li>
         <li>You should earn ${format(projectedIncome)}</li>
-        <li>You have allocated ${format(allocated)}</li>
-        <li>You have not allocated ${format(free)}</li>
-        <li>You could spend up to ${format(available)} per week</li>
+        <li>You have allocated ${format(allocated)} of it</li>
+        <li>You have not allocated ${format(free)} of it </li>
       </ul>
       <ul>
-        {savingsBuckets.map(bucket => (
-          <li key={bucket.id}>
-            {bucket.name}: ${format(bucket.amount)}/${format(bucket.goal)}
+        {savingsAccounts.map((account: SavingsAccount) => (
+          <li key={account.id}>
+            {account.name}: ${format(calculateSavingsInAccount(account))}/${format(account.goal)}
           </li>
         ))}
       </ul>

@@ -1,41 +1,41 @@
 import type { BudgetData } from '../types';
 
-import useBankBalance from "./useBankBalance";
+import useStartingBankBalance from "./useStartingBankBalance";
 import useBudgetedExpenses from "./useBudgetedExpenses";
 import useCategories from "./useCategories";
 import useExpenses from "./useExpenses";
 import useIncomes from "./useIncomes";
 import useProjectedIncomes from "./useProjectedIncomes";
-import useSavingsBuckets from "./useSavingsBuckets";
+import useSavingsAccounts from "./useSavingsAccounts";
 
 export default function useBudgetData() {
-  const { bankBalance, setBankBalance } = useBankBalance();
+  const { startingBankBalance, setStartingBankBalance } = useStartingBankBalance();
   const { categories, setCategories } = useCategories();
   const { incomes, setIncomes } = useIncomes();
   const { expenses, setExpenses } = useExpenses();
   const { projectedIncomes, setProjectedIncomes } = useProjectedIncomes();
   const { budgetedExpenses, setBudgetedExpenses } = useBudgetedExpenses();
-  const { savingsBuckets, setSavingsBuckets } = useSavingsBuckets();
+  const { savingsAccounts, setSavingsAccounts } = useSavingsAccounts();
 
   const budgetData: BudgetData = {
-    bankBalance,
+    startingBankBalance,
     categories,
     incomes,
     expenses,
     projectedIncomes,
     budgetedExpenses,
 
-    savingsBuckets,
+    savingsAccounts,
   };
 
   const setBudgetData = (data: BudgetData) => {
-    setBankBalance(data.bankBalance);
+    setStartingBankBalance(data.startingBankBalance);
     setCategories(data.categories);
     setIncomes(data.incomes);
     setExpenses(data.expenses);
     setProjectedIncomes(data.projectedIncomes);
     setBudgetedExpenses(data.budgetedExpenses);
-    setSavingsBuckets(data.savingsBuckets);
+    setSavingsAccounts(data.savingsAccounts);
   }
 
   return { budgetData, setBudgetData };
