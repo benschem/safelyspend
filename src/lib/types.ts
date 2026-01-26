@@ -119,6 +119,25 @@ export interface SavingsGoal extends BaseEntity {
 }
 
 // -----------------------------------------------------------------------------
+// Recurring Expense/Income - Templates for generating forecasts
+// -----------------------------------------------------------------------------
+
+export type RecurringFrequency = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly';
+export type RecurringType = 'income' | 'expense';
+
+export interface RecurringItem extends BaseEntity {
+  type: RecurringType;
+  name: string;
+  amountCents: number;
+  frequency: RecurringFrequency;
+  dayOfMonth?: number; // 1-31 for monthly/quarterly/yearly
+  dayOfWeek?: number; // 0-6 (Sunday-Saturday) for weekly/fortnightly
+  categoryId: string | null;
+  isActive: boolean;
+  notes?: string;
+}
+
+// -----------------------------------------------------------------------------
 // Aggregate Types
 // -----------------------------------------------------------------------------
 
@@ -132,6 +151,7 @@ export interface BudgetData {
   transactions: Transaction[];
   transfers: Transfer[];
   savingsGoals: SavingsGoal[];
+  recurringItems: RecurringItem[];
 }
 
 // -----------------------------------------------------------------------------
