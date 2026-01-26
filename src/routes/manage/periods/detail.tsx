@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,13 +13,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, Check } from 'lucide-react';
+import { ArrowLeft, Check, AlertTriangle } from 'lucide-react';
 import { usePeriods } from '@/hooks/use-periods';
 import { useAccounts } from '@/hooks/use-accounts';
 import { useCategories } from '@/hooks/use-categories';
 import { useOpeningBalances } from '@/hooks/use-opening-balances';
 import { useBudgetLines } from '@/hooks/use-budget-lines';
-import { formatCents, parseCentsFromInput } from '@/lib/utils';
+import { useRecurringItems } from '@/hooks/use-recurring-items';
+import { useForecasts } from '@/hooks/use-forecasts';
+import { formatCents, parseCentsFromInput, formatDate } from '@/lib/utils';
 
 export function PeriodDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +31,8 @@ export function PeriodDetailPage() {
   const { activeCategories } = useCategories();
   const { getBalanceForAccount, setBalanceForAccount } = useOpeningBalances(id ?? null);
   const { getBudgetForCategory, setBudgetForCategory } = useBudgetLines(id ?? null);
+  const { activeItems, generateForecastsForPeriod } = useRecurringItems();
+  const { forecasts, addForecast } = useForecasts(id ?? null);
 
   const period = periods.find((p) => p.id === id);
   const isActive = period?.id === activePeriodId;
@@ -48,6 +52,30 @@ export function PeriodDetailPage() {
   const [editingBudgetCategoryId, setEditingBudgetCategoryId] = useState<string | null>(null);
   const [budgetInput, setBudgetInput] = useState('');
 
+  // Import recurring state
+  const [showImportPreview, setShowImportPreview] = useState(false);
+  const [importSuccess, setImportSuccess] = useState<string | null>(null);
+
+  // Generate preview of recurring items to import
+  const recurringPreview = useMemo(() => {
+    if (!period) return [];
+    return generateForecastsForPeriod(period.id, period.startDate, period.endDate);
+  }, [period, generateForecastsForPeriod]);
+
+  // Check for potential duplicates
+  const duplicateWarnings = useMemo(() => {
+    const warnings: string[] = [];
+    for (const preview of recurringPreview) {
+      const existing = forecasts.find(
+        (f) => f.description === preview.description && f.date === preview.date,
+      );
+      if (existing) {
+        warnings.push(`${preview.description} on ${formatDate(preview.date)}`);
+      }
+    }
+    return warnings;
+  }, [recurringPreview, forecasts]);
+
   if (!period) {
     return (
       <div>
@@ -63,6 +91,33 @@ export function PeriodDetailPage() {
       </div>
     );
   }
+
+  const handleImportRecurring = () => {
+    let imported = 0;
+    for (const preview of recurringPreview) {
+      // Skip if duplicate exists
+      const existing = forecasts.find(
+        (f) => f.description === preview.description && f.date === preview.date,
+      );
+      if (!existing) {
+        addForecast({
+          periodId: preview.periodId,
+          type: preview.type,
+          date: preview.date,
+          amountCents: preview.amountCents,
+          description: preview.description,
+          categoryId: preview.categoryId,
+          ...(preview.notes && { notes: preview.notes }),
+        });
+        imported++;
+      }
+    }
+    setShowImportPreview(false);
+    setImportSuccess(
+      `Imported ${imported} forecast${imported !== 1 ? 's' : ''} from recurring items.`,
+    );
+    setTimeout(() => setImportSuccess(null), 5000);
+  };
 
   const handleSave = () => {
     setError(null);
@@ -399,6 +454,132 @@ export function PeriodDetailPage() {
               })}
             </TableBody>
           </Table>
+        )}
+      </section>
+
+      <Separator className="my-6" />
+
+      {/* Import Recurring Section */}
+      <section>
+        <h2 className="text-lg font-semibold">Import Recurring Items</h2>
+        <p className="text-sm text-muted-foreground">
+          Generate forecasts from your recurring income and expenses.
+        </p>
+
+        {importSuccess && (
+          <div className="mt-4 rounded-lg bg-green-100 p-3 text-green-800">{importSuccess}</div>
+        )}
+
+        {activeItems.length === 0 ? (
+          <p className="mt-4 text-sm text-muted-foreground">
+            No recurring items set up.{' '}
+            <Link to="/manage/recurring/new" className="underline">
+              Create one
+            </Link>
+          </p>
+        ) : !showImportPreview ? (
+          <div className="mt-4">
+            <Button variant="outline" onClick={() => setShowImportPreview(true)}>
+              Preview Import ({activeItems.length} recurring item
+              {activeItems.length !== 1 ? 's' : ''})
+            </Button>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {duplicateWarnings.length > 0 && (
+              <div className="rounded-lg border border-yellow-500 bg-yellow-50 p-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-yellow-800">
+                      Some forecasts already exist and will be skipped:
+                    </p>
+                    <ul className="mt-1 text-sm text-yellow-700">
+                      {duplicateWarnings.slice(0, 5).map((warning, i) => (
+                        <li key={i}>{warning}</li>
+                      ))}
+                      {duplicateWarnings.length > 5 && (
+                        <li>...and {duplicateWarnings.length - 5} more</li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {recurringPreview.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No occurrences fall within this period's date range.
+              </p>
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {recurringPreview.slice(0, 10).map((preview, i) => {
+                      const isDuplicate = forecasts.some(
+                        (f) => f.description === preview.description && f.date === preview.date,
+                      );
+                      return (
+                        <TableRow key={i} className={isDuplicate ? 'opacity-50' : ''}>
+                          <TableCell>{formatDate(preview.date)}</TableCell>
+                          <TableCell>
+                            {preview.description}
+                            {isDuplicate && (
+                              <span className="ml-2 text-xs text-muted-foreground">(exists)</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={preview.type === 'income' ? 'success' : 'destructive'}>
+                              {preview.type === 'income' ? 'Income' : 'Expense'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            <span
+                              className={
+                                preview.type === 'income' ? 'text-green-600' : 'text-red-600'
+                              }
+                            >
+                              {preview.type === 'income' ? '+' : '-'}
+                              {formatCents(preview.amountCents)}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+                {recurringPreview.length > 10 && (
+                  <p className="text-sm text-muted-foreground">
+                    ...and {recurringPreview.length - 10} more
+                  </p>
+                )}
+              </>
+            )}
+
+            <div className="flex gap-2">
+              <Button
+                onClick={handleImportRecurring}
+                disabled={
+                  recurringPreview.length === 0 ||
+                  recurringPreview.length === duplicateWarnings.length
+                }
+              >
+                Import {recurringPreview.length - duplicateWarnings.length} Forecast
+                {recurringPreview.length - duplicateWarnings.length !== 1 ? 's' : ''}
+              </Button>
+              <Button variant="outline" onClick={() => setShowImportPreview(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
         )}
       </section>
 
