@@ -550,6 +550,49 @@ export function generateDemoData(): BudgetData {
     },
   ];
 
+  // Recurring Items
+  const recurringItems = [
+    {
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      type: 'expense' as const,
+      name: 'Rent',
+      amountCents: 200000, // $2,000
+      frequency: 'monthly' as const,
+      dayOfMonth: 1,
+      categoryId: categories[0]!.id, // Housing
+      isActive: true,
+    },
+    {
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      type: 'expense' as const,
+      name: 'Phone Bill',
+      amountCents: 8000, // $80
+      frequency: 'monthly' as const,
+      dayOfMonth: 15,
+      categoryId: categories[4]!.id, // Utilities
+      isActive: true,
+    },
+    {
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      type: 'income' as const,
+      name: 'Salary',
+      amountCents: 650000, // $6,500
+      frequency: 'fortnightly' as const,
+      dayOfWeek: 5, // Friday
+      categoryId: null,
+      isActive: true,
+    },
+  ];
+
   return {
     periods,
     accounts,
@@ -560,6 +603,7 @@ export function generateDemoData(): BudgetData {
     transactions,
     transfers,
     savingsGoals,
+    recurringItems,
   };
 }
 
@@ -576,6 +620,7 @@ export function loadDemoDataToStorage(): void {
   localStorage.setItem('budget:transactions', JSON.stringify(data.transactions));
   localStorage.setItem('budget:transfers', JSON.stringify(data.transfers));
   localStorage.setItem('budget:savingsGoals', JSON.stringify(data.savingsGoals));
+  localStorage.setItem('budget:recurringItems', JSON.stringify(data.recurringItems));
 }
 
 export function clearAllData(): void {
@@ -589,4 +634,5 @@ export function clearAllData(): void {
   localStorage.removeItem('budget:transactions');
   localStorage.removeItem('budget:transfers');
   localStorage.removeItem('budget:savingsGoals');
+  localStorage.removeItem('budget:recurringItems');
 }

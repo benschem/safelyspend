@@ -16,6 +16,7 @@ function getAllData(): BudgetData & { activePeriodId: string | null } {
     transactions: JSON.parse(localStorage.getItem('budget:transactions') ?? '[]'),
     transfers: JSON.parse(localStorage.getItem('budget:transfers') ?? '[]'),
     savingsGoals: JSON.parse(localStorage.getItem('budget:savingsGoals') ?? '[]'),
+    recurringItems: JSON.parse(localStorage.getItem('budget:recurringItems') ?? '[]'),
   };
 }
 
@@ -32,6 +33,7 @@ function setAllData(data: BudgetData & { activePeriodId?: string | null }): void
   localStorage.setItem('budget:transactions', JSON.stringify(data.transactions));
   localStorage.setItem('budget:transfers', JSON.stringify(data.transfers));
   localStorage.setItem('budget:savingsGoals', JSON.stringify(data.savingsGoals));
+  localStorage.setItem('budget:recurringItems', JSON.stringify(data.recurringItems ?? []));
 }
 
 export function SettingsPage() {
