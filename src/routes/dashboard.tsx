@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Link, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -7,6 +8,8 @@ import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useOpeningBalances } from '@/hooks/use-opening-balances';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
+import { useBudgetLines } from '@/hooks/use-budget-lines';
+import { useCategories } from '@/hooks/use-categories';
 import { formatCents, formatDate } from '@/lib/utils';
 
 interface OutletContext {
@@ -22,6 +25,8 @@ export function DashboardPage() {
   const { incomeForecasts, expenseForecasts } = useForecasts(activePeriodId);
   const { getBalanceForAccount } = useOpeningBalances(activePeriodId);
   const { savingsGoals } = useSavingsGoals(activePeriodId);
+  const { getBudgetForCategory } = useBudgetLines(activePeriodId);
+  const { activeCategories } = useCategories();
 
   if (!activePeriodId || !activePeriod) {
     return (
@@ -54,6 +59,28 @@ export function DashboardPage() {
 
   const totalSaved = savingsGoals.reduce((sum, g) => sum + g.currentAmountCents, 0);
   const totalTarget = savingsGoals.reduce((sum, g) => sum + g.targetAmountCents, 0);
+
+  // Calculate budget tracking per category
+  const spendingByCategory = useMemo(() => {
+    const spending: Record<string, number> = {};
+    for (const tx of expenseTransactions) {
+      if (tx.categoryId) {
+        spending[tx.categoryId] = (spending[tx.categoryId] ?? 0) + tx.amountCents;
+      }
+    }
+    return spending;
+  }, [expenseTransactions]);
+
+  const budgetRows = useMemo(() => {
+    return activeCategories
+      .map((category) => {
+        const budgeted = getBudgetForCategory(category.id);
+        const actual = spendingByCategory[category.id] ?? 0;
+        const remaining = budgeted - actual;
+        return { id: category.id, name: category.name, budgeted, actual, remaining };
+      })
+      .filter((row) => row.budgeted > 0 || row.actual > 0);
+  }, [activeCategories, getBudgetForCategory, spendingByCategory]);
 
   return (
     <div>
@@ -145,50 +172,79 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* Savings Goals */}
-      <div className="mt-8 rounded-lg border p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">Savings Goals</h2>
-            <p className="text-sm text-muted-foreground">
-              {formatCents(totalSaved)} saved of {formatCents(totalTarget)} target
-            </p>
-          </div>
+      {/* Budget & Savings */}
+      <div className="mt-8 grid gap-6 md:grid-cols-2">
+        {/* Budget Tracking */}
+        <div className="rounded-lg border p-4">
+          <h2 className="text-lg font-semibold">Budget</h2>
+          {budgetRows.length === 0 ? (
+            <div className="mt-4 text-center text-sm text-muted-foreground">
+              No budget set.{' '}
+              <Link to={`/manage/periods/${activePeriodId}`} className="text-primary underline">
+                Set budgets
+              </Link>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-2">
+              {budgetRows.map((row) => (
+                <div key={row.id} className="flex justify-between text-sm">
+                  <span>{row.name}</span>
+                  <span
+                    className={`font-mono ${row.remaining >= 0 ? 'text-muted-foreground' : 'text-red-600'}`}
+                  >
+                    {formatCents(row.remaining)} / {formatCents(row.budgeted)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {savingsGoals.length === 0 ? (
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            No savings goals yet.{' '}
-            <Link to="/savings/new" className="text-primary underline">
-              Create one
-            </Link>
+        {/* Savings Goals */}
+        <div className="rounded-lg border p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">Savings Goals</h2>
+              <p className="text-sm text-muted-foreground">
+                {formatCents(totalSaved)} saved of {formatCents(totalTarget)} target
+              </p>
+            </div>
           </div>
-        ) : (
-          <div className="mt-4 space-y-3">
-            {savingsGoals.map((goal) => {
-              const progress =
-                goal.targetAmountCents > 0
-                  ? Math.min(100, (goal.currentAmountCents / goal.targetAmountCents) * 100)
-                  : 0;
-              return (
-                <div key={goal.id}>
-                  <div className="flex justify-between text-sm">
-                    <Link to={`/savings/${goal.id}`} className="font-medium hover:underline">
-                      {goal.name}
-                      {goal.periodId === null && (
-                        <span className="ml-1 text-xs text-muted-foreground">(Global)</span>
-                      )}
-                    </Link>
-                    <span className="text-muted-foreground">
-                      {formatCents(goal.currentAmountCents)} / {formatCents(goal.targetAmountCents)}
-                    </span>
+
+          {savingsGoals.length === 0 ? (
+            <div className="mt-4 text-center text-sm text-muted-foreground">
+              No savings goals yet.{' '}
+              <Link to="/savings/new" className="text-primary underline">
+                Create one
+              </Link>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {savingsGoals.map((goal) => {
+                const progress =
+                  goal.targetAmountCents > 0
+                    ? Math.min(100, (goal.currentAmountCents / goal.targetAmountCents) * 100)
+                    : 0;
+                return (
+                  <div key={goal.id}>
+                    <div className="flex justify-between text-sm">
+                      <Link to={`/savings/${goal.id}`} className="font-medium hover:underline">
+                        {goal.name}
+                        {goal.periodId === null && (
+                          <span className="ml-1 text-xs text-muted-foreground">(Global)</span>
+                        )}
+                      </Link>
+                      <span className="text-muted-foreground">
+                        {formatCents(goal.currentAmountCents)} / {formatCents(goal.targetAmountCents)}
+                      </span>
+                    </div>
+                    <Progress value={progress} className="mt-1 h-2" />
                   </div>
-                  <Progress value={progress} className="mt-1 h-2" />
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
