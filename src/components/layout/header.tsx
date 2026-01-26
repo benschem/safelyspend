@@ -23,13 +23,13 @@ export function Header({ periods, activePeriodId, onPeriodChange }: HeaderProps)
   return (
     <header className="flex h-14 items-center justify-between border-b border-border bg-background px-6">
       <div className="flex items-center gap-4">
-        <span className="text-sm text-muted-foreground">Active Period:</span>
+        <span className="text-sm text-muted-foreground">Active time period:</span>
         {periods.length === 0 ? (
-          <span className="text-sm text-muted-foreground italic">No periods created</span>
+          <span className="text-sm text-muted-foreground italic">No time periods created</span>
         ) : (
           <Select {...selectProps}>
             <SelectTrigger className="w-48">
-              <SelectValue placeholder="Select a period" />
+              <SelectValue placeholder="Select a time period" />
             </SelectTrigger>
             <SelectContent>
               {periods.map((period) => (

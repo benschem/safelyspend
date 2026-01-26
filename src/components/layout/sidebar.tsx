@@ -64,7 +64,7 @@ export function Sidebar() {
       <div className="flex-1 overflow-y-auto py-2">
         <NavSection>
           <NavItem to="/dashboard" icon={<LayoutDashboard className="h-4 w-4" />}>
-            Dashboard
+            Overview
           </NavItem>
         </NavSection>
 
@@ -72,10 +72,10 @@ export function Sidebar() {
 
         <NavSection title="Plan">
           <NavItem to="/forecast" icon={<TrendingUp className="h-4 w-4" />}>
-            Forecast
+            Forecasts
           </NavItem>
           <NavItem to="/budget" icon={<FolderTree className="h-4 w-4" />}>
-            Budget
+            Budgets
           </NavItem>
         </NavSection>
 
@@ -96,11 +96,11 @@ export function Sidebar() {
         <Separator className="my-2" />
 
         <NavSection title="Manage">
-          <NavItem to="/manage/periods" icon={<CalendarDays className="h-4 w-4" />}>
-            Periods
-          </NavItem>
           <NavItem to="/manage/accounts" icon={<Wallet className="h-4 w-4" />}>
-            Accounts
+            Bank Accounts
+          </NavItem>
+          <NavItem to="/manage/periods" icon={<CalendarDays className="h-4 w-4" />}>
+            Time Periods
           </NavItem>
         </NavSection>
       </div>

@@ -7,7 +7,7 @@ import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useOpeningBalances } from '@/hooks/use-opening-balances';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
-import { formatCents } from '@/lib/utils';
+import { formatCents, formatDate } from '@/lib/utils';
 
 interface OutletContext {
   activePeriodId: string | null;
@@ -57,27 +57,22 @@ export function DashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Dashboard</h1>
-      <p className="text-muted-foreground">Overview for {activePeriod.name}</p>
+      <h1 className="text-2xl font-bold">{formatDate(activePeriod.startDate)} - {formatDate(activePeriod.endDate)}</h1>
+      <p className="text-muted-foreground">Your money at a glance</p>
 
-      {/* Key Metrics */}
-      <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Opening Balance</p>
-          <p className="text-2xl font-bold">{formatCents(totalOpeningBalance)}</p>
+          <p className="text-sm text-muted-foreground">Everyday Balance</p>
+          <p className="text-2xl font-bold"> {formatCents(currentBalance)}</p>
         </div>
 
         <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Current Balance</p>
-          <p
-            className={`text-2xl font-bold ${currentBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}
-          >
-            {formatCents(currentBalance)}
-          </p>
+          <p className="text-sm text-muted-foreground">Total Savings</p>
+          <p className="text-2xl font-bold">{formatCents(totalSaved)}</p>
         </div>
 
         <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Projected End Balance</p>
+          <p className="text-sm text-muted-foreground">Projected Everyday Balance</p>
           <p
             className={`text-2xl font-bold ${projectedEndBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}
           >
@@ -87,11 +82,7 @@ export function DashboardPage() {
 
         <div className="rounded-lg border p-4">
           <p className="text-sm text-muted-foreground">Available to Spend</p>
-          <p
-            className={`text-2xl font-bold ${projectedEndBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}
-          >
-            {formatCents(Math.max(0, projectedEndBalance))}
-          </p>
+          <p className="text-2xl font-bold">{formatCents(Math.max(0, projectedEndBalance))}</p>
         </div>
       </div>
 
@@ -99,8 +90,10 @@ export function DashboardPage() {
       <div className="mt-8 grid gap-6 md:grid-cols-2">
         {/* Actual */}
         <div className="rounded-lg border p-4">
-          <h2 className="text-lg font-semibold">Actual (So Far)</h2>
-          <p className="text-sm text-muted-foreground">Recorded transactions</p>
+          <div className="flex items-baseline gap-1">
+            <h2 className="text-lg font-semibold">Transactions</h2>
+            <span className="text-sm text-muted-foreground">(To Date)</span>
+          </div>
 
           <div className="mt-4 space-y-3">
             <div className="flex justify-between">
@@ -112,8 +105,7 @@ export function DashboardPage() {
               <span className="font-mono text-red-600">-{formatCents(actualExpenses)}</span>
             </div>
             <div className="border-t pt-2">
-              <div className="flex justify-between font-semibold">
-                <span>Net</span>
+              <div className="flex justify-end font-semibold">
                 <span className={actualNet >= 0 ? 'text-green-600' : 'text-red-600'}>
                   {actualNet >= 0 ? '+' : ''}
                   {formatCents(actualNet)}
@@ -121,18 +113,14 @@ export function DashboardPage() {
               </div>
             </div>
           </div>
-
-          <div className="mt-4">
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/transactions">{transactions.length} transactions</Link>
-            </Button>
-          </div>
         </div>
 
         {/* Forecast */}
         <div className="rounded-lg border p-4">
-          <h2 className="text-lg font-semibold">Forecast (Remaining)</h2>
-          <p className="text-sm text-muted-foreground">Projected income and expenses</p>
+          <div className="flex items-baseline gap-1">
+            <h2 className="text-lg font-semibold">Forecast</h2>
+            <span className="text-sm text-muted-foreground">(Remaining)</span>
+          </div>
 
           <div className="mt-4 space-y-3">
             <div className="flex justify-between">
@@ -144,20 +132,13 @@ export function DashboardPage() {
               <span className="font-mono text-red-600">-{formatCents(forecastedExpenses)}</span>
             </div>
             <div className="border-t pt-2">
-              <div className="flex justify-between font-semibold">
-                <span>Net</span>
+              <div className="flex justify-end font-semibold">
                 <span className={forecastedNet >= 0 ? 'text-green-600' : 'text-red-600'}>
                   {forecastedNet >= 0 ? '+' : ''}
                   {formatCents(forecastedNet)}
                 </span>
               </div>
             </div>
-          </div>
-
-          <div className="mt-4">
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/forecast">{forecasts.length} forecasts</Link>
-            </Button>
           </div>
         </div>
       </div>
@@ -171,7 +152,6 @@ export function DashboardPage() {
               {formatCents(totalSaved)} saved of {formatCents(totalTarget)} target
             </p>
           </div>
-          <p className="text-2xl font-bold text-green-600">{formatCents(totalSaved)}</p>
         </div>
 
         {savingsGoals.length === 0 ? (
@@ -207,31 +187,6 @@ export function DashboardPage() {
             })}
           </div>
         )}
-
-        <div className="mt-4">
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/savings">View All Savings</Link>
-          </Button>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="mt-8">
-        <h2 className="text-lg font-semibold">Quick Actions</h2>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button asChild>
-            <Link to="/transactions/new">Add Transaction</Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link to="/forecast/new">Add Forecast</Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link to="/categories">Manage Categories</Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link to={`/manage/periods/${activePeriodId}`}>Edit Period</Link>
-          </Button>
-        </div>
       </div>
     </div>
   );
