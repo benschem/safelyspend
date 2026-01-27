@@ -14,55 +14,78 @@ npx prettier --write "src/**/*.{ts,tsx}"  # Format code
 
 ## Architecture Overview
 
-A React 19 + TypeScript budgeting app with local-only persistence. Answers the question: "How much money can I freely spend between now and end of period?"
+A React 19 + TypeScript budgeting app with local-only persistence. Supports "what-if" scenario planning by separating facts (transactions) from plans (scenarios with rules).
 
 **Stack:** React 19, React Router 7, TypeScript, Tailwind CSS 4, shadcn/ui, Vite
+
+### Core Concepts
+
+- **Scenarios** contain budget rules and forecast rules (the "plan")
+- **Transactions** are global facts that exist independent of scenarios
+- **Date Range** is a view filter - the same transactions can be viewed across different date ranges
+- **Cadence-based rules** expand into individual instances over any date range
 
 ### Domain Model
 
 All entities have base fields: `id`, `userId`, `createdAt`, `updatedAt`. Amounts stored as integer cents.
 
-- **Period** - Primary workspace (e.g., "FY 2025-26"). Most data is scoped to the active period.
-- **Account** - Bank accounts. Has `isArchived` flag.
-- **OpeningBalance** - Per account, per period starting balance.
+#### Global Entities (facts)
+- **Account** - Bank accounts with `openingBalanceCents` and `openingDate`
 - **Category** - Expense categorization. Has `isArchived` flag.
-- **BudgetLine** - Spending limit per category per period.
-- **Forecast** - Unified type for projected income/expenses (`type: 'income' | 'expense'`).
-- **Transaction** - Actual income/expenses. `categoryId` optional (null for income, optional for expenses).
-- **Transfer** - Movement between accounts.
-- **SavingsGoal** - Savings targets. Progress calculated from savings transactions.
+- **Transaction** - Actual income/expenses/savings (`type: 'income' | 'expense' | 'savings'`)
+- **Transfer** - Movement between accounts
+- **SavingsGoal** - Global savings targets with `targetAmountCents` and optional `deadline`
+
+#### Scenario-Scoped Entities (plans)
+- **Scenario** - A named set of rules for what-if planning. One is marked `isDefault`.
+- **BudgetRule** - Spending limit per category with cadence (weekly, fortnightly, monthly, quarterly, yearly)
+- **ForecastRule** - Recurring income/expense/savings patterns with cadence
+- **ForecastEvent** - One-off forecast items with specific dates
+
+#### Computed Types
+- **ExpandedForecast** - Materialized forecast for a specific date (computed from rules + events)
+
+### Cadence System
+
+Rules use a `Cadence` type: `'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly'`
+
+- `dayOfWeek` (0-6) for weekly/fortnightly
+- `dayOfMonth` (1-31) for monthly/quarterly/yearly
+
+Rules expand over any date range to calculate totals or generate individual occurrences.
 
 ### Key Directories
 
 ```
 src/
 ├── components/
-│   ├── ui/           # shadcn components (button, select, separator)
+│   ├── ui/           # shadcn components
 │   └── layout/       # Header, Sidebar, RootLayout
-├── hooks/            # State management hooks
+├── hooks/
 │   ├── use-local-storage.ts   # Base persistence hook
-│   ├── use-periods.ts         # Period CRUD + active period selection
+│   ├── use-scenarios.ts       # Scenario CRUD + active scenario
+│   ├── use-view-state.ts      # Date range selection (defaults to AU financial year)
 │   ├── use-accounts.ts
 │   ├── use-categories.ts
-│   ├── use-forecasts.ts
-│   ├── use-transactions.ts
+│   ├── use-budget-rules.ts    # Budget rules with cadence expansion
+│   ├── use-forecasts.ts       # Forecast rules + events + expansion
+│   ├── use-transactions.ts    # Date range filtering
 │   ├── use-transfers.ts
-│   ├── use-budget-lines.ts
-│   ├── use-opening-balances.ts
 │   └── use-savings-goals.ts
-├── routes/           # Page components
+├── routes/
 │   ├── dashboard.tsx
-│   ├── forecast/
+│   ├── forecast/           # View expanded forecasts, add one-off events
 │   ├── budget.tsx
 │   ├── transactions/
 │   ├── categories/
 │   ├── savings/
-│   ├── manage/periods/
+│   ├── manage/scenarios/   # Scenario CRUD, duplicate with rules
 │   ├── manage/accounts/
+│   ├── manage/rules/       # Forecast rule CRUD
 │   └── settings.tsx
 ├── lib/
 │   ├── types.ts      # Domain types
-│   └── utils.ts      # formatMoney, cn, generateId, etc.
+│   └── utils.ts      # formatCents, cn, generateId, etc.
 └── App.tsx           # Router configuration
 ```
 
@@ -77,22 +100,23 @@ const [items, setItems] = useLocalStorage<Type[]>('budget:key', []);
 // delete: filters
 ```
 
-Active period is stored separately (`budget:activePeriodId`) and passed via React Router's outlet context.
+**Context passing:** RootLayout passes `{ activeScenarioId, startDate, endDate }` via React Router's outlet context.
 
 ### Navigation Structure
 
-- Header: Period selector (workspace switcher)
+- Header: Scenario selector + Date range picker
 - Sidebar:
-  - Dashboard
-  - Plan: Forecast, Budget
+  - Dashboard (Overview)
+  - Plan: Forecasts, Budgets
   - Track: Transactions, Categories, Savings
-  - Manage: Periods, Accounts
+  - Manage: Bank Accounts, Scenarios, Forecast Rules
   - Settings
 
 ### Conventions
 
-- All money amounts with cents but displayed without cents (use `formatMoney()` for display)
+- All money amounts stored as cents, displayed with `formatCents()`
 - All dates as ISO strings (`YYYY-MM-DD`)
 - Timestamps as ISO strings with time
 - `userId: 'local'` placeholder for future multi-user
 - Storage keys prefixed with `budget:`
+- Australian financial year default (July 1 - June 30)
