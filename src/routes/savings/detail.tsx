@@ -1,14 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate, useOutletContext } from 'react-router';
+import { useForm } from '@tanstack/react-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft } from 'lucide-react';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
-import { formatCents, formatDate, parseCentsFromInput } from '@/lib/utils';
+import { formatCents, formatDate } from '@/lib/utils';
+import { FormField, FormError } from '@/components/form-field';
+import { savingsGoalEditSchema, parseCents } from '@/lib/schemas';
 
 interface OutletContext {
   activeScenarioId: string | null;
@@ -43,19 +45,59 @@ export function SavingsDetailPage() {
   }, [savingsForecasts, goal]);
 
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(goal?.name ?? '');
-  const [targetAmount, setTargetAmount] = useState(
-    goal ? (goal.targetAmountCents / 100).toFixed(2) : '',
-  );
-  const [deadline, setDeadline] = useState(goal?.deadline ?? '');
-  const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  const form = useForm({
+    defaultValues: {
+      name: goal?.name ?? '',
+      targetAmount: goal ? (goal.targetAmountCents / 100).toFixed(2) : '',
+      deadline: goal?.deadline ?? '',
+    },
+    validators: {
+      onSubmit: ({ value }) => {
+        const result = savingsGoalEditSchema.safeParse(value);
+        if (!result.success) {
+          const fieldErrors: Record<string, string> = {};
+          for (const issue of result.error.issues) {
+            const path = issue.path.join('.');
+            if (path) {
+              fieldErrors[path] = issue.message;
+            }
+          }
+          return fieldErrors;
+        }
+        return undefined;
+      },
+    },
+    onSubmit: async ({ value }) => {
+      setSubmitError(null);
+      if (!goal) return;
+
+      updateSavingsGoal(goal.id, {
+        name: value.name.trim(),
+        targetAmountCents: parseCents(value.targetAmount),
+        ...(value.deadline ? { deadline: value.deadline } : {}),
+      });
+      setEditing(false);
+    },
+  });
+
+  // Reset form when goal changes or when starting to edit
+  useEffect(() => {
+    if (goal) {
+      form.reset();
+      form.setFieldValue('name', goal.name);
+      form.setFieldValue('targetAmount', (goal.targetAmountCents / 100).toFixed(2));
+      form.setFieldValue('deadline', goal.deadline ?? '');
+    }
+  }, [goal?.id]);
 
   if (!goal) {
     return (
-      <div>
-        <div className="mb-6">
-          <Button variant="ghost" size="sm" asChild>
+      <div className="mx-auto max-w-lg">
+        <div className="mb-8">
+          <Button variant="ghost" size="sm" className="-ml-2" asChild>
             <Link to="/savings">
               <ArrowLeft className="h-4 w-4" />
               Back to Savings
@@ -79,26 +121,6 @@ export function SavingsDetailPage() {
 
   const progress = Math.round(actualPercent);
 
-  const handleSave = () => {
-    setError(null);
-
-    if (!name.trim()) {
-      setError('Name is required');
-      return;
-    }
-    if (!targetAmount || parseCentsFromInput(targetAmount) <= 0) {
-      setError('Target amount must be greater than 0');
-      return;
-    }
-
-    updateSavingsGoal(goal.id, {
-      name: name.trim(),
-      targetAmountCents: parseCentsFromInput(targetAmount),
-      ...(deadline ? { deadline } : {}),
-    });
-    setEditing(false);
-  };
-
   const handleDelete = () => {
     if (!confirmingDelete) {
       setConfirmingDelete(true);
@@ -109,16 +131,17 @@ export function SavingsDetailPage() {
   };
 
   const startEditing = () => {
-    setName(goal.name);
-    setTargetAmount((goal.targetAmountCents / 100).toFixed(2));
-    setDeadline(goal.deadline ?? '');
+    form.reset();
+    form.setFieldValue('name', goal.name);
+    form.setFieldValue('targetAmount', (goal.targetAmountCents / 100).toFixed(2));
+    form.setFieldValue('deadline', goal.deadline ?? '');
     setEditing(true);
   };
 
   return (
-    <div className="max-w-xl">
-      <div className="mb-6">
-        <Button variant="ghost" size="sm" asChild>
+    <div className="mx-auto max-w-lg">
+      <div className="mb-8">
+        <Button variant="ghost" size="sm" className="-ml-2" asChild>
           <Link to="/savings">
             <ArrowLeft className="h-4 w-4" />
             Back to Savings
@@ -166,7 +189,7 @@ export function SavingsDetailPage() {
         )}
       </div>
 
-      {error && <div className="mt-4 rounded-lg bg-red-100 p-3 text-red-800">{error}</div>}
+      {submitError && <FormError error={submitError} />}
 
       <Separator className="my-6" />
 
@@ -182,41 +205,71 @@ export function SavingsDetailPage() {
         </div>
 
         {editing ? (
-          <div className="mt-4 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              form.handleSubmit();
+            }}
+            noValidate
+            className="mt-4 space-y-4"
+          >
+            <form.Field name="name">
+              {(field) => (
+                <FormField field={field} label="Name">
+                  <Input
+                    id={field.name}
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                  />
+                </FormField>
+              )}
+            </form.Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="targetAmount">Target Amount ($)</Label>
-              <Input
-                id="targetAmount"
-                type="number"
-                step="0.01"
-                min="0"
-                value={targetAmount}
-                onChange={(e) => setTargetAmount(e.target.value)}
-              />
-            </div>
+            <form.Field name="targetAmount">
+              {(field) => (
+                <FormField field={field} label="Target Amount ($)">
+                  <Input
+                    id={field.name}
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                  />
+                </FormField>
+              )}
+            </form.Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="deadline">Deadline</Label>
-              <Input
-                id="deadline"
-                type="date"
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
-              />
-            </div>
+            <form.Field name="deadline">
+              {(field) => (
+                <FormField field={field} label="Deadline" optional>
+                  <Input
+                    id={field.name}
+                    type="date"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                  />
+                </FormField>
+              )}
+            </form.Field>
 
-            <div className="flex gap-2">
-              <Button onClick={handleSave}>Save</Button>
-              <Button variant="outline" onClick={() => setEditing(false)}>
+            <div className="flex gap-3 pt-2">
+              <form.Subscribe selector={(state) => state.isSubmitting}>
+                {(isSubmitting) => (
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? 'Saving...' : 'Save'}
+                  </Button>
+                )}
+              </form.Subscribe>
+              <Button type="button" variant="outline" onClick={() => setEditing(false)}>
                 Cancel
               </Button>
             </div>
-          </div>
+          </form>
         ) : (
           <div className="mt-4 space-y-2 text-sm">
             <p>

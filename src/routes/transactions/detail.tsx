@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router';
+import { useForm } from '@tanstack/react-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +13,9 @@ import { ArrowLeft } from 'lucide-react';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
-import { formatCents, formatDate, parseCentsFromInput, today } from '@/lib/utils';
+import { formatCents, formatDate, today } from '@/lib/utils';
+import { FormField, FormError } from '@/components/form-field';
+import { transactionFormSchema, parseCents } from '@/lib/schemas';
 import type { TransactionType } from '@/lib/types';
 
 export function TransactionDetailPage() {
@@ -25,22 +28,76 @@ export function TransactionDetailPage() {
   const transaction = allTransactions.find((t) => t.id === id);
 
   const [editing, setEditing] = useState(false);
-  const [type, setType] = useState<TransactionType>(transaction?.type ?? 'expense');
-  const [date, setDate] = useState(transaction?.date ?? '');
-  const [description, setDescription] = useState(transaction?.description ?? '');
-  const [amount, setAmount] = useState(
-    transaction ? (transaction.amountCents / 100).toFixed(2) : '',
-  );
-  const [categoryId, setCategoryId] = useState(transaction?.categoryId ?? '');
-  const [savingsGoalId, setSavingsGoalId] = useState(transaction?.savingsGoalId ?? '');
-  const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  const todayDate = today();
+
+  const form = useForm({
+    defaultValues: {
+      type: (transaction?.type ?? 'expense') as TransactionType,
+      date: transaction?.date ?? '',
+      description: transaction?.description ?? '',
+      amount: transaction ? (transaction.amountCents / 100).toFixed(2) : '',
+      categoryId: transaction?.categoryId ?? '',
+      savingsGoalId: transaction?.savingsGoalId ?? '',
+    },
+    validators: {
+      onSubmit: ({ value }) => {
+        const result = transactionFormSchema.safeParse(value);
+        if (!result.success) {
+          const fieldErrors: Record<string, string> = {};
+          for (const issue of result.error.issues) {
+            const path = issue.path.join('.');
+            if (path) {
+              fieldErrors[path] = issue.message;
+            }
+          }
+          return fieldErrors;
+        }
+        return undefined;
+      },
+    },
+    onSubmit: async ({ value }) => {
+      setSubmitError(null);
+      if (!transaction) return;
+
+      // Additional validation: date cannot be in the future
+      if (value.date > todayDate) {
+        setSubmitError('Transaction date cannot be in the future');
+        return;
+      }
+
+      updateTransaction(transaction.id, {
+        type: value.type,
+        date: value.date,
+        description: value.description.trim(),
+        amountCents: parseCents(value.amount),
+        categoryId: value.type === 'savings' ? null : value.categoryId || null,
+        savingsGoalId: value.type === 'savings' ? value.savingsGoalId : null,
+      });
+      setEditing(false);
+    },
+  });
+
+  // Reset form when transaction changes
+  useEffect(() => {
+    if (transaction) {
+      form.reset();
+      form.setFieldValue('type', transaction.type);
+      form.setFieldValue('date', transaction.date);
+      form.setFieldValue('description', transaction.description);
+      form.setFieldValue('amount', (transaction.amountCents / 100).toFixed(2));
+      form.setFieldValue('categoryId', transaction.categoryId ?? '');
+      form.setFieldValue('savingsGoalId', transaction.savingsGoalId ?? '');
+    }
+  }, [transaction?.id]);
 
   if (!transaction) {
     return (
-      <div>
-        <div className="mb-6">
-          <Button variant="ghost" size="sm" asChild>
+      <div className="mx-auto max-w-lg">
+        <div className="mb-8">
+          <Button variant="ghost" size="sm" className="-ml-2" asChild>
             <Link to="/transactions">
               <ArrowLeft className="h-4 w-4" />
               Back to Transactions
@@ -57,43 +114,7 @@ export function TransactionDetailPage() {
   const getSavingsGoalName = (goalId: string | null) =>
     goalId ? (savingsGoals.find((g) => g.id === goalId)?.name ?? 'Unknown') : '-';
 
-  const todayDate = today();
   const isAdjustment = transaction?.type === 'adjustment';
-
-  const handleSave = () => {
-    setError(null);
-
-    if (!date) {
-      setError('Date is required');
-      return;
-    }
-    if (date > todayDate) {
-      setError('Transaction date cannot be in the future');
-      return;
-    }
-    if (!description.trim()) {
-      setError('Description is required');
-      return;
-    }
-    if (!amount || parseCentsFromInput(amount) <= 0) {
-      setError('Amount must be greater than 0');
-      return;
-    }
-    if (type === 'savings' && !savingsGoalId) {
-      setError('Savings goal is required');
-      return;
-    }
-
-    updateTransaction(transaction.id, {
-      type,
-      date,
-      description: description.trim(),
-      amountCents: parseCentsFromInput(amount),
-      categoryId: type === 'savings' ? null : categoryId || null,
-      savingsGoalId: type === 'savings' ? savingsGoalId : null,
-    });
-    setEditing(false);
-  };
 
   const handleDelete = () => {
     if (!confirmingDelete) {
@@ -105,19 +126,20 @@ export function TransactionDetailPage() {
   };
 
   const startEditing = () => {
-    setType(transaction.type);
-    setDate(transaction.date);
-    setDescription(transaction.description);
-    setAmount((transaction.amountCents / 100).toFixed(2));
-    setCategoryId(transaction.categoryId ?? '');
-    setSavingsGoalId(transaction.savingsGoalId ?? '');
+    form.reset();
+    form.setFieldValue('type', transaction.type);
+    form.setFieldValue('date', transaction.date);
+    form.setFieldValue('description', transaction.description);
+    form.setFieldValue('amount', (transaction.amountCents / 100).toFixed(2));
+    form.setFieldValue('categoryId', transaction.categoryId ?? '');
+    form.setFieldValue('savingsGoalId', transaction.savingsGoalId ?? '');
     setEditing(true);
   };
 
   return (
-    <div className="max-w-xl">
-      <div className="mb-6">
-        <Button variant="ghost" size="sm" asChild>
+    <div className="mx-auto max-w-lg">
+      <div className="mb-8">
+        <Button variant="ghost" size="sm" className="-ml-2" asChild>
           <Link to="/transactions">
             <ArrowLeft className="h-4 w-4" />
             Back to Transactions
@@ -155,7 +177,7 @@ export function TransactionDetailPage() {
         </div>
       </div>
 
-      {error && <div className="mt-4 rounded-lg bg-red-100 p-3 text-red-800">{error}</div>}
+      {submitError && <div className="mt-4"><FormError error={submitError} /></div>}
 
       <Separator className="my-6" />
 
@@ -171,88 +193,134 @@ export function TransactionDetailPage() {
         </div>
 
         {editing ? (
-          <div className="mt-4 space-y-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              form.handleSubmit();
+            }}
+            noValidate
+            className="mt-4 space-y-4"
+          >
             {!isAdjustment && (
-              <div className="space-y-2">
-                <Label>Type</Label>
-                <RadioGroup
-                  value={type}
-                  onValueChange={(v) => setType(v as TransactionType)}
-                  className="flex gap-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="expense" id="expense" />
-                    <Label htmlFor="expense" className="font-normal">
-                      Expense
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="income" id="income" />
-                    <Label htmlFor="income" className="font-normal">
-                      Income
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="savings" id="savings" />
-                    <Label htmlFor="savings" className="font-normal">
-                      Savings
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
+              <form.Field name="type">
+                {(field) => (
+                  <FormField field={field} label="Type">
+                    <RadioGroup
+                      value={field.state.value}
+                      onValueChange={(v) => field.handleChange(v as TransactionType)}
+                      className="flex gap-6 pt-1"
+                    >
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="expense" id="expense" />
+                        <Label htmlFor="expense" className="cursor-pointer font-normal">
+                          Expense
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="income" id="income" />
+                        <Label htmlFor="income" className="cursor-pointer font-normal">
+                          Income
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="savings" id="savings" />
+                        <Label htmlFor="savings" className="cursor-pointer font-normal">
+                          Savings
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </FormField>
+                )}
+              </form.Field>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="date">Date</Label>
-              <Input
-                id="date"
-                type="date"
-                max={todayDate}
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </div>
+            <form.Field name="date">
+              {(field) => (
+                <FormField field={field} label="Date">
+                  <Input
+                    id={field.name}
+                    type="date"
+                    max={todayDate}
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                  />
+                </FormField>
+              )}
+            </form.Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Input
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
+            <form.Field name="description">
+              {(field) => (
+                <FormField field={field} label="Description">
+                  <Input
+                    id={field.name}
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                  />
+                </FormField>
+              )}
+            </form.Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="amount">Amount ($)</Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                min="0"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-            </div>
+            <form.Field name="amount">
+              {(field) => (
+                <FormField field={field} label="Amount ($)">
+                  <Input
+                    id={field.name}
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                  />
+                </FormField>
+              )}
+            </form.Field>
 
-            {type === 'savings' ? (
-              <div className="space-y-2">
-                <Label>Savings Goal</Label>
-                <SavingsGoalSelect value={savingsGoalId} onChange={setSavingsGoalId} />
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label>Category</Label>
-                <CategorySelect value={categoryId} onChange={setCategoryId} allowNone />
-              </div>
-            )}
+            <form.Subscribe selector={(state) => state.values.type}>
+              {(typeValue) =>
+                typeValue === 'savings' ? (
+                  <form.Field name="savingsGoalId">
+                    {(field) => (
+                      <FormField field={field} label="Savings Goal">
+                        <SavingsGoalSelect
+                          value={field.state.value}
+                          onChange={(v) => field.handleChange(v)}
+                        />
+                      </FormField>
+                    )}
+                  </form.Field>
+                ) : (
+                  <form.Field name="categoryId">
+                    {(field) => (
+                      <FormField field={field} label="Category" optional>
+                        <CategorySelect
+                          value={field.state.value}
+                          onChange={(v) => field.handleChange(v)}
+                          allowNone
+                        />
+                      </FormField>
+                    )}
+                  </form.Field>
+                )
+              }
+            </form.Subscribe>
 
-            <div className="flex gap-2">
-              <Button onClick={handleSave}>Save</Button>
-              <Button variant="outline" onClick={() => setEditing(false)}>
+            <div className="flex gap-3 pt-2">
+              <form.Subscribe selector={(state) => state.isSubmitting}>
+                {(isSubmitting) => (
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? 'Saving...' : 'Save'}
+                  </Button>
+                )}
+              </form.Subscribe>
+              <Button type="button" variant="outline" onClick={() => setEditing(false)}>
                 Cancel
               </Button>
             </div>
-          </div>
+          </form>
         ) : (
           <div className="mt-4 space-y-2 text-sm">
             <p>

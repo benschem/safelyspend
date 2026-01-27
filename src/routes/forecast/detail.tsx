@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useOutletContext } from 'react-router';
+import { useForm } from '@tanstack/react-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +13,9 @@ import { ArrowLeft } from 'lucide-react';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
-import { formatCents, formatDate, parseCentsFromInput } from '@/lib/utils';
+import { formatCents, formatDate } from '@/lib/utils';
+import { FormField, FormError } from '@/components/form-field';
+import { forecastEventFormSchema, parseCents } from '@/lib/schemas';
 import type { ForecastType } from '@/lib/types';
 
 interface OutletContext {
@@ -33,20 +36,68 @@ export function ForecastDetailPage() {
   const event = events.find((e) => e.id === id);
 
   const [editing, setEditing] = useState(false);
-  const [type, setType] = useState<ForecastType>(event?.type ?? 'expense');
-  const [date, setDate] = useState(event?.date ?? '');
-  const [description, setDescription] = useState(event?.description ?? '');
-  const [amount, setAmount] = useState(event ? (event.amountCents / 100).toFixed(2) : '');
-  const [categoryId, setCategoryId] = useState(event?.categoryId ?? '');
-  const [savingsGoalId, setSavingsGoalId] = useState(event?.savingsGoalId ?? '');
-  const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  const form = useForm({
+    defaultValues: {
+      type: (event?.type ?? 'expense') as ForecastType,
+      date: event?.date ?? '',
+      description: event?.description ?? '',
+      amount: event ? (event.amountCents / 100).toFixed(2) : '',
+      categoryId: event?.categoryId ?? '',
+      savingsGoalId: event?.savingsGoalId ?? '',
+    },
+    validators: {
+      onSubmit: ({ value }) => {
+        const result = forecastEventFormSchema.safeParse(value);
+        if (!result.success) {
+          const fieldErrors: Record<string, string> = {};
+          for (const issue of result.error.issues) {
+            const path = issue.path.join('.');
+            if (path) {
+              fieldErrors[path] = issue.message;
+            }
+          }
+          return fieldErrors;
+        }
+        return undefined;
+      },
+    },
+    onSubmit: async ({ value }) => {
+      setSubmitError(null);
+      if (!event) return;
+
+      updateEvent(event.id, {
+        type: value.type,
+        date: value.date,
+        description: value.description.trim(),
+        amountCents: parseCents(value.amount),
+        categoryId: value.type === 'savings' ? null : value.categoryId || null,
+        savingsGoalId: value.type === 'savings' ? value.savingsGoalId : null,
+      });
+      setEditing(false);
+    },
+  });
+
+  // Reset form when event changes
+  useEffect(() => {
+    if (event) {
+      form.reset();
+      form.setFieldValue('type', event.type);
+      form.setFieldValue('date', event.date);
+      form.setFieldValue('description', event.description);
+      form.setFieldValue('amount', (event.amountCents / 100).toFixed(2));
+      form.setFieldValue('categoryId', event.categoryId ?? '');
+      form.setFieldValue('savingsGoalId', event.savingsGoalId ?? '');
+    }
+  }, [event?.id]);
 
   if (!event) {
     return (
-      <div>
-        <div className="mb-6">
-          <Button variant="ghost" size="sm" asChild>
+      <div className="mx-auto max-w-lg">
+        <div className="mb-8">
+          <Button variant="ghost" size="sm" className="-ml-2" asChild>
             <Link to="/forecast">
               <ArrowLeft className="h-4 w-4" />
               Back to Forecasts
@@ -63,37 +114,6 @@ export function ForecastDetailPage() {
   const getSavingsGoalName = (goalId: string | null) =>
     goalId ? (savingsGoals.find((g) => g.id === goalId)?.name ?? 'Unknown') : '-';
 
-  const handleSave = () => {
-    setError(null);
-
-    if (!date) {
-      setError('Date is required');
-      return;
-    }
-    if (!description.trim()) {
-      setError('Description is required');
-      return;
-    }
-    if (!amount || parseCentsFromInput(amount) <= 0) {
-      setError('Amount must be greater than 0');
-      return;
-    }
-    if (type === 'savings' && !savingsGoalId) {
-      setError('Savings goal is required');
-      return;
-    }
-
-    updateEvent(event.id, {
-      type,
-      date,
-      description: description.trim(),
-      amountCents: parseCentsFromInput(amount),
-      categoryId: type === 'savings' ? null : categoryId || null,
-      savingsGoalId: type === 'savings' ? savingsGoalId : null,
-    });
-    setEditing(false);
-  };
-
   const handleDelete = () => {
     if (!confirmingDelete) {
       setConfirmingDelete(true);
@@ -104,19 +124,20 @@ export function ForecastDetailPage() {
   };
 
   const startEditing = () => {
-    setType(event.type);
-    setDate(event.date);
-    setDescription(event.description);
-    setAmount((event.amountCents / 100).toFixed(2));
-    setCategoryId(event.categoryId ?? '');
-    setSavingsGoalId(event.savingsGoalId ?? '');
+    form.reset();
+    form.setFieldValue('type', event.type);
+    form.setFieldValue('date', event.date);
+    form.setFieldValue('description', event.description);
+    form.setFieldValue('amount', (event.amountCents / 100).toFixed(2));
+    form.setFieldValue('categoryId', event.categoryId ?? '');
+    form.setFieldValue('savingsGoalId', event.savingsGoalId ?? '');
     setEditing(true);
   };
 
   return (
-    <div className="max-w-xl">
-      <div className="mb-6">
-        <Button variant="ghost" size="sm" asChild>
+    <div className="mx-auto max-w-lg">
+      <div className="mb-8">
+        <Button variant="ghost" size="sm" className="-ml-2" asChild>
           <Link to="/forecast">
             <ArrowLeft className="h-4 w-4" />
             Back to Forecasts
@@ -152,7 +173,11 @@ export function ForecastDetailPage() {
         </div>
       </div>
 
-      {error && <div className="mt-4 rounded-lg bg-red-100 p-3 text-red-800">{error}</div>}
+      {submitError && (
+        <div className="mt-4">
+          <FormError error={submitError} />
+        </div>
+      )}
 
       <Separator className="my-6" />
 
@@ -168,80 +193,131 @@ export function ForecastDetailPage() {
         </div>
 
         {editing ? (
-          <div className="mt-4 space-y-4">
-            <div className="space-y-2">
-              <Label>Type</Label>
-              <RadioGroup
-                value={type}
-                onValueChange={(v) => setType(v as ForecastType)}
-                className="flex gap-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="expense" id="expense" />
-                  <Label htmlFor="expense" className="font-normal">
-                    Expense
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="income" id="income" />
-                  <Label htmlFor="income" className="font-normal">
-                    Income
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="savings" id="savings" />
-                  <Label htmlFor="savings" className="font-normal">
-                    Savings
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              form.handleSubmit();
+            }}
+            noValidate
+            className="mt-4 space-y-4"
+          >
+            <form.Field name="type">
+              {(field) => (
+                <FormField field={field} label="Type">
+                  <RadioGroup
+                    value={field.state.value}
+                    onValueChange={(v) => field.handleChange(v as ForecastType)}
+                    className="flex gap-6 pt-1"
+                  >
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="expense" id="expense" />
+                      <Label htmlFor="expense" className="cursor-pointer font-normal">
+                        Expense
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="income" id="income" />
+                      <Label htmlFor="income" className="cursor-pointer font-normal">
+                        Income
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="savings" id="savings" />
+                      <Label htmlFor="savings" className="cursor-pointer font-normal">
+                        Savings
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </FormField>
+              )}
+            </form.Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="date">Date</Label>
-              <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            </div>
+            <form.Field name="date">
+              {(field) => (
+                <FormField field={field} label="Date">
+                  <Input
+                    id={field.name}
+                    type="date"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                  />
+                </FormField>
+              )}
+            </form.Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Input
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
+            <form.Field name="description">
+              {(field) => (
+                <FormField field={field} label="Description">
+                  <Input
+                    id={field.name}
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                  />
+                </FormField>
+              )}
+            </form.Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="amount">Amount ($)</Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                min="0"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-            </div>
+            <form.Field name="amount">
+              {(field) => (
+                <FormField field={field} label="Amount ($)">
+                  <Input
+                    id={field.name}
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                  />
+                </FormField>
+              )}
+            </form.Field>
 
-            {type === 'savings' ? (
-              <div className="space-y-2">
-                <Label>Savings Goal</Label>
-                <SavingsGoalSelect value={savingsGoalId} onChange={setSavingsGoalId} />
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label>Category</Label>
-                <CategorySelect value={categoryId} onChange={setCategoryId} allowNone />
-              </div>
-            )}
+            <form.Subscribe selector={(state) => state.values.type}>
+              {(typeValue) =>
+                typeValue === 'savings' ? (
+                  <form.Field name="savingsGoalId">
+                    {(field) => (
+                      <FormField field={field} label="Savings Goal">
+                        <SavingsGoalSelect
+                          value={field.state.value}
+                          onChange={(v) => field.handleChange(v)}
+                        />
+                      </FormField>
+                    )}
+                  </form.Field>
+                ) : (
+                  <form.Field name="categoryId">
+                    {(field) => (
+                      <FormField field={field} label="Category" optional>
+                        <CategorySelect
+                          value={field.state.value}
+                          onChange={(v) => field.handleChange(v)}
+                          allowNone
+                        />
+                      </FormField>
+                    )}
+                  </form.Field>
+                )
+              }
+            </form.Subscribe>
 
-            <div className="flex gap-2">
-              <Button onClick={handleSave}>Save</Button>
-              <Button variant="outline" onClick={() => setEditing(false)}>
+            <div className="flex gap-3 pt-2">
+              <form.Subscribe selector={(state) => state.isSubmitting}>
+                {(isSubmitting) => (
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? 'Saving...' : 'Save'}
+                  </Button>
+                )}
+              </form.Subscribe>
+              <Button type="button" variant="outline" onClick={() => setEditing(false)}>
                 Cancel
               </Button>
             </div>
-          </div>
+          </form>
         ) : (
           <div className="mt-4 space-y-2 text-sm">
             <p>
