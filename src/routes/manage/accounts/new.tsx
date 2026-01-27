@@ -5,12 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft } from 'lucide-react';
 import { useAccounts } from '@/hooks/use-accounts';
+import { parseCentsFromInput, today } from '@/lib/utils';
 
 export function AccountNewPage() {
   const navigate = useNavigate();
   const { addAccount } = useAccounts();
 
   const [name, setName] = useState('');
+  const [openingBalance, setOpeningBalance] = useState('');
+  const [openingDate, setOpeningDate] = useState(today());
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -21,9 +24,15 @@ export function AccountNewPage() {
       setError('Name is required');
       return;
     }
+    if (!openingDate) {
+      setError('Opening date is required');
+      return;
+    }
 
     const account = addAccount({
       name: name.trim(),
+      openingBalanceCents: parseCentsFromInput(openingBalance) || 0,
+      openingDate,
       isArchived: false,
     });
 
@@ -55,6 +64,34 @@ export function AccountNewPage() {
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g., Everyday, Savings, Credit Card"
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="openingBalance">Opening Balance ($)</Label>
+          <Input
+            id="openingBalance"
+            type="number"
+            step="0.01"
+            value={openingBalance}
+            onChange={(e) => setOpeningBalance(e.target.value)}
+            placeholder="0.00"
+          />
+          <p className="text-xs text-muted-foreground">
+            The account balance when you started tracking
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="openingDate">Opening Date</Label>
+          <Input
+            id="openingDate"
+            type="date"
+            value={openingDate}
+            onChange={(e) => setOpeningDate(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            When you started tracking this account
+          </p>
         </div>
 
         <div className="flex gap-2 pt-4">
