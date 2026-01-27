@@ -65,6 +65,8 @@ export interface ForecastRule extends BaseEntity {
   cadence: Cadence;
   dayOfMonth?: number; // 1-31 for monthly/quarterly/yearly
   dayOfWeek?: number; // 0-6 (Sunday-Saturday) for weekly/fortnightly
+  monthOfYear?: number; // 0-11 (Jan-Dec) for yearly
+  monthOfQuarter?: number; // 0-2 (1st, 2nd, 3rd month of quarter) for quarterly
   startDate?: string;
   endDate?: string;
   description: string;

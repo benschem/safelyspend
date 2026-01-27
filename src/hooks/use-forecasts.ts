@@ -112,12 +112,13 @@ function expandRule(
 
     case 'quarterly': {
       const targetDay = rule.dayOfMonth ?? 1;
+      const monthOffset = rule.monthOfQuarter ?? 0; // 0 = 1st month, 1 = 2nd month, 2 = 3rd month
       let year = start.getFullYear();
-      let month = start.getMonth();
-      // Align to quarter start (0, 3, 6, 9)
-      month = Math.floor(month / 3) * 3;
+      let quarter = Math.floor(start.getMonth() / 3);
 
       while (true) {
+        // Calculate the target month within the quarter
+        const month = quarter * 3 + monthOffset;
         const lastDay = getLastDayOfMonth(year, month);
         const actualDay = Math.min(targetDay, lastDay);
         const date = new Date(year, month, actualDay);
@@ -136,9 +137,9 @@ function expandRule(
           });
         }
 
-        month += 3;
-        if (month > 11) {
-          month = month - 12;
+        quarter++;
+        if (quarter > 3) {
+          quarter = 0;
           year++;
         }
       }
@@ -147,13 +148,13 @@ function expandRule(
 
     case 'yearly': {
       const targetDay = rule.dayOfMonth ?? 1;
+      const targetMonth = rule.monthOfYear ?? 0; // 0 = January, 11 = December
       let year = start.getFullYear();
 
       while (true) {
-        // Yearly items occur on the same day each year (default to Jan 1)
-        const lastDay = getLastDayOfMonth(year, 0);
+        const lastDay = getLastDayOfMonth(year, targetMonth);
         const actualDay = Math.min(targetDay, lastDay);
-        const date = new Date(year, 0, actualDay);
+        const date = new Date(year, targetMonth, actualDay);
 
         if (date > end) break;
         if (date >= start) {
