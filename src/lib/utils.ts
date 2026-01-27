@@ -170,3 +170,78 @@ export function formatCentsShort(cents: number): string {
   }
   return `${sign}$${dollars.toFixed(0)}`;
 }
+
+/**
+ * Format a date range for compact display
+ * e.g., "1 Jul 2025 – 30 Jun 2026" or "Jul 2025 – Jun 2026" if full months
+ */
+export function formatDateRange(startDate: string, endDate: string): string {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  const startStr = start.toLocaleDateString('en-AU', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  const endStr = end.toLocaleDateString('en-AU', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+
+  return `${startStr} – ${endStr}`;
+}
+
+/**
+ * Get date range presets relative to today
+ */
+export type DateRangePreset =
+  | '1week'
+  | '1month'
+  | '3months'
+  | '6months'
+  | '1year'
+  | 'financialYear';
+
+export function getDateRangePreset(preset: DateRangePreset): {
+  startDate: string;
+  endDate: string;
+} {
+  const now = new Date();
+  const todayStr = formatISODate(now);
+
+  switch (preset) {
+    case '1week': {
+      const start = new Date(now);
+      start.setDate(start.getDate() - 6);
+      return { startDate: formatISODate(start), endDate: todayStr };
+    }
+    case '1month': {
+      const start = new Date(now);
+      start.setMonth(start.getMonth() - 1);
+      start.setDate(start.getDate() + 1);
+      return { startDate: formatISODate(start), endDate: todayStr };
+    }
+    case '3months': {
+      const start = new Date(now);
+      start.setMonth(start.getMonth() - 3);
+      start.setDate(start.getDate() + 1);
+      return { startDate: formatISODate(start), endDate: todayStr };
+    }
+    case '6months': {
+      const start = new Date(now);
+      start.setMonth(start.getMonth() - 6);
+      start.setDate(start.getDate() + 1);
+      return { startDate: formatISODate(start), endDate: todayStr };
+    }
+    case '1year': {
+      const start = new Date(now);
+      start.setFullYear(start.getFullYear() - 1);
+      start.setDate(start.getDate() + 1);
+      return { startDate: formatISODate(start), endDate: todayStr };
+    }
+    case 'financialYear':
+      return getCurrentFinancialYear();
+  }
+}
