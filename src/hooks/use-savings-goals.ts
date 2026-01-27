@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { useLocalStorage } from './use-local-storage';
 import type { SavingsGoal, CreateEntity } from '@/lib/types';
 import { generateId, now } from '@/lib/utils';
@@ -6,24 +6,12 @@ import { generateId, now } from '@/lib/utils';
 const STORAGE_KEY = 'budget:savingsGoals';
 const USER_ID = 'local';
 
-export function useSavingsGoals(periodId: string | null) {
-  const [allSavingsGoals, setSavingsGoals] = useLocalStorage<SavingsGoal[]>(STORAGE_KEY, []);
-
-  // Filter to current period or global goals (periodId === null)
-  const savingsGoals = useMemo(
-    () => allSavingsGoals.filter((sg) => sg.periodId === periodId || sg.periodId === null),
-    [allSavingsGoals, periodId],
-  );
-
-  const globalGoals = useMemo(
-    () => allSavingsGoals.filter((sg) => sg.periodId === null),
-    [allSavingsGoals],
-  );
-
-  const periodGoals = useMemo(
-    () => (periodId ? allSavingsGoals.filter((sg) => sg.periodId === periodId) : []),
-    [allSavingsGoals, periodId],
-  );
+/**
+ * Hook for managing savings goals
+ * Savings goals are global (not tied to scenarios or periods)
+ */
+export function useSavingsGoals() {
+  const [savingsGoals, setSavingsGoals] = useLocalStorage<SavingsGoal[]>(STORAGE_KEY, []);
 
   const addSavingsGoal = useCallback(
     (data: CreateEntity<SavingsGoal>) => {
@@ -57,12 +45,18 @@ export function useSavingsGoals(periodId: string | null) {
     [setSavingsGoals],
   );
 
+  const getSavingsGoal = useCallback(
+    (id: string) => {
+      return savingsGoals.find((goal) => goal.id === id) ?? null;
+    },
+    [savingsGoals],
+  );
+
   return {
     savingsGoals,
-    globalGoals,
-    periodGoals,
     addSavingsGoal,
     updateSavingsGoal,
     deleteSavingsGoal,
+    getSavingsGoal,
   };
 }

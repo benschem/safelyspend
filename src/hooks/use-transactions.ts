@@ -1,19 +1,23 @@
 import { useCallback, useMemo } from 'react';
 import { useLocalStorage } from './use-local-storage';
-import type { Transaction, CreateEntity, Period } from '@/lib/types';
+import type { Transaction, CreateEntity } from '@/lib/types';
 import { generateId, now } from '@/lib/utils';
 
 const STORAGE_KEY = 'budget:transactions';
 const USER_ID = 'local';
 
-export function useTransactions(period: Period | null) {
+/**
+ * Hook for managing transactions
+ * Transactions are global facts - filtering is done by date range
+ */
+export function useTransactions(startDate?: string, endDate?: string) {
   const [allTransactions, setTransactions] = useLocalStorage<Transaction[]>(STORAGE_KEY, []);
 
-  // Filter to transactions within the period's date range
+  // Filter to transactions within the date range
   const transactions = useMemo(() => {
-    if (!period) return [];
-    return allTransactions.filter((t) => t.date >= period.startDate && t.date <= period.endDate);
-  }, [allTransactions, period]);
+    if (!startDate || !endDate) return allTransactions;
+    return allTransactions.filter((t) => t.date >= startDate && t.date <= endDate);
+  }, [allTransactions, startDate, endDate]);
 
   const incomeTransactions = useMemo(
     () => transactions.filter((t) => t.type === 'income'),
@@ -26,6 +30,22 @@ export function useTransactions(period: Period | null) {
   const savingsTransactions = useMemo(
     () => transactions.filter((t) => t.type === 'savings'),
     [transactions],
+  );
+
+  // Get transactions up to a specific date (for balance calculations)
+  const getTransactionsUpTo = useCallback(
+    (date: string) => {
+      return allTransactions.filter((t) => t.date <= date);
+    },
+    [allTransactions],
+  );
+
+  // Get transactions for a specific account up to a date
+  const getAccountTransactionsUpTo = useCallback(
+    (accountId: string, date: string) => {
+      return allTransactions.filter((t) => t.accountId === accountId && t.date <= date);
+    },
+    [allTransactions],
   );
 
   const addTransaction = useCallback(
@@ -63,10 +83,13 @@ export function useTransactions(period: Period | null) {
   );
 
   return {
+    allTransactions,
     transactions,
     incomeTransactions,
     expenseTransactions,
     savingsTransactions,
+    getTransactionsUpTo,
+    getAccountTransactionsUpTo,
     addTransaction,
     updateTransaction,
     deleteTransaction,

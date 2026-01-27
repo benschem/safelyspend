@@ -1,19 +1,41 @@
 import { useCallback, useMemo } from 'react';
 import { useLocalStorage } from './use-local-storage';
-import type { Transfer, CreateEntity, Period } from '@/lib/types';
+import type { Transfer, CreateEntity } from '@/lib/types';
 import { generateId, now } from '@/lib/utils';
 
 const STORAGE_KEY = 'budget:transfers';
 const USER_ID = 'local';
 
-export function useTransfers(period: Period | null) {
+/**
+ * Hook for managing transfers
+ * Transfers are global facts - filtering is done by date range
+ */
+export function useTransfers(startDate?: string, endDate?: string) {
   const [allTransfers, setTransfers] = useLocalStorage<Transfer[]>(STORAGE_KEY, []);
 
-  // Filter to transfers within the period's date range
+  // Filter to transfers within the date range
   const transfers = useMemo(() => {
-    if (!period) return [];
-    return allTransfers.filter((t) => t.date >= period.startDate && t.date <= period.endDate);
-  }, [allTransfers, period]);
+    if (!startDate || !endDate) return allTransfers;
+    return allTransfers.filter((t) => t.date >= startDate && t.date <= endDate);
+  }, [allTransfers, startDate, endDate]);
+
+  // Get transfers up to a specific date (for balance calculations)
+  const getTransfersUpTo = useCallback(
+    (date: string) => {
+      return allTransfers.filter((t) => t.date <= date);
+    },
+    [allTransfers],
+  );
+
+  // Get transfers for a specific account up to a date
+  const getAccountTransfersUpTo = useCallback(
+    (accountId: string, date: string) => {
+      return allTransfers.filter(
+        (t) => (t.fromAccountId === accountId || t.toAccountId === accountId) && t.date <= date,
+      );
+    },
+    [allTransfers],
+  );
 
   const addTransfer = useCallback(
     (data: CreateEntity<Transfer>) => {
@@ -50,7 +72,10 @@ export function useTransfers(period: Period | null) {
   );
 
   return {
+    allTransfers,
     transfers,
+    getTransfersUpTo,
+    getAccountTransfersUpTo,
     addTransfer,
     updateTransfer,
     deleteTransfer,

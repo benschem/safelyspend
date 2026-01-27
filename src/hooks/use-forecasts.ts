@@ -1,71 +1,372 @@
 import { useCallback, useMemo } from 'react';
 import { useLocalStorage } from './use-local-storage';
-import type { Forecast, CreateEntity } from '@/lib/types';
-import { generateId, now } from '@/lib/utils';
+import type {
+  ForecastRule,
+  ForecastEvent,
+  ExpandedForecast,
+  CreateEntity,
+} from '@/lib/types';
+import { generateId, now, getLastDayOfMonth, formatISODate } from '@/lib/utils';
 
-const STORAGE_KEY = 'budget:forecasts';
+const RULES_STORAGE_KEY = 'budget:forecastRules';
+const EVENTS_STORAGE_KEY = 'budget:forecastEvents';
 const USER_ID = 'local';
 
-export function useForecasts(periodId: string | null) {
-  const [allForecasts, setForecasts] = useLocalStorage<Forecast[]>(STORAGE_KEY, []);
+/**
+ * Expand a forecast rule into individual forecast instances over a date range
+ */
+function expandRule(
+  rule: ForecastRule,
+  rangeStart: string,
+  rangeEnd: string,
+): ExpandedForecast[] {
+  const results: ExpandedForecast[] = [];
 
-  // Filter to current period
-  const forecasts = useMemo(
-    () => (periodId ? allForecasts.filter((f) => f.periodId === periodId) : []),
-    [allForecasts, periodId],
+  // Determine effective start/end for the rule
+  const effectiveStart = rule.startDate && rule.startDate > rangeStart ? rule.startDate : rangeStart;
+  const effectiveEnd = rule.endDate && rule.endDate < rangeEnd ? rule.endDate : rangeEnd;
+
+  if (effectiveStart > effectiveEnd) return results;
+
+  const start = new Date(effectiveStart);
+  const end = new Date(effectiveEnd);
+
+  switch (rule.cadence) {
+    case 'weekly': {
+      const targetDay = rule.dayOfWeek ?? 0;
+      const current = new Date(start);
+      // Move to first occurrence of target day
+      while (current.getDay() !== targetDay) {
+        current.setDate(current.getDate() + 1);
+      }
+      while (current <= end) {
+        results.push({
+          type: rule.type,
+          date: formatISODate(current),
+          amountCents: rule.amountCents,
+          description: rule.description,
+          categoryId: rule.categoryId,
+          savingsGoalId: rule.savingsGoalId,
+          sourceType: 'rule',
+          sourceId: rule.id,
+        });
+        current.setDate(current.getDate() + 7);
+      }
+      break;
+    }
+
+    case 'fortnightly': {
+      const targetDay = rule.dayOfWeek ?? 0;
+      const current = new Date(start);
+      while (current.getDay() !== targetDay) {
+        current.setDate(current.getDate() + 1);
+      }
+      while (current <= end) {
+        results.push({
+          type: rule.type,
+          date: formatISODate(current),
+          amountCents: rule.amountCents,
+          description: rule.description,
+          categoryId: rule.categoryId,
+          savingsGoalId: rule.savingsGoalId,
+          sourceType: 'rule',
+          sourceId: rule.id,
+        });
+        current.setDate(current.getDate() + 14);
+      }
+      break;
+    }
+
+    case 'monthly': {
+      const targetDay = rule.dayOfMonth ?? 1;
+      let year = start.getFullYear();
+      let month = start.getMonth();
+
+      while (true) {
+        const lastDay = getLastDayOfMonth(year, month);
+        const actualDay = Math.min(targetDay, lastDay);
+        const date = new Date(year, month, actualDay);
+
+        if (date > end) break;
+        if (date >= start) {
+          results.push({
+            type: rule.type,
+            date: formatISODate(date),
+            amountCents: rule.amountCents,
+            description: rule.description,
+            categoryId: rule.categoryId,
+            savingsGoalId: rule.savingsGoalId,
+            sourceType: 'rule',
+            sourceId: rule.id,
+          });
+        }
+
+        month++;
+        if (month > 11) {
+          month = 0;
+          year++;
+        }
+      }
+      break;
+    }
+
+    case 'quarterly': {
+      const targetDay = rule.dayOfMonth ?? 1;
+      let year = start.getFullYear();
+      let month = start.getMonth();
+      // Align to quarter start (0, 3, 6, 9)
+      month = Math.floor(month / 3) * 3;
+
+      while (true) {
+        const lastDay = getLastDayOfMonth(year, month);
+        const actualDay = Math.min(targetDay, lastDay);
+        const date = new Date(year, month, actualDay);
+
+        if (date > end) break;
+        if (date >= start) {
+          results.push({
+            type: rule.type,
+            date: formatISODate(date),
+            amountCents: rule.amountCents,
+            description: rule.description,
+            categoryId: rule.categoryId,
+            savingsGoalId: rule.savingsGoalId,
+            sourceType: 'rule',
+            sourceId: rule.id,
+          });
+        }
+
+        month += 3;
+        if (month > 11) {
+          month = month - 12;
+          year++;
+        }
+      }
+      break;
+    }
+
+    case 'yearly': {
+      const targetDay = rule.dayOfMonth ?? 1;
+      let year = start.getFullYear();
+
+      while (true) {
+        // Yearly items occur on the same day each year (default to Jan 1)
+        const lastDay = getLastDayOfMonth(year, 0);
+        const actualDay = Math.min(targetDay, lastDay);
+        const date = new Date(year, 0, actualDay);
+
+        if (date > end) break;
+        if (date >= start) {
+          results.push({
+            type: rule.type,
+            date: formatISODate(date),
+            amountCents: rule.amountCents,
+            description: rule.description,
+            categoryId: rule.categoryId,
+            savingsGoalId: rule.savingsGoalId,
+            sourceType: 'rule',
+            sourceId: rule.id,
+          });
+        }
+
+        year++;
+      }
+      break;
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Hook for managing forecast rules and events
+ */
+export function useForecasts(scenarioId: string | null, startDate?: string, endDate?: string) {
+  const [allRules, setRules] = useLocalStorage<ForecastRule[]>(RULES_STORAGE_KEY, []);
+  const [allEvents, setEvents] = useLocalStorage<ForecastEvent[]>(EVENTS_STORAGE_KEY, []);
+
+  // Filter rules and events to current scenario
+  const rules = useMemo(
+    () => (scenarioId ? allRules.filter((r) => r.scenarioId === scenarioId) : []),
+    [allRules, scenarioId],
   );
 
-  const incomeForecasts = useMemo(() => forecasts.filter((f) => f.type === 'income'), [forecasts]);
+  const events = useMemo(
+    () => (scenarioId ? allEvents.filter((e) => e.scenarioId === scenarioId) : []),
+    [allEvents, scenarioId],
+  );
+
+  // Filter events by date range
+  const eventsInRange = useMemo(() => {
+    if (!startDate || !endDate) return events;
+    return events.filter((e) => e.date >= startDate && e.date <= endDate);
+  }, [events, startDate, endDate]);
+
+  // Expand all rules over the date range and combine with events
+  const expandedForecasts = useMemo(() => {
+    if (!startDate || !endDate) return [];
+
+    const expanded: ExpandedForecast[] = [];
+
+    // Expand rules
+    for (const rule of rules) {
+      expanded.push(...expandRule(rule, startDate, endDate));
+    }
+
+    // Add events
+    for (const event of eventsInRange) {
+      expanded.push({
+        type: event.type,
+        date: event.date,
+        amountCents: event.amountCents,
+        description: event.description,
+        categoryId: event.categoryId,
+        savingsGoalId: event.savingsGoalId,
+        sourceType: 'event',
+        sourceId: event.id,
+      });
+    }
+
+    // Sort by date
+    expanded.sort((a, b) => a.date.localeCompare(b.date));
+
+    return expanded;
+  }, [rules, eventsInRange, startDate, endDate]);
+
+  // Filter expanded forecasts by type
+  const incomeForecasts = useMemo(
+    () => expandedForecasts.filter((f) => f.type === 'income'),
+    [expandedForecasts],
+  );
   const expenseForecasts = useMemo(
-    () => forecasts.filter((f) => f.type === 'expense'),
-    [forecasts],
+    () => expandedForecasts.filter((f) => f.type === 'expense'),
+    [expandedForecasts],
   );
   const savingsForecasts = useMemo(
-    () => forecasts.filter((f) => f.type === 'savings'),
-    [forecasts],
+    () => expandedForecasts.filter((f) => f.type === 'savings'),
+    [expandedForecasts],
   );
 
-  const addForecast = useCallback(
-    (data: CreateEntity<Forecast>) => {
+  // CRUD for rules
+  const addRule = useCallback(
+    (data: CreateEntity<ForecastRule>) => {
       const timestamp = now();
-      const newForecast: Forecast = {
+      const newRule: ForecastRule = {
         id: generateId(),
         userId: USER_ID,
         createdAt: timestamp,
         updatedAt: timestamp,
         ...data,
       };
-      setForecasts((prev) => [...prev, newForecast]);
-      return newForecast;
+      setRules((prev) => [...prev, newRule]);
+      return newRule;
     },
-    [setForecasts],
+    [setRules],
   );
 
-  const updateForecast = useCallback(
-    (id: string, updates: Partial<Omit<Forecast, 'id' | 'userId' | 'createdAt'>>) => {
-      setForecasts((prev) =>
-        prev.map((forecast) =>
-          forecast.id === id ? { ...forecast, ...updates, updatedAt: now() } : forecast,
+  const updateRule = useCallback(
+    (id: string, updates: Partial<Omit<ForecastRule, 'id' | 'userId' | 'createdAt'>>) => {
+      setRules((prev) =>
+        prev.map((rule) =>
+          rule.id === id ? { ...rule, ...updates, updatedAt: now() } : rule,
         ),
       );
     },
-    [setForecasts],
+    [setRules],
   );
 
-  const deleteForecast = useCallback(
+  const deleteRule = useCallback(
     (id: string) => {
-      setForecasts((prev) => prev.filter((forecast) => forecast.id !== id));
+      setRules((prev) => prev.filter((rule) => rule.id !== id));
     },
-    [setForecasts],
+    [setRules],
+  );
+
+  // CRUD for events
+  const addEvent = useCallback(
+    (data: CreateEntity<ForecastEvent>) => {
+      const timestamp = now();
+      const newEvent: ForecastEvent = {
+        id: generateId(),
+        userId: USER_ID,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        ...data,
+      };
+      setEvents((prev) => [...prev, newEvent]);
+      return newEvent;
+    },
+    [setEvents],
+  );
+
+  const updateEvent = useCallback(
+    (id: string, updates: Partial<Omit<ForecastEvent, 'id' | 'userId' | 'createdAt'>>) => {
+      setEvents((prev) =>
+        prev.map((event) =>
+          event.id === id ? { ...event, ...updates, updatedAt: now() } : event,
+        ),
+      );
+    },
+    [setEvents],
+  );
+
+  const deleteEvent = useCallback(
+    (id: string) => {
+      setEvents((prev) => prev.filter((event) => event.id !== id));
+    },
+    [setEvents],
+  );
+
+  // Duplicate rules and events from one scenario to another
+  const duplicateToScenario = useCallback(
+    (fromScenarioId: string, toScenarioId: string) => {
+      const timestamp = now();
+
+      // Duplicate rules
+      const rulesToCopy = allRules.filter((r) => r.scenarioId === fromScenarioId);
+      const newRules = rulesToCopy.map((rule) => ({
+        ...rule,
+        id: generateId(),
+        scenarioId: toScenarioId,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      }));
+
+      // Duplicate events
+      const eventsToCopy = allEvents.filter((e) => e.scenarioId === fromScenarioId);
+      const newEvents = eventsToCopy.map((event) => ({
+        ...event,
+        id: generateId(),
+        scenarioId: toScenarioId,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      }));
+
+      setRules((prev) => [...prev, ...newRules]);
+      setEvents((prev) => [...prev, ...newEvents]);
+    },
+    [allRules, allEvents, setRules, setEvents],
   );
 
   return {
-    forecasts,
+    // Raw data
+    rules,
+    events,
+    eventsInRange,
+    // Expanded forecasts (materialized from rules + events)
+    expandedForecasts,
     incomeForecasts,
     expenseForecasts,
     savingsForecasts,
-    addForecast,
-    updateForecast,
-    deleteForecast,
+    // Rule CRUD
+    addRule,
+    updateRule,
+    deleteRule,
+    // Event CRUD
+    addEvent,
+    updateEvent,
+    deleteEvent,
+    // Utilities
+    duplicateToScenario,
   };
 }
