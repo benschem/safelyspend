@@ -8,6 +8,7 @@ import {
   Layers,
   Repeat,
   Settings,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
@@ -66,6 +67,10 @@ export function Sidebar() {
           <NavItem to="/dashboard" icon={<LayoutDashboard className="h-4 w-4" />}>
             Overview
           </NavItem>
+
+          <NavItem to="/reports" icon={<BarChart3 className="h-4 w-4" />}>
+            Reports
+          </NavItem>
         </NavSection>
 
         <Separator className="my-2" />
@@ -75,7 +80,7 @@ export function Sidebar() {
             Forecast
           </NavItem>
           <NavItem to="/manage/rules" icon={<Repeat className="h-4 w-4" />}>
-            Forecast Recurring
+            Recurring
           </NavItem>
           <NavItem to="/budget" icon={<FolderTree className="h-4 w-4" />}>
             Budget
