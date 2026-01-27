@@ -52,7 +52,7 @@ export function ForecastIndexPage() {
   const filteredForecasts = expandedForecasts
     .filter((f: ExpandedForecast) => filterType === 'all' || f.type === filterType)
     .sort((a: ExpandedForecast, b: ExpandedForecast) =>
-      new Date(a.date).getTime() - new Date(b.date).getTime()
+      new Date(a.date).getTime() - new Date(b.date).getTime(),
     );
 
   const getCategoryName = (id: string | null) =>

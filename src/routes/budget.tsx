@@ -174,7 +174,6 @@ export function BudgetPage() {
                         onChange={(e) => setEditAmount(e.target.value)}
                         className="w-24"
                         placeholder="0.00"
-                        autoFocus
                       />
                       <Select
                         value={editCadence}
