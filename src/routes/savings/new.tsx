@@ -3,16 +3,8 @@ import { Link, useNavigate, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { ArrowLeft } from 'lucide-react';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
-import { useAccounts } from '@/hooks/use-accounts';
 import { useTransactions } from '@/hooks/use-transactions';
 import { parseCentsFromInput, today } from '@/lib/utils';
 
@@ -26,18 +18,15 @@ export function SavingsNewPage() {
   const navigate = useNavigate();
   const { startDate } = useOutletContext<OutletContext>();
   const { addSavingsGoal } = useSavingsGoals();
-  const { activeAccounts } = useAccounts();
   const { addTransaction } = useTransactions();
 
   const [name, setName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [startingBalance, setStartingBalance] = useState('');
-  const [accountId, setAccountId] = useState('');
   const [deadline, setDeadline] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const startingBalanceCents = parseCentsFromInput(startingBalance);
-  const showAccountSelector = startingBalanceCents > 0;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,10 +40,6 @@ export function SavingsNewPage() {
       setError('Target amount must be greater than 0');
       return;
     }
-    if (startingBalanceCents > 0 && !accountId) {
-      setError('Select an account for the starting balance');
-      return;
-    }
 
     const goal = addSavingsGoal({
       name: name.trim(),
@@ -63,9 +48,8 @@ export function SavingsNewPage() {
     });
 
     // Create starting balance transaction if amount > 0
-    if (startingBalanceCents > 0 && accountId) {
+    if (startingBalanceCents > 0) {
       addTransaction({
-        accountId,
         type: 'savings',
         date: startDate || today(),
         amountCents: startingBalanceCents,
@@ -133,27 +117,6 @@ export function SavingsNewPage() {
             Amount already saved toward this goal
           </p>
         </div>
-
-        {showAccountSelector && (
-          <div className="space-y-2">
-            <Label htmlFor="account">Account</Label>
-            <Select value={accountId} onValueChange={setAccountId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select account" />
-              </SelectTrigger>
-              <SelectContent>
-                {activeAccounts.map((account) => (
-                  <SelectItem key={account.id} value={account.id}>
-                    {account.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Account for the starting balance transaction
-            </p>
-          </div>
-        )}
 
         <div className="space-y-2">
           <Label htmlFor="deadline">Deadline (optional)</Label>
