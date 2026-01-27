@@ -1,48 +1,51 @@
 import { useMemo } from 'react';
 import { Link, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
-import { usePeriods } from '@/hooks/use-periods';
+import { useScenarios } from '@/hooks/use-scenarios';
 import { useAccounts } from '@/hooks/use-accounts';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
-import { useOpeningBalances } from '@/hooks/use-opening-balances';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
-import { useBudgetLines } from '@/hooks/use-budget-lines';
+import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useCategories } from '@/hooks/use-categories';
 import { formatCents, formatDate } from '@/lib/utils';
 
 interface OutletContext {
-  activePeriodId: string | null;
+  activeScenarioId: string | null;
+  startDate: string;
+  endDate: string;
 }
 
 export function DashboardPage() {
-  const { activePeriodId } = useOutletContext<OutletContext>();
-  const { periods } = usePeriods();
+  const { activeScenarioId, startDate, endDate } = useOutletContext<OutletContext>();
+  const { activeScenario } = useScenarios();
   const { activeAccounts } = useAccounts();
-  const activePeriod = periods.find((p) => p.id === activePeriodId) ?? null;
   const { incomeTransactions, expenseTransactions, savingsTransactions } =
-    useTransactions(activePeriod);
-  const { incomeForecasts, expenseForecasts, savingsForecasts } = useForecasts(activePeriodId);
-  const { getBalanceForAccount } = useOpeningBalances(activePeriodId);
-  const { savingsGoals } = useSavingsGoals(activePeriodId);
-  const { getBudgetForCategory } = useBudgetLines(activePeriodId);
+    useTransactions(startDate, endDate);
+  const { incomeForecasts, expenseForecasts, savingsForecasts } = useForecasts(
+    activeScenarioId,
+    startDate,
+    endDate,
+  );
+  const { savingsGoals } = useSavingsGoals();
+  const { getBudgetForCategory } = useBudgetRules(activeScenarioId, startDate, endDate);
   const { activeCategories } = useCategories();
 
-  if (!activePeriodId || !activePeriod) {
+  if (!activeScenarioId || !activeScenario) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <h2 className="text-lg font-semibold">No period selected</h2>
-        <p className="text-muted-foreground">Create a period to get started.</p>
+        <h2 className="text-lg font-semibold">No scenario selected</h2>
+        <p className="text-muted-foreground">Create a scenario to get started.</p>
         <Button asChild className="mt-4">
-          <Link to="/manage/periods/new">Create Period</Link>
+          <Link to="/manage/scenarios/new">Create Scenario</Link>
         </Button>
       </div>
     );
   }
 
-  // Calculate totals
+  // Calculate totals - opening balance is now on accounts
   const totalOpeningBalance = activeAccounts.reduce(
-    (sum, acc) => sum + getBalanceForAccount(acc.id),
+    (sum, acc) => sum + acc.openingBalanceCents,
     0,
   );
 
@@ -65,7 +68,7 @@ export function DashboardPage() {
     .filter((f) => f.date > today)
     .sort((a, b) => a.date.localeCompare(b.date));
   const nextIncomeDate = futureIncomeForecasts[0]?.date ?? null;
-  const bufferEndDate = nextIncomeDate ?? activePeriod.endDate;
+  const bufferEndDate = nextIncomeDate ?? endDate;
 
   // Sum expenses and savings between now and next income (or period end)
   const committedBeforeNextIncome = [
@@ -251,7 +254,7 @@ export function DashboardPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold">
-        {formatDate(activePeriod.startDate)} - {formatDate(activePeriod.endDate)}
+        {formatDate(startDate)} - {formatDate(endDate)}
       </h1>
       <p className="text-muted-foreground">Your money at a glance</p>
 
@@ -295,7 +298,7 @@ export function DashboardPage() {
             {formatCents(projectedEndBalance)}
           </p>
           <p className="text-sm text-muted-foreground">
-            {`on ${formatDate(activePeriod.endDate)}`}
+            {`on ${formatDate(endDate)}`}
           </p>
         </div>
       </div>
@@ -473,7 +476,7 @@ export function DashboardPage() {
           {budgetRows.length === 0 ? (
             <div className="mt-4 text-center text-sm text-muted-foreground">
               No budget set.{' '}
-              <Link to={`/manage/periods/${activePeriodId}`} className="text-primary underline">
+              <Link to="/budget" className="text-primary underline">
                 Set budgets
               </Link>
             </div>
@@ -557,9 +560,6 @@ export function DashboardPage() {
                     <div className="flex justify-between text-sm">
                       <Link to={`/savings/${goal.id}`} className="font-medium hover:underline">
                         {goal.name}
-                        {goal.periodId === null && (
-                          <span className="ml-1 text-xs text-muted-foreground">(Global)</span>
-                        )}
                       </Link>
                       <span className="text-muted-foreground">
                         {formatCents(savedAmount)} / {formatCents(goal.targetAmountCents)}
