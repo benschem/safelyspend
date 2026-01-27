@@ -6,28 +6,27 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft } from 'lucide-react';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
-import { usePeriods } from '@/hooks/use-periods';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { formatCents, formatDate, parseCentsFromInput } from '@/lib/utils';
 
 interface OutletContext {
-  activePeriodId: string | null;
+  activeScenarioId: string | null;
+  startDate: string;
+  endDate: string;
 }
 
 export function SavingsDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { activePeriodId } = useOutletContext<OutletContext>();
-  const { savingsGoals, updateSavingsGoal, deleteSavingsGoal } = useSavingsGoals(activePeriodId);
-  const { periods } = usePeriods();
-  const activePeriod = periods.find((p) => p.id === activePeriodId) ?? null;
-  const { savingsTransactions } = useTransactions(activePeriod);
-  const { savingsForecasts } = useForecasts(activePeriodId);
+  const { activeScenarioId, startDate, endDate } = useOutletContext<OutletContext>();
+  const { savingsGoals, updateSavingsGoal, deleteSavingsGoal } = useSavingsGoals();
+  const { savingsTransactions } = useTransactions(startDate, endDate);
+  const { savingsForecasts } = useForecasts(activeScenarioId, startDate, endDate);
 
   const goal = savingsGoals.find((g) => g.id === id);
 
-  // Calculate current amount from savings transactions
+  // Calculate current amount from savings transactions in the date range
   const currentAmountFromTransactions = useMemo(() => {
     if (!goal) return 0;
     return savingsTransactions
@@ -124,8 +123,7 @@ export function SavingsDetailPage() {
         <div>
           <h1 className="text-2xl font-bold">{goal.name}</h1>
           <p className="text-muted-foreground">
-            {goal.periodId ? 'Period Goal' : 'Global Goal'}
-            {goal.deadline && ` · Deadline: ${formatDate(goal.deadline)}`}
+            {goal.deadline && `Deadline: ${formatDate(goal.deadline)}`}
           </p>
         </div>
       </div>
@@ -226,10 +224,6 @@ export function SavingsDetailPage() {
             <p>
               <span className="text-muted-foreground">Deadline:</span>{' '}
               {goal.deadline ? formatDate(goal.deadline) : 'None'}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Scope:</span>{' '}
-              {goal.periodId ? 'Period' : 'Global'}
             </p>
           </div>
         )}

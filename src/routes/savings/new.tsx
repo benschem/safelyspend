@@ -3,7 +3,6 @@ import { Link, useNavigate, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Select,
   SelectContent,
@@ -15,38 +14,27 @@ import { ArrowLeft } from 'lucide-react';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useAccounts } from '@/hooks/use-accounts';
 import { useTransactions } from '@/hooks/use-transactions';
-import { usePeriods } from '@/hooks/use-periods';
-import { parseCentsFromInput } from '@/lib/utils';
+import { parseCentsFromInput, today } from '@/lib/utils';
 
 interface OutletContext {
-  activePeriodId: string | null;
+  activeScenarioId: string | null;
+  startDate: string;
+  endDate: string;
 }
 
 export function SavingsNewPage() {
   const navigate = useNavigate();
-  const { activePeriodId } = useOutletContext<OutletContext>();
-  const { addSavingsGoal } = useSavingsGoals(activePeriodId);
+  const { startDate } = useOutletContext<OutletContext>();
+  const { addSavingsGoal } = useSavingsGoals();
   const { activeAccounts } = useAccounts();
-  const { periods } = usePeriods();
-  const activePeriod = periods.find((p) => p.id === activePeriodId) ?? null;
-  const { addTransaction } = useTransactions(activePeriod);
+  const { addTransaction } = useTransactions();
 
   const [name, setName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [startingBalance, setStartingBalance] = useState('');
   const [accountId, setAccountId] = useState('');
   const [deadline, setDeadline] = useState('');
-  const [scope, setScope] = useState<'period' | 'global'>('period');
   const [error, setError] = useState<string | null>(null);
-
-  if (!activePeriodId || !activePeriod) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <h2 className="text-lg font-semibold">No period selected</h2>
-        <p className="text-muted-foreground">Select a period first.</p>
-      </div>
-    );
-  }
 
   const startingBalanceCents = parseCentsFromInput(startingBalance);
   const showAccountSelector = startingBalanceCents > 0;
@@ -69,7 +57,6 @@ export function SavingsNewPage() {
     }
 
     const goal = addSavingsGoal({
-      periodId: scope === 'period' ? activePeriodId : null,
       name: name.trim(),
       targetAmountCents: parseCentsFromInput(targetAmount),
       ...(deadline && { deadline }),
@@ -80,7 +67,7 @@ export function SavingsNewPage() {
       addTransaction({
         accountId,
         type: 'savings',
-        date: activePeriod.startDate,
+        date: startDate || today(),
         amountCents: startingBalanceCents,
         description: 'Starting balance',
         categoryId: null,
@@ -176,28 +163,6 @@ export function SavingsNewPage() {
             value={deadline}
             onChange={(e) => setDeadline(e.target.value)}
           />
-        </div>
-
-        <div className="space-y-2">
-          <Label>Scope</Label>
-          <RadioGroup
-            value={scope}
-            onValueChange={(v) => setScope(v as 'period' | 'global')}
-            className="flex gap-4"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="period" id="period" />
-              <Label htmlFor="period" className="font-normal">
-                This Period
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="global" id="global" />
-              <Label htmlFor="global" className="font-normal">
-                Global (all periods)
-              </Label>
-            </div>
-          </RadioGroup>
         </div>
 
         <div className="flex gap-2 pt-4">

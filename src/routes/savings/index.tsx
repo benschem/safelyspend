@@ -10,34 +10,24 @@ import {
 } from '@/components/ui/table';
 import { Plus } from 'lucide-react';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
-import { usePeriods } from '@/hooks/use-periods';
 import { useTransactions } from '@/hooks/use-transactions';
 import { formatCents, formatDate } from '@/lib/utils';
 
 interface OutletContext {
-  activePeriodId: string | null;
+  activeScenarioId: string | null;
+  startDate: string;
+  endDate: string;
 }
 
 export function SavingsIndexPage() {
-  const { activePeriodId } = useOutletContext<OutletContext>();
-  const { savingsGoals, globalGoals, periodGoals } = useSavingsGoals(activePeriodId);
-  const { periods } = usePeriods();
-  const activePeriod = periods.find((p) => p.id === activePeriodId) ?? null;
-  const { savingsTransactions } = useTransactions(activePeriod);
+  const { startDate, endDate } = useOutletContext<OutletContext>();
+  const { savingsGoals } = useSavingsGoals();
+  const { savingsTransactions } = useTransactions(startDate, endDate);
 
   const getSavedAmount = (goalId: string) =>
     savingsTransactions
       .filter((t) => t.savingsGoalId === goalId)
       .reduce((sum, t) => sum + t.amountCents, 0);
-
-  if (!activePeriodId) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <h2 className="text-lg font-semibold">No period selected</h2>
-        <p className="text-muted-foreground">Select a period to view savings goals.</p>
-      </div>
-    );
-  }
 
   const getProgress = (current: number, target: number) => {
     if (target === 0) return 100;
@@ -67,106 +57,48 @@ export function SavingsIndexPage() {
           </Button>
         </div>
       ) : (
-        <>
-          {periodGoals.length > 0 && (
-            <>
-              <h2 className="mt-6 text-lg font-semibold">Period Goals</h2>
-              <Table className="mt-4">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Deadline</TableHead>
-                    <TableHead className="text-right">Progress</TableHead>
-                    <TableHead className="text-right">Target</TableHead>
-                    <TableHead className="w-20"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {periodGoals.map((goal) => {
-                    const savedAmount = getSavedAmount(goal.id);
-                    const progress = getProgress(savedAmount, goal.targetAmountCents);
-                    return (
-                      <TableRow key={goal.id}>
-                        <TableCell className="font-medium">{goal.name}</TableCell>
-                        <TableCell>{goal.deadline ? formatDate(goal.deadline) : '-'}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <div className="h-2 w-24 rounded-full bg-gray-200">
-                              <div
-                                className="h-2 rounded-full bg-green-500"
-                                style={{ width: `${progress}%` }}
-                              />
-                            </div>
-                            <span className="text-sm text-muted-foreground">{progress}%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-mono">
-                          {formatCents(savedAmount)} / {formatCents(goal.targetAmountCents)}
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="outline" size="sm" asChild>
-                            <Link to={`/savings/${goal.id}`}>View</Link>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </>
-          )}
-
-          {globalGoals.length > 0 && (
-            <>
-              <h2 className="mt-8 text-lg font-semibold">Global Goals</h2>
-              <p className="text-sm text-muted-foreground">
-                These goals are not tied to any specific period.
-              </p>
-              <Table className="mt-4">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Deadline</TableHead>
-                    <TableHead className="text-right">Progress</TableHead>
-                    <TableHead className="text-right">Target</TableHead>
-                    <TableHead className="w-20"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {globalGoals.map((goal) => {
-                    const savedAmount = getSavedAmount(goal.id);
-                    const progress = getProgress(savedAmount, goal.targetAmountCents);
-                    return (
-                      <TableRow key={goal.id}>
-                        <TableCell className="font-medium">{goal.name}</TableCell>
-                        <TableCell>{goal.deadline ? formatDate(goal.deadline) : '-'}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <div className="h-2 w-24 rounded-full bg-gray-200">
-                              <div
-                                className="h-2 rounded-full bg-green-500"
-                                style={{ width: `${progress}%` }}
-                              />
-                            </div>
-                            <span className="text-sm text-muted-foreground">{progress}%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-mono">
-                          {formatCents(savedAmount)} / {formatCents(goal.targetAmountCents)}
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="outline" size="sm" asChild>
-                            <Link to={`/savings/${goal.id}`}>View</Link>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </>
-          )}
-        </>
+        <Table className="mt-6">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Deadline</TableHead>
+              <TableHead className="text-right">Progress</TableHead>
+              <TableHead className="text-right">Target</TableHead>
+              <TableHead className="w-20"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {savingsGoals.map((goal) => {
+              const savedAmount = getSavedAmount(goal.id);
+              const progress = getProgress(savedAmount, goal.targetAmountCents);
+              return (
+                <TableRow key={goal.id}>
+                  <TableCell className="font-medium">{goal.name}</TableCell>
+                  <TableCell>{goal.deadline ? formatDate(goal.deadline) : '-'}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <div className="h-2 w-24 rounded-full bg-gray-200">
+                        <div
+                          className="h-2 rounded-full bg-green-500"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                      <span className="text-sm text-muted-foreground">{progress}%</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right font-mono">
+                    {formatCents(savedAmount)} / {formatCents(goal.targetAmountCents)}
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to={`/savings/${goal.id}`}>View</Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
       )}
     </div>
   );
