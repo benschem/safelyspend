@@ -17,7 +17,7 @@ function daysAgo(days: number): string {
 
 export function generateDemoData(): BudgetData {
   // IDs
-  const periodId = generateId();
+  const scenarioId = generateId();
   const everydayAccountId = generateId();
   const savingsAccountId = generateId();
   const groceriesCatId = generateId();
@@ -29,18 +29,20 @@ export function generateDemoData(): BudgetData {
   const emergencyFundGoalId = generateId();
   const holidayGoalId = generateId();
 
-  const periods = [
+  // Scenarios (replaces periods)
+  const scenarios = [
     {
-      id: periodId,
+      id: scenarioId,
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      name: 'FY 2025-26',
-      startDate: '2025-07-01',
-      endDate: '2026-06-30',
+      name: 'Main Budget',
+      description: 'My primary budget scenario',
+      isDefault: true,
     },
   ];
 
+  // Accounts now include opening balance
   const accounts = [
     {
       id: everydayAccountId,
@@ -48,6 +50,8 @@ export function generateDemoData(): BudgetData {
       createdAt: timestamp,
       updatedAt: timestamp,
       name: 'Everyday',
+      openingBalanceCents: 520000, // $5,200
+      openingDate: '2025-07-01',
       isArchived: false,
     },
     {
@@ -56,28 +60,9 @@ export function generateDemoData(): BudgetData {
       createdAt: timestamp,
       updatedAt: timestamp,
       name: 'Savings',
+      openingBalanceCents: 1200000, // $12,000
+      openingDate: '2025-07-01',
       isArchived: false,
-    },
-  ];
-
-  const openingBalances = [
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      periodId,
-      accountId: everydayAccountId,
-      amountCents: 520000, // $5,200
-    },
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      periodId,
-      accountId: savingsAccountId,
-      amountCents: 1200000, // $12,000
     },
   ];
 
@@ -132,64 +117,175 @@ export function generateDemoData(): BudgetData {
     },
   ];
 
-  const budgetLines = [
+  // Budget rules with cadence (replaces budgetLines)
+  const budgetRules = [
     {
       id: generateId(),
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      periodId,
+      scenarioId,
       categoryId: groceriesCatId,
-      amountCents: 60000,
-    }, // $600/month
+      amountCents: 60000, // $600/month
+      cadence: 'monthly' as const,
+    },
     {
       id: generateId(),
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      periodId,
+      scenarioId,
       categoryId: rentCatId,
-      amountCents: 180000,
-    }, // $1,800/month
+      amountCents: 180000, // $1,800/month
+      cadence: 'monthly' as const,
+    },
     {
       id: generateId(),
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      periodId,
+      scenarioId,
       categoryId: utilitiesCatId,
-      amountCents: 25000,
-    }, // $250/month
+      amountCents: 25000, // $250/month
+      cadence: 'monthly' as const,
+    },
     {
       id: generateId(),
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      periodId,
+      scenarioId,
       categoryId: transportCatId,
-      amountCents: 20000,
-    }, // $200/month
+      amountCents: 20000, // $200/month
+      cadence: 'monthly' as const,
+    },
     {
       id: generateId(),
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      periodId,
+      scenarioId,
       categoryId: entertainmentCatId,
-      amountCents: 15000,
-    }, // $150/month
+      amountCents: 15000, // $150/month
+      cadence: 'monthly' as const,
+    },
     {
       id: generateId(),
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      periodId,
+      scenarioId,
       categoryId: diningCatId,
-      amountCents: 20000,
-    }, // $200/month
+      amountCents: 20000, // $200/month
+      cadence: 'monthly' as const,
+    },
   ];
 
-  // Past transactions (last 30 days)
+  // Forecast rules (recurring patterns - replaces recurringItems)
+  const forecastRules = [
+    {
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      scenarioId,
+      type: 'income' as const,
+      amountCents: 450000, // $4,500 fortnightly
+      cadence: 'fortnightly' as const,
+      dayOfWeek: 5, // Friday
+      description: 'Salary',
+      categoryId: null,
+      savingsGoalId: null,
+    },
+    {
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      scenarioId,
+      type: 'expense' as const,
+      amountCents: 180000, // $1,800/month
+      cadence: 'monthly' as const,
+      dayOfMonth: 1,
+      description: 'Rent',
+      categoryId: rentCatId,
+      savingsGoalId: null,
+    },
+    {
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      scenarioId,
+      type: 'expense' as const,
+      amountCents: 15000, // $150/week groceries
+      cadence: 'weekly' as const,
+      dayOfWeek: 6, // Saturday
+      description: 'Groceries',
+      categoryId: groceriesCatId,
+      savingsGoalId: null,
+    },
+    {
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      scenarioId,
+      type: 'expense' as const,
+      amountCents: 25000, // $250/month utilities
+      cadence: 'monthly' as const,
+      dayOfMonth: 15,
+      description: 'Utilities',
+      categoryId: utilitiesCatId,
+      savingsGoalId: null,
+    },
+    {
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      scenarioId,
+      type: 'savings' as const,
+      amountCents: 50000, // $500/month to emergency fund
+      cadence: 'monthly' as const,
+      dayOfMonth: 1,
+      description: 'Emergency fund contribution',
+      categoryId: null,
+      savingsGoalId: emergencyFundGoalId,
+    },
+  ];
+
+  // Forecast events (one-off specific date forecasts)
+  const forecastEvents = [
+    {
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      scenarioId,
+      type: 'expense' as const,
+      date: daysFromNow(45),
+      amountCents: 120000, // $1,200 car service
+      description: 'Car service',
+      categoryId: transportCatId,
+      savingsGoalId: null,
+    },
+    {
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      scenarioId,
+      type: 'expense' as const,
+      date: daysFromNow(90),
+      amountCents: 80000, // $800 car rego
+      description: 'Car registration',
+      categoryId: transportCatId,
+      savingsGoalId: null,
+    },
+  ];
+
+  // Past transactions (global facts)
   const transactions = [
     // Income
     {
@@ -349,7 +445,7 @@ export function generateDemoData(): BudgetData {
       categoryId: diningCatId,
       savingsGoalId: null,
     },
-    // Starting balance savings transactions
+    // Savings transactions
     {
       id: generateId(),
       userId: USER_ID,
@@ -357,212 +453,11 @@ export function generateDemoData(): BudgetData {
       updatedAt: timestamp,
       accountId: savingsAccountId,
       type: 'savings' as const,
-      date: '2025-07-01', // Period start date
-      amountCents: 1200000, // $12,000
-      description: 'Starting balance',
+      date: daysAgo(25),
+      amountCents: 50000, // $500
+      description: 'Monthly savings',
       categoryId: null,
       savingsGoalId: emergencyFundGoalId,
-    },
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      accountId: savingsAccountId,
-      type: 'savings' as const,
-      date: '2025-07-01', // Period start date
-      amountCents: 150000, // $1,500
-      description: 'Starting balance',
-      categoryId: null,
-      savingsGoalId: holidayGoalId,
-    },
-  ];
-
-  // Future forecasts (next 3 months)
-  const forecasts = [
-    // Income forecasts
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      periodId,
-      type: 'income' as const,
-      date: daysFromNow(0),
-      amountCents: 450000,
-      description: 'Salary',
-      categoryId: null,
-      savingsGoalId: null,
-    },
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      periodId,
-      type: 'income' as const,
-      date: daysFromNow(14),
-      amountCents: 450000,
-      description: 'Salary',
-      categoryId: null,
-      savingsGoalId: null,
-    },
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      periodId,
-      type: 'income' as const,
-      date: daysFromNow(28),
-      amountCents: 450000,
-      description: 'Salary',
-      categoryId: null,
-      savingsGoalId: null,
-    },
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      periodId,
-      type: 'income' as const,
-      date: daysFromNow(42),
-      amountCents: 450000,
-      description: 'Salary',
-      categoryId: null,
-      savingsGoalId: null,
-    },
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      periodId,
-      type: 'income' as const,
-      date: daysFromNow(56),
-      amountCents: 450000,
-      description: 'Salary',
-      categoryId: null,
-      savingsGoalId: null,
-    },
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      periodId,
-      type: 'income' as const,
-      date: daysFromNow(70),
-      amountCents: 450000,
-      description: 'Salary',
-      categoryId: null,
-      savingsGoalId: null,
-    },
-    // Expense forecasts
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      periodId,
-      type: 'expense' as const,
-      date: daysFromNow(5),
-      amountCents: 180000,
-      description: 'Rent',
-      categoryId: rentCatId,
-      savingsGoalId: null,
-    },
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      periodId,
-      type: 'expense' as const,
-      date: daysFromNow(35),
-      amountCents: 180000,
-      description: 'Rent',
-      categoryId: rentCatId,
-      savingsGoalId: null,
-    },
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      periodId,
-      type: 'expense' as const,
-      date: daysFromNow(65),
-      amountCents: 180000,
-      description: 'Rent',
-      categoryId: rentCatId,
-      savingsGoalId: null,
-    },
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      periodId,
-      type: 'expense' as const,
-      date: daysFromNow(10),
-      amountCents: 15000,
-      description: 'Groceries',
-      categoryId: groceriesCatId,
-      savingsGoalId: null,
-    },
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      periodId,
-      type: 'expense' as const,
-      date: daysFromNow(20),
-      amountCents: 15000,
-      description: 'Groceries',
-      categoryId: groceriesCatId,
-      savingsGoalId: null,
-    },
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      periodId,
-      type: 'expense' as const,
-      date: daysFromNow(30),
-      amountCents: 15000,
-      description: 'Groceries',
-      categoryId: groceriesCatId,
-      savingsGoalId: null,
-    },
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      periodId,
-      type: 'expense' as const,
-      date: daysFromNow(15),
-      amountCents: 25000,
-      description: 'Utilities',
-      categoryId: utilitiesCatId,
-      savingsGoalId: null,
-    },
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      periodId,
-      type: 'expense' as const,
-      date: daysFromNow(45),
-      amountCents: 25000,
-      description: 'Utilities',
-      categoryId: utilitiesCatId,
-      savingsGoalId: null,
     },
   ];
 
@@ -576,17 +471,17 @@ export function generateDemoData(): BudgetData {
       toAccountId: savingsAccountId,
       date: daysAgo(20),
       amountCents: 50000, // $500
-      notes: 'Monthly savings',
+      notes: 'Monthly savings transfer',
     },
   ];
 
+  // Savings goals are now global (no periodId)
   const savingsGoals = [
     {
       id: emergencyFundGoalId,
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      periodId: null, // Global goal
       name: 'Emergency Fund',
       targetAmountCents: 2000000, // $20,000
       deadline: '2026-06-30',
@@ -596,96 +491,50 @@ export function generateDemoData(): BudgetData {
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      periodId,
       name: 'Holiday',
       targetAmountCents: 500000, // $5,000
       deadline: '2025-12-01',
     },
   ];
 
-  // Recurring Items
-  const recurringItems = [
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      type: 'expense' as const,
-      name: 'Rent',
-      amountCents: 200000, // $2,000
-      frequency: 'monthly' as const,
-      dayOfMonth: 1,
-      categoryId: categories[0]!.id, // Housing
-      isActive: true,
-    },
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      type: 'expense' as const,
-      name: 'Phone Bill',
-      amountCents: 8000, // $80
-      frequency: 'monthly' as const,
-      dayOfMonth: 15,
-      categoryId: categories[4]!.id, // Utilities
-      isActive: true,
-    },
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      type: 'income' as const,
-      name: 'Salary',
-      amountCents: 650000, // $6,500
-      frequency: 'fortnightly' as const,
-      dayOfWeek: 5, // Friday
-      categoryId: null,
-      isActive: true,
-    },
-  ];
-
   return {
-    periods,
+    scenarios,
     accounts,
-    openingBalances,
     categories,
-    budgetLines,
-    forecasts,
+    budgetRules,
+    forecastRules,
+    forecastEvents,
     transactions,
     transfers,
     savingsGoals,
-    recurringItems,
   };
 }
 
 export function loadDemoDataToStorage(): void {
   const data = generateDemoData();
 
-  localStorage.setItem('budget:periods', JSON.stringify(data.periods));
-  localStorage.setItem('budget:activePeriodId', JSON.stringify(data.periods[0]?.id ?? null));
+  localStorage.setItem('budget:scenarios', JSON.stringify(data.scenarios));
+  localStorage.setItem('budget:activeScenarioId', JSON.stringify(data.scenarios[0]?.id ?? null));
   localStorage.setItem('budget:accounts', JSON.stringify(data.accounts));
-  localStorage.setItem('budget:openingBalances', JSON.stringify(data.openingBalances));
   localStorage.setItem('budget:categories', JSON.stringify(data.categories));
-  localStorage.setItem('budget:budgetLines', JSON.stringify(data.budgetLines));
-  localStorage.setItem('budget:forecasts', JSON.stringify(data.forecasts));
+  localStorage.setItem('budget:budgetRules', JSON.stringify(data.budgetRules));
+  localStorage.setItem('budget:forecastRules', JSON.stringify(data.forecastRules));
+  localStorage.setItem('budget:forecastEvents', JSON.stringify(data.forecastEvents));
   localStorage.setItem('budget:transactions', JSON.stringify(data.transactions));
   localStorage.setItem('budget:transfers', JSON.stringify(data.transfers));
   localStorage.setItem('budget:savingsGoals', JSON.stringify(data.savingsGoals));
-  localStorage.setItem('budget:recurringItems', JSON.stringify(data.recurringItems));
 }
 
 export function clearAllData(): void {
-  localStorage.removeItem('budget:periods');
-  localStorage.removeItem('budget:activePeriodId');
+  localStorage.removeItem('budget:scenarios');
+  localStorage.removeItem('budget:activeScenarioId');
   localStorage.removeItem('budget:accounts');
-  localStorage.removeItem('budget:openingBalances');
   localStorage.removeItem('budget:categories');
-  localStorage.removeItem('budget:budgetLines');
-  localStorage.removeItem('budget:forecasts');
+  localStorage.removeItem('budget:budgetRules');
+  localStorage.removeItem('budget:forecastRules');
+  localStorage.removeItem('budget:forecastEvents');
   localStorage.removeItem('budget:transactions');
   localStorage.removeItem('budget:transfers');
   localStorage.removeItem('budget:savingsGoals');
-  localStorage.removeItem('budget:recurringItems');
+  localStorage.removeItem('budget:viewState');
 }
