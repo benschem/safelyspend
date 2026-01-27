@@ -4,18 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { CategorySelect } from '@/components/category-select';
+import { SavingsGoalSelect } from '@/components/savings-goal-select';
 import { ArrowLeft } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
-import { useCategories } from '@/hooks/use-categories';
-import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { today, parseCentsFromInput } from '@/lib/utils';
 import type { ForecastType } from '@/lib/types';
 
@@ -30,8 +23,6 @@ export function ForecastNewPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
   const { addEvent } = useForecasts(activeScenarioId);
-  const { activeCategories } = useCategories();
-  const { savingsGoals } = useSavingsGoals();
 
   const [type, setType] = useState<ForecastType>('expense');
   const [date, setDate] = useState(today());
@@ -159,39 +150,13 @@ export function ForecastNewPage() {
 
         {type === 'savings' ? (
           <div className="space-y-2">
-            <Label htmlFor="savingsGoal">Savings Goal</Label>
-            <Select value={savingsGoalId} onValueChange={setSavingsGoalId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select savings goal" />
-              </SelectTrigger>
-              <SelectContent>
-                {savingsGoals.map((goal) => (
-                  <SelectItem key={goal.id} value={goal.id}>
-                    {goal.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Savings Goal</Label>
+            <SavingsGoalSelect value={savingsGoalId} onChange={setSavingsGoalId} />
           </div>
         ) : (
           <div className="space-y-2">
-            <Label htmlFor="category">Category {type === 'income' && '(optional)'}</Label>
-            <Select
-              value={categoryId || '__none__'}
-              onValueChange={(v) => setCategoryId(v === '__none__' ? '' : v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">None</SelectItem>
-                {activeCategories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Category {type === 'income' && '(optional)'}</Label>
+            <CategorySelect value={categoryId} onChange={setCategoryId} allowNone />
           </div>
         )}
 
