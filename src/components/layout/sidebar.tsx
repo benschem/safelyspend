@@ -59,13 +59,13 @@ export function Sidebar() {
   return (
     <aside className="flex h-full w-56 flex-col border-r border-sidebar-border bg-sidebar-background">
       <div className="flex h-14 items-center border-b border-sidebar-border px-6">
-        <span className="text-lg font-semibold">Budget</span>
+        <span className="text-lg font-semibold">SafelySpend</span>
       </div>
 
       <div className="flex-1 overflow-y-auto py-2">
         <NavSection>
           <NavItem to="/dashboard" icon={<LayoutDashboard className="h-4 w-4" />}>
-            Overview
+            Dashboard
           </NavItem>
 
           <NavItem to="/reports" icon={<BarChart3 className="h-4 w-4" />}>

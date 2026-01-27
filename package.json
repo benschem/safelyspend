@@ -1,7 +1,7 @@
 {
-  "name": "budget",
+  "name": "safely-spend",
   "version": "2.0.0",
-  "description": "A personal budgeting tool that runs entirely in the browser.",
+  "description": "A personal finance tool that tells you how much you can safely spend.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -20,6 +20,7 @@
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tabs": "^1.1.13",
+    "@tanstack/react-form": "^1.28.0",
     "@tanstack/react-table": "^8.21.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -28,7 +29,8 @@
     "react-dom": "^19.1.0",
     "react-router": "^7.6.1",
     "recharts": "^3.7.0",
-    "tailwind-merge": "^3.3.0"
+    "tailwind-merge": "^3.3.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.8",
