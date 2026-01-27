@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ArrowLeft } from 'lucide-react';
+import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
@@ -19,15 +20,18 @@ import { today, parseCentsFromInput } from '@/lib/utils';
 import type { ForecastType } from '@/lib/types';
 
 interface OutletContext {
-  activePeriodId: string | null;
+  activeScenarioId: string | null;
+  startDate: string;
+  endDate: string;
 }
 
 export function ForecastNewPage() {
   const navigate = useNavigate();
-  const { activePeriodId } = useOutletContext<OutletContext>();
-  const { addForecast } = useForecasts(activePeriodId);
+  const { activeScenarioId } = useOutletContext<OutletContext>();
+  const { activeScenario } = useScenarios();
+  const { addEvent } = useForecasts(activeScenarioId);
   const { activeCategories } = useCategories();
-  const { savingsGoals } = useSavingsGoals(activePeriodId);
+  const { savingsGoals } = useSavingsGoals();
 
   const [type, setType] = useState<ForecastType>('expense');
   const [date, setDate] = useState(today());
@@ -37,11 +41,11 @@ export function ForecastNewPage() {
   const [savingsGoalId, setSavingsGoalId] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  if (!activePeriodId) {
+  if (!activeScenarioId || !activeScenario) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <h2 className="text-lg font-semibold">No period selected</h2>
-        <p className="text-muted-foreground">Select a period first.</p>
+        <h2 className="text-lg font-semibold">No scenario selected</h2>
+        <p className="text-muted-foreground">Select a scenario first.</p>
       </div>
     );
   }
@@ -67,8 +71,8 @@ export function ForecastNewPage() {
       return;
     }
 
-    const forecast = addForecast({
-      periodId: activePeriodId,
+    const event = addEvent({
+      scenarioId: activeScenarioId,
       type,
       date,
       description: description.trim(),
@@ -77,7 +81,7 @@ export function ForecastNewPage() {
       savingsGoalId: type === 'savings' ? savingsGoalId : null,
     });
 
-    navigate(`/forecast/${forecast.id}`);
+    navigate(`/forecast/${event.id}`);
   };
 
   return (
@@ -91,8 +95,8 @@ export function ForecastNewPage() {
         </Button>
       </div>
 
-      <h1 className="text-2xl font-bold">New Forecast</h1>
-      <p className="text-muted-foreground">Add a new projected income or expense.</p>
+      <h1 className="text-2xl font-bold">New One-off Event</h1>
+      <p className="text-muted-foreground">Add a one-time forecast event (not recurring).</p>
 
       {error && <div className="mt-4 rounded-lg bg-red-100 p-3 text-red-800">{error}</div>}
 
@@ -136,7 +140,7 @@ export function ForecastNewPage() {
             id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="e.g., Rent, Salary"
+            placeholder="e.g., Car service, Tax return"
           />
         </div>
 
@@ -192,7 +196,7 @@ export function ForecastNewPage() {
         )}
 
         <div className="flex gap-2 pt-4">
-          <Button type="submit">Create Forecast</Button>
+          <Button type="submit">Create Event</Button>
           <Button type="button" variant="outline" asChild>
             <Link to="/forecast">Cancel</Link>
           </Button>

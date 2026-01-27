@@ -21,30 +21,33 @@ import { formatCents, formatDate, parseCentsFromInput } from '@/lib/utils';
 import type { ForecastType } from '@/lib/types';
 
 interface OutletContext {
-  activePeriodId: string | null;
+  activeScenarioId: string | null;
+  startDate: string;
+  endDate: string;
 }
 
 export function ForecastDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { activePeriodId } = useOutletContext<OutletContext>();
-  const { forecasts, updateForecast, deleteForecast } = useForecasts(activePeriodId);
+  const { activeScenarioId } = useOutletContext<OutletContext>();
+  const { events, updateEvent, deleteEvent } = useForecasts(activeScenarioId);
   const { categories, activeCategories } = useCategories();
-  const { savingsGoals } = useSavingsGoals(activePeriodId);
+  const { savingsGoals } = useSavingsGoals();
 
-  const forecast = forecasts.find((f) => f.id === id);
+  // This page only handles ForecastEvents (one-off forecasts)
+  const event = events.find((e) => e.id === id);
 
   const [editing, setEditing] = useState(false);
-  const [type, setType] = useState<ForecastType>(forecast?.type ?? 'expense');
-  const [date, setDate] = useState(forecast?.date ?? '');
-  const [description, setDescription] = useState(forecast?.description ?? '');
-  const [amount, setAmount] = useState(forecast ? (forecast.amountCents / 100).toFixed(2) : '');
-  const [categoryId, setCategoryId] = useState(forecast?.categoryId ?? '');
-  const [savingsGoalId, setSavingsGoalId] = useState(forecast?.savingsGoalId ?? '');
+  const [type, setType] = useState<ForecastType>(event?.type ?? 'expense');
+  const [date, setDate] = useState(event?.date ?? '');
+  const [description, setDescription] = useState(event?.description ?? '');
+  const [amount, setAmount] = useState(event ? (event.amountCents / 100).toFixed(2) : '');
+  const [categoryId, setCategoryId] = useState(event?.categoryId ?? '');
+  const [savingsGoalId, setSavingsGoalId] = useState(event?.savingsGoalId ?? '');
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
-  if (!forecast) {
+  if (!event) {
     return (
       <div>
         <div className="mb-6">
@@ -55,7 +58,7 @@ export function ForecastDetailPage() {
             </Link>
           </Button>
         </div>
-        <p className="text-muted-foreground">Forecast not found.</p>
+        <p className="text-muted-foreground">Forecast event not found.</p>
       </div>
     );
   }
@@ -85,7 +88,7 @@ export function ForecastDetailPage() {
       return;
     }
 
-    updateForecast(forecast.id, {
+    updateEvent(event.id, {
       type,
       date,
       description: description.trim(),
@@ -101,17 +104,17 @@ export function ForecastDetailPage() {
       setConfirmingDelete(true);
       return;
     }
-    deleteForecast(forecast.id);
+    deleteEvent(event.id);
     navigate('/forecast');
   };
 
   const startEditing = () => {
-    setType(forecast.type);
-    setDate(forecast.date);
-    setDescription(forecast.description);
-    setAmount((forecast.amountCents / 100).toFixed(2));
-    setCategoryId(forecast.categoryId ?? '');
-    setSavingsGoalId(forecast.savingsGoalId ?? '');
+    setType(event.type);
+    setDate(event.date);
+    setDescription(event.description);
+    setAmount((event.amountCents / 100).toFixed(2));
+    setCategoryId(event.categoryId ?? '');
+    setSavingsGoalId(event.savingsGoalId ?? '');
     setEditing(true);
   };
 
@@ -129,24 +132,28 @@ export function ForecastDetailPage() {
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{forecast.description}</h1>
-            {forecast.type === 'income' ? (
+            <h1 className="text-2xl font-bold">{event.description}</h1>
+            {event.type === 'income' ? (
               <Badge variant="success">Income</Badge>
-            ) : forecast.type === 'savings' ? (
-              <Badge variant="secondary">Savings</Badge>
+            ) : event.type === 'savings' ? (
+              <Badge variant="info">Savings</Badge>
             ) : (
               <Badge variant="destructive">Expense</Badge>
             )}
           </div>
-          <p className="text-muted-foreground">{formatDate(forecast.date)}</p>
+          <p className="text-muted-foreground">{formatDate(event.date)}</p>
         </div>
         <div
           className={`text-2xl font-bold ${
-            forecast.type === 'expense' ? 'text-red-600' : 'text-green-600'
+            event.type === 'income'
+              ? 'text-green-600'
+              : event.type === 'savings'
+                ? 'text-blue-600'
+                : 'text-red-600'
           }`}
         >
-          {forecast.type === 'expense' ? '-' : '+'}
-          {formatCents(forecast.amountCents)}
+          {event.type === 'income' ? '+' : '-'}
+          {formatCents(event.amountCents)}
         </div>
       </div>
 
@@ -157,7 +164,7 @@ export function ForecastDetailPage() {
       {/* Edit Section */}
       <section>
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Forecast Details</h2>
+          <h2 className="text-lg font-semibold">Event Details</h2>
           {!editing && (
             <Button variant="outline" size="sm" onClick={startEditing}>
               Edit
@@ -270,31 +277,31 @@ export function ForecastDetailPage() {
           <div className="mt-4 space-y-2 text-sm">
             <p>
               <span className="text-muted-foreground">Type:</span>{' '}
-              {forecast.type === 'income'
+              {event.type === 'income'
                 ? 'Income'
-                : forecast.type === 'savings'
+                : event.type === 'savings'
                   ? 'Savings'
                   : 'Expense'}
             </p>
             <p>
-              <span className="text-muted-foreground">Date:</span> {formatDate(forecast.date)}
+              <span className="text-muted-foreground">Date:</span> {formatDate(event.date)}
             </p>
             <p>
-              <span className="text-muted-foreground">Description:</span> {forecast.description}
+              <span className="text-muted-foreground">Description:</span> {event.description}
             </p>
             <p>
               <span className="text-muted-foreground">Amount:</span>{' '}
-              {formatCents(forecast.amountCents)}
+              {formatCents(event.amountCents)}
             </p>
-            {forecast.type === 'savings' ? (
+            {event.type === 'savings' ? (
               <p>
                 <span className="text-muted-foreground">Savings Goal:</span>{' '}
-                {getSavingsGoalName(forecast.savingsGoalId)}
+                {getSavingsGoalName(event.savingsGoalId)}
               </p>
             ) : (
               <p>
                 <span className="text-muted-foreground">Category:</span>{' '}
-                {getCategoryName(forecast.categoryId)}
+                {getCategoryName(event.categoryId)}
               </p>
             )}
           </div>
@@ -309,8 +316,8 @@ export function ForecastDetailPage() {
         <div className="mt-4 rounded-lg border border-destructive/50 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-medium">Delete Forecast</h3>
-              <p className="text-sm text-muted-foreground">Permanently delete this forecast.</p>
+              <h3 className="font-medium">Delete Event</h3>
+              <p className="text-sm text-muted-foreground">Permanently delete this forecast event.</p>
             </div>
             <div className="flex gap-2">
               {confirmingDelete && (

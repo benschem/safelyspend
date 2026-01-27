@@ -18,35 +18,42 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Plus } from 'lucide-react';
+import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
 import { formatCents, formatDate } from '@/lib/utils';
+import type { ExpandedForecast } from '@/lib/types';
 
 interface OutletContext {
-  activePeriodId: string | null;
+  activeScenarioId: string | null;
+  startDate: string;
+  endDate: string;
 }
 
 type FilterType = 'all' | 'income' | 'expense' | 'savings';
 
 export function ForecastIndexPage() {
-  const { activePeriodId } = useOutletContext<OutletContext>();
-  const { forecasts } = useForecasts(activePeriodId);
+  const { activeScenarioId, startDate, endDate } = useOutletContext<OutletContext>();
+  const { activeScenario } = useScenarios();
+  const { expandedForecasts } = useForecasts(activeScenarioId, startDate, endDate);
   const { categories } = useCategories();
 
   const [filterType, setFilterType] = useState<FilterType>('all');
 
-  if (!activePeriodId) {
+  if (!activeScenarioId || !activeScenario) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <h2 className="text-lg font-semibold">No period selected</h2>
-        <p className="text-muted-foreground">Select a period to view forecasts.</p>
+        <h2 className="text-lg font-semibold">No scenario selected</h2>
+        <p className="text-muted-foreground">Select a scenario to view forecasts.</p>
       </div>
     );
   }
 
-  const filteredForecasts = forecasts
-    .filter((f) => filterType === 'all' || f.type === filterType)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const filteredForecasts = expandedForecasts
+    .filter((f: ExpandedForecast) => filterType === 'all' || f.type === filterType)
+    .sort((a: ExpandedForecast, b: ExpandedForecast) =>
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
 
   const getCategoryName = (id: string | null) =>
     id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-';
@@ -56,12 +63,14 @@ export function ForecastIndexPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Forecast</h1>
-          <p className="text-muted-foreground">Projected income, expenses, and savings for the period.</p>
+          <p className="text-muted-foreground">
+            Projected income, expenses, and savings for the period.
+          </p>
         </div>
         <Button asChild>
           <Link to="/forecast/new">
             <Plus className="h-4 w-4" />
-            Add Forecast
+            Add One-off Event
           </Link>
         </Button>
       </div>
@@ -87,7 +96,7 @@ export function ForecastIndexPage() {
         <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground">No forecasts found.</p>
           <Button asChild className="mt-4">
-            <Link to="/forecast/new">Add your first forecast</Link>
+            <Link to="/forecast/new">Add a one-off event</Link>
           </Button>
         </div>
       ) : (
@@ -97,14 +106,15 @@ export function ForecastIndexPage() {
               <TableHead>Date</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead>Source</TableHead>
               <TableHead>Category</TableHead>
               <TableHead className="text-right">Amount</TableHead>
               <TableHead className="w-20"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredForecasts.map((forecast) => (
-              <TableRow key={forecast.id}>
+            {filteredForecasts.map((forecast: ExpandedForecast, index: number) => (
+              <TableRow key={`${forecast.sourceId}-${forecast.date}-${index}`}>
                 <TableCell>{formatDate(forecast.date)}</TableCell>
                 <TableCell className="font-medium">{forecast.description}</TableCell>
                 <TableCell>
@@ -115,6 +125,11 @@ export function ForecastIndexPage() {
                   ) : (
                     <Badge variant="destructive">Expense</Badge>
                   )}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">
+                    {forecast.sourceType === 'rule' ? 'Recurring' : 'One-off'}
+                  </Badge>
                 </TableCell>
                 <TableCell>{getCategoryName(forecast.categoryId)}</TableCell>
                 <TableCell className="text-right font-mono">
@@ -132,9 +147,11 @@ export function ForecastIndexPage() {
                   </span>
                 </TableCell>
                 <TableCell>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link to={`/forecast/${forecast.id}`}>View</Link>
-                  </Button>
+                  {forecast.sourceType === 'event' && (
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to={`/forecast/${forecast.sourceId}`}>Edit</Link>
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
