@@ -1,12 +1,19 @@
 import { Outlet } from 'react-router';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
+import { FirstRunWizard } from '@/components/first-run-wizard';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useViewState } from '@/hooks/use-view-state';
+import { useAppConfig } from '@/hooks/use-app-config';
 
 export function RootLayout() {
+  const { isInitialized } = useAppConfig();
   const { scenarios, activeScenarioId, setActiveScenarioId } = useScenarios();
   const { startDate, endDate, setDateRange, resetToFinancialYear } = useViewState();
+
+  if (!isInitialized) {
+    return <FirstRunWizard />;
+  }
 
   return (
     <div className="flex h-screen">
