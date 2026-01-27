@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router';
+import { Outlet, useLocation } from 'react-router';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
 import { DemoBanner } from '@/components/demo-banner';
@@ -8,10 +8,22 @@ import { useScenarios } from '@/hooks/use-scenarios';
 import { useViewState } from '@/hooks/use-view-state';
 import { useAppConfig } from '@/hooks/use-app-config';
 
+// Routes where date range filtering applies
+const DATE_RELEVANT_ROUTES = ['/dashboard', '/forecast', '/budget', '/transactions', '/reports'];
+
+function isDateRelevantRoute(pathname: string): boolean {
+  return DATE_RELEVANT_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(route + '/'),
+  );
+}
+
 export function RootLayout() {
   const { isInitialized, isDemo } = useAppConfig();
   const { scenarios, activeScenarioId, setActiveScenarioId } = useScenarios();
   const { startDate, endDate, setDateRange } = useViewState();
+  const location = useLocation();
+
+  const showDateControls = isDateRelevantRoute(location.pathname);
 
   if (!isInitialized) {
     return <FirstRunWizard />;
@@ -30,8 +42,9 @@ export function RootLayout() {
             startDate={startDate}
             endDate={endDate}
             onDateRangeChange={setDateRange}
+            showDatePicker={showDateControls}
           />
-          <DateRangeBanner startDate={startDate} endDate={endDate} />
+          {showDateControls && <DateRangeBanner startDate={startDate} endDate={endDate} />}
           <main className="flex-1 overflow-y-auto p-6">
             <Outlet context={{ activeScenarioId, startDate, endDate }} />
           </main>

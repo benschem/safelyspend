@@ -15,6 +15,7 @@ interface HeaderProps {
   startDate: string;
   endDate: string;
   onDateRangeChange: (startDate: string, endDate: string) => void;
+  showDatePicker?: boolean;
 }
 
 export function Header({
@@ -24,6 +25,7 @@ export function Header({
   startDate,
   endDate,
   onDateRangeChange,
+  showDatePicker = true,
 }: HeaderProps) {
   // Build select props conditionally to handle controlled/uncontrolled state
   const selectProps = activeScenarioId
@@ -52,11 +54,13 @@ export function Header({
             </Select>
           )}
         </div>
-        <DateRangePicker
-          startDate={startDate}
-          endDate={endDate}
-          onDateRangeChange={onDateRangeChange}
-        />
+        {showDatePicker && (
+          <DateRangePicker
+            startDate={startDate}
+            endDate={endDate}
+            onDateRangeChange={onDateRangeChange}
+          />
+        )}
       </div>
     </header>
   );
