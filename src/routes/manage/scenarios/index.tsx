@@ -1,20 +1,59 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { formatDate } from '@/lib/utils';
+import type { Scenario } from '@/lib/types';
 
 export function ScenariosIndexPage() {
   const { scenarios } = useScenarios();
+
+  const columns: ColumnDef<Scenario>[] = useMemo(
+    () => [
+      {
+        accessorKey: 'name',
+        header: ({ column }) => <SortableHeader column={column}>Name</SortableHeader>,
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{row.getValue('name')}</span>
+            {row.original.isDefault && <Badge variant="secondary">Default</Badge>}
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'description',
+        header: 'Description',
+        cell: ({ row }) => (
+          <span className="text-muted-foreground">
+            {row.getValue('description') || '-'}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'createdAt',
+        header: ({ column }) => <SortableHeader column={column}>Created</SortableHeader>,
+        cell: ({ row }) => {
+          const createdAt = row.getValue('createdAt') as string;
+          const createdDate = createdAt?.split('T')[0];
+          return createdDate ? formatDate(createdDate) : '-';
+        },
+        sortingFn: 'datetime',
+      },
+      {
+        id: 'actions',
+        cell: ({ row }) => (
+          <Button variant="outline" size="sm" asChild>
+            <Link to={`/manage/scenarios/${row.original.id}`}>View</Link>
+          </Button>
+        ),
+      },
+    ],
+    [],
+  );
 
   return (
     <div>
@@ -41,40 +80,15 @@ export function ScenariosIndexPage() {
           </Button>
         </div>
       ) : (
-        <Table className="mt-6">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead className="w-20"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {scenarios.map((scenario) => {
-              const createdDate = scenario.createdAt.split('T')[0];
-              return (
-                <TableRow key={scenario.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      {scenario.name}
-                      {scenario.isDefault && <Badge variant="secondary">Default</Badge>}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {scenario.description || '-'}
-                  </TableCell>
-                  <TableCell>{createdDate ? formatDate(createdDate) : '-'}</TableCell>
-                  <TableCell>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link to={`/manage/scenarios/${scenario.id}`}>View</Link>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+        <div className="mt-6">
+          <DataTable
+            columns={columns}
+            data={scenarios}
+            searchKey="name"
+            searchPlaceholder="Search scenarios..."
+            showPagination={false}
+          />
+        </div>
       )}
     </div>
   );

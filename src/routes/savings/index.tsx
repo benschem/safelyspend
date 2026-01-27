@@ -1,22 +1,23 @@
+import { useMemo } from 'react';
 import { useOutletContext, Link } from 'react-router';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus } from 'lucide-react';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useTransactions } from '@/hooks/use-transactions';
 import { formatCents, formatDate } from '@/lib/utils';
+import type { SavingsGoal } from '@/lib/types';
 
 interface OutletContext {
   activeScenarioId: string | null;
   startDate: string;
   endDate: string;
+}
+
+interface SavingsGoalRow extends SavingsGoal {
+  savedAmount: number;
+  progress: number;
 }
 
 export function SavingsIndexPage() {
@@ -33,6 +34,93 @@ export function SavingsIndexPage() {
     if (target === 0) return 100;
     return Math.min(Math.round((current / target) * 100), 100);
   };
+
+  const goalRows: SavingsGoalRow[] = useMemo(
+    () =>
+      savingsGoals.map((goal) => {
+        const savedAmount = getSavedAmount(goal.id);
+        return {
+          ...goal,
+          savedAmount,
+          progress: getProgress(savedAmount, goal.targetAmountCents),
+        };
+      }),
+    [savingsGoals, savingsTransactions],
+  );
+
+  const columns: ColumnDef<SavingsGoalRow>[] = useMemo(
+    () => [
+      {
+        accessorKey: 'name',
+        header: ({ column }) => <SortableHeader column={column}>Name</SortableHeader>,
+        cell: ({ row }) => <span className="font-medium">{row.getValue('name')}</span>,
+      },
+      {
+        accessorKey: 'deadline',
+        header: ({ column }) => <SortableHeader column={column}>Deadline</SortableHeader>,
+        cell: ({ row }) => {
+          const deadline = row.getValue('deadline') as string | undefined;
+          return deadline ? formatDate(deadline) : '-';
+        },
+        sortingFn: 'datetime',
+      },
+      {
+        accessorKey: 'progress',
+        header: ({ column }) => (
+          <SortableHeader column={column} className="justify-end">
+            Progress
+          </SortableHeader>
+        ),
+        cell: ({ row }) => {
+          const progress = row.getValue('progress') as number;
+          return (
+            <div className="flex items-center justify-end gap-2">
+              <div className="h-2 w-24 rounded-full bg-gray-200 dark:bg-gray-700">
+                <div
+                  className="h-2 rounded-full bg-blue-600"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <span className="text-sm text-muted-foreground">{progress}%</span>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: 'savedAmount',
+        header: ({ column }) => (
+          <SortableHeader column={column} className="justify-end">
+            Saved
+          </SortableHeader>
+        ),
+        cell: ({ row }) => (
+          <div className="text-right font-mono">{formatCents(row.getValue('savedAmount'))}</div>
+        ),
+      },
+      {
+        accessorKey: 'targetAmountCents',
+        header: ({ column }) => (
+          <SortableHeader column={column} className="justify-end">
+            Goal
+          </SortableHeader>
+        ),
+        cell: ({ row }) => (
+          <div className="text-right font-mono">
+            {formatCents(row.getValue('targetAmountCents'))}
+          </div>
+        ),
+      },
+      {
+        id: 'actions',
+        cell: ({ row }) => (
+          <Button variant="outline" size="sm" asChild>
+            <Link to={`/savings/${row.original.id}`}>View</Link>
+          </Button>
+        ),
+      },
+    ],
+    [],
+  );
 
   return (
     <div>
@@ -57,52 +145,15 @@ export function SavingsIndexPage() {
           </Button>
         </div>
       ) : (
-        <Table className="mt-6">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Deadline</TableHead>
-              <TableHead className="text-right">Progress</TableHead>
-              <TableHead className="text-right">Saved</TableHead>
-              <TableHead className="text-right">Goal</TableHead>
-              <TableHead className="w-20"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {savingsGoals.map((goal) => {
-              const savedAmount = getSavedAmount(goal.id);
-              const progress = getProgress(savedAmount, goal.targetAmountCents);
-              return (
-                <TableRow key={goal.id}>
-                  <TableCell className="font-medium">{goal.name}</TableCell>
-                  <TableCell>{goal.deadline ? formatDate(goal.deadline) : '-'}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <div className="h-2 w-24 rounded-full bg-gray-200 dark:bg-gray-700">
-                        <div
-                          className="h-2 rounded-full bg-blue-600"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                      <span className="text-sm text-muted-foreground">{progress}%</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-mono">
-                    {formatCents(savedAmount)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono">
-                    {formatCents(goal.targetAmountCents)}
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link to={`/savings/${goal.id}`}>View</Link>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+        <div className="mt-6">
+          <DataTable
+            columns={columns}
+            data={goalRows}
+            searchKey="name"
+            searchPlaceholder="Search goals..."
+            showPagination={false}
+          />
+        </div>
       )}
     </div>
   );

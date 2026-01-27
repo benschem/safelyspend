@@ -1,14 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useOutletContext, Link } from 'react-router';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -17,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
@@ -40,6 +34,92 @@ export function ForecastIndexPage() {
 
   const [filterType, setFilterType] = useState<FilterType>('all');
 
+  const getCategoryName = (id: string | null) =>
+    id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-';
+
+  const filteredForecasts = useMemo(
+    () => expandedForecasts.filter((f) => filterType === 'all' || f.type === filterType),
+    [expandedForecasts, filterType],
+  );
+
+  const columns: ColumnDef<ExpandedForecast>[] = useMemo(
+    () => [
+      {
+        accessorKey: 'date',
+        header: ({ column }) => <SortableHeader column={column}>Date</SortableHeader>,
+        cell: ({ row }) => formatDate(row.getValue('date')),
+        sortingFn: 'datetime',
+      },
+      {
+        accessorKey: 'description',
+        header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
+        cell: ({ row }) => (
+          <span className="font-medium">{row.getValue('description')}</span>
+        ),
+      },
+      {
+        accessorKey: 'type',
+        header: 'Type',
+        cell: ({ row }) => {
+          const type = row.getValue('type') as string;
+          if (type === 'income') return <Badge variant="success">Income</Badge>;
+          if (type === 'savings') return <Badge variant="info">Savings</Badge>;
+          return <Badge variant="destructive">Expense</Badge>;
+        },
+      },
+      {
+        accessorKey: 'sourceType',
+        header: 'Source',
+        cell: ({ row }) => (
+          <Badge variant="outline">
+            {row.getValue('sourceType') === 'rule' ? 'Recurring' : 'One-off'}
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: 'categoryId',
+        header: 'Category',
+        cell: ({ row }) => getCategoryName(row.getValue('categoryId')),
+      },
+      {
+        accessorKey: 'amountCents',
+        header: ({ column }) => (
+          <SortableHeader column={column} className="justify-end">
+            Amount
+          </SortableHeader>
+        ),
+        cell: ({ row }) => {
+          const type = row.original.type;
+          const amount = row.getValue('amountCents') as number;
+          const colorClass =
+            type === 'income'
+              ? 'text-green-600'
+              : type === 'savings'
+                ? 'text-blue-600'
+                : 'text-red-600';
+          return (
+            <div className="text-right font-mono">
+              <span className={colorClass}>
+                {type === 'income' ? '+' : '-'}
+                {formatCents(amount)}
+              </span>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'actions',
+        cell: ({ row }) =>
+          row.original.sourceType === 'event' ? (
+            <Button variant="outline" size="sm" asChild>
+              <Link to={`/forecast/${row.original.sourceId}`}>Edit</Link>
+            </Button>
+          ) : null,
+      },
+    ],
+    [categories],
+  );
+
   if (!activeScenarioId || !activeScenario) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -48,15 +128,6 @@ export function ForecastIndexPage() {
       </div>
     );
   }
-
-  const filteredForecasts = expandedForecasts
-    .filter((f: ExpandedForecast) => filterType === 'all' || f.type === filterType)
-    .sort((a: ExpandedForecast, b: ExpandedForecast) =>
-      new Date(a.date).getTime() - new Date(b.date).getTime(),
-    );
-
-  const getCategoryName = (id: string | null) =>
-    id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-';
 
   return (
     <div>
@@ -92,7 +163,7 @@ export function ForecastIndexPage() {
         </div>
       </div>
 
-      {filteredForecasts.length === 0 ? (
+      {expandedForecasts.length === 0 ? (
         <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground">
             No forecasts found between {formatDateRange(startDate, endDate)}.
@@ -102,63 +173,14 @@ export function ForecastIndexPage() {
           </Button>
         </div>
       ) : (
-        <Table className="mt-6">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              <TableHead className="w-20"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredForecasts.map((forecast: ExpandedForecast, index: number) => (
-              <TableRow key={`${forecast.sourceId}-${forecast.date}-${index}`}>
-                <TableCell>{formatDate(forecast.date)}</TableCell>
-                <TableCell className="font-medium">{forecast.description}</TableCell>
-                <TableCell>
-                  {forecast.type === 'income' ? (
-                    <Badge variant="success">Income</Badge>
-                  ) : forecast.type === 'savings' ? (
-                    <Badge variant="info">Savings</Badge>
-                  ) : (
-                    <Badge variant="destructive">Expense</Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">
-                    {forecast.sourceType === 'rule' ? 'Recurring' : 'One-off'}
-                  </Badge>
-                </TableCell>
-                <TableCell>{getCategoryName(forecast.categoryId)}</TableCell>
-                <TableCell className="text-right font-mono">
-                  <span
-                    className={
-                      forecast.type === 'income'
-                        ? 'text-green-600'
-                        : forecast.type === 'savings'
-                          ? 'text-blue-600'
-                          : 'text-red-600'
-                    }
-                  >
-                    {forecast.type === 'income' ? '+' : '-'}
-                    {formatCents(forecast.amountCents)}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  {forecast.sourceType === 'event' && (
-                    <Button variant="outline" size="sm" asChild>
-                      <Link to={`/forecast/${forecast.sourceId}`}>Edit</Link>
-                    </Button>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <div className="mt-6">
+          <DataTable
+            columns={columns}
+            data={filteredForecasts}
+            searchKey="description"
+            searchPlaceholder="Search forecasts..."
+          />
+        </div>
       )}
     </div>
   );

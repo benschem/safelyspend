@@ -1,17 +1,12 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus, Pencil, Trash2, Check, X } from 'lucide-react';
 import { useCategories } from '@/hooks/use-categories';
+import type { Category } from '@/lib/types';
 
 export function CategoriesIndexPage() {
   const { categories, addCategory, updateCategory, deleteCategory } = useCategories();
@@ -21,8 +16,8 @@ export function CategoriesIndexPage() {
   const [editName, setEditName] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const activeCategories = categories.filter((c) => !c.isArchived);
-  const archivedCategories = categories.filter((c) => c.isArchived);
+  const activeCategories = useMemo(() => categories.filter((c) => !c.isArchived), [categories]);
+  const archivedCategories = useMemo(() => categories.filter((c) => c.isArchived), [categories]);
 
   const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,14 +55,16 @@ export function CategoriesIndexPage() {
     }
   };
 
-  const renderCategoryRow = (category: (typeof categories)[0], isArchived: boolean) => {
-    const isEditing = editingId === category.id;
-    const isDeleting = deletingId === category.id;
+  const createColumns = (isArchived: boolean): ColumnDef<Category>[] => [
+    {
+      accessorKey: 'name',
+      header: ({ column }) => <SortableHeader column={column}>Name</SortableHeader>,
+      cell: ({ row }) => {
+        const category = row.original;
+        const isEditing = editingId === category.id;
 
-    return (
-      <TableRow key={category.id} className={isArchived ? 'opacity-60' : ''}>
-        <TableCell className="font-medium">
-          {isEditing ? (
+        if (isEditing) {
+          return (
             <div className="flex items-center gap-2">
               <Input
                 value={editName}
@@ -77,6 +74,7 @@ export function CategoriesIndexPage() {
                   if (e.key === 'Enter') saveEdit(category.id);
                   if (e.key === 'Escape') cancelEdit();
                 }}
+                autoFocus
               />
               <Button size="sm" variant="ghost" onClick={() => saveEdit(category.id)}>
                 <Check className="h-4 w-4" />
@@ -85,52 +83,65 @@ export function CategoriesIndexPage() {
                 <X className="h-4 w-4" />
               </Button>
             </div>
-          ) : (
-            category.name
-          )}
-        </TableCell>
-        <TableCell>
-          {isArchived ? (
-            <Badge variant="secondary">Archived</Badge>
-          ) : (
-            <Badge variant="success">Active</Badge>
-          )}
-        </TableCell>
-        <TableCell className="text-right">
+          );
+        }
+
+        return <span className="font-medium">{category.name}</span>;
+      },
+    },
+    {
+      accessorKey: 'isArchived',
+      header: 'Status',
+      cell: ({ row }) =>
+        row.getValue('isArchived') ? (
+          <Badge variant="secondary">Archived</Badge>
+        ) : (
+          <Badge variant="success">Active</Badge>
+        ),
+    },
+    {
+      id: 'actions',
+      cell: ({ row }) => {
+        const category = row.original;
+        const isEditing = editingId === category.id;
+        const isDeleting = deletingId === category.id;
+
+        if (isEditing) return null;
+
+        return (
           <div className="flex justify-end gap-1">
-            {!isEditing && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => startEditing(category.id, category.name)}
-                  title="Edit"
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => updateCategory(category.id, { isArchived: !isArchived })}
-                >
-                  {isArchived ? 'Restore' : 'Archive'}
-                </Button>
-                <Button
-                  variant={isDeleting ? 'destructive' : 'ghost'}
-                  size="sm"
-                  onClick={() => handleDelete(category.id)}
-                  onBlur={() => setTimeout(() => setDeletingId(null), 200)}
-                  title={isDeleting ? 'Click again to confirm' : 'Delete'}
-                >
-                  {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
-                </Button>
-              </>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => startEditing(category.id, category.name)}
+              title="Edit"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => updateCategory(category.id, { isArchived: !isArchived })}
+            >
+              {isArchived ? 'Restore' : 'Archive'}
+            </Button>
+            <Button
+              variant={isDeleting ? 'destructive' : 'ghost'}
+              size="sm"
+              onClick={() => handleDelete(category.id)}
+              onBlur={() => setTimeout(() => setDeletingId(null), 200)}
+              title={isDeleting ? 'Click again to confirm' : 'Delete'}
+            >
+              {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+            </Button>
           </div>
-        </TableCell>
-      </TableRow>
-    );
-  };
+        );
+      },
+    },
+  ];
+
+  const activeColumns = useMemo(() => createColumns(false), [editingId, editName, deletingId]);
+  const archivedColumns = useMemo(() => createColumns(true), [editingId, editName, deletingId]);
 
   return (
     <div>
@@ -162,18 +173,15 @@ export function CategoriesIndexPage() {
       ) : (
         <>
           {activeCategories.length > 0 && (
-            <Table className="mt-6">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activeCategories.map((category) => renderCategoryRow(category, false))}
-              </TableBody>
-            </Table>
+            <div className="mt-6">
+              <DataTable
+                columns={activeColumns}
+                data={activeCategories}
+                searchKey="name"
+                searchPlaceholder="Search categories..."
+                showPagination={false}
+              />
+            </div>
           )}
 
           {archivedCategories.length > 0 && (
@@ -181,18 +189,13 @@ export function CategoriesIndexPage() {
               <h2 className="mt-8 text-lg font-semibold text-muted-foreground">
                 Archived Categories
               </h2>
-              <Table className="mt-4">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {archivedCategories.map((category) => renderCategoryRow(category, true))}
-                </TableBody>
-              </Table>
+              <div className="mt-4">
+                <DataTable
+                  columns={archivedColumns}
+                  data={archivedCategories}
+                  showPagination={false}
+                />
+              </div>
             </>
           )}
         </>

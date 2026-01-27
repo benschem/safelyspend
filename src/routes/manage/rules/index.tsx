@@ -1,20 +1,16 @@
+import { useMemo } from 'react';
 import { useOutletContext, Link } from 'react-router';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { formatCents } from '@/lib/utils';
+import type { ForecastRule } from '@/lib/types';
 
 interface OutletContext {
   activeScenarioId: string | null;
@@ -37,6 +33,142 @@ export function RulesIndexPage() {
   const { categories } = useCategories();
   const { savingsGoals } = useSavingsGoals();
 
+  const getCategoryName = (id: string | null) =>
+    id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-';
+  const getSavingsGoalName = (id: string | null) =>
+    id ? (savingsGoals.find((g) => g.id === id)?.name ?? 'Unknown') : '-';
+
+  const incomeRules = useMemo(() => rules.filter((r) => r.type === 'income'), [rules]);
+  const expenseRules = useMemo(() => rules.filter((r) => r.type === 'expense'), [rules]);
+  const savingsRules = useMemo(() => rules.filter((r) => r.type === 'savings'), [rules]);
+
+  const incomeColumns: ColumnDef<ForecastRule>[] = useMemo(
+    () => [
+      {
+        accessorKey: 'description',
+        header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
+        cell: ({ row }) => <span className="font-medium">{row.getValue('description')}</span>,
+      },
+      {
+        accessorKey: 'cadence',
+        header: 'Cadence',
+        cell: ({ row }) => (
+          <Badge variant="outline">{CADENCE_LABELS[row.getValue('cadence') as string]}</Badge>
+        ),
+      },
+      {
+        accessorKey: 'amountCents',
+        header: ({ column }) => (
+          <SortableHeader column={column} className="justify-end">
+            Amount
+          </SortableHeader>
+        ),
+        cell: ({ row }) => (
+          <div className="text-right font-mono text-green-600">
+            +{formatCents(row.getValue('amountCents'))}
+          </div>
+        ),
+      },
+      {
+        id: 'actions',
+        cell: ({ row }) => (
+          <Button variant="outline" size="sm" asChild>
+            <Link to={`/manage/rules/${row.original.id}`}>Edit</Link>
+          </Button>
+        ),
+      },
+    ],
+    [],
+  );
+
+  const expenseColumns: ColumnDef<ForecastRule>[] = useMemo(
+    () => [
+      {
+        accessorKey: 'description',
+        header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
+        cell: ({ row }) => <span className="font-medium">{row.getValue('description')}</span>,
+      },
+      {
+        accessorKey: 'categoryId',
+        header: 'Category',
+        cell: ({ row }) => getCategoryName(row.getValue('categoryId')),
+      },
+      {
+        accessorKey: 'cadence',
+        header: 'Cadence',
+        cell: ({ row }) => (
+          <Badge variant="outline">{CADENCE_LABELS[row.getValue('cadence') as string]}</Badge>
+        ),
+      },
+      {
+        accessorKey: 'amountCents',
+        header: ({ column }) => (
+          <SortableHeader column={column} className="justify-end">
+            Amount
+          </SortableHeader>
+        ),
+        cell: ({ row }) => (
+          <div className="text-right font-mono text-red-600">
+            -{formatCents(row.getValue('amountCents'))}
+          </div>
+        ),
+      },
+      {
+        id: 'actions',
+        cell: ({ row }) => (
+          <Button variant="outline" size="sm" asChild>
+            <Link to={`/manage/rules/${row.original.id}`}>Edit</Link>
+          </Button>
+        ),
+      },
+    ],
+    [categories],
+  );
+
+  const savingsColumns: ColumnDef<ForecastRule>[] = useMemo(
+    () => [
+      {
+        accessorKey: 'description',
+        header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
+        cell: ({ row }) => <span className="font-medium">{row.getValue('description')}</span>,
+      },
+      {
+        accessorKey: 'savingsGoalId',
+        header: 'Savings Goal',
+        cell: ({ row }) => getSavingsGoalName(row.getValue('savingsGoalId')),
+      },
+      {
+        accessorKey: 'cadence',
+        header: 'Cadence',
+        cell: ({ row }) => (
+          <Badge variant="outline">{CADENCE_LABELS[row.getValue('cadence') as string]}</Badge>
+        ),
+      },
+      {
+        accessorKey: 'amountCents',
+        header: ({ column }) => (
+          <SortableHeader column={column} className="justify-end">
+            Amount
+          </SortableHeader>
+        ),
+        cell: ({ row }) => (
+          <div className="text-right font-mono text-blue-600">
+            -{formatCents(row.getValue('amountCents'))}
+          </div>
+        ),
+      },
+      {
+        id: 'actions',
+        cell: ({ row }) => (
+          <Button variant="outline" size="sm" asChild>
+            <Link to={`/manage/rules/${row.original.id}`}>Edit</Link>
+          </Button>
+        ),
+      },
+    ],
+    [savingsGoals],
+  );
+
   if (!activeScenarioId || !activeScenario) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -45,15 +177,6 @@ export function RulesIndexPage() {
       </div>
     );
   }
-
-  const getCategoryName = (id: string | null) =>
-    id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-';
-  const getSavingsGoalName = (id: string | null) =>
-    id ? (savingsGoals.find((g) => g.id === id)?.name ?? 'Unknown') : '-';
-
-  const incomeRules = rules.filter((r) => r.type === 'income');
-  const expenseRules = rules.filter((r) => r.type === 'expense');
-  const savingsRules = rules.filter((r) => r.type === 'savings');
 
   return (
     <div>
@@ -84,106 +207,45 @@ export function RulesIndexPage() {
           {incomeRules.length > 0 && (
             <>
               <h2 className="mt-8 text-lg font-semibold">Income</h2>
-              <Table className="mt-4">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Cadence</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="w-20"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {incomeRules.map((rule) => (
-                    <TableRow key={rule.id}>
-                      <TableCell className="font-medium">{rule.description}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{CADENCE_LABELS[rule.cadence]}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-green-600">
-                        +{formatCents(rule.amountCents)}
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="outline" size="sm" asChild>
-                          <Link to={`/manage/rules/${rule.id}`}>Edit</Link>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="mt-4">
+                <DataTable
+                  columns={incomeColumns}
+                  data={incomeRules}
+                  searchKey="description"
+                  searchPlaceholder="Search income rules..."
+                  showPagination={false}
+                />
+              </div>
             </>
           )}
 
           {expenseRules.length > 0 && (
             <>
               <h2 className="mt-8 text-lg font-semibold">Expenses</h2>
-              <Table className="mt-4">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Cadence</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="w-20"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {expenseRules.map((rule) => (
-                    <TableRow key={rule.id}>
-                      <TableCell className="font-medium">{rule.description}</TableCell>
-                      <TableCell>{getCategoryName(rule.categoryId)}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{CADENCE_LABELS[rule.cadence]}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-red-600">
-                        -{formatCents(rule.amountCents)}
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="outline" size="sm" asChild>
-                          <Link to={`/manage/rules/${rule.id}`}>Edit</Link>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="mt-4">
+                <DataTable
+                  columns={expenseColumns}
+                  data={expenseRules}
+                  searchKey="description"
+                  searchPlaceholder="Search expense rules..."
+                  showPagination={false}
+                />
+              </div>
             </>
           )}
 
           {savingsRules.length > 0 && (
             <>
               <h2 className="mt-8 text-lg font-semibold">Savings</h2>
-              <Table className="mt-4">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Savings Goal</TableHead>
-                    <TableHead>Cadence</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="w-20"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {savingsRules.map((rule) => (
-                    <TableRow key={rule.id}>
-                      <TableCell className="font-medium">{rule.description}</TableCell>
-                      <TableCell>{getSavingsGoalName(rule.savingsGoalId)}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{CADENCE_LABELS[rule.cadence]}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-blue-600">
-                        -{formatCents(rule.amountCents)}
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="outline" size="sm" asChild>
-                          <Link to={`/manage/rules/${rule.id}`}>Edit</Link>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="mt-4">
+                <DataTable
+                  columns={savingsColumns}
+                  data={savingsRules}
+                  searchKey="description"
+                  searchPlaceholder="Search savings rules..."
+                  showPagination={false}
+                />
+              </div>
             </>
           )}
         </>
