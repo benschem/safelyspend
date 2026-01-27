@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { loadDemoDataToStorage, clearAllData } from '@/lib/demo-data';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { clearAllData } from '@/lib/demo-data';
 import type { BudgetData } from '@/lib/types';
 
 function getAllData(): BudgetData & { activeScenarioId: string | null } {
@@ -39,12 +40,6 @@ export function SettingsPage() {
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 3000);
-  };
-
-  const handleLoadDemo = () => {
-    loadDemoDataToStorage();
-    showMessage('success', 'Demo data loaded. Refresh the page to see changes.');
-    setTimeout(() => window.location.reload(), 1000);
   };
 
   const handleExport = () => {
@@ -126,18 +121,14 @@ export function SettingsPage() {
       <Separator className="my-6" />
 
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold">Demo Data</h2>
+        <h2 className="text-lg font-semibold">Appearance</h2>
 
         <div className="flex items-center justify-between rounded-lg border p-4">
           <div>
-            <h3 className="font-medium">Load Demo Data</h3>
-            <p className="text-sm text-muted-foreground">
-              Populate the app with sample data to explore features.
-            </p>
+            <h3 className="font-medium">Theme</h3>
+            <p className="text-sm text-muted-foreground">Choose light, dark, or system theme.</p>
           </div>
-          <Button variant="outline" onClick={handleLoadDemo}>
-            Load Demo
-          </Button>
+          <ThemeToggle />
         </div>
       </section>
 

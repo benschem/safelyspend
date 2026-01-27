@@ -5,7 +5,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Scenario } from '@/lib/types';
@@ -76,7 +75,6 @@ export function Header({
           </Button>
         </div>
       </div>
-      <ThemeToggle />
     </header>
   );
 }
