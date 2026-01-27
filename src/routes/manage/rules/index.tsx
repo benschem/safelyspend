@@ -207,8 +207,8 @@ export function RulesIndexPage() {
           </Button>
         </div>
       ) : (
-        <Tabs defaultValue={defaultTab} className="mt-6">
-          <TabsList>
+        <Tabs defaultValue={defaultTab} className="mt-6 w-full">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="income">
               Income {incomeRules.length > 0 && `(${incomeRules.length})`}
             </TabsTrigger>
