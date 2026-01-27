@@ -57,14 +57,14 @@ export function ScenariosIndexPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Scenarios</h1>
           <p className="text-muted-foreground">
             Create and manage budget scenarios for what-if planning.
           </p>
         </div>
-        <Button asChild>
+        <Button asChild className="w-full sm:w-auto">
           <Link to="/manage/scenarios/new">
             <Plus className="h-4 w-4" />
             New Scenario

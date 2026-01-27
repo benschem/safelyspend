@@ -154,12 +154,12 @@ export function CategoriesIndexPage() {
       </div>
 
       {/* Add new category inline */}
-      <form onSubmit={handleAddCategory} className="mt-6 flex gap-2">
+      <form onSubmit={handleAddCategory} className="mt-6 flex flex-col gap-2 sm:flex-row">
         <Input
           value={newCategoryName}
           onChange={(e) => setNewCategoryName(e.target.value)}
           placeholder="New category name..."
-          className="max-w-xs"
+          className="sm:max-w-xs"
         />
         <Button type="submit" disabled={!newCategoryName.trim()}>
           <Plus className="h-4 w-4" />
