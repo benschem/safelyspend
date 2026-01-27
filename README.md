@@ -1,12 +1,16 @@
 # Budgeting tool
 
-A personal budgeting tool that runs entirely in the browser.
+A personal budgeting and forecasting tool that helps users manage their finances.
+
+User data is only stored locally in the browser. This does make using it across multiple browsers or sharing an account more difficult, as you need to import and export user data as JSON. In a future release I plan to address this by storing user data as encrypted JSON blobs on Cloudflare R2 and using workers for upload/ecrypt and download/decrypt.
+
+This is the first time I've used Claude CLI to help me finish a project, and it was a surpisingly good experience. Despite a significant portion of the code being written by AI, I like to think I understand this codebase reasonably well and it's still representative of my architectural decisions.
 
 ## Features
 
-- Track income and expenses
+- Track income, expenses and savings
 - Define categories (e.g. groceries, rent, entertainment, savings)
-- Project expenses per category
+- Forecast expenses per category
 - Compare actual spending to projected spending per category
 - Check how much money is free to spend
 - Estimate whether future obligations can be covered
@@ -15,10 +19,12 @@ A personal budgeting tool that runs entirely in the browser.
 ## Tech stack
 
 - NPM
-- React
+- React 19
+- React Router 7
 - TypeScript
 - Vite
-- Recharts
+- Tailwind CSS
+- shadcn/ui
 - ESLint
 - Prettier
 
