@@ -19,9 +19,6 @@ import { SavingsDetailPage } from '@/routes/savings/detail';
 import { ScenariosIndexPage } from '@/routes/manage/scenarios/index';
 import { ScenarioNewPage } from '@/routes/manage/scenarios/new';
 import { ScenarioDetailPage } from '@/routes/manage/scenarios/detail';
-import { AccountsIndexPage } from '@/routes/manage/accounts/index';
-import { AccountNewPage } from '@/routes/manage/accounts/new';
-import { AccountDetailPage } from '@/routes/manage/accounts/detail';
 import { RulesIndexPage } from '@/routes/manage/rules/index';
 import { RuleNewPage } from '@/routes/manage/rules/new';
 import { RuleDetailPage } from '@/routes/manage/rules/detail';
@@ -65,11 +62,6 @@ const router = createBrowserRouter([
       { path: 'manage/scenarios', element: <ScenariosIndexPage /> },
       { path: 'manage/scenarios/new', element: <ScenarioNewPage /> },
       { path: 'manage/scenarios/:id', element: <ScenarioDetailPage /> },
-
-      // Manage - Accounts
-      { path: 'manage/accounts', element: <AccountsIndexPage /> },
-      { path: 'manage/accounts/new', element: <AccountNewPage /> },
-      { path: 'manage/accounts/:id', element: <AccountDetailPage /> },
 
       // Manage - Forecast Rules
       { path: 'manage/rules', element: <RulesIndexPage /> },

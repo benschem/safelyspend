@@ -6,7 +6,6 @@ import {
   FolderTree,
   PiggyBank,
   Layers,
-  Wallet,
   Repeat,
   Settings,
 } from 'lucide-react';
@@ -73,10 +72,13 @@ export function Sidebar() {
 
         <NavSection title="Plan">
           <NavItem to="/forecast" icon={<TrendingUp className="h-4 w-4" />}>
-            Forecasts
+            Forecast
+          </NavItem>
+          <NavItem to="/manage/rules" icon={<Repeat className="h-4 w-4" />}>
+            Forecast Recurring
           </NavItem>
           <NavItem to="/budget" icon={<FolderTree className="h-4 w-4" />}>
-            Budgets
+            Budget
           </NavItem>
         </NavSection>
 
@@ -86,9 +88,7 @@ export function Sidebar() {
           <NavItem to="/transactions" icon={<Receipt className="h-4 w-4" />}>
             Transactions
           </NavItem>
-          <NavItem to="/categories" icon={<FolderTree className="h-4 w-4" />}>
-            Categories
-          </NavItem>
+
           <NavItem to="/savings" icon={<PiggyBank className="h-4 w-4" />}>
             Savings
           </NavItem>
@@ -97,14 +97,11 @@ export function Sidebar() {
         <Separator className="my-2" />
 
         <NavSection title="Manage">
-          <NavItem to="/manage/accounts" icon={<Wallet className="h-4 w-4" />}>
-            Bank Accounts
+          <NavItem to="/categories" icon={<FolderTree className="h-4 w-4" />}>
+            Categories
           </NavItem>
           <NavItem to="/manage/scenarios" icon={<Layers className="h-4 w-4" />}>
             Scenarios
-          </NavItem>
-          <NavItem to="/manage/rules" icon={<Repeat className="h-4 w-4" />}>
-            Forecast Rules
           </NavItem>
         </NavSection>
       </div>
