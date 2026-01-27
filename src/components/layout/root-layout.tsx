@@ -39,12 +39,14 @@ export function RootLayout() {
             scenarios={scenarios}
             activeScenarioId={activeScenarioId}
             onScenarioChange={setActiveScenarioId}
-            startDate={startDate}
-            endDate={endDate}
-            onDateRangeChange={setDateRange}
-            showDatePicker={showDateControls}
           />
-          {showDateControls && <DateRangeBanner startDate={startDate} endDate={endDate} />}
+          {showDateControls && (
+            <DateRangeBanner
+              startDate={startDate}
+              endDate={endDate}
+              onDateRangeChange={setDateRange}
+            />
+          )}
           <main className="flex-1 overflow-y-auto p-6">
             <Outlet context={{ activeScenarioId, startDate, endDate }} />
           </main>
