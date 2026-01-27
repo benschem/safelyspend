@@ -15,6 +15,20 @@ interface OutletContext {
   endDate: string;
 }
 
+// Colors for breakdown segments (defined outside component to avoid recreating)
+const SEGMENT_COLORS = [
+  'bg-red-500',
+  'bg-orange-500',
+  'bg-amber-500',
+  'bg-yellow-500',
+  'bg-lime-500',
+  'bg-emerald-500',
+  'bg-teal-500',
+  'bg-cyan-500',
+  'bg-violet-500',
+  'bg-fuchsia-500',
+];
+
 export function DashboardPage() {
   const { activeScenarioId, startDate, endDate } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
@@ -28,18 +42,6 @@ export function DashboardPage() {
   const { savingsGoals } = useSavingsGoals();
   const { getBudgetForCategory } = useBudgetRules(activeScenarioId, startDate, endDate);
   const { activeCategories } = useCategories();
-
-  if (!activeScenarioId || !activeScenario) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <h2 className="text-lg font-semibold">No scenario selected</h2>
-        <p className="text-muted-foreground">Create a scenario to get started.</p>
-        <Button asChild className="mt-4">
-          <Link to="/manage/scenarios/new">Create Scenario</Link>
-        </Button>
-      </div>
-    );
-  }
 
   // Calculate totals - opening balance from adjustment transactions
   const totalOpeningBalance = adjustmentTransactions.reduce(
@@ -113,20 +115,6 @@ export function DashboardPage() {
       .filter((row) => row.budgeted > 0 || row.actual > 0 || row.forecasted > 0);
   }, [activeCategories, getBudgetForCategory, spendingByCategory, forecastedByCategory]);
 
-  // Colors for breakdown segments
-  const segmentColors = [
-    'bg-red-500',
-    'bg-orange-500',
-    'bg-amber-500',
-    'bg-yellow-500',
-    'bg-lime-500',
-    'bg-emerald-500',
-    'bg-teal-500',
-    'bg-cyan-500',
-    'bg-violet-500',
-    'bg-fuchsia-500',
-  ];
-
   // Calculate actual spending breakdown by category
   const actualBreakdown = useMemo(() => {
     const segments: Array<{ id: string; name: string; amount: number; color: string }> = [];
@@ -140,7 +128,7 @@ export function DashboardPage() {
           id: category.id,
           name: category.name,
           amount,
-          color: segmentColors[colorIndex % segmentColors.length]!,
+          color: SEGMENT_COLORS[colorIndex % SEGMENT_COLORS.length]!,
         });
         colorIndex++;
       }
@@ -205,7 +193,7 @@ export function DashboardPage() {
           id: category.id,
           name: category.name,
           amount,
-          color: segmentColors[colorIndex % segmentColors.length]!,
+          color: SEGMENT_COLORS[colorIndex % SEGMENT_COLORS.length]!,
         });
         colorIndex++;
       }
@@ -248,6 +236,18 @@ export function DashboardPage() {
 
     return { segments, total: forecastedIncome };
   }, [activeCategories, expenseForecasts, forecastedSavings, forecastedIncome]);
+
+  if (!activeScenarioId || !activeScenario) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <h2 className="text-lg font-semibold">No scenario selected</h2>
+        <p className="text-muted-foreground">Create a scenario to get started.</p>
+        <Button asChild className="mt-4">
+          <Link to="/manage/scenarios/new">Create Scenario</Link>
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div>
