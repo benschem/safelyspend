@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router';
+import { useForm } from '@tanstack/react-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,8 @@ import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { formatDate } from '@/lib/utils';
+import { FormField, FormError } from '@/components/form-field';
+import { scenarioEditSchema } from '@/lib/schemas';
 
 export function ScenarioDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -26,16 +28,56 @@ export function ScenarioDetailPage() {
   const scenario = scenarios.find((s) => s.id === id);
 
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(scenario?.name ?? '');
-  const [description, setDescription] = useState(scenario?.description ?? '');
-  const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  const form = useForm({
+    defaultValues: {
+      name: scenario?.name ?? '',
+      description: scenario?.description ?? '',
+    },
+    validators: {
+      onSubmit: ({ value }) => {
+        const result = scenarioEditSchema.safeParse(value);
+        if (!result.success) {
+          const fieldErrors: Record<string, string> = {};
+          for (const issue of result.error.issues) {
+            const path = issue.path.join('.');
+            if (path) {
+              fieldErrors[path] = issue.message;
+            }
+          }
+          return fieldErrors;
+        }
+        return undefined;
+      },
+    },
+    onSubmit: async ({ value }) => {
+      setSubmitError(null);
+      if (!scenario) return;
+
+      updateScenario(scenario.id, {
+        name: value.name.trim(),
+        ...(value.description.trim() ? { description: value.description.trim() } : {}),
+      });
+      setEditing(false);
+    },
+  });
+
+  // Reset form when scenario changes
+  useEffect(() => {
+    if (scenario) {
+      form.reset();
+      form.setFieldValue('name', scenario.name);
+      form.setFieldValue('description', scenario.description ?? '');
+    }
+  }, [scenario?.id]);
 
   if (!scenario) {
     return (
-      <div>
-        <div className="mb-6">
-          <Button variant="ghost" size="sm" asChild>
+      <div className="mx-auto max-w-lg">
+        <div className="mb-8">
+          <Button variant="ghost" size="sm" className="-ml-2" asChild>
             <Link to="/manage/scenarios">
               <ArrowLeft className="h-4 w-4" />
               Back to Scenarios
@@ -46,21 +88,6 @@ export function ScenarioDetailPage() {
       </div>
     );
   }
-
-  const handleSave = () => {
-    setError(null);
-
-    if (!name.trim()) {
-      setError('Name is required');
-      return;
-    }
-
-    updateScenario(scenario.id, {
-      name: name.trim(),
-      ...(description.trim() ? { description: description.trim() } : {}),
-    });
-    setEditing(false);
-  };
 
   const handleDelete = () => {
     if (!confirmingDelete) {
@@ -86,8 +113,9 @@ export function ScenarioDetailPage() {
   };
 
   const startEditing = () => {
-    setName(scenario.name);
-    setDescription(scenario.description ?? '');
+    form.reset();
+    form.setFieldValue('name', scenario.name);
+    form.setFieldValue('description', scenario.description ?? '');
     setEditing(true);
   };
 
@@ -95,9 +123,9 @@ export function ScenarioDetailPage() {
   const updatedDate = scenario.updatedAt.split('T')[0];
 
   return (
-    <div className="max-w-xl">
-      <div className="mb-6">
-        <Button variant="ghost" size="sm" asChild>
+    <div className="mx-auto max-w-lg">
+      <div className="mb-8">
+        <Button variant="ghost" size="sm" className="-ml-2" asChild>
           <Link to="/manage/scenarios">
             <ArrowLeft className="h-4 w-4" />
             Back to Scenarios
@@ -135,7 +163,11 @@ export function ScenarioDetailPage() {
         </div>
       </div>
 
-      {error && <div className="mt-4 rounded-lg bg-red-100 p-3 text-red-800">{error}</div>}
+      {submitError && (
+        <div className="mt-4">
+          <FormError error={submitError} />
+        </div>
+      )}
 
       <Separator className="my-6" />
 
@@ -151,29 +183,55 @@ export function ScenarioDetailPage() {
         </div>
 
         {editing ? (
-          <div className="mt-4 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              form.handleSubmit();
+            }}
+            noValidate
+            className="mt-4 space-y-4"
+          >
+            <form.Field name="name">
+              {(field) => (
+                <FormField field={field} label="Name">
+                  <Input
+                    id={field.name}
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                  />
+                </FormField>
+              )}
+            </form.Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-              />
-            </div>
+            <form.Field name="description">
+              {(field) => (
+                <FormField field={field} label="Description" optional>
+                  <Textarea
+                    id={field.name}
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                    rows={3}
+                  />
+                </FormField>
+              )}
+            </form.Field>
 
-            <div className="flex gap-2">
-              <Button onClick={handleSave}>Save</Button>
-              <Button variant="outline" onClick={() => setEditing(false)}>
+            <div className="flex gap-3 pt-2">
+              <form.Subscribe selector={(state) => state.isSubmitting}>
+                {(isSubmitting) => (
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? 'Saving...' : 'Save'}
+                  </Button>
+                )}
+              </form.Subscribe>
+              <Button type="button" variant="outline" onClick={() => setEditing(false)}>
                 Cancel
               </Button>
             </div>
-          </div>
+          </form>
         ) : (
           <div className="mt-4 space-y-2 text-sm">
             <p>

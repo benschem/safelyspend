@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useOutletContext } from 'react-router';
+import { useForm } from '@tanstack/react-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,7 +20,9 @@ import { ArrowLeft } from 'lucide-react';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
-import { formatCents, parseCentsFromInput } from '@/lib/utils';
+import { formatCents } from '@/lib/utils';
+import { FormField, FormError } from '@/components/form-field';
+import { forecastRuleFormSchema, parseCents } from '@/lib/schemas';
 import type { ForecastType, Cadence } from '@/lib/types';
 
 interface OutletContext {
@@ -38,6 +41,27 @@ const CADENCE_LABELS: Record<string, string> = {
 
 const DAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+const MONTH_LABELS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+const MONTH_OF_QUARTER_LABELS = [
+  '1st month (Jan, Apr, Jul, Oct)',
+  '2nd month (Feb, May, Aug, Nov)',
+  '3rd month (Mar, Jun, Sep, Dec)',
+];
+
 export function RuleDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -49,29 +73,93 @@ export function RuleDetailPage() {
   const rule = rules.find((r) => r.id === id);
 
   const [editing, setEditing] = useState(false);
-  const [type, setType] = useState<ForecastType>(rule?.type ?? 'expense');
-  const [description, setDescription] = useState(rule?.description ?? '');
-  const [amount, setAmount] = useState(rule ? (rule.amountCents / 100).toFixed(2) : '');
-  const [cadence, setCadence] = useState<Cadence>(rule?.cadence ?? 'monthly');
-  const [dayOfMonth, setDayOfMonth] = useState(String(rule?.dayOfMonth ?? 1));
-  const [dayOfWeek, setDayOfWeek] = useState(String(rule?.dayOfWeek ?? 0));
-  const [categoryId, setCategoryId] = useState(rule?.categoryId ?? '');
-  const [savingsGoalId, setSavingsGoalId] = useState(rule?.savingsGoalId ?? '');
-  const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  const form = useForm({
+    defaultValues: {
+      type: (rule?.type ?? 'expense') as ForecastType,
+      description: rule?.description ?? '',
+      amount: rule ? (rule.amountCents / 100).toFixed(2) : '',
+      cadence: (rule?.cadence ?? 'monthly') as Cadence,
+      dayOfMonth: String(rule?.dayOfMonth ?? 1),
+      dayOfWeek: String(rule?.dayOfWeek ?? 0),
+      monthOfYear: String(rule?.monthOfYear ?? 0),
+      monthOfQuarter: String(rule?.monthOfQuarter ?? 0),
+      categoryId: rule?.categoryId ?? '',
+      savingsGoalId: rule?.savingsGoalId ?? '',
+    },
+    validators: {
+      onSubmit: ({ value }) => {
+        const result = forecastRuleFormSchema.safeParse(value);
+        if (!result.success) {
+          const fieldErrors: Record<string, string> = {};
+          for (const issue of result.error.issues) {
+            const path = issue.path.join('.');
+            if (path) {
+              fieldErrors[path] = issue.message;
+            }
+          }
+          return fieldErrors;
+        }
+        return undefined;
+      },
+    },
+    onSubmit: async ({ value }) => {
+      setSubmitError(null);
+      if (!rule) return;
+
+      updateRule(rule.id, {
+        type: value.type,
+        description: value.description.trim(),
+        amountCents: parseCents(value.amount),
+        cadence: value.cadence,
+        ...(value.cadence === 'monthly' || value.cadence === 'quarterly' || value.cadence === 'yearly'
+          ? { dayOfMonth: parseInt(value.dayOfMonth, 10) }
+          : {}),
+        ...(value.cadence === 'weekly' || value.cadence === 'fortnightly'
+          ? { dayOfWeek: parseInt(value.dayOfWeek, 10) }
+          : {}),
+        ...(value.cadence === 'yearly' ? { monthOfYear: parseInt(value.monthOfYear, 10) } : {}),
+        ...(value.cadence === 'quarterly'
+          ? { monthOfQuarter: parseInt(value.monthOfQuarter, 10) }
+          : {}),
+        categoryId: value.type === 'savings' ? null : value.categoryId || null,
+        savingsGoalId: value.type === 'savings' ? value.savingsGoalId : null,
+      });
+      setEditing(false);
+    },
+  });
+
+  // Reset form when rule changes
+  useEffect(() => {
+    if (rule) {
+      form.reset();
+      form.setFieldValue('type', rule.type);
+      form.setFieldValue('description', rule.description);
+      form.setFieldValue('amount', (rule.amountCents / 100).toFixed(2));
+      form.setFieldValue('cadence', rule.cadence);
+      form.setFieldValue('dayOfMonth', String(rule.dayOfMonth ?? 1));
+      form.setFieldValue('dayOfWeek', String(rule.dayOfWeek ?? 0));
+      form.setFieldValue('monthOfYear', String(rule.monthOfYear ?? 0));
+      form.setFieldValue('monthOfQuarter', String(rule.monthOfQuarter ?? 0));
+      form.setFieldValue('categoryId', rule.categoryId ?? '');
+      form.setFieldValue('savingsGoalId', rule.savingsGoalId ?? '');
+    }
+  }, [rule?.id]);
 
   if (!rule) {
     return (
-      <div>
-        <div className="mb-6">
-          <Button variant="ghost" size="sm" asChild>
+      <div className="mx-auto max-w-lg">
+        <div className="mb-8">
+          <Button variant="ghost" size="sm" className="-ml-2" asChild>
             <Link to="/manage/rules">
               <ArrowLeft className="h-4 w-4" />
-              Back to Forecast Rules
+              Back to Recurring
             </Link>
           </Button>
         </div>
-        <p className="text-muted-foreground">Forecast rule not found.</p>
+        <p className="text-muted-foreground">Recurring rule not found.</p>
       </div>
     );
   }
@@ -80,38 +168,6 @@ export function RuleDetailPage() {
     catId ? (categories.find((c) => c.id === catId)?.name ?? 'Unknown') : '-';
   const getSavingsGoalName = (goalId: string | null) =>
     goalId ? (savingsGoals.find((g) => g.id === goalId)?.name ?? 'Unknown') : '-';
-
-  const showDayOfMonth = cadence === 'monthly' || cadence === 'quarterly' || cadence === 'yearly';
-  const showDayOfWeek = cadence === 'weekly' || cadence === 'fortnightly';
-
-  const handleSave = () => {
-    setError(null);
-
-    if (!description.trim()) {
-      setError('Description is required');
-      return;
-    }
-    if (!amount || parseCentsFromInput(amount) <= 0) {
-      setError('Amount must be greater than 0');
-      return;
-    }
-    if (type === 'savings' && !savingsGoalId) {
-      setError('Savings goal is required');
-      return;
-    }
-
-    updateRule(rule.id, {
-      type,
-      description: description.trim(),
-      amountCents: parseCentsFromInput(amount),
-      cadence,
-      ...(showDayOfMonth ? { dayOfMonth: parseInt(dayOfMonth, 10) } : {}),
-      ...(showDayOfWeek ? { dayOfWeek: parseInt(dayOfWeek, 10) } : {}),
-      categoryId: type === 'savings' ? null : categoryId || null,
-      savingsGoalId: type === 'savings' ? savingsGoalId : null,
-    });
-    setEditing(false);
-  };
 
   const handleDelete = () => {
     if (!confirmingDelete) {
@@ -123,24 +179,27 @@ export function RuleDetailPage() {
   };
 
   const startEditing = () => {
-    setType(rule.type);
-    setDescription(rule.description);
-    setAmount((rule.amountCents / 100).toFixed(2));
-    setCadence(rule.cadence);
-    setDayOfMonth(String(rule.dayOfMonth ?? 1));
-    setDayOfWeek(String(rule.dayOfWeek ?? 0));
-    setCategoryId(rule.categoryId ?? '');
-    setSavingsGoalId(rule.savingsGoalId ?? '');
+    form.reset();
+    form.setFieldValue('type', rule.type);
+    form.setFieldValue('description', rule.description);
+    form.setFieldValue('amount', (rule.amountCents / 100).toFixed(2));
+    form.setFieldValue('cadence', rule.cadence);
+    form.setFieldValue('dayOfMonth', String(rule.dayOfMonth ?? 1));
+    form.setFieldValue('dayOfWeek', String(rule.dayOfWeek ?? 0));
+    form.setFieldValue('monthOfYear', String(rule.monthOfYear ?? 0));
+    form.setFieldValue('monthOfQuarter', String(rule.monthOfQuarter ?? 0));
+    form.setFieldValue('categoryId', rule.categoryId ?? '');
+    form.setFieldValue('savingsGoalId', rule.savingsGoalId ?? '');
     setEditing(true);
   };
 
   return (
-    <div className="max-w-xl">
-      <div className="mb-6">
-        <Button variant="ghost" size="sm" asChild>
+    <div className="mx-auto max-w-lg">
+      <div className="mb-8">
+        <Button variant="ghost" size="sm" className="-ml-2" asChild>
           <Link to="/manage/rules">
             <ArrowLeft className="h-4 w-4" />
-            Back to Forecast Rules
+            Back to Recurring
           </Link>
         </Button>
       </div>
@@ -173,7 +232,11 @@ export function RuleDetailPage() {
         </div>
       </div>
 
-      {error && <div className="mt-4 rounded-lg bg-red-100 p-3 text-red-800">{error}</div>}
+      {submitError && (
+        <div className="mt-4">
+          <FormError error={submitError} />
+        </div>
+      )}
 
       <Separator className="my-6" />
 
@@ -189,127 +252,248 @@ export function RuleDetailPage() {
         </div>
 
         {editing ? (
-          <div className="mt-4 space-y-4">
-            <div className="space-y-2">
-              <Label>Type</Label>
-              <RadioGroup
-                value={type}
-                onValueChange={(v) => setType(v as ForecastType)}
-                className="flex gap-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="expense" id="expense" />
-                  <Label htmlFor="expense" className="font-normal">
-                    Expense
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="income" id="income" />
-                  <Label htmlFor="income" className="font-normal">
-                    Income
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="savings" id="savings" />
-                  <Label htmlFor="savings" className="font-normal">
-                    Savings
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              form.handleSubmit();
+            }}
+            noValidate
+            className="mt-4 space-y-4"
+          >
+            <form.Field name="type">
+              {(field) => (
+                <FormField field={field} label="Type">
+                  <RadioGroup
+                    value={field.state.value}
+                    onValueChange={(v) => field.handleChange(v as ForecastType)}
+                    className="flex gap-6 pt-1"
+                  >
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="expense" id="expense" />
+                      <Label htmlFor="expense" className="cursor-pointer font-normal">
+                        Expense
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="income" id="income" />
+                      <Label htmlFor="income" className="cursor-pointer font-normal">
+                        Income
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="savings" id="savings" />
+                      <Label htmlFor="savings" className="cursor-pointer font-normal">
+                        Savings
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </FormField>
+              )}
+            </form.Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Input
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
+            <form.Field name="description">
+              {(field) => (
+                <FormField field={field} label="Description">
+                  <Input
+                    id={field.name}
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                  />
+                </FormField>
+              )}
+            </form.Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="amount">Amount ($)</Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                min="0"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-            </div>
+            <form.Field name="amount">
+              {(field) => (
+                <FormField field={field} label="Amount ($)">
+                  <Input
+                    id={field.name}
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                  />
+                </FormField>
+              )}
+            </form.Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="cadence">Frequency</Label>
-              <Select value={cadence} onValueChange={(v) => setCadence(v as Cadence)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="fortnightly">Fortnightly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="quarterly">Quarterly</SelectItem>
-                  <SelectItem value="yearly">Yearly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <form.Field name="cadence">
+              {(field) => (
+                <FormField field={field} label="Frequency">
+                  <Select
+                    value={field.state.value}
+                    onValueChange={(v) => field.handleChange(v as Cadence)}
+                  >
+                    <SelectTrigger className="h-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="fortnightly">Fortnightly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="quarterly">Quarterly</SelectItem>
+                      <SelectItem value="yearly">Yearly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormField>
+              )}
+            </form.Field>
 
-            {showDayOfMonth && (
-              <div className="space-y-2">
-                <Label htmlFor="dayOfMonth">Day of Month</Label>
-                <Select value={dayOfMonth} onValueChange={setDayOfMonth}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                      <SelectItem key={day} value={String(day)}>
-                        {day}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <form.Subscribe selector={(state) => state.values.cadence}>
+              {(cadence) => {
+                const showDayOfWeek = cadence === 'weekly' || cadence === 'fortnightly';
+                const showMonthOfYear = cadence === 'yearly';
+                const showMonthOfQuarter = cadence === 'quarterly';
 
-            {showDayOfWeek && (
-              <div className="space-y-2">
-                <Label htmlFor="dayOfWeek">Day of Week</Label>
-                <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DAY_LABELS.map((day, index) => (
-                      <SelectItem key={index} value={String(index)}>
-                        {day}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+                const dayOfMonthField = (
+                  <form.Field name="dayOfMonth">
+                    {(field) => (
+                      <FormField field={field} label="Day">
+                        <Select value={field.state.value} onValueChange={field.handleChange}>
+                          <SelectTrigger className="h-10">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                              <SelectItem key={day} value={String(day)}>
+                                {day}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormField>
+                    )}
+                  </form.Field>
+                );
 
-            {type === 'savings' ? (
-              <div className="space-y-2">
-                <Label>Savings Goal</Label>
-                <SavingsGoalSelect value={savingsGoalId} onChange={setSavingsGoalId} />
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label>Category</Label>
-                <CategorySelect value={categoryId} onChange={setCategoryId} allowNone />
-              </div>
-            )}
+                return (
+                  <>
+                    {showMonthOfYear && (
+                      <div className="grid gap-6 sm:grid-cols-2">
+                        <form.Field name="monthOfYear">
+                          {(field) => (
+                            <FormField field={field} label="Month">
+                              <Select value={field.state.value} onValueChange={field.handleChange}>
+                                <SelectTrigger className="h-10">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="0">January</SelectItem>
+                                  <SelectItem value="1">February</SelectItem>
+                                  <SelectItem value="2">March</SelectItem>
+                                  <SelectItem value="3">April</SelectItem>
+                                  <SelectItem value="4">May</SelectItem>
+                                  <SelectItem value="5">June</SelectItem>
+                                  <SelectItem value="6">July</SelectItem>
+                                  <SelectItem value="7">August</SelectItem>
+                                  <SelectItem value="8">September</SelectItem>
+                                  <SelectItem value="9">October</SelectItem>
+                                  <SelectItem value="10">November</SelectItem>
+                                  <SelectItem value="11">December</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormField>
+                          )}
+                        </form.Field>
+                        {dayOfMonthField}
+                      </div>
+                    )}
 
-            <div className="flex gap-2">
-              <Button onClick={handleSave}>Save</Button>
-              <Button variant="outline" onClick={() => setEditing(false)}>
+                    {showMonthOfQuarter && (
+                      <div className="grid gap-6 sm:grid-cols-2">
+                        <form.Field name="monthOfQuarter">
+                          {(field) => (
+                            <FormField field={field} label="Month of Quarter">
+                              <Select value={field.state.value} onValueChange={field.handleChange}>
+                                <SelectTrigger className="h-10">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="0">1st month</SelectItem>
+                                  <SelectItem value="1">2nd month</SelectItem>
+                                  <SelectItem value="2">3rd month</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormField>
+                          )}
+                        </form.Field>
+                        {dayOfMonthField}
+                      </div>
+                    )}
+
+                    {cadence === 'monthly' && dayOfMonthField}
+
+                    {showDayOfWeek && (
+                      <form.Field name="dayOfWeek">
+                        {(field) => (
+                          <FormField field={field} label="Day of Week">
+                            <Select value={field.state.value} onValueChange={field.handleChange}>
+                              <SelectTrigger className="h-10">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {DAY_LABELS.map((day, index) => (
+                                  <SelectItem key={index} value={String(index)}>
+                                    {day}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormField>
+                        )}
+                      </form.Field>
+                    )}
+                  </>
+                );
+              }}
+            </form.Subscribe>
+
+            <form.Subscribe selector={(state) => state.values.type}>
+              {(typeValue) =>
+                typeValue === 'savings' ? (
+                  <form.Field name="savingsGoalId">
+                    {(field) => (
+                      <FormField field={field} label="Savings Goal">
+                        <SavingsGoalSelect
+                          value={field.state.value}
+                          onChange={(v) => field.handleChange(v)}
+                        />
+                      </FormField>
+                    )}
+                  </form.Field>
+                ) : (
+                  <form.Field name="categoryId">
+                    {(field) => (
+                      <FormField field={field} label="Category" optional>
+                        <CategorySelect
+                          value={field.state.value}
+                          onChange={(v) => field.handleChange(v)}
+                          allowNone
+                        />
+                      </FormField>
+                    )}
+                  </form.Field>
+                )
+              }
+            </form.Subscribe>
+
+            <div className="flex gap-3 pt-2">
+              <form.Subscribe selector={(state) => state.isSubmitting}>
+                {(isSubmitting) => (
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? 'Saving...' : 'Save'}
+                  </Button>
+                )}
+              </form.Subscribe>
+              <Button type="button" variant="outline" onClick={() => setEditing(false)}>
                 Cancel
               </Button>
             </div>
-          </div>
+          </form>
         ) : (
           <div className="mt-4 space-y-2 text-sm">
             <p>
@@ -326,6 +510,18 @@ export function RuleDetailPage() {
               <span className="text-muted-foreground">Frequency:</span>{' '}
               {CADENCE_LABELS[rule.cadence]}
             </p>
+            {rule.cadence === 'yearly' && (
+              <p>
+                <span className="text-muted-foreground">Month:</span>{' '}
+                {MONTH_LABELS[rule.monthOfYear ?? 0]}
+              </p>
+            )}
+            {rule.cadence === 'quarterly' && (
+              <p>
+                <span className="text-muted-foreground">Month of Quarter:</span>{' '}
+                {MONTH_OF_QUARTER_LABELS[rule.monthOfQuarter ?? 0]}
+              </p>
+            )}
             {(rule.cadence === 'monthly' ||
               rule.cadence === 'quarterly' ||
               rule.cadence === 'yearly') && (
