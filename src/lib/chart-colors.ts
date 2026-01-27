@@ -2,24 +2,24 @@
  * Centralized color constants for recharts visualizations
  */
 export const CHART_COLORS = {
-  // Colors for category segments - diverse, visually distinct palette
+  // Colors for category segments - ordered for maximum contrast between adjacent colors
   categories: [
-    '#3b82f6', // blue
-    '#10b981', // emerald
-    '#f59e0b', // amber
     '#ef4444', // red
+    '#22c55e', // green
+    '#3b82f6', // blue
+    '#f59e0b', // amber
     '#8b5cf6', // violet
+    '#14b8a6', // teal
+    '#f97316', // orange
     '#ec4899', // pink
     '#06b6d4', // cyan
-    '#f97316', // orange
-    '#6366f1', // indigo
-    '#14b8a6', // teal
     '#84cc16', // lime
     '#a855f7', // purple
     '#eab308', // yellow
-    '#0ea5e9', // sky
+    '#6366f1', // indigo
+    '#10b981', // emerald
     '#d946ef', // fuchsia
-    '#22c55e', // green
+    '#0ea5e9', // sky
   ],
   // Semantic colors
   income: '#22c55e', // green-500

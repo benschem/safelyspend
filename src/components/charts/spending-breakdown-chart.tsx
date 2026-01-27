@@ -1,10 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import {
   BarChart,
   Bar,
   XAxis,
   YAxis,
-  Tooltip,
   ResponsiveContainer,
   Cell,
 } from 'recharts';
@@ -23,43 +22,11 @@ interface SpendingBreakdownChartProps {
   colorMap?: Record<string, string>;
 }
 
-interface TooltipPayload {
-  name: string;
-  value: number;
-  payload: {
-    name: string;
-    value: number;
-    fill: string;
-  };
-}
-
-function CustomTooltip({
-  active,
-  payload,
-  total,
-}: {
-  active?: boolean;
-  payload?: TooltipPayload[];
-  total: number;
-}) {
-  if (!active || !payload || payload.length === 0) return null;
-
-  const data = payload[0];
-  if (!data) return null;
-
-  const percentage = total > 0 ? ((data.value / total) * 100).toFixed(1) : '0';
-
-  return (
-    <div className="rounded-lg border bg-background p-2 shadow-sm">
-      <p className="font-medium">{data.name}</p>
-      <p className="text-sm text-muted-foreground">
-        {formatCents(data.value)} ({percentage}%)
-      </p>
-    </div>
-  );
-}
-
 export function SpendingBreakdownChart({ segments, total, colorMap: externalColorMap }: SpendingBreakdownChartProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [hoveredSegment, setHoveredSegment] = useState<BreakdownSegment | null>(null);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+
   // Build color map for segments (use external if provided)
   const colorMap = useMemo(() => {
     if (externalColorMap) {
@@ -91,6 +58,44 @@ export function SpendingBreakdownChart({ segments, total, colorMap: externalColo
     return map;
   }, [segments, externalColorMap]);
 
+  // Pre-calculate segment boundaries for hover detection
+  const segmentBoundaries = useMemo(() => {
+    let cumulative = 0;
+    return segments.map((segment) => {
+      const start = cumulative / total;
+      cumulative += segment.amount;
+      const end = cumulative / total;
+      return { segment, start, end };
+    });
+  }, [segments, total]);
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!containerRef.current) return;
+
+      const rect = containerRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const relativeX = x / rect.width;
+
+      // Find which segment the mouse is over
+      const boundary = segmentBoundaries.find(
+        (b) => relativeX >= b.start && relativeX < b.end
+      );
+
+      if (boundary) {
+        setHoveredSegment(boundary.segment);
+        setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      } else {
+        setHoveredSegment(null);
+      }
+    },
+    [segmentBoundaries]
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    setHoveredSegment(null);
+  }, []);
+
   // Transform data for horizontal stacked bar
   const chartData = useMemo(() => {
     const dataPoint: Record<string, number | string> = { name: 'Spending' };
@@ -106,31 +111,52 @@ export function SpendingBreakdownChart({ segments, total, colorMap: externalColo
 
   return (
     <div className="w-full">
-      <ResponsiveContainer width="100%" height={40}>
-        <BarChart
-          data={chartData}
-          layout="vertical"
-          margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
-        >
-          <XAxis type="number" hide domain={[0, total]} />
-          <YAxis type="category" dataKey="name" hide />
-          <Tooltip
-            content={<CustomTooltip total={total} />}
-            cursor={{ fill: 'transparent' }}
-          />
-          {segments.map((segment) => (
-            <Bar
-              key={segment.id}
-              dataKey={segment.id}
-              stackId="spending"
-              name={segment.name}
-              radius={0}
-            >
-              <Cell fill={colorMap[segment.id] ?? CHART_COLORS.uncategorized} />
-            </Bar>
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
+      <div
+        ref={containerRef}
+        className="relative"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+      >
+        <ResponsiveContainer width="100%" height={40}>
+          <BarChart
+            data={chartData}
+            layout="vertical"
+            margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+          >
+            <XAxis type="number" hide domain={[0, total]} />
+            <YAxis type="category" dataKey="name" hide />
+            {segments.map((segment) => (
+              <Bar
+                key={segment.id}
+                dataKey={segment.id}
+                stackId="spending"
+                name={segment.name}
+                radius={0}
+              >
+                <Cell fill={colorMap[segment.id] ?? CHART_COLORS.uncategorized} />
+              </Bar>
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+
+        {/* Custom Tooltip */}
+        {hoveredSegment && (
+          <div
+            className="pointer-events-none absolute z-10 rounded-lg border bg-background p-2 shadow-sm"
+            style={{
+              left: tooltipPos.x,
+              top: tooltipPos.y - 60,
+              transform: 'translateX(-50%)',
+            }}
+          >
+            <p className="font-medium">{hoveredSegment.name}</p>
+            <p className="text-sm text-muted-foreground">
+              {formatCents(hoveredSegment.amount)} (
+              {((hoveredSegment.amount / total) * 100).toFixed(1)}%)
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Legend */}
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
