@@ -67,7 +67,7 @@ export function useScenarios() {
         // If setting this scenario as default, unset others
         if (updates.isDefault) {
           updated = updated.map((s) =>
-            s.id === id ? s : { ...s, isDefault: false }
+            s.id === id ? s : { ...s, isDefault: false },
           );
         }
 
