@@ -74,6 +74,7 @@ export function CategoriesIndexPage() {
                   if (e.key === 'Enter') saveEdit(category.id);
                   if (e.key === 'Escape') cancelEdit();
                 }}
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- Expected behavior when entering edit mode
                 autoFocus
               />
               <Button size="sm" variant="ghost" onClick={() => saveEdit(category.id)}>
