@@ -120,3 +120,53 @@ export function getLastDayOfMonth(year: number, month: number): number {
 export function formatISODate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
+
+/**
+ * Format a year-month string (YYYY-MM) for display
+ */
+export function formatMonth(yearMonth: string): string {
+  const [year, month] = yearMonth.split('-');
+  const date = new Date(Number(year), Number(month) - 1);
+  return date.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' });
+}
+
+/**
+ * Get all months between two dates (inclusive)
+ * Returns array of YYYY-MM strings
+ */
+export function getMonthsBetween(startDate: string, endDate: string): string[] {
+  const months: string[] = [];
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  const current = new Date(start.getFullYear(), start.getMonth(), 1);
+  const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+
+  while (current <= endMonth) {
+    const year = current.getFullYear();
+    const month = String(current.getMonth() + 1).padStart(2, '0');
+    months.push(`${year}-${month}`);
+    current.setMonth(current.getMonth() + 1);
+  }
+
+  return months;
+}
+
+/**
+ * Format cents as abbreviated currency string for chart axes
+ * e.g., 150000 -> "$1.5k", 1500000 -> "$15k", 150000000 -> "$1.5M"
+ */
+export function formatCentsShort(cents: number): string {
+  const dollars = Math.abs(cents) / 100;
+  const sign = cents < 0 ? '-' : '';
+
+  if (dollars >= 1000000) {
+    const millions = dollars / 1000000;
+    return `${sign}$${millions.toFixed(millions >= 10 ? 0 : 1)}M`;
+  }
+  if (dollars >= 1000) {
+    const thousands = dollars / 1000;
+    return `${sign}$${thousands.toFixed(thousands >= 10 ? 0 : 1)}k`;
+  }
+  return `${sign}$${dollars.toFixed(0)}`;
+}
