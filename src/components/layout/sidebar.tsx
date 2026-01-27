@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router';
+import { NavLink, useLocation } from 'react-router';
 import {
   LayoutDashboard,
   TrendingUp,
@@ -9,20 +9,32 @@ import {
   Repeat,
   Settings,
   BarChart3,
+  Menu,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { useEffect, useState } from 'react';
 
 interface NavItemProps {
   to: string;
   icon: React.ReactNode;
   children: React.ReactNode;
+  onClick?: (() => void) | undefined;
 }
 
-function NavItem({ to, icon, children }: NavItemProps) {
+function NavItem({ to, icon, children, onClick }: NavItemProps) {
   return (
     <NavLink
       to={to}
+      onClick={onClick}
       className={({ isActive }) =>
         cn(
           'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
@@ -55,69 +67,108 @@ function NavSection({ title, children }: NavSectionProps) {
   );
 }
 
-export function Sidebar() {
+function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <aside className="flex h-full w-56 flex-col border-r border-sidebar-border bg-sidebar-background">
-      <div className="flex h-14 items-center border-b border-sidebar-border px-6">
-        <span className="text-lg font-semibold">SafelySpend</span>
-      </div>
+    <>
+      <NavSection>
+        <NavItem to="/dashboard" icon={<LayoutDashboard className="h-4 w-4" />} onClick={onNavigate}>
+          Dashboard
+        </NavItem>
 
-      <div className="flex-1 overflow-y-auto py-2">
-        <NavSection>
-          <NavItem to="/dashboard" icon={<LayoutDashboard className="h-4 w-4" />}>
-            Dashboard
-          </NavItem>
+        <NavItem to="/reports" icon={<BarChart3 className="h-4 w-4" />} onClick={onNavigate}>
+          Reports
+        </NavItem>
+      </NavSection>
 
-          <NavItem to="/reports" icon={<BarChart3 className="h-4 w-4" />}>
-            Reports
-          </NavItem>
-        </NavSection>
+      <Separator className="my-2" />
 
-        <Separator className="my-2" />
+      <NavSection title="Plan">
+        <NavItem to="/forecast" icon={<TrendingUp className="h-4 w-4" />} onClick={onNavigate}>
+          Forecast
+        </NavItem>
+        <NavItem to="/manage/rules" icon={<Repeat className="h-4 w-4" />} onClick={onNavigate}>
+          Recurring
+        </NavItem>
+        <NavItem to="/budget" icon={<FolderTree className="h-4 w-4" />} onClick={onNavigate}>
+          Budget
+        </NavItem>
+      </NavSection>
 
-        <NavSection title="Plan">
-          <NavItem to="/forecast" icon={<TrendingUp className="h-4 w-4" />}>
-            Forecast
-          </NavItem>
-          <NavItem to="/manage/rules" icon={<Repeat className="h-4 w-4" />}>
-            Recurring
-          </NavItem>
-          <NavItem to="/budget" icon={<FolderTree className="h-4 w-4" />}>
-            Budget
-          </NavItem>
-        </NavSection>
+      <Separator className="my-2" />
 
-        <Separator className="my-2" />
+      <NavSection title="Track">
+        <NavItem to="/transactions" icon={<Receipt className="h-4 w-4" />} onClick={onNavigate}>
+          Transactions
+        </NavItem>
 
-        <NavSection title="Track">
-          <NavItem to="/transactions" icon={<Receipt className="h-4 w-4" />}>
-            Transactions
-          </NavItem>
+        <NavItem to="/savings" icon={<PiggyBank className="h-4 w-4" />} onClick={onNavigate}>
+          Savings
+        </NavItem>
+      </NavSection>
 
-          <NavItem to="/savings" icon={<PiggyBank className="h-4 w-4" />}>
-            Savings
-          </NavItem>
-        </NavSection>
+      <Separator className="my-2" />
 
-        <Separator className="my-2" />
+      <NavSection title="Manage">
+        <NavItem to="/categories" icon={<FolderTree className="h-4 w-4" />} onClick={onNavigate}>
+          Categories
+        </NavItem>
+        <NavItem to="/manage/scenarios" icon={<Layers className="h-4 w-4" />} onClick={onNavigate}>
+          Scenarios
+        </NavItem>
+      </NavSection>
 
-        <NavSection title="Manage">
-          <NavItem to="/categories" icon={<FolderTree className="h-4 w-4" />}>
-            Categories
-          </NavItem>
-          <NavItem to="/manage/scenarios" icon={<Layers className="h-4 w-4" />}>
-            Scenarios
-          </NavItem>
-        </NavSection>
-      </div>
+      <div className="flex-1" />
 
       <Separator />
 
       <NavSection>
-        <NavItem to="/settings" icon={<Settings className="h-4 w-4" />}>
+        <NavItem to="/settings" icon={<Settings className="h-4 w-4" />} onClick={onNavigate}>
           Settings
         </NavItem>
       </NavSection>
+    </>
+  );
+}
+
+export function Sidebar() {
+  return (
+    <aside className="hidden md:flex h-full w-56 flex-col border-r border-sidebar-border bg-sidebar-background">
+      <div className="flex h-14 items-center border-b border-sidebar-border px-6">
+        <span className="text-lg font-semibold">SafelySpend</span>
+      </div>
+
+      <div className="flex flex-1 flex-col overflow-y-auto py-2">
+        <SidebarNav />
+      </div>
     </aside>
+  );
+}
+
+export function MobileNav() {
+  const [open, setOpen] = useState(false);
+  const location = useLocation();
+
+  // Close sheet when route changes
+  useEffect(() => {
+    setOpen(false);
+  }, [location.pathname]);
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" className="md:hidden">
+          <Menu className="h-5 w-5" />
+          <span className="sr-only">Toggle menu</span>
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="w-64 p-0">
+        <SheetHeader className="border-b px-6 py-4">
+          <SheetTitle>SafelySpend</SheetTitle>
+        </SheetHeader>
+        <div className="flex flex-col overflow-y-auto py-2">
+          <SidebarNav onNavigate={() => setOpen(false)} />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
