@@ -59,6 +59,22 @@ export function DashboardPage() {
   const currentBalance = totalOpeningBalance + actualNet;
   const projectedEndBalance = totalOpeningBalance + actualNet + forecastedNet;
 
+  // Calculate cash flow buffer (money available until next income)
+  const today = new Date().toISOString().slice(0, 10);
+  const futureIncomeForecasts = incomeForecasts
+    .filter((f) => f.date > today)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const nextIncomeDate = futureIncomeForecasts[0]?.date ?? null;
+  const bufferEndDate = nextIncomeDate ?? activePeriod.endDate;
+
+  // Sum expenses and savings between now and next income (or period end)
+  const committedBeforeNextIncome = [
+    ...expenseForecasts.filter((f) => f.date > today && f.date <= bufferEndDate),
+    ...savingsForecasts.filter((f) => f.date > today && f.date <= bufferEndDate),
+  ].reduce((sum, f) => sum + f.amountCents, 0);
+
+  const cashFlowBuffer = currentBalance - committedBeforeNextIncome;
+
   // Total saved is from savings transactions (actual savings)
   const totalSaved = actualSavings;
   const totalTarget = savingsGoals.reduce((sum, g) => sum + g.targetAmountCents, 0);
@@ -262,25 +278,25 @@ export function DashboardPage() {
         </div>
 
         <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Projected Bank Balance</p>
+          <p className="text-sm text-muted-foreground">Cash Flow Buffer</p>
+          <p className={`text-2xl font-bold ${cashFlowBuffer < 0 ? 'text-red-600' : ''}`}>
+            {formatCents(cashFlowBuffer)}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {nextIncomeDate ? `until next pay ${formatDate(nextIncomeDate)}` : 'No upcoming income'}
+          </p>
+        </div>
+
+        <div className="rounded-lg border p-4">
+          <p className="text-sm text-muted-foreground">Forecast Bank Balance</p>
           <p
             className={`text-2xl font-bold ${projectedEndBalance >= 0 ? '' : 'text-red-600'}`}
           >
             {formatCents(projectedEndBalance)}
           </p>
-          {totalOpeningBalance !== 0 && (
-            <p
-              className={`text-sm ${actualNet + forecastedNet >= 0 ? 'text-green-600' : 'text-red-600'}`}
-            >
-              {actualNet + forecastedNet >= 0 ? '+' : ''}
-              {(((actualNet + forecastedNet) / totalOpeningBalance) * 100).toFixed(1)}%
-            </p>
-          )}
-        </div>
-
-        <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Unallocated</p>
-          <p className="text-2xl font-bold">{formatCents(Math.max(0, projectedEndBalance))}</p>
+          <p className="text-sm text-muted-foreground">
+            {`on ${formatDate(activePeriod.endDate)}`}
+          </p>
         </div>
       </div>
 
