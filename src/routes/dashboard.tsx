@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { Link, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { useScenarios } from '@/hooks/use-scenarios';
-import { useAccounts } from '@/hooks/use-accounts';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
@@ -19,8 +18,7 @@ interface OutletContext {
 export function DashboardPage() {
   const { activeScenarioId, startDate, endDate } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
-  const { activeAccounts } = useAccounts();
-  const { incomeTransactions, expenseTransactions, savingsTransactions } =
+  const { incomeTransactions, expenseTransactions, savingsTransactions, adjustmentTransactions } =
     useTransactions(startDate, endDate);
   const { incomeForecasts, expenseForecasts, savingsForecasts } = useForecasts(
     activeScenarioId,
@@ -43,9 +41,9 @@ export function DashboardPage() {
     );
   }
 
-  // Calculate totals - opening balance is now on accounts
-  const totalOpeningBalance = activeAccounts.reduce(
-    (sum, acc) => sum + acc.openingBalanceCents,
+  // Calculate totals - opening balance from adjustment transactions
+  const totalOpeningBalance = adjustmentTransactions.reduce(
+    (sum, t) => sum + t.amountCents,
     0,
   );
 
