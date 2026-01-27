@@ -8,6 +8,7 @@ import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useCategories } from '@/hooks/use-categories';
 import { formatCents, formatDate } from '@/lib/utils';
+import { SpendingBreakdownChart } from '@/components/charts';
 
 interface OutletContext {
   activeScenarioId: string | null;
@@ -15,19 +16,6 @@ interface OutletContext {
   endDate: string;
 }
 
-// Colors for breakdown segments (defined outside component to avoid recreating)
-const SEGMENT_COLORS = [
-  'bg-red-500',
-  'bg-orange-500',
-  'bg-amber-500',
-  'bg-yellow-500',
-  'bg-lime-500',
-  'bg-emerald-500',
-  'bg-teal-500',
-  'bg-cyan-500',
-  'bg-violet-500',
-  'bg-fuchsia-500',
-];
 
 export function DashboardPage() {
   const { activeScenarioId, startDate, endDate } = useOutletContext<OutletContext>();
@@ -120,8 +108,7 @@ export function DashboardPage() {
 
   // Calculate actual spending breakdown by category
   const actualBreakdown = useMemo(() => {
-    const segments: Array<{ id: string; name: string; amount: number; color: string }> = [];
-    let colorIndex = 0;
+    const segments: Array<{ id: string; name: string; amount: number }> = [];
 
     // Add category spending
     for (const category of activeCategories) {
@@ -131,9 +118,7 @@ export function DashboardPage() {
           id: category.id,
           name: category.name,
           amount,
-          color: SEGMENT_COLORS[colorIndex % SEGMENT_COLORS.length]!,
         });
-        colorIndex++;
       }
     }
 
@@ -146,7 +131,6 @@ export function DashboardPage() {
         id: 'uncategorized',
         name: 'Uncategorized',
         amount: uncategorizedExpenses,
-        color: 'bg-gray-400',
       });
     }
 
@@ -156,7 +140,6 @@ export function DashboardPage() {
         id: 'savings',
         name: 'Savings',
         amount: actualSavings,
-        color: 'bg-blue-500',
       });
     }
 
@@ -168,7 +151,6 @@ export function DashboardPage() {
         id: 'unallocated',
         name: 'Available',
         amount: unallocated,
-        color: 'bg-gray-200',
       });
     }
 
@@ -177,8 +159,7 @@ export function DashboardPage() {
 
   // Calculate forecast breakdown by category (future only)
   const forecastBreakdown = useMemo(() => {
-    const segments: Array<{ id: string; name: string; amount: number; color: string }> = [];
-    let colorIndex = 0;
+    const segments: Array<{ id: string; name: string; amount: number }> = [];
 
     // Build forecast spending by category
     const forecastByCategory: Record<string, number> = {};
@@ -196,9 +177,7 @@ export function DashboardPage() {
           id: category.id,
           name: category.name,
           amount,
-          color: SEGMENT_COLORS[colorIndex % SEGMENT_COLORS.length]!,
         });
-        colorIndex++;
       }
     }
 
@@ -211,7 +190,6 @@ export function DashboardPage() {
         id: 'uncategorized',
         name: 'Uncategorized',
         amount: uncategorizedForecasts,
-        color: 'bg-gray-400',
       });
     }
 
@@ -221,7 +199,6 @@ export function DashboardPage() {
         id: 'savings',
         name: 'Savings',
         amount: forecastedSavings,
-        color: 'bg-blue-500',
       });
     }
 
@@ -233,7 +210,6 @@ export function DashboardPage() {
         id: 'unallocated',
         name: 'Unallocated',
         amount: unallocated,
-        color: 'bg-gray-200',
       });
     }
 
@@ -272,7 +248,7 @@ export function DashboardPage() {
           </div>
 
           <div className="rounded-lg border p-4">
-            <p className="text-sm text-muted-foreground">Committed</p>
+            <p className="text-sm text-muted-foreground">Allocated Funds</p>
             <p className="text-2xl font-bold">{formatCents(committedBeforeNextIncome)}</p>
             <p className="text-sm text-muted-foreground">
               Due before next pay
@@ -300,35 +276,12 @@ export function DashboardPage() {
           {actualBreakdown.total === 0 ? (
             <div className="mt-4 text-center text-sm text-muted-foreground">No income recorded yet.</div>
           ) : (
-            <>
-              <div className="mt-4 flex h-6 w-full overflow-hidden rounded-full">
-                {actualBreakdown.segments.map((segment) => {
-                  const percentage = (segment.amount / actualBreakdown.total) * 100;
-                  return (
-                    <div
-                      key={segment.id}
-                      className={`${segment.color} transition-all`}
-                      style={{ width: `${percentage}%` }}
-                      title={`${segment.name}: ${formatCents(segment.amount)}`}
-                    />
-                  );
-                })}
-              </div>
-
-              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
-                {actualBreakdown.segments.map((segment) => {
-                  const percentage = ((segment.amount / actualBreakdown.total) * 100).toFixed(0);
-                  return (
-                    <div key={segment.id} className="flex items-center gap-1.5 text-xs">
-                      <div className={`h-2.5 w-2.5 rounded-sm ${segment.color}`} />
-                      <span>
-                        {segment.name} ({percentage}%)
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
+            <div className="mt-4">
+              <SpendingBreakdownChart
+                segments={actualBreakdown.segments}
+                total={actualBreakdown.total}
+              />
+            </div>
           )}
         </div>
       </section>
@@ -375,32 +328,11 @@ export function DashboardPage() {
               How {formatCents(forecastBreakdown.total)} expected income will be allocated
             </p>
 
-            <div className="mt-4 flex h-6 w-full overflow-hidden rounded-full">
-              {forecastBreakdown.segments.map((segment) => {
-                const percentage = (segment.amount / forecastBreakdown.total) * 100;
-                return (
-                  <div
-                    key={segment.id}
-                    className={`${segment.color} transition-all`}
-                    style={{ width: `${percentage}%` }}
-                    title={`${segment.name}: ${formatCents(segment.amount)}`}
-                  />
-                );
-              })}
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
-              {forecastBreakdown.segments.map((segment) => {
-                const percentage = ((segment.amount / forecastBreakdown.total) * 100).toFixed(0);
-                return (
-                  <div key={segment.id} className="flex items-center gap-1.5 text-xs">
-                    <div className={`h-2.5 w-2.5 rounded-sm ${segment.color}`} />
-                    <span>
-                      {segment.name} ({percentage}%)
-                    </span>
-                  </div>
-                );
-              })}
+            <div className="mt-4">
+              <SpendingBreakdownChart
+                segments={forecastBreakdown.segments}
+                total={forecastBreakdown.total}
+              />
             </div>
           </div>
         )}
