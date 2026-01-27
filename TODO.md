@@ -8,6 +8,7 @@
 
 [X] Then dashboard should show forecast savings alongside actual savings for a goal. Savings are not "Available to spend"
 
+[ ] No option to withdraw from savings
 [ ] Would withdrawing from a saver by entering a negative amount in a transaction work? Check what happens if user enters negative amounts for other things
 
 [ ] Basic landing page that outlines the features and reminds that none of your data is saved to the server
@@ -20,3 +21,5 @@
 [ ] Graphs
 
 [ ] Balances show small arrow up or arrow down +/-30% in green/red next to the numbers
+
+[ ] Remove bank accounts in favour of a single balance representing your cash spending money (as opposed to savings). It shouldn't matter which banks or accounts you spread that money over in the real world, and it's too tedious to enter an account for each transaction and forecast.
