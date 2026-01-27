@@ -25,17 +25,6 @@ export interface Scenario extends BaseEntity {
 }
 
 // -----------------------------------------------------------------------------
-// Account - Bank accounts with opening balance
-// -----------------------------------------------------------------------------
-
-export interface Account extends BaseEntity {
-  name: string;
-  openingBalanceCents: number;
-  openingDate: string; // When tracking started for this account
-  isArchived: boolean;
-}
-
-// -----------------------------------------------------------------------------
 // Category - Expense categorization
 // -----------------------------------------------------------------------------
 
@@ -103,28 +92,15 @@ export interface ForecastEvent extends BaseEntity {
 // Transaction - Actual income, expenses, and savings (global facts)
 // -----------------------------------------------------------------------------
 
-export type TransactionType = 'income' | 'expense' | 'savings';
+export type TransactionType = 'income' | 'expense' | 'savings' | 'adjustment';
 
 export interface Transaction extends BaseEntity {
-  accountId: string;
   type: TransactionType;
   date: string;
   amountCents: number;
   description: string;
   categoryId: string | null; // Optional for expenses, null for income/savings
   savingsGoalId: string | null; // Required if type === 'savings'
-  notes?: string;
-}
-
-// -----------------------------------------------------------------------------
-// Transfer - Between accounts (global facts)
-// -----------------------------------------------------------------------------
-
-export interface Transfer extends BaseEntity {
-  fromAccountId: string;
-  toAccountId: string;
-  date: string;
-  amountCents: number;
   notes?: string;
 }
 
@@ -153,13 +129,11 @@ export interface ViewState {
 
 export interface BudgetData {
   scenarios: Scenario[];
-  accounts: Account[];
   categories: Category[];
   budgetRules: BudgetRule[];
   forecastRules: ForecastRule[];
   forecastEvents: ForecastEvent[];
   transactions: Transaction[];
-  transfers: Transfer[];
   savingsGoals: SavingsGoal[];
 }
 
