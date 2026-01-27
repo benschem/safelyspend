@@ -241,7 +241,7 @@ export function DashboardPage() {
 
       <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Current Balance</p>
+          <p className="text-sm text-muted-foreground">Current Bank Balance</p>
           <p className="text-2xl font-bold">{formatCents(currentBalance)}</p>
           {totalOpeningBalance !== 0 && (
             <p className={`text-sm ${actualNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -262,7 +262,7 @@ export function DashboardPage() {
         </div>
 
         <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Projected Balance</p>
+          <p className="text-sm text-muted-foreground">Projected Bank Balance</p>
           <p
             className={`text-2xl font-bold ${projectedEndBalance >= 0 ? '' : 'text-red-600'}`}
           >
@@ -355,7 +355,7 @@ export function DashboardPage() {
         {/* Actual Breakdown */}
         <div className="rounded-lg border p-4">
           <div className="flex items-baseline gap-1">
-            <h2 className="text-lg font-semibold">Actual Breakdown</h2>
+            <h2 className="text-lg font-semibold">Actual Spending</h2>
             <span className="text-sm text-muted-foreground">(To Date)</span>
           </div>
           <p className="text-sm text-muted-foreground">
@@ -402,7 +402,7 @@ export function DashboardPage() {
         {/* Forecast Breakdown */}
         <div className="rounded-lg border p-4">
           <div className="flex items-baseline gap-1">
-            <h2 className="text-lg font-semibold">Forecast Breakdown</h2>
+            <h2 className="text-lg font-semibold">Forecast Spending</h2>
             <span className="text-sm text-muted-foreground">(Remaining)</span>
           </div>
           <p className="text-sm text-muted-foreground">
