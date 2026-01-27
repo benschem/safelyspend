@@ -4,36 +4,34 @@ import { Separator } from '@/components/ui/separator';
 import { loadDemoDataToStorage, clearAllData } from '@/lib/demo-data';
 import type { BudgetData } from '@/lib/types';
 
-function getAllData(): BudgetData & { activePeriodId: string | null } {
+function getAllData(): BudgetData & { activeScenarioId: string | null } {
   return {
-    periods: JSON.parse(localStorage.getItem('budget:periods') ?? '[]'),
-    activePeriodId: JSON.parse(localStorage.getItem('budget:activePeriodId') ?? 'null'),
+    scenarios: JSON.parse(localStorage.getItem('budget:scenarios') ?? '[]'),
+    activeScenarioId: JSON.parse(localStorage.getItem('budget:activeScenarioId') ?? 'null'),
     accounts: JSON.parse(localStorage.getItem('budget:accounts') ?? '[]'),
-    openingBalances: JSON.parse(localStorage.getItem('budget:openingBalances') ?? '[]'),
     categories: JSON.parse(localStorage.getItem('budget:categories') ?? '[]'),
-    budgetLines: JSON.parse(localStorage.getItem('budget:budgetLines') ?? '[]'),
-    forecasts: JSON.parse(localStorage.getItem('budget:forecasts') ?? '[]'),
+    budgetRules: JSON.parse(localStorage.getItem('budget:budgetRules') ?? '[]'),
+    forecastRules: JSON.parse(localStorage.getItem('budget:forecastRules') ?? '[]'),
+    forecastEvents: JSON.parse(localStorage.getItem('budget:forecastEvents') ?? '[]'),
     transactions: JSON.parse(localStorage.getItem('budget:transactions') ?? '[]'),
     transfers: JSON.parse(localStorage.getItem('budget:transfers') ?? '[]'),
     savingsGoals: JSON.parse(localStorage.getItem('budget:savingsGoals') ?? '[]'),
-    recurringItems: JSON.parse(localStorage.getItem('budget:recurringItems') ?? '[]'),
   };
 }
 
-function setAllData(data: BudgetData & { activePeriodId?: string | null }): void {
-  localStorage.setItem('budget:periods', JSON.stringify(data.periods));
-  if (data.activePeriodId !== undefined) {
-    localStorage.setItem('budget:activePeriodId', JSON.stringify(data.activePeriodId));
+function setAllData(data: BudgetData & { activeScenarioId?: string | null }): void {
+  localStorage.setItem('budget:scenarios', JSON.stringify(data.scenarios));
+  if (data.activeScenarioId !== undefined) {
+    localStorage.setItem('budget:activeScenarioId', JSON.stringify(data.activeScenarioId));
   }
   localStorage.setItem('budget:accounts', JSON.stringify(data.accounts));
-  localStorage.setItem('budget:openingBalances', JSON.stringify(data.openingBalances));
   localStorage.setItem('budget:categories', JSON.stringify(data.categories));
-  localStorage.setItem('budget:budgetLines', JSON.stringify(data.budgetLines));
-  localStorage.setItem('budget:forecasts', JSON.stringify(data.forecasts));
+  localStorage.setItem('budget:budgetRules', JSON.stringify(data.budgetRules));
+  localStorage.setItem('budget:forecastRules', JSON.stringify(data.forecastRules));
+  localStorage.setItem('budget:forecastEvents', JSON.stringify(data.forecastEvents));
   localStorage.setItem('budget:transactions', JSON.stringify(data.transactions));
   localStorage.setItem('budget:transfers', JSON.stringify(data.transfers));
   localStorage.setItem('budget:savingsGoals', JSON.stringify(data.savingsGoals));
-  localStorage.setItem('budget:recurringItems', JSON.stringify(data.recurringItems ?? []));
 }
 
 export function SettingsPage() {
@@ -81,7 +79,7 @@ export function SettingsPage() {
         const data = JSON.parse(event.target?.result as string);
 
         // Basic validation
-        const requiredKeys = ['periods', 'accounts', 'categories', 'transactions', 'forecasts'];
+        const requiredKeys = ['scenarios', 'accounts', 'categories', 'transactions'];
         const missingKeys = requiredKeys.filter((key) => !Array.isArray(data[key]));
         if (missingKeys.length > 0) {
           showMessage('error', `Invalid file: missing ${missingKeys.join(', ')}`);
