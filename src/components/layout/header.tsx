@@ -5,8 +5,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { DateRangePicker } from '@/components/date-range-picker';
 import type { Scenario } from '@/lib/types';
 
 interface HeaderProps {
@@ -16,7 +15,6 @@ interface HeaderProps {
   startDate: string;
   endDate: string;
   onDateRangeChange: (startDate: string, endDate: string) => void;
-  onResetDateRange: () => void;
 }
 
 export function Header({
@@ -26,7 +24,6 @@ export function Header({
   startDate,
   endDate,
   onDateRangeChange,
-  onResetDateRange,
 }: HeaderProps) {
   // Build select props conditionally to handle controlled/uncontrolled state
   const selectProps = activeScenarioId
@@ -55,25 +52,11 @@ export function Header({
             </Select>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">View:</span>
-          <Input
-            type="date"
-            value={startDate}
-            onChange={(e) => onDateRangeChange(e.target.value, endDate)}
-            className="w-36 h-9"
-          />
-          <span className="text-muted-foreground">to</span>
-          <Input
-            type="date"
-            value={endDate}
-            onChange={(e) => onDateRangeChange(startDate, e.target.value)}
-            className="w-36 h-9"
-          />
-          <Button variant="ghost" size="sm" onClick={onResetDateRange}>
-            FY
-          </Button>
-        </div>
+        <DateRangePicker
+          startDate={startDate}
+          endDate={endDate}
+          onDateRangeChange={onDateRangeChange}
+        />
       </div>
     </header>
   );

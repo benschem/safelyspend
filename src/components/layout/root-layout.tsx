@@ -2,6 +2,7 @@ import { Outlet } from 'react-router';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
 import { DemoBanner } from '@/components/demo-banner';
+import { DateRangeBanner } from '@/components/date-range-banner';
 import { FirstRunWizard } from '@/components/first-run-wizard';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useViewState } from '@/hooks/use-view-state';
@@ -10,7 +11,7 @@ import { useAppConfig } from '@/hooks/use-app-config';
 export function RootLayout() {
   const { isInitialized, isDemo } = useAppConfig();
   const { scenarios, activeScenarioId, setActiveScenarioId } = useScenarios();
-  const { startDate, endDate, setDateRange, resetToFinancialYear } = useViewState();
+  const { startDate, endDate, setDateRange } = useViewState();
 
   if (!isInitialized) {
     return <FirstRunWizard />;
@@ -29,8 +30,8 @@ export function RootLayout() {
             startDate={startDate}
             endDate={endDate}
             onDateRangeChange={setDateRange}
-            onResetDateRange={resetToFinancialYear}
           />
+          <DateRangeBanner startDate={startDate} endDate={endDate} />
           <main className="flex-1 overflow-y-auto p-6">
             <Outlet context={{ activeScenarioId, startDate, endDate }} />
           </main>
