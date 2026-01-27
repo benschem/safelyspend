@@ -91,7 +91,7 @@ Active period is stored separately (`budget:activePeriodId`) and passed via Reac
 
 ### Conventions
 
-- All amounts in cents (use `formatMoney()` for display)
+- All money amounts with cents but displayed without cents (use `formatMoney()` for display)
 - All dates as ISO strings (`YYYY-MM-DD`)
 - Timestamps as ISO strings with time
 - `userId: 'local'` placeholder for future multi-user
