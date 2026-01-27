@@ -31,19 +31,15 @@ export function useTransactions(startDate?: string, endDate?: string) {
     () => transactions.filter((t) => t.type === 'savings'),
     [transactions],
   );
+  const adjustmentTransactions = useMemo(
+    () => allTransactions.filter((t) => t.type === 'adjustment'),
+    [allTransactions],
+  );
 
   // Get transactions up to a specific date (for balance calculations)
   const getTransactionsUpTo = useCallback(
     (date: string) => {
       return allTransactions.filter((t) => t.date <= date);
-    },
-    [allTransactions],
-  );
-
-  // Get transactions for a specific account up to a date
-  const getAccountTransactionsUpTo = useCallback(
-    (accountId: string, date: string) => {
-      return allTransactions.filter((t) => t.accountId === accountId && t.date <= date);
     },
     [allTransactions],
   );
@@ -88,8 +84,8 @@ export function useTransactions(startDate?: string, endDate?: string) {
     incomeTransactions,
     expenseTransactions,
     savingsTransactions,
+    adjustmentTransactions,
     getTransactionsUpTo,
-    getAccountTransactionsUpTo,
     addTransaction,
     updateTransaction,
     deleteTransaction,
