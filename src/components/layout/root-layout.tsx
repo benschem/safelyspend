@@ -1,22 +1,28 @@
 import { Outlet } from 'react-router';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
-import { usePeriods } from '@/hooks/use-periods';
+import { useScenarios } from '@/hooks/use-scenarios';
+import { useViewState } from '@/hooks/use-view-state';
 
 export function RootLayout() {
-  const { periods, activePeriodId, setActivePeriodId } = usePeriods();
+  const { scenarios, activeScenarioId, setActiveScenarioId } = useScenarios();
+  const { startDate, endDate, setDateRange, resetToFinancialYear } = useViewState();
 
   return (
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header
-          periods={periods}
-          activePeriodId={activePeriodId}
-          onPeriodChange={setActivePeriodId}
+          scenarios={scenarios}
+          activeScenarioId={activeScenarioId}
+          onScenarioChange={setActiveScenarioId}
+          startDate={startDate}
+          endDate={endDate}
+          onDateRangeChange={setDateRange}
+          onResetDateRange={resetToFinancialYear}
         />
         <main className="flex-1 overflow-y-auto p-6">
-          <Outlet context={{ activePeriodId }} />
+          <Outlet context={{ activeScenarioId, startDate, endDate }} />
         </main>
       </div>
     </div>

@@ -5,7 +5,7 @@ import {
   Receipt,
   FolderTree,
   PiggyBank,
-  CalendarDays,
+  Layers,
   Wallet,
   Repeat,
   Settings,
@@ -100,11 +100,11 @@ export function Sidebar() {
           <NavItem to="/manage/accounts" icon={<Wallet className="h-4 w-4" />}>
             Bank Accounts
           </NavItem>
-          <NavItem to="/manage/periods" icon={<CalendarDays className="h-4 w-4" />}>
-            Time Periods
+          <NavItem to="/manage/scenarios" icon={<Layers className="h-4 w-4" />}>
+            Scenarios
           </NavItem>
-          <NavItem to="/manage/recurring" icon={<Repeat className="h-4 w-4" />}>
-            Recurring
+          <NavItem to="/manage/rules" icon={<Repeat className="h-4 w-4" />}>
+            Forecast Rules
           </NavItem>
         </NavSection>
       </div>
