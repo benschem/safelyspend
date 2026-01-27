@@ -15,36 +15,28 @@ interface BaseEntity {
 }
 
 // -----------------------------------------------------------------------------
-// Period - Primary aggregate root / workspace
+// Scenario - A set of budget rules and forecast rules/events (a "plan")
 // -----------------------------------------------------------------------------
 
-export interface Period extends BaseEntity {
+export interface Scenario extends BaseEntity {
   name: string;
-  startDate: string;
-  endDate: string;
+  description?: string;
+  isDefault: boolean;
 }
 
 // -----------------------------------------------------------------------------
-// Account
+// Account - Bank accounts with opening balance
 // -----------------------------------------------------------------------------
 
 export interface Account extends BaseEntity {
   name: string;
+  openingBalanceCents: number;
+  openingDate: string; // When tracking started for this account
   isArchived: boolean;
 }
 
 // -----------------------------------------------------------------------------
-// Opening Balance - Per account, per period
-// -----------------------------------------------------------------------------
-
-export interface OpeningBalance extends BaseEntity {
-  accountId: string;
-  periodId: string;
-  amountCents: number;
-}
-
-// -----------------------------------------------------------------------------
-// Category
+// Category - Expense categorization
 // -----------------------------------------------------------------------------
 
 export interface Category extends BaseEntity {
@@ -53,23 +45,51 @@ export interface Category extends BaseEntity {
 }
 
 // -----------------------------------------------------------------------------
-// Budget Line - Per category, per period
+// Cadence - Frequency for recurring rules
 // -----------------------------------------------------------------------------
 
-export interface BudgetLine extends BaseEntity {
-  periodId: string;
+export type Cadence = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly';
+
+// -----------------------------------------------------------------------------
+// Budget Rule - Spending limits per category with cadence
+// -----------------------------------------------------------------------------
+
+export interface BudgetRule extends BaseEntity {
+  scenarioId: string;
   categoryId: string;
   amountCents: number;
+  cadence: Cadence;
+  startDate?: string; // Optional, omit = always active
+  endDate?: string;
 }
 
 // -----------------------------------------------------------------------------
-// Forecast - Unified income, expense, and savings forecasts
+// Forecast Rule - Recurring income/expense/savings patterns
 // -----------------------------------------------------------------------------
 
 export type ForecastType = 'income' | 'expense' | 'savings';
 
-export interface Forecast extends BaseEntity {
-  periodId: string;
+export interface ForecastRule extends BaseEntity {
+  scenarioId: string;
+  type: ForecastType;
+  amountCents: number;
+  cadence: Cadence;
+  dayOfMonth?: number; // 1-31 for monthly/quarterly/yearly
+  dayOfWeek?: number; // 0-6 (Sunday-Saturday) for weekly/fortnightly
+  startDate?: string;
+  endDate?: string;
+  description: string;
+  categoryId: string | null; // Required if type === 'expense'
+  savingsGoalId: string | null; // Required if type === 'savings'
+  notes?: string;
+}
+
+// -----------------------------------------------------------------------------
+// Forecast Event - One-off forecast items with specific dates
+// -----------------------------------------------------------------------------
+
+export interface ForecastEvent extends BaseEntity {
+  scenarioId: string;
   type: ForecastType;
   date: string;
   amountCents: number;
@@ -80,7 +100,7 @@ export interface Forecast extends BaseEntity {
 }
 
 // -----------------------------------------------------------------------------
-// Transaction - Actual income, expenses, and savings
+// Transaction - Actual income, expenses, and savings (global facts)
 // -----------------------------------------------------------------------------
 
 export type TransactionType = 'income' | 'expense' | 'savings';
@@ -97,7 +117,7 @@ export interface Transaction extends BaseEntity {
 }
 
 // -----------------------------------------------------------------------------
-// Transfer - Between accounts
+// Transfer - Between accounts (global facts)
 // -----------------------------------------------------------------------------
 
 export interface Transfer extends BaseEntity {
@@ -109,33 +129,22 @@ export interface Transfer extends BaseEntity {
 }
 
 // -----------------------------------------------------------------------------
-// Savings Goal
+// Savings Goal - Global savings targets
 // -----------------------------------------------------------------------------
 
 export interface SavingsGoal extends BaseEntity {
-  periodId: string | null; // null = global goal
   name: string;
   targetAmountCents: number;
   deadline?: string;
 }
 
 // -----------------------------------------------------------------------------
-// Recurring Expense/Income - Templates for generating forecasts
+// View State - UI state for date range selection (not persisted as entity)
 // -----------------------------------------------------------------------------
 
-export type RecurringFrequency = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly';
-export type RecurringType = 'income' | 'expense';
-
-export interface RecurringItem extends BaseEntity {
-  type: RecurringType;
-  name: string;
-  amountCents: number;
-  frequency: RecurringFrequency;
-  dayOfMonth?: number; // 1-31 for monthly/quarterly/yearly
-  dayOfWeek?: number; // 0-6 (Sunday-Saturday) for weekly/fortnightly
-  categoryId: string | null;
-  isActive: boolean;
-  notes?: string;
+export interface ViewState {
+  startDate: string;
+  endDate: string;
 }
 
 // -----------------------------------------------------------------------------
@@ -143,16 +152,15 @@ export interface RecurringItem extends BaseEntity {
 // -----------------------------------------------------------------------------
 
 export interface BudgetData {
-  periods: Period[];
+  scenarios: Scenario[];
   accounts: Account[];
-  openingBalances: OpeningBalance[];
   categories: Category[];
-  budgetLines: BudgetLine[];
-  forecasts: Forecast[];
+  budgetRules: BudgetRule[];
+  forecastRules: ForecastRule[];
+  forecastEvents: ForecastEvent[];
   transactions: Transaction[];
   transfers: Transfer[];
   savingsGoals: SavingsGoal[];
-  recurringItems: RecurringItem[];
 }
 
 // -----------------------------------------------------------------------------
@@ -164,3 +172,18 @@ export type CreateEntity<T extends BaseEntity> = Omit<
   'id' | 'userId' | 'createdAt' | 'updatedAt'
 >;
 export type UpdateEntity<T extends BaseEntity> = Partial<Omit<T, 'id' | 'userId' | 'createdAt'>>;
+
+// -----------------------------------------------------------------------------
+// Expanded Forecast - A materialized forecast for a specific date (computed)
+// -----------------------------------------------------------------------------
+
+export interface ExpandedForecast {
+  type: ForecastType;
+  date: string;
+  amountCents: number;
+  description: string;
+  categoryId: string | null;
+  savingsGoalId: string | null;
+  sourceType: 'rule' | 'event';
+  sourceId: string;
+}
