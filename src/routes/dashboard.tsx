@@ -163,7 +163,7 @@ export function DashboardPage() {
     if (unallocated > 0) {
       segments.push({
         id: 'unallocated',
-        name: 'Unallocated',
+        name: 'Available',
         amount: unallocated,
         color: 'bg-gray-200',
       });
@@ -250,140 +250,54 @@ export function DashboardPage() {
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold">
-        {formatDate(startDate)} - {formatDate(endDate)}
-      </h1>
-      <p className="text-muted-foreground">Your money at a glance</p>
+    <div className="space-y-8">
+      {/* Current Position */}
+      <section>
+        <h1 className="text-2xl font-bold">Current Position</h1>
+        <p className="text-muted-foreground">Your money right now</p>
 
-      <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Current Bank Balance</p>
-          <p className="text-2xl font-bold">{formatCents(currentBalance)}</p>
-          {totalOpeningBalance !== 0 && (
-            <p className={`text-sm ${actualNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {actualNet >= 0 ? '+' : ''}
-              {((actualNet / totalOpeningBalance) * 100).toFixed(1)}%
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-lg border p-4">
+            <p className="text-sm text-muted-foreground">Bank Balance</p>
+            <p className="text-2xl font-bold">{formatCents(currentBalance)}</p>
+            {totalOpeningBalance !== 0 && (
+              <p className={`text-sm ${actualNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {actualNet >= 0 ? '+' : ''}
+                {formatCents(actualNet)} this period
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-lg border p-4">
+            <p className="text-sm text-muted-foreground">Committed</p>
+            <p className="text-2xl font-bold">{formatCents(committedBeforeNextIncome)}</p>
+            <p className="text-sm text-muted-foreground">
+              Due before next pay
             </p>
-          )}
-        </div>
+          </div>
 
-        <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Total Savings</p>
-          <p className="text-2xl font-bold">{formatCents(totalSaved)}</p>
-          {totalSaved > 0 && totalTarget > 0 && (
-            <p className="text-sm text-green-600">
-              +{((totalSaved / totalTarget) * 100).toFixed(1)}%
+          <div className="rounded-lg border p-4">
+            <p className="text-sm text-muted-foreground">Available to Spend</p>
+            <p className={`text-2xl font-bold ${cashFlowBuffer < 0 ? 'text-red-600' : 'text-green-600'}`}>
+              {formatCents(cashFlowBuffer)}
             </p>
-          )}
+            <p className="text-sm text-muted-foreground">
+              {nextIncomeDate ? `Until ${formatDate(nextIncomeDate)}` : 'No upcoming income'}
+            </p>
+          </div>
         </div>
 
-        <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Cash Flow Buffer</p>
-          <p className={`text-2xl font-bold ${cashFlowBuffer < 0 ? 'text-red-600' : ''}`}>
-            {formatCents(cashFlowBuffer)}
-          </p>
+        {/* Spending Breakdown */}
+        <div className="mt-4 rounded-lg border p-4">
+          <h2 className="text-lg font-semibold">Spending Breakdown</h2>
           <p className="text-sm text-muted-foreground">
-            {nextIncomeDate ? `until next pay ${formatDate(nextIncomeDate)}` : 'No upcoming income'}
-          </p>
-        </div>
-
-        <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Forecast Bank Balance</p>
-          <p
-            className={`text-2xl font-bold ${projectedEndBalance >= 0 ? '' : 'text-red-600'}`}
-          >
-            {formatCents(projectedEndBalance)}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {`on ${formatDate(endDate)}`}
-          </p>
-        </div>
-      </div>
-
-      {/* Actual vs Forecast */}
-      <div className="mt-8 grid gap-6 md:grid-cols-2">
-        {/* Actual */}
-        <div className="rounded-lg border p-4">
-          <div className="flex items-baseline gap-1">
-            <h2 className="text-lg font-semibold">Actual</h2>
-            <span className="text-sm text-muted-foreground">(To Date)</span>
-          </div>
-
-          <div className="mt-4 space-y-2">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Income</span>
-              <span className="font-mono text-green-600">+{formatCents(actualIncome)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Expenses</span>
-              <span className="font-mono text-red-600">-{formatCents(actualExpenses)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Savings</span>
-              <span className="font-mono text-blue-600">-{formatCents(actualSavings)}</span>
-            </div>
-            <div className="border-t pt-2">
-              <div className="flex justify-end font-semibold">
-                <span className={actualNet >= 0 ? 'text-green-600' : 'text-red-600'}>
-                  {actualNet >= 0 ? '+' : ''}
-                  {formatCents(actualNet)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Forecast */}
-        <div className="rounded-lg border p-4">
-          <div className="flex items-baseline gap-1">
-            <h2 className="text-lg font-semibold">Forecast</h2>
-            <span className="text-sm text-muted-foreground">(Remaining)</span>
-          </div>
-
-          <div className="mt-4 space-y-2">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Income</span>
-              <span className="font-mono text-green-600">+{formatCents(forecastedIncome)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Expenses</span>
-              <span className="font-mono text-red-600">-{formatCents(forecastedExpenses)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Savings</span>
-              <span className="font-mono text-blue-600">-{formatCents(forecastedSavings)}</span>
-            </div>
-            <div className="border-t pt-2">
-              <div className="flex justify-end font-semibold">
-                <span className={forecastedNet >= 0 ? 'text-green-600' : 'text-red-600'}>
-                  {forecastedNet >= 0 ? '+' : ''}
-                  {formatCents(forecastedNet)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-
-      {/* Income Breakdown */}
-      <div className="mt-8 grid gap-6 md:grid-cols-2">
-        {/* Actual Breakdown */}
-        <div className="rounded-lg border p-4">
-          <div className="flex items-baseline gap-1">
-            <h2 className="text-lg font-semibold">Actual Spending</h2>
-            <span className="text-sm text-muted-foreground">(To Date)</span>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {formatCents(actualBreakdown.total)} income
+            How you spent {formatCents(actualBreakdown.total)} income this period
           </p>
 
           {actualBreakdown.total === 0 ? (
-            <div className="mt-4 text-center text-sm text-muted-foreground">No income yet.</div>
+            <div className="mt-4 text-center text-sm text-muted-foreground">No income recorded yet.</div>
           ) : (
             <>
-              {/* Stacked bar */}
               <div className="mt-4 flex h-6 w-full overflow-hidden rounded-full">
                 {actualBreakdown.segments.map((segment) => {
                   const percentage = (segment.amount / actualBreakdown.total) * 100;
@@ -398,7 +312,6 @@ export function DashboardPage() {
                 })}
               </div>
 
-              {/* Legend */}
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
                 {actualBreakdown.segments.map((segment) => {
                   const percentage = ((segment.amount / actualBreakdown.total) * 100).toFixed(0);
@@ -415,59 +328,83 @@ export function DashboardPage() {
             </>
           )}
         </div>
+      </section>
 
-        {/* Forecast Breakdown */}
-        <div className="rounded-lg border p-4">
-          <div className="flex items-baseline gap-1">
-            <h2 className="text-lg font-semibold">Forecast Spending</h2>
-            <span className="text-sm text-muted-foreground">(Remaining)</span>
+      {/* Forecast Position */}
+      <section>
+        <h2 className="text-xl font-bold">Forecast</h2>
+        <p className="text-muted-foreground">
+          Projected to {formatDate(endDate)}
+        </p>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-lg border p-4">
+            <p className="text-sm text-muted-foreground">Projected Balance</p>
+            <p className={`text-2xl font-bold ${projectedEndBalance < 0 ? 'text-red-600' : ''}`}>
+              {formatCents(projectedEndBalance)}
+            </p>
+            <p className={`text-sm ${forecastedNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {forecastedNet >= 0 ? '+' : ''}{formatCents(forecastedNet)} forecast
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {formatCents(forecastBreakdown.total)} income
-          </p>
 
-          {forecastBreakdown.total === 0 ? (
-            <div className="mt-4 text-center text-sm text-muted-foreground">
-              No forecasted income.
-            </div>
-          ) : (
-            <>
-              {/* Stacked bar */}
-              <div className="mt-4 flex h-6 w-full overflow-hidden rounded-full">
-                {forecastBreakdown.segments.map((segment) => {
-                  const percentage = (segment.amount / forecastBreakdown.total) * 100;
-                  return (
-                    <div
-                      key={segment.id}
-                      className={`${segment.color} transition-all`}
-                      style={{ width: `${percentage}%` }}
-                      title={`${segment.name}: ${formatCents(segment.amount)}`}
-                    />
-                  );
-                })}
-              </div>
+          <div className="rounded-lg border p-4">
+            <p className="text-sm text-muted-foreground">Expected Income</p>
+            <p className="text-2xl font-bold text-green-600">+{formatCents(forecastedIncome)}</p>
+          </div>
 
-              {/* Legend */}
-              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
-                {forecastBreakdown.segments.map((segment) => {
-                  const percentage = ((segment.amount / forecastBreakdown.total) * 100).toFixed(0);
-                  return (
-                    <div key={segment.id} className="flex items-center gap-1.5 text-xs">
-                      <div className={`h-2.5 w-2.5 rounded-sm ${segment.color}`} />
-                      <span>
-                        {segment.name} ({percentage}%)
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
+          <div className="rounded-lg border p-4">
+            <p className="text-sm text-muted-foreground">Expected Expenses</p>
+            <p className="text-2xl font-bold text-red-600">-{formatCents(forecastedExpenses)}</p>
+          </div>
+
+          <div className="rounded-lg border p-4">
+            <p className="text-sm text-muted-foreground">Planned Savings</p>
+            <p className="text-2xl font-bold text-blue-600">-{formatCents(forecastedSavings)}</p>
+          </div>
         </div>
-      </div>
+
+        {/* Forecast Spending Breakdown */}
+        {forecastBreakdown.total > 0 && (
+          <div className="mt-4 rounded-lg border p-4">
+            <h3 className="text-lg font-semibold">Forecast Spending</h3>
+            <p className="text-sm text-muted-foreground">
+              How {formatCents(forecastBreakdown.total)} expected income will be allocated
+            </p>
+
+            <div className="mt-4 flex h-6 w-full overflow-hidden rounded-full">
+              {forecastBreakdown.segments.map((segment) => {
+                const percentage = (segment.amount / forecastBreakdown.total) * 100;
+                return (
+                  <div
+                    key={segment.id}
+                    className={`${segment.color} transition-all`}
+                    style={{ width: `${percentage}%` }}
+                    title={`${segment.name}: ${formatCents(segment.amount)}`}
+                  />
+                );
+              })}
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+              {forecastBreakdown.segments.map((segment) => {
+                const percentage = ((segment.amount / forecastBreakdown.total) * 100).toFixed(0);
+                return (
+                  <div key={segment.id} className="flex items-center gap-1.5 text-xs">
+                    <div className={`h-2.5 w-2.5 rounded-sm ${segment.color}`} />
+                    <span>
+                      {segment.name} ({percentage}%)
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </section>
 
       {/* Budget & Savings */}
-      <div className="mt-8 grid gap-6 md:grid-cols-2">
+      <section className="grid gap-4 md:grid-cols-2">
         {/* Budget Tracking */}
         <div className="rounded-lg border p-4">
           <h2 className="text-lg font-semibold">Budget</h2>
@@ -583,7 +520,7 @@ export function DashboardPage() {
             </div>
           )}
         </div>
-      </div>
+      </section>
     </div>
   );
 }
