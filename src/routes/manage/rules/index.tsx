@@ -3,6 +3,7 @@ import { useOutletContext, Link } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -178,6 +179,9 @@ export function RulesIndexPage() {
     );
   }
 
+  // Determine the default tab based on which has rules
+  const defaultTab = incomeRules.length > 0 ? 'income' : expenseRules.length > 0 ? 'expenses' : 'savings';
+
   return (
     <div>
       <div className="flex items-center justify-between">
@@ -203,52 +207,76 @@ export function RulesIndexPage() {
           </Button>
         </div>
       ) : (
-        <>
-          {incomeRules.length > 0 && (
-            <>
-              <h2 className="mt-8 text-lg font-semibold">Income</h2>
-              <div className="mt-4">
-                <DataTable
-                  columns={incomeColumns}
-                  data={incomeRules}
-                  searchKey="description"
-                  searchPlaceholder="Search income rules..."
-                  showPagination={false}
-                />
-              </div>
-            </>
-          )}
+        <Tabs defaultValue={defaultTab} className="mt-6">
+          <TabsList>
+            <TabsTrigger value="income">
+              Income {incomeRules.length > 0 && `(${incomeRules.length})`}
+            </TabsTrigger>
+            <TabsTrigger value="expenses">
+              Expenses {expenseRules.length > 0 && `(${expenseRules.length})`}
+            </TabsTrigger>
+            <TabsTrigger value="savings">
+              Savings {savingsRules.length > 0 && `(${savingsRules.length})`}
+            </TabsTrigger>
+          </TabsList>
 
-          {expenseRules.length > 0 && (
-            <>
-              <h2 className="mt-8 text-lg font-semibold">Expenses</h2>
-              <div className="mt-4">
-                <DataTable
-                  columns={expenseColumns}
-                  data={expenseRules}
-                  searchKey="description"
-                  searchPlaceholder="Search expense rules..."
-                  showPagination={false}
-                />
+          <TabsContent value="income">
+            {incomeRules.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-8 text-center">
+                <p className="text-muted-foreground">No income rules yet.</p>
+                <Button asChild className="mt-4">
+                  <Link to="/manage/rules/new">Add an income rule</Link>
+                </Button>
               </div>
-            </>
-          )}
+            ) : (
+              <DataTable
+                columns={incomeColumns}
+                data={incomeRules}
+                searchKey="description"
+                searchPlaceholder="Search income rules..."
+                showPagination={false}
+              />
+            )}
+          </TabsContent>
 
-          {savingsRules.length > 0 && (
-            <>
-              <h2 className="mt-8 text-lg font-semibold">Savings</h2>
-              <div className="mt-4">
-                <DataTable
-                  columns={savingsColumns}
-                  data={savingsRules}
-                  searchKey="description"
-                  searchPlaceholder="Search savings rules..."
-                  showPagination={false}
-                />
+          <TabsContent value="expenses">
+            {expenseRules.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-8 text-center">
+                <p className="text-muted-foreground">No expense rules yet.</p>
+                <Button asChild className="mt-4">
+                  <Link to="/manage/rules/new">Add an expense rule</Link>
+                </Button>
               </div>
-            </>
-          )}
-        </>
+            ) : (
+              <DataTable
+                columns={expenseColumns}
+                data={expenseRules}
+                searchKey="description"
+                searchPlaceholder="Search expense rules..."
+                showPagination={false}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="savings">
+            {savingsRules.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-8 text-center">
+                <p className="text-muted-foreground">No savings rules yet.</p>
+                <Button asChild className="mt-4">
+                  <Link to="/manage/rules/new">Add a savings rule</Link>
+                </Button>
+              </div>
+            ) : (
+              <DataTable
+                columns={savingsColumns}
+                data={savingsRules}
+                searchKey="description"
+                searchPlaceholder="Search savings rules..."
+                showPagination={false}
+              />
+            )}
+          </TabsContent>
+        </Tabs>
       )}
     </div>
   );
