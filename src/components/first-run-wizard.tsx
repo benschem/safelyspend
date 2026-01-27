@@ -7,6 +7,9 @@ import { useAppConfig } from '@/hooks/use-app-config';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { parseCentsFromInput, today } from '@/lib/utils';
+import { loadDemoDataToStorage } from '@/lib/demo-data';
+
+type WizardStep = 'choose' | 'setup';
 
 export function FirstRunWizard() {
   const navigate = useNavigate();
@@ -14,9 +17,20 @@ export function FirstRunWizard() {
   const { addTransaction } = useTransactions();
   const { scenarios, addScenario, setActiveScenarioId } = useScenarios();
 
+  const [step, setStep] = useState<WizardStep>('choose');
   const [balance, setBalance] = useState('');
   const [balanceDate, setBalanceDate] = useState(today());
   const [error, setError] = useState<string | null>(null);
+
+  const handleStartDemo = () => {
+    loadDemoDataToStorage();
+    // Force reload to pick up the new data
+    window.location.href = '/dashboard';
+  };
+
+  const handleStartFresh = () => {
+    setStep('setup');
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,17 +69,54 @@ export function FirstRunWizard() {
       });
     }
 
-    markInitialized();
+    markInitialized(false);
     navigate('/dashboard');
   };
+
+  if (step === 'choose') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold">Welcome to Budget</h1>
+            <p className="mt-2 text-muted-foreground">
+              Track your spending, plan your future, and reach your goals.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <button
+              onClick={handleStartFresh}
+              className="w-full rounded-lg border-2 border-transparent bg-primary p-6 text-left text-primary-foreground transition-all hover:bg-primary/90"
+            >
+              <h2 className="text-lg font-semibold">Start fresh</h2>
+              <p className="mt-1 text-sm opacity-90">
+                Set up your own budget from scratch with your real data.
+              </p>
+            </button>
+
+            <button
+              onClick={handleStartDemo}
+              className="w-full rounded-lg border-2 border-border bg-background p-6 text-left transition-all hover:border-primary hover:bg-muted"
+            >
+              <h2 className="text-lg font-semibold">Explore with demo data</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                See how the app works with 12 months of realistic sample data.
+              </p>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">Welcome to Budget</h1>
+          <h1 className="text-3xl font-bold">Set up your budget</h1>
           <p className="mt-2 text-muted-foreground">
-            Get started by setting your current balance.
+            Enter your current spending balance to get started.
           </p>
         </div>
 
@@ -103,9 +154,19 @@ export function FirstRunWizard() {
             </p>
           </div>
 
-          <Button type="submit" className="w-full">
-            Get Started
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setStep('choose')}
+              className="flex-1"
+            >
+              Back
+            </Button>
+            <Button type="submit" className="flex-1">
+              Get Started
+            </Button>
+          </div>
         </form>
       </div>
     </div>
