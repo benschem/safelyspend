@@ -1,13 +1,14 @@
 import { Outlet } from 'react-router';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
+import { DemoBanner } from '@/components/demo-banner';
 import { FirstRunWizard } from '@/components/first-run-wizard';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useViewState } from '@/hooks/use-view-state';
 import { useAppConfig } from '@/hooks/use-app-config';
 
 export function RootLayout() {
-  const { isInitialized } = useAppConfig();
+  const { isInitialized, isDemo } = useAppConfig();
   const { scenarios, activeScenarioId, setActiveScenarioId } = useScenarios();
   const { startDate, endDate, setDateRange, resetToFinancialYear } = useViewState();
 
@@ -16,21 +17,24 @@ export function RootLayout() {
   }
 
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Header
-          scenarios={scenarios}
-          activeScenarioId={activeScenarioId}
-          onScenarioChange={setActiveScenarioId}
-          startDate={startDate}
-          endDate={endDate}
-          onDateRangeChange={setDateRange}
-          onResetDateRange={resetToFinancialYear}
-        />
-        <main className="flex-1 overflow-y-auto p-6">
-          <Outlet context={{ activeScenarioId, startDate, endDate }} />
-        </main>
+    <div className="flex h-screen flex-col">
+      {isDemo && <DemoBanner />}
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <Header
+            scenarios={scenarios}
+            activeScenarioId={activeScenarioId}
+            onScenarioChange={setActiveScenarioId}
+            startDate={startDate}
+            endDate={endDate}
+            onDateRangeChange={setDateRange}
+            onResetDateRange={resetToFinancialYear}
+          />
+          <main className="flex-1 overflow-y-auto p-6">
+            <Outlet context={{ activeScenarioId, startDate, endDate }} />
+          </main>
+        </div>
       </div>
     </div>
   );
