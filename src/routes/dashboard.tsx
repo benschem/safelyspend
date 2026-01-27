@@ -54,26 +54,32 @@ export function DashboardPage() {
   const actualSavings = savingsTransactions.reduce((sum, t) => sum + t.amountCents, 0);
   const actualNet = actualIncome - actualExpenses - actualSavings;
 
-  const forecastedIncome = incomeForecasts.reduce((sum, f) => sum + f.amountCents, 0);
-  const forecastedExpenses = expenseForecasts.reduce((sum, f) => sum + f.amountCents, 0);
-  const forecastedSavings = savingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
+  const currentBalance = totalOpeningBalance + actualNet;
+
+  // Filter forecasts to only include future dates (avoid double-counting with actuals)
+  const today = new Date().toISOString().slice(0, 10);
+  const futureIncomeForecasts = incomeForecasts.filter((f) => f.date > today);
+  const futureExpenseForecasts = expenseForecasts.filter((f) => f.date > today);
+  const futureSavingsForecasts = savingsForecasts.filter((f) => f.date > today);
+
+  const forecastedIncome = futureIncomeForecasts.reduce((sum, f) => sum + f.amountCents, 0);
+  const forecastedExpenses = futureExpenseForecasts.reduce((sum, f) => sum + f.amountCents, 0);
+  const forecastedSavings = futureSavingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
   const forecastedNet = forecastedIncome - forecastedExpenses - forecastedSavings;
 
-  const currentBalance = totalOpeningBalance + actualNet;
-  const projectedEndBalance = totalOpeningBalance + actualNet + forecastedNet;
+  const projectedEndBalance = currentBalance + forecastedNet;
 
   // Calculate cash flow buffer (money available until next income)
-  const today = new Date().toISOString().slice(0, 10);
-  const futureIncomeForecasts = incomeForecasts
-    .filter((f) => f.date > today)
-    .sort((a, b) => a.date.localeCompare(b.date));
-  const nextIncomeDate = futureIncomeForecasts[0]?.date ?? null;
+  const sortedFutureIncome = [...futureIncomeForecasts].sort((a, b) =>
+    a.date.localeCompare(b.date),
+  );
+  const nextIncomeDate = sortedFutureIncome[0]?.date ?? null;
   const bufferEndDate = nextIncomeDate ?? endDate;
 
   // Sum expenses and savings between now and next income (or period end)
   const committedBeforeNextIncome = [
-    ...expenseForecasts.filter((f) => f.date > today && f.date <= bufferEndDate),
-    ...savingsForecasts.filter((f) => f.date > today && f.date <= bufferEndDate),
+    ...futureExpenseForecasts.filter((f) => f.date <= bufferEndDate),
+    ...futureSavingsForecasts.filter((f) => f.date <= bufferEndDate),
   ].reduce((sum, f) => sum + f.amountCents, 0);
 
   const cashFlowBuffer = currentBalance - committedBeforeNextIncome;
@@ -92,13 +98,13 @@ export function DashboardPage() {
 
   const forecastedByCategory = useMemo(() => {
     const forecasted: Record<string, number> = {};
-    for (const f of expenseForecasts) {
+    for (const f of futureExpenseForecasts) {
       if (f.categoryId) {
         forecasted[f.categoryId] = (forecasted[f.categoryId] ?? 0) + f.amountCents;
       }
     }
     return forecasted;
-  }, [expenseForecasts]);
+  }, [futureExpenseForecasts]);
 
   const budgetRows = useMemo(() => {
     return activeCategories
@@ -169,14 +175,14 @@ export function DashboardPage() {
     return { segments, total: actualIncome };
   }, [activeCategories, spendingByCategory, expenseTransactions, actualSavings, actualIncome]);
 
-  // Calculate forecast breakdown by category
+  // Calculate forecast breakdown by category (future only)
   const forecastBreakdown = useMemo(() => {
     const segments: Array<{ id: string; name: string; amount: number; color: string }> = [];
     let colorIndex = 0;
 
     // Build forecast spending by category
     const forecastByCategory: Record<string, number> = {};
-    for (const f of expenseForecasts) {
+    for (const f of futureExpenseForecasts) {
       if (f.categoryId) {
         forecastByCategory[f.categoryId] = (forecastByCategory[f.categoryId] ?? 0) + f.amountCents;
       }
@@ -197,7 +203,7 @@ export function DashboardPage() {
     }
 
     // Add uncategorized forecast expenses
-    const uncategorizedForecasts = expenseForecasts
+    const uncategorizedForecasts = futureExpenseForecasts
       .filter((f) => !f.categoryId)
       .reduce((sum, f) => sum + f.amountCents, 0);
     if (uncategorizedForecasts > 0) {
@@ -232,7 +238,7 @@ export function DashboardPage() {
     }
 
     return { segments, total: forecastedIncome };
-  }, [activeCategories, expenseForecasts, forecastedSavings, forecastedIncome]);
+  }, [activeCategories, futureExpenseForecasts, forecastedSavings, forecastedIncome]);
 
   if (!activeScenarioId || !activeScenario) {
     return (
