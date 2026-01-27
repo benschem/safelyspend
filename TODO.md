@@ -1,4 +1,4 @@
-[ ] Add button to dashboard to load demo data, that adds a permanent flash telling you it's demo data and gives you a clear data button to delete all demo data and start entering your own data
+[X] Improve the quality, quantity and realistic-ness of the demo data. If app is first initialized, the wizard should ask if you want to demo the app or start your own session - if you start your own session, everything is as now, if you choose demo it loads the demo data and a permanent flash message on all screens telling you it's demo data and giving you a call to action to delete all demo data and start entering your own data. Ask any questions if you need to and then get started.
 
 [X] Dashboard should also show how you're tracking against the budget for each category
 
@@ -16,7 +16,7 @@
   - Store only userId → blob, lastUpdatedAt
   - Client downloads, decrypts, loads on startup, and encrypts and uploads on save
 
-[ ] Graphs
+[X] Graphs
 
 [X] Balances show small arrow up or arrow down +/-30% in green/red next to the numbers
 [ ] Are these +30% figures broken?
