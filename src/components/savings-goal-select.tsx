@@ -17,10 +17,12 @@ export function SavingsGoalSelect({
 
   const options = useMemo(
     () =>
-      savingsGoals.map((goal) => ({
-        value: goal.id,
-        label: goal.name,
-      })),
+      savingsGoals
+        .map((goal) => ({
+          value: goal.id,
+          label: goal.name,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
     [savingsGoals],
   );
 

@@ -19,10 +19,12 @@ export function CategorySelect({
 
   const options = useMemo(
     () =>
-      activeCategories.map((cat) => ({
-        value: cat.id,
-        label: cat.name,
-      })),
+      activeCategories
+        .map((cat) => ({
+          value: cat.id,
+          label: cat.name,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
     [activeCategories],
   );
 
