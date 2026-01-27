@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/select';
 import { ArrowLeft } from 'lucide-react';
 import { useTransactions } from '@/hooks/use-transactions';
-import { useAccounts } from '@/hooks/use-accounts';
 import { useCategories } from '@/hooks/use-categories';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { today, parseCentsFromInput } from '@/lib/utils';
@@ -22,7 +21,6 @@ import type { TransactionType } from '@/lib/types';
 export function TransactionNewPage() {
   const navigate = useNavigate();
   const { addTransaction } = useTransactions();
-  const { activeAccounts } = useAccounts();
   const { activeCategories } = useCategories();
   const { savingsGoals } = useSavingsGoals();
 
@@ -30,7 +28,6 @@ export function TransactionNewPage() {
   const [date, setDate] = useState(today());
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
-  const [accountId, setAccountId] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [savingsGoalId, setSavingsGoalId] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -57,10 +54,6 @@ export function TransactionNewPage() {
       setError('Amount must be greater than 0');
       return;
     }
-    if (!accountId) {
-      setError('Account is required');
-      return;
-    }
     if (type === 'savings' && !savingsGoalId) {
       setError('Savings goal is required');
       return;
@@ -71,7 +64,6 @@ export function TransactionNewPage() {
       date,
       description: description.trim(),
       amountCents: parseCentsFromInput(amount),
-      accountId,
       categoryId: type === 'savings' ? null : categoryId || null,
       savingsGoalId: type === 'savings' ? savingsGoalId : null,
     });
@@ -156,22 +148,6 @@ export function TransactionNewPage() {
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
           />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="account">Account</Label>
-          <Select value={accountId} onValueChange={setAccountId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select account" />
-            </SelectTrigger>
-            <SelectContent>
-              {activeAccounts.map((account) => (
-                <SelectItem key={account.id} value={account.id}>
-                  {account.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
         {type === 'savings' ? (

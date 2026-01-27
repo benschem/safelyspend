@@ -19,7 +19,6 @@ import {
 } from '@/components/ui/select';
 import { Plus } from 'lucide-react';
 import { useTransactions } from '@/hooks/use-transactions';
-import { useAccounts } from '@/hooks/use-accounts';
 import { useCategories } from '@/hooks/use-categories';
 import { formatCents, formatDate } from '@/lib/utils';
 
@@ -29,23 +28,19 @@ interface OutletContext {
   endDate: string;
 }
 
-type FilterType = 'all' | 'income' | 'expense' | 'savings';
+type FilterType = 'all' | 'income' | 'expense' | 'savings' | 'adjustment';
 
 export function TransactionsIndexPage() {
   const { startDate, endDate } = useOutletContext<OutletContext>();
   const { transactions } = useTransactions(startDate, endDate);
-  const { accounts } = useAccounts();
   const { categories } = useCategories();
 
   const [filterType, setFilterType] = useState<FilterType>('all');
-  const [filterAccountId, setFilterAccountId] = useState<string>('all');
 
   const filteredTransactions = transactions
     .filter((t) => filterType === 'all' || t.type === filterType)
-    .filter((t) => filterAccountId === 'all' || t.accountId === filterAccountId)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const getAccountName = (id: string) => accounts.find((a) => a.id === id)?.name ?? 'Unknown';
   const getCategoryName = (id: string | null) =>
     id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-';
 
@@ -76,21 +71,7 @@ export function TransactionsIndexPage() {
               <SelectItem value="income">Income</SelectItem>
               <SelectItem value="expense">Expense</SelectItem>
               <SelectItem value="savings">Savings</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="w-48">
-          <Select value={filterAccountId} onValueChange={setFilterAccountId}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Accounts</SelectItem>
-              {accounts.map((account) => (
-                <SelectItem key={account.id} value={account.id}>
-                  {account.name}
-                </SelectItem>
-              ))}
+              <SelectItem value="adjustment">Adjustment</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -110,7 +91,6 @@ export function TransactionsIndexPage() {
               <TableHead>Date</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead>Account</TableHead>
               <TableHead>Category</TableHead>
               <TableHead className="text-right">Amount</TableHead>
               <TableHead className="w-20"></TableHead>
@@ -126,23 +106,24 @@ export function TransactionsIndexPage() {
                     <Badge variant="success">Income</Badge>
                   ) : transaction.type === 'savings' ? (
                     <Badge variant="info">Savings</Badge>
+                  ) : transaction.type === 'adjustment' ? (
+                    <Badge variant="secondary">Adjustment</Badge>
                   ) : (
                     <Badge variant="destructive">Expense</Badge>
                   )}
                 </TableCell>
-                <TableCell>{getAccountName(transaction.accountId)}</TableCell>
                 <TableCell>{getCategoryName(transaction.categoryId)}</TableCell>
                 <TableCell className="text-right font-mono">
                   <span
                     className={
-                      transaction.type === 'income'
+                      transaction.type === 'income' || transaction.type === 'adjustment'
                         ? 'text-green-600'
                         : transaction.type === 'savings'
                           ? 'text-blue-600'
                           : 'text-red-600'
                     }
                   >
-                    {transaction.type === 'income' ? '+' : '-'}
+                    {transaction.type === 'income' || transaction.type === 'adjustment' ? '+' : '-'}
                     {formatCents(transaction.amountCents)}
                   </span>
                 </TableCell>

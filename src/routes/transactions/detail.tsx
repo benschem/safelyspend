@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/select';
 import { ArrowLeft } from 'lucide-react';
 import { useTransactions } from '@/hooks/use-transactions';
-import { useAccounts } from '@/hooks/use-accounts';
 import { useCategories } from '@/hooks/use-categories';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { formatCents, formatDate, parseCentsFromInput, today } from '@/lib/utils';
@@ -25,7 +24,6 @@ export function TransactionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { allTransactions, updateTransaction, deleteTransaction } = useTransactions();
-  const { accounts, activeAccounts } = useAccounts();
   const { categories, activeCategories } = useCategories();
   const { savingsGoals } = useSavingsGoals();
 
@@ -38,7 +36,6 @@ export function TransactionDetailPage() {
   const [amount, setAmount] = useState(
     transaction ? (transaction.amountCents / 100).toFixed(2) : '',
   );
-  const [accountId, setAccountId] = useState(transaction?.accountId ?? '');
   const [categoryId, setCategoryId] = useState(transaction?.categoryId ?? '');
   const [savingsGoalId, setSavingsGoalId] = useState(transaction?.savingsGoalId ?? '');
   const [error, setError] = useState<string | null>(null);
@@ -60,13 +57,13 @@ export function TransactionDetailPage() {
     );
   }
 
-  const getAccountName = (accId: string) => accounts.find((a) => a.id === accId)?.name ?? 'Unknown';
   const getCategoryName = (catId: string | null) =>
     catId ? (categories.find((c) => c.id === catId)?.name ?? 'Unknown') : '-';
   const getSavingsGoalName = (goalId: string | null) =>
     goalId ? (savingsGoals.find((g) => g.id === goalId)?.name ?? 'Unknown') : '-';
 
   const todayDate = today();
+  const isAdjustment = transaction?.type === 'adjustment';
 
   const handleSave = () => {
     setError(null);
@@ -87,10 +84,6 @@ export function TransactionDetailPage() {
       setError('Amount must be greater than 0');
       return;
     }
-    if (!accountId) {
-      setError('Account is required');
-      return;
-    }
     if (type === 'savings' && !savingsGoalId) {
       setError('Savings goal is required');
       return;
@@ -101,7 +94,6 @@ export function TransactionDetailPage() {
       date,
       description: description.trim(),
       amountCents: parseCentsFromInput(amount),
-      accountId,
       categoryId: type === 'savings' ? null : categoryId || null,
       savingsGoalId: type === 'savings' ? savingsGoalId : null,
     });
@@ -122,7 +114,6 @@ export function TransactionDetailPage() {
     setDate(transaction.date);
     setDescription(transaction.description);
     setAmount((transaction.amountCents / 100).toFixed(2));
-    setAccountId(transaction.accountId);
     setCategoryId(transaction.categoryId ?? '');
     setSavingsGoalId(transaction.savingsGoalId ?? '');
     setEditing(true);
@@ -147,24 +138,24 @@ export function TransactionDetailPage() {
               <Badge variant="success">Income</Badge>
             ) : transaction.type === 'savings' ? (
               <Badge variant="info">Savings</Badge>
+            ) : transaction.type === 'adjustment' ? (
+              <Badge variant="secondary">Adjustment</Badge>
             ) : (
               <Badge variant="destructive">Expense</Badge>
             )}
           </div>
-          <p className="text-muted-foreground">
-            {formatDate(transaction.date)} · {getAccountName(transaction.accountId)}
-          </p>
+          <p className="text-muted-foreground">{formatDate(transaction.date)}</p>
         </div>
         <div
           className={`text-2xl font-bold ${
-            transaction.type === 'income'
+            transaction.type === 'income' || transaction.type === 'adjustment'
               ? 'text-green-600'
               : transaction.type === 'savings'
                 ? 'text-blue-600'
                 : 'text-red-600'
           }`}
         >
-          {transaction.type === 'income' ? '+' : '-'}
+          {transaction.type === 'income' || transaction.type === 'adjustment' ? '+' : '-'}
           {formatCents(transaction.amountCents)}
         </div>
       </div>
@@ -186,33 +177,35 @@ export function TransactionDetailPage() {
 
         {editing ? (
           <div className="mt-4 space-y-4">
-            <div className="space-y-2">
-              <Label>Type</Label>
-              <RadioGroup
-                value={type}
-                onValueChange={(v) => setType(v as TransactionType)}
-                className="flex gap-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="expense" id="expense" />
-                  <Label htmlFor="expense" className="font-normal">
-                    Expense
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="income" id="income" />
-                  <Label htmlFor="income" className="font-normal">
-                    Income
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="savings" id="savings" />
-                  <Label htmlFor="savings" className="font-normal">
-                    Savings
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
+            {!isAdjustment && (
+              <div className="space-y-2">
+                <Label>Type</Label>
+                <RadioGroup
+                  value={type}
+                  onValueChange={(v) => setType(v as TransactionType)}
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="expense" id="expense" />
+                    <Label htmlFor="expense" className="font-normal">
+                      Expense
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="income" id="income" />
+                    <Label htmlFor="income" className="font-normal">
+                      Income
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="savings" id="savings" />
+                    <Label htmlFor="savings" className="font-normal">
+                      Savings
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="date">Date</Label>
@@ -244,22 +237,6 @@ export function TransactionDetailPage() {
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="account">Account</Label>
-              <Select value={accountId} onValueChange={setAccountId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select account" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeAccounts.map((account) => (
-                    <SelectItem key={account.id} value={account.id}>
-                      {account.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
             {type === 'savings' ? (
@@ -315,7 +292,9 @@ export function TransactionDetailPage() {
                 ? 'Income'
                 : transaction.type === 'savings'
                   ? 'Savings'
-                  : 'Expense'}
+                  : transaction.type === 'adjustment'
+                    ? 'Adjustment'
+                    : 'Expense'}
             </p>
             <p>
               <span className="text-muted-foreground">Date:</span> {formatDate(transaction.date)}
@@ -327,21 +306,17 @@ export function TransactionDetailPage() {
               <span className="text-muted-foreground">Amount:</span>{' '}
               {formatCents(transaction.amountCents)}
             </p>
-            <p>
-              <span className="text-muted-foreground">Account:</span>{' '}
-              {getAccountName(transaction.accountId)}
-            </p>
             {transaction.type === 'savings' ? (
               <p>
                 <span className="text-muted-foreground">Savings Goal:</span>{' '}
                 {getSavingsGoalName(transaction.savingsGoalId)}
               </p>
-            ) : (
+            ) : transaction.type !== 'adjustment' ? (
               <p>
                 <span className="text-muted-foreground">Category:</span>{' '}
                 {getCategoryName(transaction.categoryId)}
               </p>
-            )}
+            ) : null}
           </div>
         )}
       </section>
