@@ -208,14 +208,14 @@ export function RulesIndexPage() {
         </div>
       ) : (
         <Tabs defaultValue={defaultTab} className="mt-6 w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="income">
+          <TabsList className="flex w-full">
+            <TabsTrigger value="income" className="flex-1">
               Income {incomeRules.length > 0 && `(${incomeRules.length})`}
             </TabsTrigger>
-            <TabsTrigger value="expenses">
+            <TabsTrigger value="expenses" className="flex-1">
               Expenses {expenseRules.length > 0 && `(${expenseRules.length})`}
             </TabsTrigger>
-            <TabsTrigger value="savings">
+            <TabsTrigger value="savings" className="flex-1">
               Savings {savingsRules.length > 0 && `(${savingsRules.length})`}
             </TabsTrigger>
           </TabsList>

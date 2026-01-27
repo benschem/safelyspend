@@ -285,11 +285,11 @@ export function DashboardPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="current">Current Position</TabsTrigger>
-          <TabsTrigger value="forecast">Forecast</TabsTrigger>
-          <TabsTrigger value="budget">Budget</TabsTrigger>
-          <TabsTrigger value="savings">Savings</TabsTrigger>
+        <TabsList className="flex w-full overflow-x-auto">
+          <TabsTrigger value="current" className="flex-1 min-w-fit">Current</TabsTrigger>
+          <TabsTrigger value="forecast" className="flex-1 min-w-fit">Forecast</TabsTrigger>
+          <TabsTrigger value="budget" className="flex-1 min-w-fit">Budget</TabsTrigger>
+          <TabsTrigger value="savings" className="flex-1 min-w-fit">Savings</TabsTrigger>
         </TabsList>
 
         {/* Current Position Tab */}
@@ -432,7 +432,7 @@ export function DashboardPage() {
                 </Link>
               </div>
             ) : (
-              <div className="mt-6 grid grid-cols-2 gap-6 sm:grid-cols-4">
+              <div className="mt-6 grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
                 {budgetRows.map((row) => (
                   <BudgetDonutChart
                     key={row.id}
@@ -459,7 +459,7 @@ export function DashboardPage() {
                 </Link>
               </div>
             ) : (
-              <div className="mt-6 grid grid-cols-2 gap-6 sm:grid-cols-4">
+              <div className="mt-6 grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
                 {savingsGoals.map((goal) => {
                   const savedAmount = savingsTransactions
                     .filter((t) => t.savingsGoalId === goal.id)

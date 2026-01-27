@@ -61,11 +61,11 @@ export function ReportsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="spending">Spending</TabsTrigger>
-          <TabsTrigger value="budget">Budget</TabsTrigger>
-          <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
-          <TabsTrigger value="savings">Savings</TabsTrigger>
+        <TabsList className="flex w-full overflow-x-auto">
+          <TabsTrigger value="spending" className="flex-1 min-w-fit">Spending</TabsTrigger>
+          <TabsTrigger value="budget" className="flex-1 min-w-fit">Budget</TabsTrigger>
+          <TabsTrigger value="cashflow" className="flex-1 min-w-fit">Cash Flow</TabsTrigger>
+          <TabsTrigger value="savings" className="flex-1 min-w-fit">Savings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="spending" className="mt-6">
