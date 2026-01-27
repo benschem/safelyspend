@@ -16,15 +16,15 @@ import { CategoryDetailPage } from '@/routes/categories/detail';
 import { SavingsIndexPage } from '@/routes/savings/index';
 import { SavingsNewPage } from '@/routes/savings/new';
 import { SavingsDetailPage } from '@/routes/savings/detail';
-import { PeriodsIndexPage } from '@/routes/manage/periods/index';
-import { PeriodNewPage } from '@/routes/manage/periods/new';
-import { PeriodDetailPage } from '@/routes/manage/periods/detail';
+import { ScenariosIndexPage } from '@/routes/manage/scenarios/index';
+import { ScenarioNewPage } from '@/routes/manage/scenarios/new';
+import { ScenarioDetailPage } from '@/routes/manage/scenarios/detail';
 import { AccountsIndexPage } from '@/routes/manage/accounts/index';
 import { AccountNewPage } from '@/routes/manage/accounts/new';
 import { AccountDetailPage } from '@/routes/manage/accounts/detail';
-import { RecurringIndexPage } from '@/routes/manage/recurring/index';
-import { RecurringNewPage } from '@/routes/manage/recurring/new';
-import { RecurringDetailPage } from '@/routes/manage/recurring/detail';
+import { RulesIndexPage } from '@/routes/manage/rules/index';
+import { RuleNewPage } from '@/routes/manage/rules/new';
+import { RuleDetailPage } from '@/routes/manage/rules/detail';
 import { SettingsPage } from '@/routes/settings';
 
 const router = createBrowserRouter([
@@ -61,20 +61,20 @@ const router = createBrowserRouter([
       { path: 'savings/new', element: <SavingsNewPage /> },
       { path: 'savings/:id', element: <SavingsDetailPage /> },
 
-      // Manage - Periods
-      { path: 'manage/periods', element: <PeriodsIndexPage /> },
-      { path: 'manage/periods/new', element: <PeriodNewPage /> },
-      { path: 'manage/periods/:id', element: <PeriodDetailPage /> },
+      // Manage - Scenarios
+      { path: 'manage/scenarios', element: <ScenariosIndexPage /> },
+      { path: 'manage/scenarios/new', element: <ScenarioNewPage /> },
+      { path: 'manage/scenarios/:id', element: <ScenarioDetailPage /> },
 
       // Manage - Accounts
       { path: 'manage/accounts', element: <AccountsIndexPage /> },
       { path: 'manage/accounts/new', element: <AccountNewPage /> },
       { path: 'manage/accounts/:id', element: <AccountDetailPage /> },
 
-      // Manage - Recurring
-      { path: 'manage/recurring', element: <RecurringIndexPage /> },
-      { path: 'manage/recurring/new', element: <RecurringNewPage /> },
-      { path: 'manage/recurring/:id', element: <RecurringDetailPage /> },
+      // Manage - Forecast Rules
+      { path: 'manage/rules', element: <RulesIndexPage /> },
+      { path: 'manage/rules/new', element: <RuleNewPage /> },
+      { path: 'manage/rules/:id', element: <RuleDetailPage /> },
 
       // Settings
       { path: 'settings', element: <SettingsPage /> },
