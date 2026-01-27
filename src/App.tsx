@@ -16,6 +16,7 @@ import { CategoryDetailPage } from '@/routes/categories/detail';
 import { SavingsIndexPage } from '@/routes/savings/index';
 import { SavingsNewPage } from '@/routes/savings/new';
 import { SavingsDetailPage } from '@/routes/savings/detail';
+import { ReportsPage } from '@/routes/reports';
 import { ScenariosIndexPage } from '@/routes/manage/scenarios/index';
 import { ScenarioNewPage } from '@/routes/manage/scenarios/new';
 import { ScenarioDetailPage } from '@/routes/manage/scenarios/detail';
@@ -57,6 +58,9 @@ const router = createBrowserRouter([
       { path: 'savings', element: <SavingsIndexPage /> },
       { path: 'savings/new', element: <SavingsNewPage /> },
       { path: 'savings/:id', element: <SavingsDetailPage /> },
+
+      // Reports (track)
+      { path: 'reports', element: <ReportsPage /> },
 
       // Manage - Scenarios
       { path: 'manage/scenarios', element: <ScenariosIndexPage /> },
