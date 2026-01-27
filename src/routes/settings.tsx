@@ -8,13 +8,11 @@ function getAllData(): BudgetData & { activeScenarioId: string | null } {
   return {
     scenarios: JSON.parse(localStorage.getItem('budget:scenarios') ?? '[]'),
     activeScenarioId: JSON.parse(localStorage.getItem('budget:activeScenarioId') ?? 'null'),
-    accounts: JSON.parse(localStorage.getItem('budget:accounts') ?? '[]'),
     categories: JSON.parse(localStorage.getItem('budget:categories') ?? '[]'),
     budgetRules: JSON.parse(localStorage.getItem('budget:budgetRules') ?? '[]'),
     forecastRules: JSON.parse(localStorage.getItem('budget:forecastRules') ?? '[]'),
     forecastEvents: JSON.parse(localStorage.getItem('budget:forecastEvents') ?? '[]'),
     transactions: JSON.parse(localStorage.getItem('budget:transactions') ?? '[]'),
-    transfers: JSON.parse(localStorage.getItem('budget:transfers') ?? '[]'),
     savingsGoals: JSON.parse(localStorage.getItem('budget:savingsGoals') ?? '[]'),
   };
 }
@@ -24,14 +22,13 @@ function setAllData(data: BudgetData & { activeScenarioId?: string | null }): vo
   if (data.activeScenarioId !== undefined) {
     localStorage.setItem('budget:activeScenarioId', JSON.stringify(data.activeScenarioId));
   }
-  localStorage.setItem('budget:accounts', JSON.stringify(data.accounts));
   localStorage.setItem('budget:categories', JSON.stringify(data.categories));
   localStorage.setItem('budget:budgetRules', JSON.stringify(data.budgetRules));
   localStorage.setItem('budget:forecastRules', JSON.stringify(data.forecastRules));
   localStorage.setItem('budget:forecastEvents', JSON.stringify(data.forecastEvents));
   localStorage.setItem('budget:transactions', JSON.stringify(data.transactions));
-  localStorage.setItem('budget:transfers', JSON.stringify(data.transfers));
   localStorage.setItem('budget:savingsGoals', JSON.stringify(data.savingsGoals));
+  localStorage.setItem('budget:appConfig', JSON.stringify({ isInitialized: true }));
 }
 
 export function SettingsPage() {
@@ -79,7 +76,7 @@ export function SettingsPage() {
         const data = JSON.parse(event.target?.result as string);
 
         // Basic validation
-        const requiredKeys = ['scenarios', 'accounts', 'categories', 'transactions'];
+        const requiredKeys = ['scenarios', 'categories', 'transactions'];
         const missingKeys = requiredKeys.filter((key) => !Array.isArray(data[key]));
         if (missingKeys.length > 0) {
           showMessage('error', `Invalid file: missing ${missingKeys.join(', ')}`);
