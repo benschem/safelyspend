@@ -20,6 +20,7 @@ interface BreakdownSegment {
 interface SpendingBreakdownChartProps {
   segments: BreakdownSegment[];
   total: number;
+  colorMap?: Record<string, string>;
 }
 
 interface TooltipPayload {
@@ -58,9 +59,20 @@ function CustomTooltip({
   );
 }
 
-export function SpendingBreakdownChart({ segments, total }: SpendingBreakdownChartProps) {
-  // Build color map for segments
+export function SpendingBreakdownChart({ segments, total, colorMap: externalColorMap }: SpendingBreakdownChartProps) {
+  // Build color map for segments (use external if provided)
   const colorMap = useMemo(() => {
+    if (externalColorMap) {
+      // Add special colors for non-category segments
+      return {
+        ...externalColorMap,
+        savings: CHART_COLORS.savings,
+        uncategorized: CHART_COLORS.uncategorized,
+        unallocated: CHART_COLORS.available,
+      };
+    }
+
+    // Fall back to building our own map
     const map: Record<string, string> = {};
     let categoryIndex = 0;
 
@@ -77,7 +89,7 @@ export function SpendingBreakdownChart({ segments, total }: SpendingBreakdownCha
       }
     }
     return map;
-  }, [segments]);
+  }, [segments, externalColorMap]);
 
   // Transform data for horizontal stacked bar
   const chartData = useMemo(() => {

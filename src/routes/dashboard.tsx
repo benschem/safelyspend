@@ -8,6 +8,7 @@ import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useCategories } from '@/hooks/use-categories';
 import { formatCents, formatDate } from '@/lib/utils';
+import { buildCategoryColorMap } from '@/lib/chart-colors';
 import { SpendingBreakdownChart } from '@/components/charts';
 
 interface OutletContext {
@@ -216,6 +217,12 @@ export function DashboardPage() {
     return { segments, total: forecastedIncome };
   }, [activeCategories, futureExpenseForecasts, forecastedSavings, forecastedIncome]);
 
+  // Build shared color map for all categories so both charts use consistent colors
+  const categoryColorMap = useMemo(
+    () => buildCategoryColorMap(activeCategories.map((c) => c.id)),
+    [activeCategories],
+  );
+
   if (!activeScenarioId || !activeScenario) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -280,6 +287,7 @@ export function DashboardPage() {
               <SpendingBreakdownChart
                 segments={actualBreakdown.segments}
                 total={actualBreakdown.total}
+                colorMap={categoryColorMap}
               />
             </div>
           )}
@@ -332,6 +340,7 @@ export function DashboardPage() {
               <SpendingBreakdownChart
                 segments={forecastBreakdown.segments}
                 total={forecastBreakdown.total}
+                colorMap={categoryColorMap}
               />
             </div>
           </div>
