@@ -87,3 +87,36 @@ export function parseCentsFromInput(input: string): number {
 
   return Math.round(parsed * 100);
 }
+
+/**
+ * Get the current Australian financial year dates (July 1 - June 30)
+ */
+export function getCurrentFinancialYear(): { startDate: string; endDate: string } {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-indexed, so July = 6
+
+  // If we're in Jan-June, FY started last year
+  // If we're in July-Dec, FY started this year
+  const fyStartYear = month < 6 ? year - 1 : year;
+  const fyEndYear = fyStartYear + 1;
+
+  return {
+    startDate: `${fyStartYear}-07-01`,
+    endDate: `${fyEndYear}-06-30`,
+  };
+}
+
+/**
+ * Get the last day of a month
+ */
+export function getLastDayOfMonth(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+/**
+ * Format date as YYYY-MM-DD
+ */
+export function formatISODate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
