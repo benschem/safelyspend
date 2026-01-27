@@ -18,37 +18,27 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Plus } from 'lucide-react';
-import { usePeriods } from '@/hooks/use-periods';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useAccounts } from '@/hooks/use-accounts';
 import { useCategories } from '@/hooks/use-categories';
 import { formatCents, formatDate } from '@/lib/utils';
 
 interface OutletContext {
-  activePeriodId: string | null;
+  activeScenarioId: string | null;
+  startDate: string;
+  endDate: string;
 }
 
 type FilterType = 'all' | 'income' | 'expense' | 'savings';
 
 export function TransactionsIndexPage() {
-  const { activePeriodId } = useOutletContext<OutletContext>();
-  const { periods } = usePeriods();
-  const activePeriod = periods.find((p) => p.id === activePeriodId) ?? null;
-  const { transactions } = useTransactions(activePeriod);
+  const { startDate, endDate } = useOutletContext<OutletContext>();
+  const { transactions } = useTransactions(startDate, endDate);
   const { accounts } = useAccounts();
   const { categories } = useCategories();
 
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [filterAccountId, setFilterAccountId] = useState<string>('all');
-
-  if (!activePeriodId) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <h2 className="text-lg font-semibold">No period selected</h2>
-        <p className="text-muted-foreground">Select a period to view transactions.</p>
-      </div>
-    );
-  }
 
   const filteredTransactions = transactions
     .filter((t) => filterType === 'all' || t.type === filterType)

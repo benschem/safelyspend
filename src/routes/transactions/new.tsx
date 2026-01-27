@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useOutletContext } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +12,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ArrowLeft } from 'lucide-react';
-import { usePeriods } from '@/hooks/use-periods';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useAccounts } from '@/hooks/use-accounts';
 import { useCategories } from '@/hooks/use-categories';
@@ -20,19 +19,12 @@ import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { today, parseCentsFromInput } from '@/lib/utils';
 import type { TransactionType } from '@/lib/types';
 
-interface OutletContext {
-  activePeriodId: string | null;
-}
-
 export function TransactionNewPage() {
   const navigate = useNavigate();
-  const { activePeriodId } = useOutletContext<OutletContext>();
-  const { periods } = usePeriods();
-  const activePeriod = periods.find((p) => p.id === activePeriodId) ?? null;
-  const { addTransaction } = useTransactions(activePeriod);
+  const { addTransaction } = useTransactions();
   const { activeAccounts } = useAccounts();
   const { activeCategories } = useCategories();
-  const { savingsGoals } = useSavingsGoals(activePeriodId);
+  const { savingsGoals } = useSavingsGoals();
 
   const [type, setType] = useState<TransactionType>('expense');
   const [date, setDate] = useState(today());
@@ -42,15 +34,6 @@ export function TransactionNewPage() {
   const [categoryId, setCategoryId] = useState('');
   const [savingsGoalId, setSavingsGoalId] = useState('');
   const [error, setError] = useState<string | null>(null);
-
-  if (!activePeriodId) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <h2 className="text-lg font-semibold">No period selected</h2>
-        <p className="text-muted-foreground">Select a period first.</p>
-      </div>
-    );
-  }
 
   const todayDate = today();
 

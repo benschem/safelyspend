@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, Link, useNavigate, useOutletContext } from 'react-router';
+import { useParams, Link, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +14,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ArrowLeft } from 'lucide-react';
-import { usePeriods } from '@/hooks/use-periods';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useAccounts } from '@/hooks/use-accounts';
 import { useCategories } from '@/hooks/use-categories';
@@ -22,22 +21,15 @@ import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { formatCents, formatDate, parseCentsFromInput, today } from '@/lib/utils';
 import type { TransactionType } from '@/lib/types';
 
-interface OutletContext {
-  activePeriodId: string | null;
-}
-
 export function TransactionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { activePeriodId } = useOutletContext<OutletContext>();
-  const { periods } = usePeriods();
-  const activePeriod = periods.find((p) => p.id === activePeriodId) ?? null;
-  const { transactions, updateTransaction, deleteTransaction } = useTransactions(activePeriod);
+  const { allTransactions, updateTransaction, deleteTransaction } = useTransactions();
   const { accounts, activeAccounts } = useAccounts();
   const { categories, activeCategories } = useCategories();
-  const { savingsGoals } = useSavingsGoals(activePeriodId);
+  const { savingsGoals } = useSavingsGoals();
 
-  const transaction = transactions.find((t) => t.id === id);
+  const transaction = allTransactions.find((t) => t.id === id);
 
   const [editing, setEditing] = useState(false);
   const [type, setType] = useState<TransactionType>(transaction?.type ?? 'expense');
@@ -154,7 +146,7 @@ export function TransactionDetailPage() {
             {transaction.type === 'income' ? (
               <Badge variant="success">Income</Badge>
             ) : transaction.type === 'savings' ? (
-              <Badge variant="secondary">Savings</Badge>
+              <Badge variant="info">Savings</Badge>
             ) : (
               <Badge variant="destructive">Expense</Badge>
             )}
@@ -165,10 +157,14 @@ export function TransactionDetailPage() {
         </div>
         <div
           className={`text-2xl font-bold ${
-            transaction.type === 'expense' ? 'text-red-600' : 'text-green-600'
+            transaction.type === 'income'
+              ? 'text-green-600'
+              : transaction.type === 'savings'
+                ? 'text-blue-600'
+                : 'text-red-600'
           }`}
         >
-          {transaction.type === 'expense' ? '-' : '+'}
+          {transaction.type === 'income' ? '+' : '-'}
           {formatCents(transaction.amountCents)}
         </div>
       </div>
