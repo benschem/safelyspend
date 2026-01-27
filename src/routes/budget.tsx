@@ -10,23 +10,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { usePeriods } from '@/hooks/use-periods';
-import { useBudgetLines } from '@/hooks/use-budget-lines';
+import { useScenarios } from '@/hooks/use-scenarios';
+import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
 import { formatCents } from '@/lib/utils';
 
 interface OutletContext {
-  activePeriodId: string | null;
+  activeScenarioId: string | null;
+  startDate: string;
+  endDate: string;
 }
 
 export function BudgetPage() {
-  const { activePeriodId } = useOutletContext<OutletContext>();
-  const { periods } = usePeriods();
-  const activePeriod = periods.find((p) => p.id === activePeriodId) ?? null;
+  const { activeScenarioId, startDate, endDate } = useOutletContext<OutletContext>();
+  const { activeScenario } = useScenarios();
   const { activeCategories } = useCategories();
-  const { getBudgetForCategory } = useBudgetLines(activePeriodId);
-  const { expenseTransactions } = useTransactions(activePeriod);
+  const { getBudgetForCategory } = useBudgetRules(activeScenarioId, startDate, endDate);
+  const { expenseTransactions } = useTransactions(startDate, endDate);
 
   // Calculate actual spending per category
   const spendingByCategory = useMemo(() => {
@@ -67,11 +68,11 @@ export function BudgetPage() {
     );
   }, [categoryRows]);
 
-  if (!activePeriodId || !activePeriod) {
+  if (!activeScenarioId || !activeScenario) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <h2 className="text-lg font-semibold">No period selected</h2>
-        <p className="text-muted-foreground">Select a period to view budget.</p>
+        <h2 className="text-lg font-semibold">No scenario selected</h2>
+        <p className="text-muted-foreground">Select a scenario to view budget.</p>
       </div>
     );
   }
@@ -82,11 +83,11 @@ export function BudgetPage() {
         <div>
           <h1 className="text-2xl font-bold">Budget</h1>
           <p className="text-muted-foreground">
-            Spending limits per category for {activePeriod.name}.
+            Spending limits per category for {activeScenario.name}.
           </p>
         </div>
         <Button variant="outline" asChild>
-          <Link to={`/manage/periods/${activePeriodId}`}>Edit Budget Lines</Link>
+          <Link to={`/manage/scenarios/${activeScenarioId}`}>Edit Budget Rules</Link>
         </Button>
       </div>
 
@@ -94,7 +95,7 @@ export function BudgetPage() {
         <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground">No categories found.</p>
           <Button asChild className="mt-4">
-            <Link to="/categories/new">Add your first category</Link>
+            <Link to="/manage/categories/new">Add your first category</Link>
           </Button>
         </div>
       ) : (
