@@ -18,8 +18,6 @@ function daysAgo(days: number): string {
 export function generateDemoData(): BudgetData {
   // IDs
   const scenarioId = generateId();
-  const everydayAccountId = generateId();
-  const savingsAccountId = generateId();
   const groceriesCatId = generateId();
   const rentCatId = generateId();
   const utilitiesCatId = generateId();
@@ -39,30 +37,6 @@ export function generateDemoData(): BudgetData {
       name: 'Main Budget',
       description: 'My primary budget scenario',
       isDefault: true,
-    },
-  ];
-
-  // Accounts now include opening balance
-  const accounts = [
-    {
-      id: everydayAccountId,
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      name: 'Everyday',
-      openingBalanceCents: 520000, // $5,200
-      openingDate: '2025-07-01',
-      isArchived: false,
-    },
-    {
-      id: savingsAccountId,
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      name: 'Savings',
-      openingBalanceCents: 1200000, // $12,000
-      openingDate: '2025-07-01',
-      isArchived: false,
     },
   ];
 
@@ -287,13 +261,25 @@ export function generateDemoData(): BudgetData {
 
   // Past transactions (global facts)
   const transactions = [
+    // Opening balance adjustment
+    {
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      type: 'adjustment' as const,
+      date: daysAgo(30),
+      amountCents: 520000, // $5,200 starting balance
+      description: 'Opening balance',
+      categoryId: null,
+      savingsGoalId: null,
+    },
     // Income
     {
       id: generateId(),
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      accountId: everydayAccountId,
       type: 'income' as const,
       date: daysAgo(28),
       amountCents: 450000,
@@ -306,7 +292,6 @@ export function generateDemoData(): BudgetData {
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      accountId: everydayAccountId,
       type: 'income' as const,
       date: daysAgo(14),
       amountCents: 450000,
@@ -320,7 +305,6 @@ export function generateDemoData(): BudgetData {
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      accountId: everydayAccountId,
       type: 'expense' as const,
       date: daysAgo(25),
       amountCents: 180000,
@@ -333,7 +317,6 @@ export function generateDemoData(): BudgetData {
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      accountId: everydayAccountId,
       type: 'expense' as const,
       date: daysAgo(20),
       amountCents: 15600,
@@ -346,7 +329,6 @@ export function generateDemoData(): BudgetData {
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      accountId: everydayAccountId,
       type: 'expense' as const,
       date: daysAgo(18),
       amountCents: 8500,
@@ -359,7 +341,6 @@ export function generateDemoData(): BudgetData {
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      accountId: everydayAccountId,
       type: 'expense' as const,
       date: daysAgo(15),
       amountCents: 4500,
@@ -372,7 +353,6 @@ export function generateDemoData(): BudgetData {
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      accountId: everydayAccountId,
       type: 'expense' as const,
       date: daysAgo(12),
       amountCents: 12300,
@@ -385,7 +365,6 @@ export function generateDemoData(): BudgetData {
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      accountId: everydayAccountId,
       type: 'expense' as const,
       date: daysAgo(10),
       amountCents: 6500,
@@ -398,7 +377,6 @@ export function generateDemoData(): BudgetData {
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      accountId: everydayAccountId,
       type: 'expense' as const,
       date: daysAgo(8),
       amountCents: 4800,
@@ -411,7 +389,6 @@ export function generateDemoData(): BudgetData {
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      accountId: everydayAccountId,
       type: 'expense' as const,
       date: daysAgo(5),
       amountCents: 9800,
@@ -424,7 +401,6 @@ export function generateDemoData(): BudgetData {
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      accountId: everydayAccountId,
       type: 'expense' as const,
       date: daysAgo(3),
       amountCents: 3500,
@@ -437,7 +413,6 @@ export function generateDemoData(): BudgetData {
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      accountId: everydayAccountId,
       type: 'expense' as const,
       date: daysAgo(1),
       amountCents: 7200,
@@ -451,27 +426,12 @@ export function generateDemoData(): BudgetData {
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
-      accountId: savingsAccountId,
       type: 'savings' as const,
       date: daysAgo(25),
       amountCents: 50000, // $500
       description: 'Monthly savings',
       categoryId: null,
       savingsGoalId: emergencyFundGoalId,
-    },
-  ];
-
-  const transfers = [
-    {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      fromAccountId: everydayAccountId,
-      toAccountId: savingsAccountId,
-      date: daysAgo(20),
-      amountCents: 50000, // $500
-      notes: 'Monthly savings transfer',
     },
   ];
 
@@ -499,13 +459,11 @@ export function generateDemoData(): BudgetData {
 
   return {
     scenarios,
-    accounts,
     categories,
     budgetRules,
     forecastRules,
     forecastEvents,
     transactions,
-    transfers,
     savingsGoals,
   };
 }
@@ -515,26 +473,24 @@ export function loadDemoDataToStorage(): void {
 
   localStorage.setItem('budget:scenarios', JSON.stringify(data.scenarios));
   localStorage.setItem('budget:activeScenarioId', JSON.stringify(data.scenarios[0]?.id ?? null));
-  localStorage.setItem('budget:accounts', JSON.stringify(data.accounts));
   localStorage.setItem('budget:categories', JSON.stringify(data.categories));
   localStorage.setItem('budget:budgetRules', JSON.stringify(data.budgetRules));
   localStorage.setItem('budget:forecastRules', JSON.stringify(data.forecastRules));
   localStorage.setItem('budget:forecastEvents', JSON.stringify(data.forecastEvents));
   localStorage.setItem('budget:transactions', JSON.stringify(data.transactions));
-  localStorage.setItem('budget:transfers', JSON.stringify(data.transfers));
   localStorage.setItem('budget:savingsGoals', JSON.stringify(data.savingsGoals));
+  localStorage.setItem('budget:appConfig', JSON.stringify({ isInitialized: true }));
 }
 
 export function clearAllData(): void {
   localStorage.removeItem('budget:scenarios');
   localStorage.removeItem('budget:activeScenarioId');
-  localStorage.removeItem('budget:accounts');
   localStorage.removeItem('budget:categories');
   localStorage.removeItem('budget:budgetRules');
   localStorage.removeItem('budget:forecastRules');
   localStorage.removeItem('budget:forecastEvents');
   localStorage.removeItem('budget:transactions');
-  localStorage.removeItem('budget:transfers');
   localStorage.removeItem('budget:savingsGoals');
   localStorage.removeItem('budget:viewState');
+  localStorage.removeItem('budget:appConfig');
 }
