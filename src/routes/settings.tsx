@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -33,6 +34,7 @@ function setAllData(data: BudgetData & { activeScenarioId?: string | null }): vo
 }
 
 export function SettingsPage() {
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
@@ -98,9 +100,7 @@ export function SettingsPage() {
     }
 
     clearAllData();
-    setConfirmingClear(false);
-    showMessage('success', 'All data cleared. Refreshing...');
-    setTimeout(() => window.location.reload(), 1000);
+    navigate('/landing');
   };
 
   return (

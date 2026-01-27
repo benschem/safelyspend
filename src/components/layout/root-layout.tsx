@@ -1,9 +1,8 @@
-import { Outlet, useLocation } from 'react-router';
+import { Outlet, useLocation, Navigate } from 'react-router';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
 import { DemoBanner } from '@/components/demo-banner';
 import { DateRangeBanner } from '@/components/date-range-banner';
-import { FirstRunWizard } from '@/components/first-run-wizard';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useViewState } from '@/hooks/use-view-state';
 import { useAppConfig } from '@/hooks/use-app-config';
@@ -26,7 +25,7 @@ export function RootLayout() {
   const showDateControls = isDateRelevantRoute(location.pathname);
 
   if (!isInitialized) {
-    return <FirstRunWizard />;
+    return <Navigate to="/landing" replace />;
   }
 
   return (

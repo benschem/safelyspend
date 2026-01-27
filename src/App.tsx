@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router';
 import { RootLayout } from '@/components/layout/root-layout';
+import { FirstRunWizard } from '@/components/first-run-wizard';
 
 // Route components
 import { DashboardPage } from '@/routes/dashboard';
@@ -24,6 +25,8 @@ import { RuleDetailPage } from '@/routes/manage/rules/detail';
 import { SettingsPage } from '@/routes/settings';
 
 const router = createBrowserRouter([
+  // Landing page (outside of RootLayout - no sidebar/header)
+  { path: '/landing', element: <FirstRunWizard /> },
   {
     path: '/',
     element: <RootLayout />,
