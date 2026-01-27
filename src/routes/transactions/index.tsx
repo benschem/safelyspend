@@ -28,7 +28,7 @@ interface OutletContext {
   activePeriodId: string | null;
 }
 
-type FilterType = 'all' | 'income' | 'expense';
+type FilterType = 'all' | 'income' | 'expense' | 'savings';
 
 export function TransactionsIndexPage() {
   const { activePeriodId } = useOutletContext<OutletContext>();
@@ -64,7 +64,7 @@ export function TransactionsIndexPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Transactions</h1>
-          <p className="text-muted-foreground">Actual income and expenses.</p>
+          <p className="text-muted-foreground">Actual income, expenses, and savings.</p>
         </div>
         <Button asChild>
           <Link to="/transactions/new">
@@ -85,6 +85,7 @@ export function TransactionsIndexPage() {
               <SelectItem value="all">All Types</SelectItem>
               <SelectItem value="income">Income</SelectItem>
               <SelectItem value="expense">Expense</SelectItem>
+              <SelectItem value="savings">Savings</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -133,6 +134,8 @@ export function TransactionsIndexPage() {
                 <TableCell>
                   {transaction.type === 'income' ? (
                     <Badge variant="success">Income</Badge>
+                  ) : transaction.type === 'savings' ? (
+                    <Badge variant="info">Savings</Badge>
                   ) : (
                     <Badge variant="destructive">Expense</Badge>
                   )}
@@ -141,7 +144,13 @@ export function TransactionsIndexPage() {
                 <TableCell>{getCategoryName(transaction.categoryId)}</TableCell>
                 <TableCell className="text-right font-mono">
                   <span
-                    className={transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}
+                    className={
+                      transaction.type === 'income'
+                        ? 'text-green-600'
+                        : transaction.type === 'savings'
+                          ? 'text-blue-600'
+                          : 'text-red-600'
+                    }
                   >
                     {transaction.type === 'income' ? '+' : '-'}
                     {formatCents(transaction.amountCents)}
