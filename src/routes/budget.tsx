@@ -237,7 +237,7 @@ export function BudgetPage() {
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
-                  ) : (
+                  ) : row.rule ? (
                     <div className="flex justify-end">
                       <Button
                         variant="ghost"
@@ -246,6 +246,16 @@ export function BudgetPage() {
                         className="h-8 w-8"
                       >
                         <Pencil className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => startEditing(row.id)}
+                      >
+                        Set budget
                       </Button>
                     </div>
                   )}
