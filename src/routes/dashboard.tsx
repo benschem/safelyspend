@@ -78,9 +78,6 @@ export function DashboardPage() {
 
   const cashFlowBuffer = currentBalance - committedBeforeNextIncome;
 
-  // Total saved is from savings transactions (actual savings)
-  const totalSaved = actualSavings;
-  const totalTarget = savingsGoals.reduce((sum, g) => sum + g.targetAmountCents, 0);
 
   // Calculate budget tracking per category
   const spendingByCategory = useMemo(() => {
@@ -416,29 +413,29 @@ export function DashboardPage() {
               </Link>
             </div>
           ) : (
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 space-y-4">
               {budgetRows.map((row) => {
-                const actualPercent =
+                const spentPercent =
                   row.budgeted > 0 ? Math.min(100, (row.actual / row.budgeted) * 100) : 0;
                 const forecastedPercent =
                   row.budgeted > 0
-                    ? Math.min(100 - actualPercent, (row.forecasted / row.budgeted) * 100)
+                    ? Math.min(100 - spentPercent, (row.forecasted / row.budgeted) * 100)
                     : 0;
-                const isOver = row.remaining < 0;
-                const willBeOver = row.budgeted - row.actual - row.forecasted < 0;
+                const isOver = row.actual > row.budgeted;
+                const willBeOver = row.actual + row.forecasted > row.budgeted;
                 return (
                   <div key={row.id}>
-                    <div className="flex justify-between text-sm">
+                    <div className="flex items-baseline justify-between">
                       <span className="font-medium">{row.name}</span>
-                      <span className={`text-muted-foreground ${isOver ? 'text-red-600' : ''}`}>
-                        {formatCents(row.remaining)} / {formatCents(row.budgeted)}
+                      <span className="text-sm text-muted-foreground">
+                        {formatCents(row.budgeted)} budget
                       </span>
                     </div>
                     <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
                       <div className="flex h-full">
                         <div
                           className={`${isOver ? 'bg-red-600' : 'bg-primary'} transition-all`}
-                          style={{ width: `${actualPercent}%` }}
+                          style={{ width: `${spentPercent}%` }}
                         />
                         {forecastedPercent > 0 && (
                           <div
@@ -447,6 +444,14 @@ export function DashboardPage() {
                           />
                         )}
                       </div>
+                    </div>
+                    <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+                      <span className={isOver ? 'text-red-600' : ''}>
+                        {formatCents(row.actual)} spent
+                      </span>
+                      <span className={row.remaining < 0 ? 'text-red-600' : ''}>
+                        {formatCents(Math.abs(row.remaining))} {row.remaining >= 0 ? 'remaining' : 'over'}
+                      </span>
                     </div>
                   </div>
                 );
@@ -457,15 +462,7 @@ export function DashboardPage() {
 
         {/* Savings Goals */}
         <div className="rounded-lg border p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold">Savings Goals</h2>
-              <p className="text-sm text-muted-foreground">
-                {formatCents(totalSaved)} saved of {formatCents(totalTarget)} target
-              </p>
-            </div>
-          </div>
-
+          <h2 className="text-lg font-semibold">Savings Goals</h2>
           {savingsGoals.length === 0 ? (
             <div className="mt-4 text-center text-sm text-muted-foreground">
               No savings goals yet.{' '}
@@ -474,7 +471,7 @@ export function DashboardPage() {
               </Link>
             </div>
           ) : (
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 space-y-4">
               {savingsGoals.map((goal) => {
                 const savedAmount = savingsTransactions
                   .filter((t) => t.savingsGoalId === goal.id)
@@ -490,14 +487,15 @@ export function DashboardPage() {
                   goal.targetAmountCents > 0
                     ? Math.min(100 - actualPercent, (forecastedAmount / goal.targetAmountCents) * 100)
                     : 0;
+                const remaining = goal.targetAmountCents - savedAmount;
                 return (
                   <div key={goal.id}>
-                    <div className="flex justify-between text-sm">
+                    <div className="flex items-baseline justify-between">
                       <Link to={`/savings/${goal.id}`} className="font-medium hover:underline">
                         {goal.name}
                       </Link>
-                      <span className="text-muted-foreground">
-                        {formatCents(savedAmount)} / {formatCents(goal.targetAmountCents)}
+                      <span className="text-sm text-muted-foreground">
+                        {formatCents(goal.targetAmountCents)} goal
                       </span>
                     </div>
                     <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
@@ -513,6 +511,10 @@ export function DashboardPage() {
                           />
                         )}
                       </div>
+                    </div>
+                    <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+                      <span>{formatCents(savedAmount)} saved</span>
+                      <span>{formatCents(remaining)} to go</span>
                     </div>
                   </div>
                 );
