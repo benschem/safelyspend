@@ -123,7 +123,7 @@ export function SettingsPage() {
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Appearance</h2>
 
-        <div className="flex items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="font-medium">Theme</h3>
             <p className="text-sm text-muted-foreground">Choose light, dark, or system theme.</p>
@@ -137,22 +137,22 @@ export function SettingsPage() {
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Data Management</h2>
 
-        <div className="flex items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="font-medium">Export Data</h3>
             <p className="text-sm text-muted-foreground">Download all your budget data as JSON.</p>
           </div>
-          <Button variant="outline" onClick={handleExport}>
+          <Button variant="outline" onClick={handleExport} className="w-full sm:w-auto">
             Export
           </Button>
         </div>
 
-        <div className="flex items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="font-medium">Import Data</h3>
             <p className="text-sm text-muted-foreground">Restore from a JSON backup file.</p>
           </div>
-          <Button variant="outline" onClick={handleImportClick}>
+          <Button variant="outline" onClick={handleImportClick} className="w-full sm:w-auto">
             Import
           </Button>
           <input
@@ -164,7 +164,7 @@ export function SettingsPage() {
           />
         </div>
 
-        <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
+        <div className="flex flex-col gap-3 rounded-lg border border-destructive/50 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="font-medium text-destructive">Clear All Data</h3>
             <p className="text-sm text-muted-foreground">Permanently delete all budget data.</p>

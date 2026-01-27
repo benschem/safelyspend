@@ -72,7 +72,7 @@ export function DateRangeBanner({
             </span>
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-80" align="center">
+        <PopoverContent className="w-[calc(100vw-2rem)] sm:w-80" align="center">
           <div className="space-y-4">
             <div className="space-y-2">
               <h4 className="text-sm font-medium">Quick Select</h4>
