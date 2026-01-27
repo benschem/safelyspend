@@ -30,11 +30,11 @@ A React 19 + TypeScript budgeting app with local-only persistence. Supports "wha
 All entities have base fields: `id`, `userId`, `createdAt`, `updatedAt`. Amounts stored as integer cents.
 
 #### Global Entities (facts)
-- **Account** - Bank accounts with `openingBalanceCents` and `openingDate`
 - **Category** - Expense categorization. Has `isArchived` flag.
-- **Transaction** - Actual income/expenses/savings (`type: 'income' | 'expense' | 'savings'`)
-- **Transfer** - Movement between accounts
+- **Transaction** - Actual income/expenses/savings/adjustments (`type: 'income' | 'expense' | 'savings' | 'adjustment'`)
 - **SavingsGoal** - Global savings targets with `targetAmountCents` and optional `deadline`
+
+Note: `adjustment` transactions are used for opening balance and manual corrections.
 
 #### Scenario-Scoped Entities (plans)
 - **Scenario** - A named set of rules for what-if planning. One is marked `isDefault`.
@@ -63,14 +63,13 @@ src/
 │   └── layout/       # Header, Sidebar, RootLayout
 ├── hooks/
 │   ├── use-local-storage.ts   # Base persistence hook
+│   ├── use-app-config.ts      # App initialization state
 │   ├── use-scenarios.ts       # Scenario CRUD + active scenario
 │   ├── use-view-state.ts      # Date range selection (defaults to AU financial year)
-│   ├── use-accounts.ts
 │   ├── use-categories.ts
 │   ├── use-budget-rules.ts    # Budget rules with cadence expansion
 │   ├── use-forecasts.ts       # Forecast rules + events + expansion
 │   ├── use-transactions.ts    # Date range filtering
-│   ├── use-transfers.ts
 │   └── use-savings-goals.ts
 ├── routes/
 │   ├── dashboard.tsx
@@ -80,7 +79,6 @@ src/
 │   ├── categories/
 │   ├── savings/
 │   ├── manage/scenarios/   # Scenario CRUD, duplicate with rules
-│   ├── manage/accounts/
 │   ├── manage/rules/       # Forecast rule CRUD
 │   └── settings.tsx
 ├── lib/
@@ -109,8 +107,12 @@ const [items, setItems] = useLocalStorage<Type[]>('budget:key', []);
   - Dashboard (Overview)
   - Plan: Forecasts, Budgets
   - Track: Transactions, Categories, Savings
-  - Manage: Bank Accounts, Scenarios, Forecast Rules
+  - Manage: Categories, Scenarios, Forecast Rules
   - Settings
+
+### First-Run Wizard
+
+On first launch (when `budget:appConfig.isInitialized` is false), a wizard prompts for initial spending balance. This creates an `adjustment` transaction for the opening balance.
 
 ### Conventions
 
