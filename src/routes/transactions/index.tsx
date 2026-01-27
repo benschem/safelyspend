@@ -20,7 +20,7 @@ import {
 import { Plus } from 'lucide-react';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
-import { formatCents, formatDate } from '@/lib/utils';
+import { formatCents, formatDate, formatDateRange } from '@/lib/utils';
 
 interface OutletContext {
   activeScenarioId: string | null;
@@ -79,9 +79,11 @@ export function TransactionsIndexPage() {
 
       {filteredTransactions.length === 0 ? (
         <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">No transactions found.</p>
+          <p className="text-muted-foreground">
+            No transactions found between {formatDateRange(startDate, endDate)}.
+          </p>
           <Button asChild className="mt-4">
-            <Link to="/transactions/new">Add your first transaction</Link>
+            <Link to="/transactions/new">Add a transaction</Link>
           </Button>
         </div>
       ) : (

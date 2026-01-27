@@ -21,7 +21,7 @@ import { Plus } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
-import { formatCents, formatDate } from '@/lib/utils';
+import { formatCents, formatDate, formatDateRange } from '@/lib/utils';
 import type { ExpandedForecast } from '@/lib/types';
 
 interface OutletContext {
@@ -94,7 +94,9 @@ export function ForecastIndexPage() {
 
       {filteredForecasts.length === 0 ? (
         <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">No forecasts found.</p>
+          <p className="text-muted-foreground">
+            No forecasts found between {formatDateRange(startDate, endDate)}.
+          </p>
           <Button asChild className="mt-4">
             <Link to="/forecast/new">Add a one-off event</Link>
           </Button>
