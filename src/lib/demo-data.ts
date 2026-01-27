@@ -26,6 +26,8 @@ export function generateDemoData(): BudgetData {
   const transportCatId = generateId();
   const entertainmentCatId = generateId();
   const diningCatId = generateId();
+  const emergencyFundGoalId = generateId();
+  const holidayGoalId = generateId();
 
   const periods = [
     {
@@ -347,6 +349,33 @@ export function generateDemoData(): BudgetData {
       categoryId: diningCatId,
       savingsGoalId: null,
     },
+    // Starting balance savings transactions
+    {
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      accountId: savingsAccountId,
+      type: 'savings' as const,
+      date: '2025-07-01', // Period start date
+      amountCents: 1200000, // $12,000
+      description: 'Starting balance',
+      categoryId: null,
+      savingsGoalId: emergencyFundGoalId,
+    },
+    {
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      accountId: savingsAccountId,
+      type: 'savings' as const,
+      date: '2025-07-01', // Period start date
+      amountCents: 150000, // $1,500
+      description: 'Starting balance',
+      categoryId: null,
+      savingsGoalId: holidayGoalId,
+    },
   ];
 
   // Future forecasts (next 3 months)
@@ -553,25 +582,23 @@ export function generateDemoData(): BudgetData {
 
   const savingsGoals = [
     {
-      id: generateId(),
+      id: emergencyFundGoalId,
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
       periodId: null, // Global goal
       name: 'Emergency Fund',
       targetAmountCents: 2000000, // $20,000
-      currentAmountCents: 1200000, // $12,000
       deadline: '2026-06-30',
     },
     {
-      id: generateId(),
+      id: holidayGoalId,
       userId: USER_ID,
       createdAt: timestamp,
       updatedAt: timestamp,
       periodId,
       name: 'Holiday',
       targetAmountCents: 500000, // $5,000
-      currentAmountCents: 150000, // $1,500
       deadline: '2025-12-01',
     },
   ];

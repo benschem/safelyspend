@@ -4,8 +4,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { ArrowLeft } from 'lucide-react';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
+import { useAccounts } from '@/hooks/use-accounts';
+import { useTransactions } from '@/hooks/use-transactions';
+import { usePeriods } from '@/hooks/use-periods';
 import { parseCentsFromInput } from '@/lib/utils';
 
 interface OutletContext {
@@ -16,15 +26,20 @@ export function SavingsNewPage() {
   const navigate = useNavigate();
   const { activePeriodId } = useOutletContext<OutletContext>();
   const { addSavingsGoal } = useSavingsGoals(activePeriodId);
+  const { activeAccounts } = useAccounts();
+  const { periods } = usePeriods();
+  const activePeriod = periods.find((p) => p.id === activePeriodId) ?? null;
+  const { addTransaction } = useTransactions(activePeriod);
 
   const [name, setName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
-  const [currentAmount, setCurrentAmount] = useState('0');
+  const [startingBalance, setStartingBalance] = useState('');
+  const [accountId, setAccountId] = useState('');
   const [deadline, setDeadline] = useState('');
   const [scope, setScope] = useState<'period' | 'global'>('period');
   const [error, setError] = useState<string | null>(null);
 
-  if (!activePeriodId) {
+  if (!activePeriodId || !activePeriod) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <h2 className="text-lg font-semibold">No period selected</h2>
@@ -32,6 +47,9 @@ export function SavingsNewPage() {
       </div>
     );
   }
+
+  const startingBalanceCents = parseCentsFromInput(startingBalance);
+  const showAccountSelector = startingBalanceCents > 0;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,14 +63,30 @@ export function SavingsNewPage() {
       setError('Target amount must be greater than 0');
       return;
     }
+    if (startingBalanceCents > 0 && !accountId) {
+      setError('Select an account for the starting balance');
+      return;
+    }
 
     const goal = addSavingsGoal({
       periodId: scope === 'period' ? activePeriodId : null,
       name: name.trim(),
       targetAmountCents: parseCentsFromInput(targetAmount),
-      currentAmountCents: parseCentsFromInput(currentAmount),
       ...(deadline && { deadline }),
     });
+
+    // Create starting balance transaction if amount > 0
+    if (startingBalanceCents > 0 && accountId) {
+      addTransaction({
+        accountId,
+        type: 'savings',
+        date: activePeriod.startDate,
+        amountCents: startingBalanceCents,
+        description: 'Starting balance',
+        categoryId: null,
+        savingsGoalId: goal.id,
+      });
+    }
 
     navigate(`/savings/${goal.id}`);
   };
@@ -98,17 +132,41 @@ export function SavingsNewPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="currentAmount">Current Amount ($)</Label>
+          <Label htmlFor="startingBalance">Starting Balance ($)</Label>
           <Input
-            id="currentAmount"
+            id="startingBalance"
             type="number"
             step="0.01"
             min="0"
-            value={currentAmount}
-            onChange={(e) => setCurrentAmount(e.target.value)}
+            value={startingBalance}
+            onChange={(e) => setStartingBalance(e.target.value)}
             placeholder="0.00"
           />
+          <p className="text-xs text-muted-foreground">
+            Amount already saved toward this goal
+          </p>
         </div>
+
+        {showAccountSelector && (
+          <div className="space-y-2">
+            <Label htmlFor="account">Account</Label>
+            <Select value={accountId} onValueChange={setAccountId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select account" />
+              </SelectTrigger>
+              <SelectContent>
+                {activeAccounts.map((account) => (
+                  <SelectItem key={account.id} value={account.id}>
+                    {account.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Account for the starting balance transaction
+            </p>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="deadline">Deadline (optional)</Label>

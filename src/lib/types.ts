@@ -116,7 +116,6 @@ export interface SavingsGoal extends BaseEntity {
   periodId: string | null; // null = global goal
   name: string;
   targetAmountCents: number;
-  currentAmountCents: number; // Manually updated for phase 1
   deadline?: string;
 }
 

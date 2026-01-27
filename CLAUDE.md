@@ -30,7 +30,7 @@ All entities have base fields: `id`, `userId`, `createdAt`, `updatedAt`. Amounts
 - **Forecast** - Unified type for projected income/expenses (`type: 'income' | 'expense'`).
 - **Transaction** - Actual income/expenses. `categoryId` optional (null for income, optional for expenses).
 - **Transfer** - Movement between accounts.
-- **SavingsGoal** - Savings targets. `currentAmountCents` is manually updated.
+- **SavingsGoal** - Savings targets. Progress calculated from savings transactions.
 
 ### Key Directories
 
