@@ -67,10 +67,17 @@ export function SavingsDetailPage() {
     );
   }
 
-  const progress =
+  const actualPercent =
     goal.targetAmountCents === 0
       ? 100
-      : Math.min(Math.round((currentAmountFromTransactions / goal.targetAmountCents) * 100), 100);
+      : Math.min((currentAmountFromTransactions / goal.targetAmountCents) * 100, 100);
+
+  const forecastedPercent =
+    goal.targetAmountCents > 0
+      ? Math.min(100 - actualPercent, (forecastedAmount / goal.targetAmountCents) * 100)
+      : 0;
+
+  const progress = Math.round(actualPercent);
 
   const handleSave = () => {
     setError(null);
@@ -134,18 +141,26 @@ export function SavingsDetailPage() {
           <span>Progress</span>
           <span>{progress}%</span>
         </div>
-        <div className="mt-2 h-4 w-full rounded-full bg-gray-200">
-          <div
-            className="h-4 rounded-full bg-green-500 transition-all"
-            style={{ width: `${progress}%` }}
-          />
+        <div className="mt-2 h-4 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+          <div className="flex h-full">
+            <div
+              className="bg-blue-600 transition-all"
+              style={{ width: `${actualPercent}%` }}
+            />
+            {forecastedPercent > 0 && (
+              <div
+                className="bg-blue-300 transition-all"
+                style={{ width: `${forecastedPercent}%` }}
+              />
+            )}
+          </div>
         </div>
         <div className="mt-2 flex justify-between text-sm text-muted-foreground">
-          <span>{formatCents(currentAmountFromTransactions)}</span>
-          <span>{formatCents(goal.targetAmountCents)}</span>
+          <span>{formatCents(currentAmountFromTransactions)} saved</span>
+          <span>{formatCents(goal.targetAmountCents)} goal</span>
         </div>
         {forecastedAmount > 0 && (
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-sm text-blue-600">
             +{formatCents(forecastedAmount)} forecasted
           </p>
         )}

@@ -63,7 +63,8 @@ export function SavingsIndexPage() {
               <TableHead>Name</TableHead>
               <TableHead>Deadline</TableHead>
               <TableHead className="text-right">Progress</TableHead>
-              <TableHead className="text-right">Target</TableHead>
+              <TableHead className="text-right">Saved</TableHead>
+              <TableHead className="text-right">Goal</TableHead>
               <TableHead className="w-20"></TableHead>
             </TableRow>
           </TableHeader>
@@ -77,9 +78,9 @@ export function SavingsIndexPage() {
                   <TableCell>{goal.deadline ? formatDate(goal.deadline) : '-'}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <div className="h-2 w-24 rounded-full bg-gray-200">
+                      <div className="h-2 w-24 rounded-full bg-gray-200 dark:bg-gray-700">
                         <div
-                          className="h-2 rounded-full bg-green-500"
+                          className="h-2 rounded-full bg-blue-600"
                           style={{ width: `${progress}%` }}
                         />
                       </div>
@@ -87,7 +88,10 @@ export function SavingsIndexPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-mono">
-                    {formatCents(savedAmount)} / {formatCents(goal.targetAmountCents)}
+                    {formatCents(savedAmount)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono">
+                    {formatCents(goal.targetAmountCents)}
                   </TableCell>
                   <TableCell>
                     <Button variant="outline" size="sm" asChild>
