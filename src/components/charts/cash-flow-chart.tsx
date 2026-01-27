@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import {
-  LineChart,
+  ComposedChart,
   Line,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
@@ -36,6 +37,7 @@ interface ChartDataPoint {
   savingsForecast: number;
   netActual: number;
   netForecast: number;
+  cumulativeSavings: number;
 }
 
 interface TooltipPayload {
@@ -138,6 +140,16 @@ function CustomTooltip({
           </span>
         </div>
       </div>
+
+      {/* Cumulative Savings */}
+      {data.cumulativeSavings > 0 && (
+        <div className="mt-2 border-t pt-2">
+          <div className="flex justify-between text-sm text-blue-600">
+            <span>Total Saved</span>
+            <span className="font-mono font-semibold">{formatCents(data.cumulativeSavings)}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -145,20 +157,25 @@ function CustomTooltip({
 export function CashFlowChart({ monthlyNetFlow }: CashFlowChartProps) {
   // Transform data for chart - combine actual + forecast for total line values
   const chartData = useMemo(() => {
-    return monthlyNetFlow.map((m) => ({
-      month: m.month,
-      incomeTotal: m.income.actual + m.income.forecast,
-      expensesTotal: m.expenses.actual + m.expenses.forecast,
-      savingsTotal: m.savings.actual + m.savings.forecast,
-      incomeActual: m.income.actual,
-      expenseActual: m.expenses.actual,
-      savingsActual: m.savings.actual,
-      incomeForecast: m.income.forecast,
-      expenseForecast: m.expenses.forecast,
-      savingsForecast: m.savings.forecast,
-      netActual: m.net.actual,
-      netForecast: m.net.forecast,
-    }));
+    let cumulativeSavings = 0;
+    return monthlyNetFlow.map((m) => {
+      cumulativeSavings += m.savings.actual + m.savings.forecast;
+      return {
+        month: m.month,
+        incomeTotal: m.income.actual + m.income.forecast,
+        expensesTotal: m.expenses.actual + m.expenses.forecast,
+        savingsTotal: m.savings.actual + m.savings.forecast,
+        incomeActual: m.income.actual,
+        expenseActual: m.expenses.actual,
+        savingsActual: m.savings.actual,
+        incomeForecast: m.income.forecast,
+        expenseForecast: m.expenses.forecast,
+        savingsForecast: m.savings.forecast,
+        netActual: m.net.actual,
+        netForecast: m.net.forecast,
+        cumulativeSavings,
+      };
+    });
   }, [monthlyNetFlow]);
 
   const hasData = monthlyNetFlow.some(
@@ -176,7 +193,7 @@ export function CashFlowChart({ monthlyNetFlow }: CashFlowChartProps) {
   return (
     <div className="w-full">
       <ResponsiveContainer width="100%" height={350}>
-        <LineChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+        <ComposedChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
           <XAxis
             dataKey="month"
             tickFormatter={(value) => formatMonth(value)}
@@ -193,6 +210,16 @@ export function CashFlowChart({ monthlyNetFlow }: CashFlowChartProps) {
           />
           <Tooltip content={<CustomTooltip />} />
           <ReferenceLine y={0} stroke="#e5e7eb" />
+
+          {/* Cumulative savings area in background */}
+          <Area
+            type="monotone"
+            dataKey="cumulativeSavings"
+            name="Total Saved"
+            fill={CHART_COLORS.savings}
+            fillOpacity={0.15}
+            stroke="none"
+          />
 
           <Line
             type="monotone"
@@ -221,7 +248,7 @@ export function CashFlowChart({ monthlyNetFlow }: CashFlowChartProps) {
             dot={{ r: 4, strokeWidth: 0, fill: CHART_COLORS.savings }}
             activeDot={{ r: 6 }}
           />
-        </LineChart>
+        </ComposedChart>
       </ResponsiveContainer>
 
       {/* Legend */}
@@ -237,6 +264,13 @@ export function CashFlowChart({ monthlyNetFlow }: CashFlowChartProps) {
         <div className="flex items-center gap-2 text-sm">
           <div className="h-3 w-3 rounded-full" style={{ backgroundColor: CHART_COLORS.savings }} />
           <span>Savings</span>
+        </div>
+        <div className="flex items-center gap-2 text-sm">
+          <div
+            className="h-3 w-3 rounded-sm"
+            style={{ backgroundColor: CHART_COLORS.savings, opacity: 0.3 }}
+          />
+          <span>Total Saved</span>
         </div>
       </div>
 
