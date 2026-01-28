@@ -1,7 +1,6 @@
 export { SpendingBreakdownChart } from './spending-breakdown-chart';
 export { CategorySpendingChart } from './category-spending-chart';
 export { BudgetComparisonChart } from './budget-comparison-chart';
-export { BudgetHealthTable } from './budget-health-table';
 export { CashFlowChart } from './cash-flow-chart';
 export { SavingsOverTimeChart } from './savings-over-time-chart';
 export { SavingsGoalChart } from './savings-goal-chart';

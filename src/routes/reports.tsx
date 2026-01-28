@@ -11,7 +11,6 @@ import { TimelinePicker } from '@/components/timeline-picker';
 import { StickyDateBar } from '@/components/sticky-date-bar';
 import {
   BudgetComparisonChart,
-  BudgetHealthTable,
   CashFlowChart,
   SavingsOverTimeChart,
   SavingsGoalChart,
@@ -22,7 +21,7 @@ interface OutletContext {
   activeScenarioId: string | null;
 }
 
-const VALID_TABS = ['cashflow', 'spending', 'health', 'savings'] as const;
+const VALID_TABS = ['cashflow', 'spending', 'savings'] as const;
 type TabValue = (typeof VALID_TABS)[number];
 const STORAGE_KEY = 'budget:reportsTab';
 
@@ -146,7 +145,6 @@ export function ReportsPage() {
         <TabsList>
           <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
           <TabsTrigger value="spending">Spending</TabsTrigger>
-          <TabsTrigger value="health">Budget Health</TabsTrigger>
           <TabsTrigger value="savings">Savings</TabsTrigger>
         </TabsList>
 
@@ -161,29 +159,6 @@ export function ReportsPage() {
             </div>
             <div className="mt-6">
               <BudgetComparisonChart
-                monthlyBudgetComparison={monthlyBudgetComparison}
-                budgetCategories={budgetCategories}
-                colorMap={categoryColorMap}
-              />
-            </div>
-          </div>
-        </TabsContent>
-
-        {/* Budget Health Tab - Proportional budget comparison */}
-        <TabsContent value="health" className="mt-6">
-          <div className="rounded-lg border p-6">
-            <div>
-              <h2 className="text-lg font-semibold">Budget Health</h2>
-              <p className="text-sm text-muted-foreground">
-                {isPastOnly
-                  ? 'Based on actual spending'
-                  : isFutureOnly
-                    ? 'Based on forecasted spending'
-                    : 'Combines actual spending with forecasts through the selected period'}
-              </p>
-            </div>
-            <div className="mt-6">
-              <BudgetHealthTable
                 monthlyBudgetComparison={monthlyBudgetComparison}
                 budgetCategories={budgetCategories}
                 colorMap={categoryColorMap}
@@ -217,10 +192,10 @@ export function ReportsPage() {
                 <h2 className="text-lg font-semibold">Cash Flow</h2>
                 <p className="text-sm text-muted-foreground">
                   {isPastOnly
-                    ? 'Monthly income, expenses, and savings'
+                    ? 'Past income, expenses, and savings'
                     : isFutureOnly
                       ? 'Forecasted monthly income, expenses, and savings'
-                      : 'Income vs expenses — solid bars are actual, faded bars are forecasted'}
+                      : 'Income, expenses and savings'}
                 </p>
                 {isMixed && (
                   <p className="mt-1 text-xs text-muted-foreground">
