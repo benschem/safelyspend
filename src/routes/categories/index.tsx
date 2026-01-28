@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Pencil, Trash2, Check, X, Archive, ArchiveRestore, Settings2, FolderTree } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Archive, ArchiveRestore, Settings2, Tags } from 'lucide-react';
 import { useCategories } from '@/hooks/use-categories';
 import { CategoryDialog } from '@/components/dialogs/category-dialog';
 import type { Category } from '@/lib/types';
@@ -142,27 +142,26 @@ export function CategoriesIndexPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="mb-20 flex items-center justify-between">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <FolderTree className="h-7 w-7" />
+            <Tags className="h-7 w-7" />
             Categories
           </h1>
           <p className="mt-1 text-muted-foreground">Organise your expenses by category.</p>
         </div>
-        <Button onClick={() => setAddDialogOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Add Category
-        </Button>
-      </div>
-
-      <div className="mt-6 flex justify-end">
-        <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
-          <Link to="/categories/import-rules">
-            <Settings2 className="h-4 w-4" />
-            Manage Import Rules
-          </Link>
-        </Button>
+        <div className="flex flex-col items-end gap-2">
+          <Button onClick={() => setAddDialogOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Add Category
+          </Button>
+          <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
+            <Link to="/categories/import-rules">
+              <Settings2 className="h-4 w-4" />
+              Manage Import Rules
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {categories.length === 0 ? (

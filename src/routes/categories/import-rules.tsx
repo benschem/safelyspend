@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Alert } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -132,7 +133,7 @@ export function CategoryImportRulesPage() {
         </Button>
       </div>
 
-      <div className="flex items-start justify-between">
+      <div className="mb-20 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
             <FileInput className="h-7 w-7" />
@@ -149,7 +150,7 @@ export function CategoryImportRulesPage() {
       </div>
 
       {rules.length === 0 ? (
-        <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
+        <div className="rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground">No category rules yet.</p>
           <p className="mt-2 text-sm text-muted-foreground">
             Rules are applied automatically when you import transactions.
@@ -293,13 +294,13 @@ export function CategoryImportRulesPage() {
                 </SelectContent>
               </Select>
               {activeCategories.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  No categories found.{' '}
+                <Alert variant="info" className="text-xs">
+                  No categories yet.{' '}
                   <Link to="/categories" className="underline">
-                    Create one first
+                    Create categories first
                   </Link>
-                  .
-                </p>
+                  , then set up rules to auto-categorise imports.
+                </Alert>
               )}
             </div>
 
