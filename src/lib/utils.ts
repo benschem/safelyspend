@@ -197,12 +197,26 @@ export function formatDateRange(startDate: string, endDate: string): string {
  * Get date range presets relative to today
  */
 export type DateRangePreset =
-  | '1week'
-  | '1month'
-  | '3months'
-  | '6months'
-  | '1year'
-  | 'financialYear';
+  // Past
+  | 'last7days'
+  | 'last30days'
+  | 'last3months'
+  | 'lastYear'
+  // Current periods
+  | 'thisWeek'
+  | 'thisMonth'
+  | 'thisQuarter'
+  | 'thisFinancialYear'
+  // Future
+  | 'next7days'
+  | 'next30days'
+  | 'next3months'
+  | 'next12months'
+  // Rolling (centered on today)
+  | 'rolling30days'
+  | 'rolling3months'
+  | 'rolling6months'
+  | 'rolling12months';
 
 export function getDateRangePreset(preset: DateRangePreset): {
   startDate: string;
@@ -212,36 +226,109 @@ export function getDateRangePreset(preset: DateRangePreset): {
   const todayStr = formatISODate(now);
 
   switch (preset) {
-    case '1week': {
+    // Past-focused
+    case 'last7days': {
       const start = new Date(now);
       start.setDate(start.getDate() - 6);
       return { startDate: formatISODate(start), endDate: todayStr };
     }
-    case '1month': {
+    case 'last30days': {
       const start = new Date(now);
-      start.setMonth(start.getMonth() - 1);
-      start.setDate(start.getDate() + 1);
+      start.setDate(start.getDate() - 29);
       return { startDate: formatISODate(start), endDate: todayStr };
     }
-    case '3months': {
+    case 'last3months': {
       const start = new Date(now);
       start.setMonth(start.getMonth() - 3);
       start.setDate(start.getDate() + 1);
       return { startDate: formatISODate(start), endDate: todayStr };
     }
-    case '6months': {
-      const start = new Date(now);
-      start.setMonth(start.getMonth() - 6);
-      start.setDate(start.getDate() + 1);
-      return { startDate: formatISODate(start), endDate: todayStr };
-    }
-    case '1year': {
+    case 'lastYear': {
       const start = new Date(now);
       start.setFullYear(start.getFullYear() - 1);
       start.setDate(start.getDate() + 1);
       return { startDate: formatISODate(start), endDate: todayStr };
     }
-    case 'financialYear':
+
+    // Current periods
+    case 'thisWeek': {
+      // Monday to Sunday containing today
+      const start = new Date(now);
+      const day = start.getDay();
+      const diffToMonday = day === 0 ? -6 : 1 - day;
+      start.setDate(start.getDate() + diffToMonday);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      return { startDate: formatISODate(start), endDate: formatISODate(end) };
+    }
+    case 'thisMonth': {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      return { startDate: formatISODate(start), endDate: formatISODate(end) };
+    }
+    case 'thisQuarter': {
+      const quarterStart = Math.floor(now.getMonth() / 3) * 3;
+      const start = new Date(now.getFullYear(), quarterStart, 1);
+      const end = new Date(now.getFullYear(), quarterStart + 3, 0);
+      return { startDate: formatISODate(start), endDate: formatISODate(end) };
+    }
+    case 'thisFinancialYear':
       return getCurrentFinancialYear();
+
+    // Future-focused
+    case 'next7days': {
+      const end = new Date(now);
+      end.setDate(end.getDate() + 6);
+      return { startDate: todayStr, endDate: formatISODate(end) };
+    }
+    case 'next30days': {
+      const end = new Date(now);
+      end.setDate(end.getDate() + 29);
+      return { startDate: todayStr, endDate: formatISODate(end) };
+    }
+    case 'next3months': {
+      const end = new Date(now);
+      end.setMonth(end.getMonth() + 3);
+      end.setDate(end.getDate() - 1);
+      return { startDate: todayStr, endDate: formatISODate(end) };
+    }
+    case 'next12months': {
+      const end = new Date(now);
+      end.setFullYear(end.getFullYear() + 1);
+      end.setDate(end.getDate() - 1);
+      return { startDate: todayStr, endDate: formatISODate(end) };
+    }
+
+    // Rolling (centered on today)
+    case 'rolling30days': {
+      const start = new Date(now);
+      start.setDate(start.getDate() - 15);
+      const end = new Date(now);
+      end.setDate(end.getDate() + 14);
+      return { startDate: formatISODate(start), endDate: formatISODate(end) };
+    }
+    case 'rolling3months': {
+      const start = new Date(now);
+      start.setMonth(start.getMonth() - 1);
+      start.setDate(start.getDate() - 14);
+      const end = new Date(now);
+      end.setMonth(end.getMonth() + 1);
+      end.setDate(end.getDate() + 14);
+      return { startDate: formatISODate(start), endDate: formatISODate(end) };
+    }
+    case 'rolling6months': {
+      const start = new Date(now);
+      start.setMonth(start.getMonth() - 3);
+      const end = new Date(now);
+      end.setMonth(end.getMonth() + 3);
+      return { startDate: formatISODate(start), endDate: formatISODate(end) };
+    }
+    case 'rolling12months': {
+      const start = new Date(now);
+      start.setMonth(start.getMonth() - 6);
+      const end = new Date(now);
+      end.setMonth(end.getMonth() + 6);
+      return { startDate: formatISODate(start), endDate: formatISODate(end) };
+    }
   }
 }

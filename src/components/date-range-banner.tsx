@@ -17,13 +17,43 @@ interface DateRangeBannerProps {
   onDateRangeChange: (startDate: string, endDate: string) => void;
 }
 
-const PRESETS: { label: string; value: DateRangePreset }[] = [
-  { label: '1 Week', value: '1week' },
-  { label: '1 Month', value: '1month' },
-  { label: '3 Months', value: '3months' },
-  { label: '6 Months', value: '6months' },
-  { label: '1 Year', value: '1year' },
-  { label: 'Financial Year', value: 'financialYear' },
+const PRESET_SECTIONS: { title: string; presets: { label: string; value: DateRangePreset }[] }[] = [
+  {
+    title: 'Past',
+    presets: [
+      { label: 'Last 7 days', value: 'last7days' },
+      { label: 'Last 30 days', value: 'last30days' },
+      { label: 'Last 3 months', value: 'last3months' },
+      { label: 'Last year', value: 'lastYear' },
+    ],
+  },
+  {
+    title: 'Current',
+    presets: [
+      { label: 'This week', value: 'thisWeek' },
+      { label: 'This month', value: 'thisMonth' },
+      { label: 'This quarter', value: 'thisQuarter' },
+      { label: 'Financial year', value: 'thisFinancialYear' },
+    ],
+  },
+  {
+    title: 'Future',
+    presets: [
+      { label: 'Next 7 days', value: 'next7days' },
+      { label: 'Next 30 days', value: 'next30days' },
+      { label: 'Next 3 months', value: 'next3months' },
+      { label: 'Next 12 months', value: 'next12months' },
+    ],
+  },
+  {
+    title: 'Rolling',
+    presets: [
+      { label: '± 30 days', value: 'rolling30days' },
+      { label: '± 3 months', value: 'rolling3months' },
+      { label: '± 6 months', value: 'rolling6months' },
+      { label: '± 12 months', value: 'rolling12months' },
+    ],
+  },
 ];
 
 export function DateRangeBanner({
@@ -72,33 +102,37 @@ export function DateRangeBanner({
             </span>
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-[calc(100vw-2rem)] sm:w-80" align="center">
+        <PopoverContent className="w-[calc(100vw-2rem)] sm:w-96" align="center">
           <div className="space-y-4">
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">Quick Select</h4>
-              <div className="grid grid-cols-2 gap-2">
-                {PRESETS.map((preset) => (
-                  <Button
-                    key={preset.value}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePresetClick(preset.value)}
-                    className="justify-start"
-                  >
-                    {preset.label}
-                  </Button>
-                ))}
-              </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+              {PRESET_SECTIONS.map((section) => (
+                <div key={section.title} className="space-y-1.5">
+                  <h4 className="px-2 text-xs font-medium text-muted-foreground">{section.title}</h4>
+                  <div className="flex flex-col gap-0.5">
+                    {section.presets.map((preset) => (
+                      <Button
+                        key={preset.value}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handlePresetClick(preset.value)}
+                        className="h-7 w-full justify-start px-2 text-xs font-normal"
+                      >
+                        {preset.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
 
             <Separator />
 
             <div className="space-y-3">
-              <h4 className="text-sm font-medium">Custom Range</h4>
-              <div className="grid gap-2">
+              <h4 className="text-xs font-medium text-muted-foreground">Custom Range</h4>
+              <div className="grid grid-cols-2 gap-2">
                 <div className="grid gap-1">
                   <Label htmlFor="start-date" className="text-xs">
-                    Start Date
+                    Start
                   </Label>
                   <Input
                     id="start-date"
@@ -110,7 +144,7 @@ export function DateRangeBanner({
                 </div>
                 <div className="grid gap-1">
                   <Label htmlFor="end-date" className="text-xs">
-                    End Date
+                    End
                   </Label>
                   <Input
                     id="end-date"
