@@ -153,13 +153,13 @@ export function RuleDetailPage() {
       <div className="mx-auto max-w-lg">
         <div className="mb-8">
           <Button variant="ghost" size="sm" className="-ml-2" asChild>
-            <Link to="/manage/rules">
+            <Link to="/forecast">
               <ArrowLeft className="h-4 w-4" />
-              Back to Recurring
+              Back to Forecasts
             </Link>
           </Button>
         </div>
-        <p className="text-muted-foreground">Recurring rule not found.</p>
+        <p className="text-muted-foreground">Recurring forecast not found.</p>
       </div>
     );
   }
@@ -175,7 +175,7 @@ export function RuleDetailPage() {
       return;
     }
     deleteRule(rule.id);
-    navigate('/manage/rules');
+    navigate('/forecast');
   };
 
   const startEditing = () => {
@@ -197,9 +197,9 @@ export function RuleDetailPage() {
     <div className="mx-auto max-w-lg">
       <div className="mb-8">
         <Button variant="ghost" size="sm" className="-ml-2" asChild>
-          <Link to="/manage/rules">
+          <Link to="/forecast">
             <ArrowLeft className="h-4 w-4" />
-            Back to Recurring
+            Back to Forecasts
           </Link>
         </Button>
       </div>

@@ -71,7 +71,7 @@ export function RuleNewPage() {
         return;
       }
 
-      const rule = addRule({
+      addRule({
         scenarioId: activeScenarioId,
         type: value.type,
         description: value.description.trim(),
@@ -91,7 +91,7 @@ export function RuleNewPage() {
         savingsGoalId: value.type === 'savings' ? value.savingsGoalId : null,
       });
 
-      navigate(`/manage/rules/${rule.id}`);
+      navigate('/forecast');
     },
   });
 
@@ -108,15 +108,15 @@ export function RuleNewPage() {
     <div className="mx-auto max-w-lg">
       <div className="mb-8">
         <Button variant="ghost" size="sm" className="-ml-2" asChild>
-          <Link to="/manage/rules">
+          <Link to="/forecast">
             <ArrowLeft className="h-4 w-4" />
-            Back to Recurring
+            Back to Forecasts
           </Link>
         </Button>
       </div>
 
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">New Recurring Rule</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">New Recurring Forecast</h1>
         <p className="mt-1 text-muted-foreground">
           Add a recurring income, expense, or savings pattern.
         </p>

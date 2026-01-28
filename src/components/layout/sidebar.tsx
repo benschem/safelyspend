@@ -6,7 +6,6 @@ import {
   FolderTree,
   PiggyBank,
   Layers,
-  Repeat,
   Settings,
   BarChart3,
   Menu,
@@ -85,9 +84,6 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       <NavSection title="Plan">
         <NavItem to="/forecast" icon={<TrendingUp className="h-4 w-4" />} onClick={onNavigate}>
           Forecasts
-        </NavItem>
-        <NavItem to="/manage/rules" icon={<Repeat className="h-4 w-4" />} onClick={onNavigate}>
-          Recurring Forecasts
         </NavItem>
         <NavItem to="/budget" icon={<FolderTree className="h-4 w-4" />} onClick={onNavigate}>
           Budgets

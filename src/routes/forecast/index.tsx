@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus } from 'lucide-react';
+import { Plus, Repeat } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
@@ -53,9 +53,18 @@ export function ForecastIndexPage() {
       {
         accessorKey: 'description',
         header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
-        cell: ({ row }) => (
-          <span className="font-medium">{row.getValue('description')}</span>
-        ),
+        cell: ({ row }) => {
+          const forecast = row.original;
+          const linkTo =
+            forecast.sourceType === 'rule'
+              ? `/manage/rules/${forecast.sourceId}`
+              : `/forecast/${forecast.sourceId}`;
+          return (
+            <Link to={linkTo} className="font-medium hover:underline">
+              {row.getValue('description')}
+            </Link>
+          );
+        },
       },
       {
         accessorKey: 'type',
@@ -70,11 +79,15 @@ export function ForecastIndexPage() {
       {
         accessorKey: 'sourceType',
         header: 'Source',
-        cell: ({ row }) => (
-          <Badge variant="outline">
-            {row.getValue('sourceType') === 'rule' ? 'Recurring' : 'One-off'}
-          </Badge>
-        ),
+        cell: ({ row }) => {
+          const isRecurring = row.getValue('sourceType') === 'rule';
+          return (
+            <Badge variant="outline" className="gap-1">
+              {isRecurring && <Repeat className="h-3 w-3" />}
+              {isRecurring ? 'Recurring' : 'One-time'}
+            </Badge>
+          );
+        },
       },
       {
         accessorKey: 'categoryId',
@@ -109,12 +122,18 @@ export function ForecastIndexPage() {
       },
       {
         id: 'actions',
-        cell: ({ row }) =>
-          row.original.sourceType === 'event' ? (
+        cell: ({ row }) => {
+          const forecast = row.original;
+          const linkTo =
+            forecast.sourceType === 'rule'
+              ? `/manage/rules/${forecast.sourceId}`
+              : `/forecast/${forecast.sourceId}`;
+          return (
             <Button variant="outline" size="sm" asChild>
-              <Link to={`/forecast/${row.original.sourceId}`}>Edit</Link>
+              <Link to={linkTo}>Edit</Link>
             </Button>
-          ) : null,
+          );
+        },
       },
     ],
     [categories],
@@ -138,12 +157,20 @@ export function ForecastIndexPage() {
             Projected income, expenses, and savings for the period.
           </p>
         </div>
-        <Button asChild className="w-full sm:w-auto">
-          <Link to="/forecast/new">
-            <Plus className="h-4 w-4" />
-            Add One-off Event
-          </Link>
-        </Button>
+        <div className="flex w-full gap-2 sm:w-auto">
+          <Button asChild variant="outline" className="flex-1 sm:flex-none">
+            <Link to="/forecast/new">
+              <Plus className="h-4 w-4" />
+              One-Time
+            </Link>
+          </Button>
+          <Button asChild className="flex-1 sm:flex-none">
+            <Link to="/manage/rules/new">
+              <Repeat className="h-4 w-4" />
+              Recurring
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -168,9 +195,14 @@ export function ForecastIndexPage() {
           <p className="text-muted-foreground">
             No forecasts found between {formatDateRange(startDate, endDate)}.
           </p>
-          <Button asChild className="mt-4">
-            <Link to="/forecast/new">Add a one-off event</Link>
-          </Button>
+          <div className="mt-4 flex justify-center gap-2">
+            <Button asChild variant="outline">
+              <Link to="/forecast/new">Add one-time event</Link>
+            </Button>
+            <Button asChild>
+              <Link to="/manage/rules/new">Add recurring</Link>
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="mt-6">

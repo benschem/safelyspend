@@ -8,4 +8,4 @@
   - Store only userId → blob, lastUpdatedAt
   - Client downloads, decrypts, loads on startup, and encrypts and uploads on save
 
-[ ] Import transactions from exported Up Bank CSV
+[X] Import transactions from exported Up Bank CSV
