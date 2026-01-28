@@ -55,30 +55,35 @@ export function FirstRunWizard() {
         return;
       }
 
-      // Create default scenario if none exists
-      if (scenarios.length === 0) {
-        const scenario = addScenario({
-          name: 'Main Budget',
-          description: 'My primary budget scenario',
-          isDefault: true,
+      try {
+        // Create default scenario if none exists
+        if (scenarios.length === 0) {
+          const scenario = await addScenario({
+            name: 'Main Budget',
+            description: 'My primary budget scenario',
+            isDefault: true,
+          });
+          await setActiveScenarioId(scenario.id);
+        }
+
+        // Create balance anchor (even if 0, as it sets the anchor date)
+        await addAnchor({
+          date: value.balanceDate,
+          balanceCents: balanceCents,
+          label: 'Opening balance',
         });
-        setActiveScenarioId(scenario.id);
+
+        await markInitialized(false);
+        navigate('/dashboard');
+      } catch (error) {
+        console.error('Setup failed:', error);
+        setSubmitError('Setup failed. Please try again.');
       }
-
-      // Create balance anchor (even if 0, as it sets the anchor date)
-      addAnchor({
-        date: value.balanceDate,
-        balanceCents: balanceCents,
-        label: 'Opening balance',
-      });
-
-      markInitialized(false);
-      navigate('/dashboard');
     },
   });
 
-  const handleStartDemo = () => {
-    loadDemoDataToStorage();
+  const handleStartDemo = async () => {
+    await loadDemoDataToStorage();
     // Force reload to pick up the new data
     window.location.href = '/dashboard';
   };

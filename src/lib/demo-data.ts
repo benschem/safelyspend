@@ -1,5 +1,6 @@
 import type { BudgetData } from './types';
 import { generateId, now } from './utils';
+import { loadDemoData, resetDatabase } from './db';
 
 const USER_ID = 'local';
 
@@ -841,37 +842,11 @@ export function generateDemoData(): BudgetData {
   };
 }
 
-export function loadDemoDataToStorage(): void {
+export async function loadDemoDataToStorage(): Promise<void> {
   const data = generateDemoData();
-
-  localStorage.setItem('budget:scenarios', JSON.stringify(data.scenarios));
-  localStorage.setItem('budget:activeScenarioId', JSON.stringify(data.scenarios[0]?.id ?? null));
-  localStorage.setItem('budget:categories', JSON.stringify(data.categories));
-  localStorage.setItem('budget:budgetRules', JSON.stringify(data.budgetRules));
-  localStorage.setItem('budget:forecastRules', JSON.stringify(data.forecastRules));
-  localStorage.setItem('budget:forecastEvents', JSON.stringify(data.forecastEvents));
-  localStorage.setItem('budget:transactions', JSON.stringify(data.transactions));
-  localStorage.setItem('budget:savingsGoals', JSON.stringify(data.savingsGoals));
-  localStorage.setItem('budget:balanceAnchors', JSON.stringify(data.balanceAnchors));
-  localStorage.setItem('budget:categoryRules', JSON.stringify(data.categoryRules));
-  localStorage.setItem('budget:appConfig', JSON.stringify({ isInitialized: true, isDemo: true }));
+  await loadDemoData(data);
 }
 
-export function clearAllData(): void {
-  const keys = [
-    'budget:scenarios',
-    'budget:activeScenarioId',
-    'budget:categories',
-    'budget:budgetRules',
-    'budget:forecastRules',
-    'budget:forecastEvents',
-    'budget:transactions',
-    'budget:savingsGoals',
-    'budget:balanceAnchors',
-    'budget:categoryRules',
-    'budget:paymentMethods',
-    'budget:viewState',
-    'budget:appConfig',
-  ];
-  keys.forEach((key) => localStorage.removeItem(key));
+export async function clearAllData(): Promise<void> {
+  await resetDatabase();
 }

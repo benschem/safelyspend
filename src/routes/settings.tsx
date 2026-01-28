@@ -16,10 +16,9 @@ import {
 } from '@/components/ui/dialog';
 import { Pencil, Trash2, Plus, AlertTriangle, Download, Check } from 'lucide-react';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
-import { clearAllData } from '@/lib/demo-data';
+import { exportAllData, importAllData, resetDatabase, fullReset } from '@/lib/db';
 import { formatCents, formatDate, today } from '@/lib/utils';
 import {
-  CURRENT_DATA_VERSION,
   validateImport,
   getImportErrorMessage,
   type ValidatedBudgetData,
@@ -29,48 +28,11 @@ import type { BudgetData } from '@/lib/types';
 // Rate limiting: minimum 5 seconds between imports
 const MIN_IMPORT_INTERVAL_MS = 5000;
 
-function getAllData(): BudgetData & {
-  activeScenarioId: string | null;
-  version: number;
-  exportedAt: string;
-} {
-  return {
-    version: CURRENT_DATA_VERSION,
-    exportedAt: new Date().toISOString(),
-    scenarios: JSON.parse(localStorage.getItem('budget:scenarios') ?? '[]'),
-    activeScenarioId: JSON.parse(localStorage.getItem('budget:activeScenarioId') ?? 'null'),
-    categories: JSON.parse(localStorage.getItem('budget:categories') ?? '[]'),
-    budgetRules: JSON.parse(localStorage.getItem('budget:budgetRules') ?? '[]'),
-    forecastRules: JSON.parse(localStorage.getItem('budget:forecastRules') ?? '[]'),
-    forecastEvents: JSON.parse(localStorage.getItem('budget:forecastEvents') ?? '[]'),
-    transactions: JSON.parse(localStorage.getItem('budget:transactions') ?? '[]'),
-    savingsGoals: JSON.parse(localStorage.getItem('budget:savingsGoals') ?? '[]'),
-    balanceAnchors: JSON.parse(localStorage.getItem('budget:balanceAnchors') ?? '[]'),
-    categoryRules: JSON.parse(localStorage.getItem('budget:categoryRules') ?? '[]'),
-  };
-}
-
-function setAllData(data: BudgetData & { activeScenarioId?: string | null }): void {
-  localStorage.setItem('budget:scenarios', JSON.stringify(data.scenarios));
-  if (data.activeScenarioId !== undefined) {
-    localStorage.setItem('budget:activeScenarioId', JSON.stringify(data.activeScenarioId));
-  }
-  localStorage.setItem('budget:categories', JSON.stringify(data.categories));
-  localStorage.setItem('budget:budgetRules', JSON.stringify(data.budgetRules));
-  localStorage.setItem('budget:forecastRules', JSON.stringify(data.forecastRules));
-  localStorage.setItem('budget:forecastEvents', JSON.stringify(data.forecastEvents));
-  localStorage.setItem('budget:transactions', JSON.stringify(data.transactions));
-  localStorage.setItem('budget:savingsGoals', JSON.stringify(data.savingsGoals));
-  localStorage.setItem('budget:balanceAnchors', JSON.stringify(data.balanceAnchors ?? []));
-  localStorage.setItem('budget:categoryRules', JSON.stringify(data.categoryRules ?? []));
-  localStorage.setItem('budget:appConfig', JSON.stringify({ isInitialized: true }));
-}
-
 export function SettingsPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [confirmingClear, setConfirmingClear] = useState(false);
+  const [confirmingClear, setConfirmingClear] = useState<'data' | 'full' | null>(null);
   const [upImportOpen, setUpImportOpen] = useState(false);
   const [exportWarningOpen, setExportWarningOpen] = useState(false);
   const [lastImportTime, setLastImportTime] = useState(0);
@@ -100,20 +62,25 @@ export function SettingsPage() {
     setExportWarningOpen(true);
   };
 
-  const handleExportConfirm = () => {
+  const handleExportConfirm = async () => {
     setExportWarningOpen(false);
-    const data = getAllData();
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `budget-export-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showMessage('success', 'Data exported successfully.');
+    try {
+      const data = await exportAllData();
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `budget-export-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showMessage('success', 'Data exported successfully.');
+    } catch (error) {
+      console.error('Export failed:', error);
+      showMessage('error', 'Export failed. Please try again.');
+    }
   };
 
   const handleImportClick = () => {
@@ -161,17 +128,24 @@ export function SettingsPage() {
     e.target.value = '';
   };
 
-  const handleImportConfirm = () => {
+  const handleImportConfirm = async () => {
     if (!pendingImport) return;
 
-    // Cast to BudgetData - schema validation ensures type safety
-    setAllData(pendingImport.data as unknown as BudgetData & { activeScenarioId?: string | null });
+    try {
+      // Cast ValidatedBudgetData to BudgetData (schema-validated)
+      await importAllData(pendingImport.data as unknown as BudgetData & { activeScenarioId?: string | null });
 
-    // Show success state in dialog before reload
-    setImportSuccess(true);
-    setTimeout(() => {
-      window.location.reload();
-    }, 1500);
+      // Show success state in dialog before reload
+      setImportSuccess(true);
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error) {
+      console.error('Import failed:', error);
+      showMessage('error', 'Import failed. Please try again.');
+      setImportPreviewOpen(false);
+      setPendingImport(null);
+    }
   };
 
   const handleImportCancel = () => {
@@ -180,14 +154,34 @@ export function SettingsPage() {
     setImportSuccess(false);
   };
 
-  const handleClear = () => {
-    if (!confirmingClear) {
-      setConfirmingClear(true);
+  const handleResetData = async () => {
+    if (confirmingClear !== 'data') {
+      setConfirmingClear('data');
       return;
     }
 
-    clearAllData();
-    navigate('/landing');
+    try {
+      await resetDatabase();
+      navigate('/landing');
+    } catch (error) {
+      console.error('Reset failed:', error);
+      showMessage('error', 'Reset failed. Please try again.');
+    }
+  };
+
+  const handleFullReset = async () => {
+    if (confirmingClear !== 'full') {
+      setConfirmingClear('full');
+      return;
+    }
+
+    try {
+      await fullReset();
+      navigate('/landing');
+    } catch (error) {
+      console.error('Full reset failed:', error);
+      showMessage('error', 'Reset failed. Please try again.');
+    }
   };
 
   // Anchor handlers
@@ -209,7 +203,7 @@ export function SettingsPage() {
     setAnchorDialogOpen(true);
   };
 
-  const handleSaveAnchor = () => {
+  const handleSaveAnchor = async () => {
     setAnchorError(null);
 
     const amount = parseFloat(anchorAmount);
@@ -229,7 +223,7 @@ export function SettingsPage() {
         if (anchorLabel) {
           updates.label = anchorLabel;
         }
-        updateAnchor(editingAnchorId, updates);
+        await updateAnchor(editingAnchorId, updates);
         showMessage('success', 'Anchor updated');
       } else {
         const data: Parameters<typeof addAnchor>[0] = {
@@ -239,7 +233,7 @@ export function SettingsPage() {
         if (anchorLabel) {
           data.label = anchorLabel;
         }
-        addAnchor(data);
+        await addAnchor(data);
         showMessage('success', 'Anchor added');
       }
       setAnchorDialogOpen(false);
@@ -248,12 +242,12 @@ export function SettingsPage() {
     }
   };
 
-  const handleDeleteAnchor = (id: string) => {
+  const handleDeleteAnchor = async (id: string) => {
     if (deletingAnchorId !== id) {
       setDeletingAnchorId(id);
       return;
     }
-    deleteAnchor(id);
+    await deleteAnchor(id);
     setDeletingAnchorId(null);
     showMessage('success', 'Anchor deleted');
   };
@@ -321,17 +315,34 @@ export function SettingsPage() {
 
         <div className="flex flex-col gap-3 rounded-lg border border-destructive/50 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="font-medium text-destructive">Clear All Data</h3>
-            <p className="text-sm text-muted-foreground">Permanently delete all budget data.</p>
+            <h3 className="font-medium text-destructive">Reset Data</h3>
+            <p className="text-sm text-muted-foreground">Clear all budget data but keep preferences.</p>
           </div>
           <div className="flex gap-2">
-            {confirmingClear && (
-              <Button variant="outline" onClick={() => setConfirmingClear(false)}>
+            {confirmingClear === 'data' && (
+              <Button variant="outline" onClick={() => setConfirmingClear(null)}>
                 Cancel
               </Button>
             )}
-            <Button variant="destructive" onClick={handleClear}>
-              {confirmingClear ? 'Confirm Clear' : 'Clear Data'}
+            <Button variant="destructive" onClick={handleResetData}>
+              {confirmingClear === 'data' ? 'Confirm Reset' : 'Reset Data'}
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3 rounded-lg border border-destructive/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="font-medium text-destructive">Full Reset</h3>
+            <p className="text-sm text-muted-foreground">Clear all data including preferences.</p>
+          </div>
+          <div className="flex gap-2">
+            {confirmingClear === 'full' && (
+              <Button variant="outline" onClick={() => setConfirmingClear(null)}>
+                Cancel
+              </Button>
+            )}
+            <Button variant="destructive" onClick={handleFullReset}>
+              {confirmingClear === 'full' ? 'Confirm Full Reset' : 'Full Reset'}
             </Button>
           </div>
         </div>
