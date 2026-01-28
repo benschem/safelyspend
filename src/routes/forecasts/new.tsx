@@ -73,7 +73,7 @@ export function ForecastNewPage() {
         savingsGoalId: value.type === 'savings' ? value.savingsGoalId : null,
       });
 
-      navigate(`/forecast/${event.id}`);
+      navigate(`/forecasts/${event.id}`);
     },
   });
 
@@ -90,7 +90,7 @@ export function ForecastNewPage() {
     <div className="mx-auto max-w-lg">
       <div className="mb-8">
         <Button variant="ghost" size="sm" className="-ml-2" asChild>
-          <Link to="/forecast">
+          <Link to="/forecasts">
             <ArrowLeft className="h-4 w-4" />
             Back to Forecasts
           </Link>
@@ -229,7 +229,7 @@ export function ForecastNewPage() {
             )}
           </form.Subscribe>
           <Button type="button" variant="outline" asChild>
-            <Link to="/forecast">Cancel</Link>
+            <Link to="/forecasts">Cancel</Link>
           </Button>
         </div>
       </form>

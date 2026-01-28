@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus } from 'lucide-react';
+import { Plus, ArrowLeft } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
@@ -27,7 +27,7 @@ const CADENCE_LABELS: Record<string, string> = {
   yearly: 'Yearly',
 };
 
-export function RulesIndexPage() {
+export function RecurringIndexPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
   const { rules } = useForecasts(activeScenarioId);
@@ -48,7 +48,11 @@ export function RulesIndexPage() {
       {
         accessorKey: 'description',
         header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
-        cell: ({ row }) => <span className="font-medium">{row.getValue('description')}</span>,
+        cell: ({ row }) => (
+          <Link to={`/forecasts/recurring/${row.original.id}`} className="font-medium hover:underline">
+            {row.getValue('description')}
+          </Link>
+        ),
       },
       {
         accessorKey: 'cadence',
@@ -74,7 +78,7 @@ export function RulesIndexPage() {
         id: 'actions',
         cell: ({ row }) => (
           <Button variant="outline" size="sm" asChild>
-            <Link to={`/manage/rules/${row.original.id}`}>Edit</Link>
+            <Link to={`/forecasts/recurring/${row.original.id}`}>Edit</Link>
           </Button>
         ),
       },
@@ -87,7 +91,11 @@ export function RulesIndexPage() {
       {
         accessorKey: 'description',
         header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
-        cell: ({ row }) => <span className="font-medium">{row.getValue('description')}</span>,
+        cell: ({ row }) => (
+          <Link to={`/forecasts/recurring/${row.original.id}`} className="font-medium hover:underline">
+            {row.getValue('description')}
+          </Link>
+        ),
       },
       {
         accessorKey: 'categoryId',
@@ -118,7 +126,7 @@ export function RulesIndexPage() {
         id: 'actions',
         cell: ({ row }) => (
           <Button variant="outline" size="sm" asChild>
-            <Link to={`/manage/rules/${row.original.id}`}>Edit</Link>
+            <Link to={`/forecasts/recurring/${row.original.id}`}>Edit</Link>
           </Button>
         ),
       },
@@ -131,7 +139,11 @@ export function RulesIndexPage() {
       {
         accessorKey: 'description',
         header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
-        cell: ({ row }) => <span className="font-medium">{row.getValue('description')}</span>,
+        cell: ({ row }) => (
+          <Link to={`/forecasts/recurring/${row.original.id}`} className="font-medium hover:underline">
+            {row.getValue('description')}
+          </Link>
+        ),
       },
       {
         accessorKey: 'savingsGoalId',
@@ -162,7 +174,7 @@ export function RulesIndexPage() {
         id: 'actions',
         cell: ({ row }) => (
           <Button variant="outline" size="sm" asChild>
-            <Link to={`/manage/rules/${row.original.id}`}>Edit</Link>
+            <Link to={`/forecasts/recurring/${row.original.id}`}>Edit</Link>
           </Button>
         ),
       },
@@ -174,7 +186,7 @@ export function RulesIndexPage() {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <h2 className="text-lg font-semibold">No scenario selected</h2>
-        <p className="text-muted-foreground">Select a scenario to manage forecast rules.</p>
+        <p className="text-muted-foreground">Select a scenario to manage recurring forecasts.</p>
       </div>
     );
   }
@@ -184,6 +196,15 @@ export function RulesIndexPage() {
 
   return (
     <div>
+      <div className="mb-6">
+        <Button variant="ghost" size="sm" className="-ml-2" asChild>
+          <Link to="/forecasts">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Forecasts
+          </Link>
+        </Button>
+      </div>
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Recurring Forecasts</h1>
@@ -192,18 +213,18 @@ export function RulesIndexPage() {
           </p>
         </div>
         <Button asChild className="w-full sm:w-auto">
-          <Link to="/manage/rules/new">
+          <Link to="/forecasts/recurring/new">
             <Plus className="h-4 w-4" />
-            Add Rule
+            Add Recurring
           </Link>
         </Button>
       </div>
 
       {rules.length === 0 ? (
         <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">No forecast rules yet.</p>
+          <p className="text-muted-foreground">No recurring forecasts yet.</p>
           <Button asChild className="mt-4">
-            <Link to="/manage/rules/new">Create your first rule</Link>
+            <Link to="/forecasts/recurring/new">Create your first recurring forecast</Link>
           </Button>
         </div>
       ) : (
@@ -223,9 +244,9 @@ export function RulesIndexPage() {
           <TabsContent value="income">
             {incomeRules.length === 0 ? (
               <div className="rounded-lg border border-dashed p-8 text-center">
-                <p className="text-muted-foreground">No income rules yet.</p>
+                <p className="text-muted-foreground">No recurring income yet.</p>
                 <Button asChild className="mt-4">
-                  <Link to="/manage/rules/new">Add an income rule</Link>
+                  <Link to="/forecasts/recurring/new">Add recurring income</Link>
                 </Button>
               </div>
             ) : (
@@ -233,7 +254,7 @@ export function RulesIndexPage() {
                 columns={incomeColumns}
                 data={incomeRules}
                 searchKey="description"
-                searchPlaceholder="Search income rules..."
+                searchPlaceholder="Search income..."
                 showPagination={false}
               />
             )}
@@ -242,9 +263,9 @@ export function RulesIndexPage() {
           <TabsContent value="expenses">
             {expenseRules.length === 0 ? (
               <div className="rounded-lg border border-dashed p-8 text-center">
-                <p className="text-muted-foreground">No expense rules yet.</p>
+                <p className="text-muted-foreground">No recurring expenses yet.</p>
                 <Button asChild className="mt-4">
-                  <Link to="/manage/rules/new">Add an expense rule</Link>
+                  <Link to="/forecasts/recurring/new">Add recurring expense</Link>
                 </Button>
               </div>
             ) : (
@@ -252,7 +273,7 @@ export function RulesIndexPage() {
                 columns={expenseColumns}
                 data={expenseRules}
                 searchKey="description"
-                searchPlaceholder="Search expense rules..."
+                searchPlaceholder="Search expenses..."
                 showPagination={false}
               />
             )}
@@ -261,9 +282,9 @@ export function RulesIndexPage() {
           <TabsContent value="savings">
             {savingsRules.length === 0 ? (
               <div className="rounded-lg border border-dashed p-8 text-center">
-                <p className="text-muted-foreground">No savings rules yet.</p>
+                <p className="text-muted-foreground">No recurring savings yet.</p>
                 <Button asChild className="mt-4">
-                  <Link to="/manage/rules/new">Add a savings rule</Link>
+                  <Link to="/forecasts/recurring/new">Add recurring savings</Link>
                 </Button>
               </div>
             ) : (
@@ -271,7 +292,7 @@ export function RulesIndexPage() {
                 columns={savingsColumns}
                 data={savingsRules}
                 searchKey="description"
-                searchPlaceholder="Search savings rules..."
+                searchPlaceholder="Search savings..."
                 showPagination={false}
               />
             )}

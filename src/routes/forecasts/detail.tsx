@@ -98,7 +98,7 @@ export function ForecastDetailPage() {
       <div className="mx-auto max-w-lg">
         <div className="mb-8">
           <Button variant="ghost" size="sm" className="-ml-2" asChild>
-            <Link to="/forecast">
+            <Link to="/forecasts">
               <ArrowLeft className="h-4 w-4" />
               Back to Forecasts
             </Link>
@@ -120,7 +120,7 @@ export function ForecastDetailPage() {
       return;
     }
     deleteEvent(event.id);
-    navigate('/forecast');
+    navigate('/forecasts');
   };
 
   const startEditing = () => {
@@ -138,7 +138,7 @@ export function ForecastDetailPage() {
     <div className="mx-auto max-w-lg">
       <div className="mb-8">
         <Button variant="ghost" size="sm" className="-ml-2" asChild>
-          <Link to="/forecast">
+          <Link to="/forecasts">
             <ArrowLeft className="h-4 w-4" />
             Back to Forecasts
           </Link>

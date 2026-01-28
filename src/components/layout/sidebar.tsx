@@ -82,7 +82,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       <Separator className="my-2" />
 
       <NavSection title="Plan">
-        <NavItem to="/forecast" icon={<TrendingUp className="h-4 w-4" />} onClick={onNavigate}>
+        <NavItem to="/forecasts" icon={<TrendingUp className="h-4 w-4" />} onClick={onNavigate}>
           Forecasts
         </NavItem>
         <NavItem to="/budget" icon={<FolderTree className="h-4 w-4" />} onClick={onNavigate}>

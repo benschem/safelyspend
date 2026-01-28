@@ -27,7 +27,7 @@ interface OutletContext {
   endDate: string;
 }
 
-export function RuleNewPage() {
+export function RecurringNewPage() {
   const navigate = useNavigate();
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
@@ -91,7 +91,7 @@ export function RuleNewPage() {
         savingsGoalId: value.type === 'savings' ? value.savingsGoalId : null,
       });
 
-      navigate('/forecast');
+      navigate('/forecasts');
     },
   });
 
@@ -108,7 +108,7 @@ export function RuleNewPage() {
     <div className="mx-auto max-w-lg">
       <div className="mb-8">
         <Button variant="ghost" size="sm" className="-ml-2" asChild>
-          <Link to="/forecast">
+          <Link to="/forecasts">
             <ArrowLeft className="h-4 w-4" />
             Back to Forecasts
           </Link>
@@ -363,12 +363,12 @@ export function RuleNewPage() {
           <form.Subscribe selector={(state) => state.isSubmitting}>
             {(isSubmitting) => (
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Creating...' : 'Create Rule'}
+                {isSubmitting ? 'Creating...' : 'Create'}
               </Button>
             )}
           </form.Subscribe>
           <Button type="button" variant="outline" asChild>
-            <Link to="/manage/rules">Cancel</Link>
+            <Link to="/forecasts">Cancel</Link>
           </Button>
         </div>
       </form>

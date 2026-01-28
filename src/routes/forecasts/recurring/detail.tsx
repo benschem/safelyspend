@@ -62,7 +62,7 @@ const MONTH_OF_QUARTER_LABELS = [
   '3rd month (Mar, Jun, Sep, Dec)',
 ];
 
-export function RuleDetailPage() {
+export function RecurringDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { activeScenarioId } = useOutletContext<OutletContext>();
@@ -153,7 +153,7 @@ export function RuleDetailPage() {
       <div className="mx-auto max-w-lg">
         <div className="mb-8">
           <Button variant="ghost" size="sm" className="-ml-2" asChild>
-            <Link to="/forecast">
+            <Link to="/forecasts">
               <ArrowLeft className="h-4 w-4" />
               Back to Forecasts
             </Link>
@@ -175,7 +175,7 @@ export function RuleDetailPage() {
       return;
     }
     deleteRule(rule.id);
-    navigate('/forecast');
+    navigate('/forecasts');
   };
 
   const startEditing = () => {
@@ -197,7 +197,7 @@ export function RuleDetailPage() {
     <div className="mx-auto max-w-lg">
       <div className="mb-8">
         <Button variant="ghost" size="sm" className="-ml-2" asChild>
-          <Link to="/forecast">
+          <Link to="/forecasts">
             <ArrowLeft className="h-4 w-4" />
             Back to Forecasts
           </Link>
@@ -243,7 +243,7 @@ export function RuleDetailPage() {
       {/* Edit Section */}
       <section>
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Rule Details</h2>
+          <h2 className="text-lg font-semibold">Details</h2>
           {!editing && (
             <Button variant="outline" size="sm" onClick={startEditing}>
               Edit
@@ -558,9 +558,9 @@ export function RuleDetailPage() {
         <div className="mt-4 rounded-lg border border-destructive/50 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-medium">Delete Rule</h3>
+              <h3 className="font-medium">Delete</h3>
               <p className="text-sm text-muted-foreground">
-                Permanently delete this forecast rule.
+                Permanently delete this recurring forecast.
               </p>
             </div>
             <div className="flex gap-2">

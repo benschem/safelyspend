@@ -5,9 +5,12 @@ import { ErrorBoundary } from '@/components/error-boundary';
 
 // Route components
 import { DashboardPage } from '@/routes/dashboard';
-import { ForecastIndexPage } from '@/routes/forecast/index';
-import { ForecastNewPage } from '@/routes/forecast/new';
-import { ForecastDetailPage } from '@/routes/forecast/detail';
+import { ForecastIndexPage } from '@/routes/forecasts/index';
+import { ForecastNewPage } from '@/routes/forecasts/new';
+import { ForecastDetailPage } from '@/routes/forecasts/detail';
+import { RecurringIndexPage } from '@/routes/forecasts/recurring/index';
+import { RecurringNewPage } from '@/routes/forecasts/recurring/new';
+import { RecurringDetailPage } from '@/routes/forecasts/recurring/detail';
 import { BudgetPage } from '@/routes/budget';
 import { TransactionsIndexPage } from '@/routes/transactions/index';
 import { TransactionNewPage } from '@/routes/transactions/new';
@@ -20,9 +23,6 @@ import { ReportsPage } from '@/routes/reports';
 import { ScenariosIndexPage } from '@/routes/manage/scenarios/index';
 import { ScenarioNewPage } from '@/routes/manage/scenarios/new';
 import { ScenarioDetailPage } from '@/routes/manage/scenarios/detail';
-import { RulesIndexPage } from '@/routes/manage/rules/index';
-import { RuleNewPage } from '@/routes/manage/rules/new';
-import { RuleDetailPage } from '@/routes/manage/rules/detail';
 import { SettingsPage } from '@/routes/settings';
 import { CategoryRulesPage } from '@/routes/settings/category-rules';
 
@@ -40,10 +40,13 @@ const router = createBrowserRouter([
       // Dashboard
       { path: 'dashboard', element: <DashboardPage /> },
 
-      // Forecast (plan)
-      { path: 'forecast', element: <ForecastIndexPage /> },
-      { path: 'forecast/new', element: <ForecastNewPage /> },
-      { path: 'forecast/:id', element: <ForecastDetailPage /> },
+      // Forecasts (plan)
+      { path: 'forecasts', element: <ForecastIndexPage /> },
+      { path: 'forecasts/new', element: <ForecastNewPage /> },
+      { path: 'forecasts/:id', element: <ForecastDetailPage /> },
+      { path: 'forecasts/recurring', element: <RecurringIndexPage /> },
+      { path: 'forecasts/recurring/new', element: <RecurringNewPage /> },
+      { path: 'forecasts/recurring/:id', element: <RecurringDetailPage /> },
 
       // Budget (plan)
       { path: 'budget', element: <BudgetPage /> },
@@ -69,10 +72,6 @@ const router = createBrowserRouter([
       { path: 'manage/scenarios/new', element: <ScenarioNewPage /> },
       { path: 'manage/scenarios/:id', element: <ScenarioDetailPage /> },
 
-      // Manage - Forecast Rules
-      { path: 'manage/rules', element: <RulesIndexPage /> },
-      { path: 'manage/rules/new', element: <RuleNewPage /> },
-      { path: 'manage/rules/:id', element: <RuleDetailPage /> },
 
       // Settings
       { path: 'settings', element: <SettingsPage /> },

@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Repeat } from 'lucide-react';
+import { Plus, Repeat, Settings2 } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
@@ -57,8 +57,8 @@ export function ForecastIndexPage() {
           const forecast = row.original;
           const linkTo =
             forecast.sourceType === 'rule'
-              ? `/manage/rules/${forecast.sourceId}`
-              : `/forecast/${forecast.sourceId}`;
+              ? `/forecasts/recurring/${forecast.sourceId}`
+              : `/forecasts/${forecast.sourceId}`;
           return (
             <Link to={linkTo} className="font-medium hover:underline">
               {row.getValue('description')}
@@ -126,8 +126,8 @@ export function ForecastIndexPage() {
           const forecast = row.original;
           const linkTo =
             forecast.sourceType === 'rule'
-              ? `/manage/rules/${forecast.sourceId}`
-              : `/forecast/${forecast.sourceId}`;
+              ? `/forecasts/recurring/${forecast.sourceId}`
+              : `/forecasts/${forecast.sourceId}`;
           return (
             <Button variant="outline" size="sm" asChild>
               <Link to={linkTo}>Edit</Link>
@@ -159,13 +159,13 @@ export function ForecastIndexPage() {
         </div>
         <div className="flex w-full gap-2 sm:w-auto">
           <Button asChild variant="outline" className="flex-1 sm:flex-none">
-            <Link to="/forecast/new">
+            <Link to="/forecasts/new">
               <Plus className="h-4 w-4" />
               One-Time
             </Link>
           </Button>
           <Button asChild className="flex-1 sm:flex-none">
-            <Link to="/manage/rules/new">
+            <Link to="/forecasts/recurring/new">
               <Repeat className="h-4 w-4" />
               Recurring
             </Link>
@@ -174,7 +174,7 @@ export function ForecastIndexPage() {
       </div>
 
       {/* Filters */}
-      <div className="mt-6 flex gap-4">
+      <div className="mt-6 flex items-center justify-between gap-4">
         <div className="w-40">
           <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
             <SelectTrigger>
@@ -188,6 +188,12 @@ export function ForecastIndexPage() {
             </SelectContent>
           </Select>
         </div>
+        <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
+          <Link to="/forecasts/recurring">
+            <Settings2 className="h-4 w-4" />
+            Manage Recurring
+          </Link>
+        </Button>
       </div>
 
       {expandedForecasts.length === 0 ? (
@@ -197,10 +203,10 @@ export function ForecastIndexPage() {
           </p>
           <div className="mt-4 flex justify-center gap-2">
             <Button asChild variant="outline">
-              <Link to="/forecast/new">Add one-time event</Link>
+              <Link to="/forecasts/new">Add one-time event</Link>
             </Button>
             <Button asChild>
-              <Link to="/manage/rules/new">Add recurring</Link>
+              <Link to="/forecasts/recurring/new">Add recurring</Link>
             </Button>
           </div>
         </div>
