@@ -1,13 +1,14 @@
 import { NavLink, useLocation } from 'react-router';
 import {
-  LayoutDashboard,
-  TrendingUp,
+  Eye,
+  Telescope,
   Receipt,
-  FolderTree,
+  Target,
+  Tags,
   PiggyBank,
   Layers,
   Settings,
-  BarChart3,
+  ChartSpline,
   Menu,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -70,11 +71,13 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       <NavSection>
-        <NavItem to="/dashboard" icon={<LayoutDashboard className="h-4 w-4" />} onClick={onNavigate}>
-          Dashboard
+        <NavItem to="/overview" icon={<Eye className="h-4 w-4" />} onClick={onNavigate}>
+          Overview
         </NavItem>
-
-        <NavItem to="/reports" icon={<BarChart3 className="h-4 w-4" />} onClick={onNavigate}>
+        <NavItem to="/budget" icon={<Target className="h-4 w-4" />} onClick={onNavigate}>
+          Budget
+        </NavItem>
+        <NavItem to="/reports" icon={<ChartSpline className="h-4 w-4" />} onClick={onNavigate}>
           Reports
         </NavItem>
       </NavSection>
@@ -82,14 +85,8 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       <Separator className="my-2" />
 
       <NavSection title="Plan">
-        <NavItem to="/forecasts" icon={<TrendingUp className="h-4 w-4" />} onClick={onNavigate}>
+        <NavItem to="/forecasts" icon={<Telescope className="h-4 w-4" />} onClick={onNavigate}>
           Forecasts
-        </NavItem>
-        <NavItem to="/budget" icon={<FolderTree className="h-4 w-4" />} onClick={onNavigate}>
-          Budgets
-        </NavItem>
-        <NavItem to="/scenarios" icon={<Layers className="h-4 w-4" />} onClick={onNavigate}>
-          Scenarios
         </NavItem>
       </NavSection>
 
@@ -108,8 +105,11 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       <Separator className="my-2" />
 
       <NavSection title="Manage">
-        <NavItem to="/categories" icon={<FolderTree className="h-4 w-4" />} onClick={onNavigate}>
+        <NavItem to="/categories" icon={<Tags className="h-4 w-4" />} onClick={onNavigate}>
           Categories
+        </NavItem>
+        <NavItem to="/scenarios" icon={<Layers className="h-4 w-4" />} onClick={onNavigate}>
+          Scenarios
         </NavItem>
       </NavSection>
 

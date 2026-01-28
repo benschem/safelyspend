@@ -74,7 +74,7 @@ export function FirstRunWizard() {
         });
 
         await markInitialized(false);
-        navigate('/dashboard');
+        navigate('/overview');
       } catch (error) {
         console.error('Setup failed:', error);
         setSubmitError('Setup failed. Please try again.');
@@ -85,7 +85,7 @@ export function FirstRunWizard() {
   const handleStartDemo = async () => {
     await loadDemoDataToStorage();
     // Force reload to pick up the new data
-    window.location.href = '/dashboard';
+    window.location.href = '/overview';
   };
 
   const handleStartFresh = () => {

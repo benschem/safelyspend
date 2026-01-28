@@ -2,17 +2,15 @@ import { useMemo } from 'react';
 import { Link, useOutletContext } from 'react-router';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import {
-  AlertCircle,
   TrendingUp,
   TrendingDown,
   PiggyBank,
-  LayoutDashboard,
+  Eye,
   Landmark,
   Wallet,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
+  HeartPulse,
 } from 'lucide-react';
 import { CHART_COLORS, buildCategoryColorMap } from '@/lib/chart-colors';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -22,8 +20,28 @@ import { useCategories } from '@/hooks/use-categories';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { formatCents, formatDate, formatISODate } from '@/lib/utils';
-import { ScenarioSelector } from '@/components/scenario-selector';
 import type { Cadence } from '@/lib/types';
+
+/**
+ * Get period progress info for a given cadence
+ */
+function getPeriodProgress(cadence: Cadence): { daysElapsed: number; totalDays: number; progress: number } {
+  const range = getCurrentPeriodRange(cadence);
+  const start = new Date(range.start);
+  const end = new Date(range.end);
+  const now = new Date();
+
+  // Set to start of day for accurate day counting
+  now.setHours(0, 0, 0, 0);
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+
+  const totalDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  const daysElapsed = Math.round((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  const progress = Math.min((daysElapsed / totalDays) * 100, 100);
+
+  return { daysElapsed, totalDays, progress };
+}
 
 /**
  * Get the current period date range for a given cadence
@@ -97,7 +115,7 @@ function PieTooltip({ active, payload }: PieTooltipProps) {
   );
 }
 
-export function DashboardPage() {
+export function OverviewPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
   const { activeCategories } = useCategories();
@@ -190,20 +208,23 @@ export function DashboardPage() {
     return buildCategoryColorMap(categoryIds);
   }, [activeCategories]);
 
-  // Calculate budget health - same logic as budget page (respects per-category cadences)
+  // Calculate budget health - same logic as budget page (respects per-category cadences + burn rate)
   const budgetHealth = useMemo(() => {
     if (!budgetRules || budgetRules.length === 0) {
-      return { status: 'no-budget' as const, onTrack: 0, overBudget: 0, total: 0 };
+      return { status: 'no-budget' as const, onTrack: 0, overBudget: 0, overspending: 0, watch: 0, total: 0 };
     }
 
     let onTrack = 0;
     let overBudget = 0;
+    let overspending = 0;
+    let watch = 0;
 
     for (const rule of budgetRules) {
       if (rule.amountCents === 0) continue;
 
       // Calculate period range based on rule's cadence
       const periodRange = getCurrentPeriodRange(rule.cadence);
+      const periodInfo = getPeriodProgress(rule.cadence);
 
       // Sum expenses for this category in the period
       const categoryExpenses = allTransactions.filter(
@@ -214,18 +235,32 @@ export function DashboardPage() {
           t.date <= periodRange.end,
       );
       const spent = categoryExpenses.reduce((sum, t) => sum + t.amountCents, 0);
+      const spentPercent = (spent / rule.amountCents) * 100;
 
-      if (spent > rule.amountCents) {
+      // Calculate burn rate (spending pace vs period progress)
+      const expectedSpend = rule.amountCents * (periodInfo.progress / 100);
+      const burnRate = expectedSpend > 0 ? (spent / expectedSpend) * 100 : (spent > 0 ? 200 : 0);
+
+      // Match budget page logic: use burn rate for status
+      if (spentPercent >= 100) {
         overBudget++;
+      } else if (burnRate > 120) {
+        overspending++;
+      } else if (burnRate > 100) {
+        watch++;
       } else {
         onTrack++;
       }
     }
 
-    const total = onTrack + overBudget;
-    const status = overBudget === 0 ? 'good' : overBudget <= total / 2 ? 'warning' : 'bad';
+    const total = onTrack + overBudget + overspending + watch;
+    const problemCount = overBudget + overspending;
+    // Only show bad if majority are problematic (over or overspending)
+    // Warning if any are overspending but most are fine
+    // Good if all on track or just watching
+    const status = problemCount > total / 2 ? 'bad' : (problemCount > 0 ? 'warning' : 'good');
 
-    return { status: status as 'good' | 'warning' | 'bad', onTrack, overBudget, total };
+    return { status: status as 'good' | 'warning' | 'bad', onTrack, overBudget, overspending, watch, total };
   }, [budgetRules, allTransactions]);
 
   // Filter upcoming forecasts to only future dates and sort by date
@@ -236,8 +271,8 @@ export function DashboardPage() {
       .slice(0, 10); // Show max 10 items
   }, [expandedForecasts, today]);
 
-  // Calculate free to spend (balance minus committed expenses until next income)
-  const freeToSpend = useMemo(() => {
+  // Calculate safe to spend (balance minus committed expenses until next income)
+  const safeToSpend = useMemo(() => {
     if (currentBalance === null) return null;
 
     // Find next income
@@ -273,16 +308,15 @@ export function DashboardPage() {
   if (!activeScenarioId || !activeScenario) {
     return (
       <div className="space-y-6">
-        <div>
+        <div className="mb-20">
           <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <LayoutDashboard className="h-7 w-7" />
-            Dashboard
+            <Eye className="h-7 w-7" />
+            Overview
           </h1>
           <p className="mt-1 text-muted-foreground">Your current financial position</p>
         </div>
-        <ScenarioSelector />
         <div className="rounded-lg border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">Select a scenario to view your dashboard.</p>
+          <p className="text-muted-foreground">No scenario selected.</p>
           <Button asChild className="mt-4">
             <Link to="/scenarios">Manage Scenarios</Link>
           </Button>
@@ -293,33 +327,26 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="mb-20">
         <h1 className="flex items-center gap-3 text-3xl font-bold">
-          <LayoutDashboard className="h-7 w-7" />
-          Dashboard
+          <Eye className="h-7 w-7" />
+          Overview
         </h1>
         <p className="mt-1 text-muted-foreground">Your current financial position</p>
       </div>
 
-      <ScenarioSelector />
-
       {/* Balance warning banner */}
       {hasNoAnchor && (
-        <div className="flex items-start gap-3 rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4">
-          <AlertCircle className="mt-0.5 h-5 w-5 text-yellow-600" />
-          <div>
-            <p className="font-medium text-yellow-800 dark:text-yellow-200">
-              No balance anchor set
-            </p>
-            <p className="text-sm text-yellow-700 dark:text-yellow-300">
-              Set a starting balance in{' '}
-              <Link to="/settings" className="underline">
-                Settings
-              </Link>{' '}
-              to enable balance tracking.
-            </p>
-          </div>
-        </div>
+        <Alert variant="warning">
+          <AlertTitle>No balance anchor set</AlertTitle>
+          <AlertDescription>
+            Set a starting balance in{' '}
+            <Link to="/settings" className="underline">
+              Settings
+            </Link>{' '}
+            to enable balance tracking.
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Current Position Cards */}
@@ -341,21 +368,21 @@ export function DashboardPage() {
         </Link>
 
         <Link
-          to="/reports?tab=spending"
+          to="/budget"
           className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
         >
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Wallet className="h-4 w-4" />
-            Free to Spend
+            Safe to Spend
           </div>
-          {freeToSpend !== null ? (
+          {safeToSpend !== null ? (
             <>
-              <p className={`mt-1 text-2xl font-bold ${freeToSpend.amount < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {formatCents(freeToSpend.amount)}
+              <p className={`mt-1 text-2xl font-bold ${safeToSpend.amount < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {formatCents(safeToSpend.amount)}
               </p>
               <p className="text-sm text-muted-foreground">
-                {freeToSpend.hasIncome
-                  ? `Until ${formatDate(freeToSpend.untilDate)}`
+                {safeToSpend.hasIncome
+                  ? `Until ${formatDate(safeToSpend.untilDate)}`
                   : 'Next 14 days'}
               </p>
             </>
@@ -372,10 +399,7 @@ export function DashboardPage() {
           className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
         >
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            {budgetHealth.status === 'good' && <CheckCircle2 className="h-4 w-4 text-green-600" />}
-            {budgetHealth.status === 'warning' && <AlertTriangle className="h-4 w-4 text-yellow-600" />}
-            {budgetHealth.status === 'bad' && <XCircle className="h-4 w-4 text-red-600" />}
-            {budgetHealth.status === 'no-budget' && <AlertCircle className="h-4 w-4" />}
+            <HeartPulse className="h-4 w-4" />
             Budget Health
           </div>
           {budgetHealth.status === 'no-budget' ? (
@@ -385,16 +409,17 @@ export function DashboardPage() {
             </>
           ) : (
             <>
-              <p className={`mt-1 text-2xl font-bold ${
-                budgetHealth.status === 'good' ? 'text-green-600' :
-                budgetHealth.status === 'warning' ? 'text-yellow-600' : 'text-red-600'
-              }`}>
+              <p className="mt-1 text-2xl font-bold text-green-600">
                 {budgetHealth.onTrack}/{budgetHealth.total} on track
               </p>
               <p className="text-sm text-muted-foreground">
-                {budgetHealth.overBudget === 0
-                  ? 'All categories within budget'
-                  : `${budgetHealth.overBudget} over budget`}
+                {budgetHealth.overBudget === 0 && budgetHealth.overspending === 0 && budgetHealth.watch === 0
+                  ? 'All on pace'
+                  : [
+                      budgetHealth.overBudget > 0 && `${budgetHealth.overBudget} over`,
+                      budgetHealth.overspending > 0 && `${budgetHealth.overspending} fast`,
+                      budgetHealth.watch > 0 && `${budgetHealth.watch} watch`,
+                    ].filter(Boolean).join(', ')}
               </p>
             </>
           )}
