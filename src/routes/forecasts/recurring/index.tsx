@@ -1,15 +1,16 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useOutletContext, Link } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, ArrowLeft } from 'lucide-react';
+import { Plus, ArrowLeft, Pencil } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
+import { ForecastRuleDialog } from '@/components/dialogs/forecast-rule-dialog';
 import { formatCents } from '@/lib/utils';
 import type { ForecastRule } from '@/lib/types';
 
@@ -33,6 +34,7 @@ export function RecurringIndexPage() {
   const { rules } = useForecasts(activeScenarioId);
   const { categories } = useCategories();
   const { savingsGoals } = useSavingsGoals();
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const getCategoryName = (id: string | null) =>
     id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-';
@@ -77,9 +79,13 @@ export function RecurringIndexPage() {
       {
         id: 'actions',
         cell: ({ row }) => (
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/forecasts/recurring/${row.original.id}`}>Edit</Link>
-          </Button>
+          <div className="flex justify-end">
+            <Button variant="ghost" size="sm" asChild title="Edit">
+              <Link to={`/forecasts/recurring/${row.original.id}`}>
+                <Pencil className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         ),
       },
     ],
@@ -125,9 +131,13 @@ export function RecurringIndexPage() {
       {
         id: 'actions',
         cell: ({ row }) => (
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/forecasts/recurring/${row.original.id}`}>Edit</Link>
-          </Button>
+          <div className="flex justify-end">
+            <Button variant="ghost" size="sm" asChild title="Edit">
+              <Link to={`/forecasts/recurring/${row.original.id}`}>
+                <Pencil className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         ),
       },
     ],
@@ -173,9 +183,13 @@ export function RecurringIndexPage() {
       {
         id: 'actions',
         cell: ({ row }) => (
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/forecasts/recurring/${row.original.id}`}>Edit</Link>
-          </Button>
+          <div className="flex justify-end">
+            <Button variant="ghost" size="sm" asChild title="Edit">
+              <Link to={`/forecasts/recurring/${row.original.id}`}>
+                <Pencil className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         ),
       },
     ],
@@ -212,31 +226,29 @@ export function RecurringIndexPage() {
             Recurring income, expense, and savings patterns for {activeScenario.name}.
           </p>
         </div>
-        <Button asChild className="w-full sm:w-auto">
-          <Link to="/forecasts/recurring/new">
-            <Plus className="h-4 w-4" />
-            Add Recurring
-          </Link>
+        <Button className="w-full sm:w-auto" onClick={() => setDialogOpen(true)}>
+          <Plus className="h-4 w-4" />
+          Add Recurring
         </Button>
       </div>
 
       {rules.length === 0 ? (
         <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground">No recurring forecasts yet.</p>
-          <Button asChild className="mt-4">
-            <Link to="/forecasts/recurring/new">Create your first recurring forecast</Link>
+          <Button className="mt-4" onClick={() => setDialogOpen(true)}>
+            Create your first recurring forecast
           </Button>
         </div>
       ) : (
         <Tabs defaultValue={defaultTab} className="mt-6 w-full">
-          <TabsList className="flex w-full">
-            <TabsTrigger value="income" className="flex-1">
+          <TabsList>
+            <TabsTrigger value="income">
               Income {incomeRules.length > 0 && `(${incomeRules.length})`}
             </TabsTrigger>
-            <TabsTrigger value="expenses" className="flex-1">
+            <TabsTrigger value="expenses">
               Expenses {expenseRules.length > 0 && `(${expenseRules.length})`}
             </TabsTrigger>
-            <TabsTrigger value="savings" className="flex-1">
+            <TabsTrigger value="savings">
               Savings {savingsRules.length > 0 && `(${savingsRules.length})`}
             </TabsTrigger>
           </TabsList>
@@ -245,8 +257,8 @@ export function RecurringIndexPage() {
             {incomeRules.length === 0 ? (
               <div className="rounded-lg border border-dashed p-8 text-center">
                 <p className="text-muted-foreground">No recurring income yet.</p>
-                <Button asChild className="mt-4">
-                  <Link to="/forecasts/recurring/new">Add recurring income</Link>
+                <Button className="mt-4" onClick={() => setDialogOpen(true)}>
+                  Add recurring income
                 </Button>
               </div>
             ) : (
@@ -264,8 +276,8 @@ export function RecurringIndexPage() {
             {expenseRules.length === 0 ? (
               <div className="rounded-lg border border-dashed p-8 text-center">
                 <p className="text-muted-foreground">No recurring expenses yet.</p>
-                <Button asChild className="mt-4">
-                  <Link to="/forecasts/recurring/new">Add recurring expense</Link>
+                <Button className="mt-4" onClick={() => setDialogOpen(true)}>
+                  Add recurring expense
                 </Button>
               </div>
             ) : (
@@ -283,8 +295,8 @@ export function RecurringIndexPage() {
             {savingsRules.length === 0 ? (
               <div className="rounded-lg border border-dashed p-8 text-center">
                 <p className="text-muted-foreground">No recurring savings yet.</p>
-                <Button asChild className="mt-4">
-                  <Link to="/forecasts/recurring/new">Add recurring savings</Link>
+                <Button className="mt-4" onClick={() => setDialogOpen(true)}>
+                  Add recurring savings
                 </Button>
               </div>
             ) : (
@@ -299,6 +311,13 @@ export function RecurringIndexPage() {
           </TabsContent>
         </Tabs>
       )}
+
+      <ForecastRuleDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        scenarioId={activeScenarioId}
+        rule={null}
+      />
     </div>
   );
 }

@@ -1,16 +1,18 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus } from 'lucide-react';
+import { Plus, Eye } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
+import { ScenarioDialog } from '@/components/dialogs/scenario-dialog';
 import { formatDate } from '@/lib/utils';
 import type { Scenario } from '@/lib/types';
 
 export function ScenariosIndexPage() {
   const { scenarios } = useScenarios();
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const columns: ColumnDef<Scenario>[] = useMemo(
     () => [
@@ -46,9 +48,13 @@ export function ScenariosIndexPage() {
       {
         id: 'actions',
         cell: ({ row }) => (
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/scenarios/${row.original.id}`}>View</Link>
-          </Button>
+          <div className="flex justify-end">
+            <Button variant="ghost" size="sm" asChild title="View">
+              <Link to={`/scenarios/${row.original.id}`}>
+                <Eye className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         ),
       },
     ],
@@ -64,19 +70,17 @@ export function ScenariosIndexPage() {
             Create and manage budget scenarios for what-if planning.
           </p>
         </div>
-        <Button asChild className="w-full sm:w-auto">
-          <Link to="/scenarios/new">
-            <Plus className="h-4 w-4" />
-            New Scenario
-          </Link>
+        <Button className="w-full sm:w-auto" onClick={() => setDialogOpen(true)}>
+          <Plus className="h-4 w-4" />
+          Add Scenario
         </Button>
       </div>
 
       {scenarios.length === 0 ? (
         <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground">No scenarios yet.</p>
-          <Button asChild className="mt-4">
-            <Link to="/scenarios/new">Create your first scenario</Link>
+          <Button className="mt-4" onClick={() => setDialogOpen(true)}>
+            Create your first scenario
           </Button>
         </div>
       ) : (
@@ -90,6 +94,8 @@ export function ScenariosIndexPage() {
           />
         </div>
       )}
+
+      <ScenarioDialog open={dialogOpen} onOpenChange={setDialogOpen} scenario={null} />
     </div>
   );
 }

@@ -17,6 +17,7 @@ import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
 import { CategorySelect } from '@/components/category-select';
 import { DateFilter } from '@/components/date-filter';
+import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { formatCents, formatDate, parseCentsFromInput } from '@/lib/utils';
 import type { Transaction, TransactionType } from '@/lib/types';
 
@@ -40,10 +41,8 @@ export function TransactionsIndexPage() {
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [filterCategory, setFilterCategory] = useState<CategoryFilter>('all');
 
-  const clearDateFilter = useCallback(() => {
-    setFilterStartDate('');
-    setFilterEndDate('');
-  }, []);
+  // Add dialog state
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   // Inline editing state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -53,6 +52,11 @@ export function TransactionsIndexPage() {
   const [editCategory, setEditCategory] = useState('');
   const [editAmount, setEditAmount] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const clearDateFilter = useCallback(() => {
+    setFilterStartDate('');
+    setFilterEndDate('');
+  }, []);
 
   const getCategoryName = useCallback(
     (id: string | null) => (id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-'),
@@ -330,16 +334,14 @@ export function TransactionsIndexPage() {
           <h1 className="text-2xl font-bold">Transactions</h1>
           <p className="text-muted-foreground">Actual income, expenses, and savings.</p>
         </div>
-        <Button asChild className="w-full sm:w-auto">
-          <Link to="/transactions/new">
-            <Plus className="h-4 w-4" />
-            Add Transaction
-          </Link>
+        <Button onClick={() => setAddDialogOpen(true)} className="w-full sm:w-auto">
+          <Plus className="h-4 w-4" />
+          Add Transaction
         </Button>
       </div>
 
-      {/* Filters */}
-      <div className="mt-6 flex flex-wrap items-end gap-4">
+      {/* Date filter */}
+      <div className="mt-6">
         <DateFilter
           startDate={filterStartDate}
           endDate={filterEndDate}
@@ -348,38 +350,6 @@ export function TransactionsIndexPage() {
           onClear={clearDateFilter}
           hasFilter={hasDateFilter}
         />
-        <div className="w-40">
-          <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="income">Income</SelectItem>
-              <SelectItem value="expense">Expense</SelectItem>
-              <SelectItem value="savings">Savings</SelectItem>
-              <SelectItem value="adjustment">Adjustment</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="w-48">
-          <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              <SelectItem value="uncategorized">Uncategorised</SelectItem>
-              {activeCategories
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-        </div>
       </div>
 
       {transactions.length === 0 ? (
@@ -387,20 +357,58 @@ export function TransactionsIndexPage() {
           <p className="text-muted-foreground">
             {hasDateFilter ? 'No transactions found in the selected date range.' : 'No transactions yet.'}
           </p>
-          <Button asChild className="mt-4">
-            <Link to="/transactions/new">Add a transaction</Link>
+          <Button onClick={() => setAddDialogOpen(true)} className="mt-4">
+            Add a transaction
           </Button>
         </div>
       ) : (
-        <div className="mt-6">
+        <div className="mt-4">
           <DataTable
             columns={columns}
             data={filteredTransactions}
             searchKey="description"
             searchPlaceholder="Search transactions..."
+            filterSlot={
+              <>
+                <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="income">Income</SelectItem>
+                    <SelectItem value="expense">Expense</SelectItem>
+                    <SelectItem value="savings">Savings</SelectItem>
+                    <SelectItem value="adjustment">Adjustment</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterCategory} onValueChange={setFilterCategory}>
+                  <SelectTrigger className="w-44">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="uncategorized">Uncategorised</SelectItem>
+                    {activeCategories
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </>
+            }
           />
         </div>
       )}
+
+      <TransactionDialog
+        open={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        transaction={null}
+      />
     </div>
   );
 }

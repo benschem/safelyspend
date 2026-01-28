@@ -11,11 +11,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Repeat, Settings2 } from 'lucide-react';
+import { Plus, Repeat, Settings2, Pencil } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
 import { DateFilter } from '@/components/date-filter';
+import { ForecastEventDialog } from '@/components/dialogs/forecast-event-dialog';
+import { ForecastRuleDialog } from '@/components/dialogs/forecast-rule-dialog';
 import { formatCents, formatDate, getCurrentFinancialYear } from '@/lib/utils';
 import type { ExpandedForecast } from '@/lib/types';
 
@@ -46,6 +48,8 @@ export function ForecastIndexPage() {
   const { expandedForecasts } = useForecasts(activeScenarioId, filterStartDate, filterEndDate);
 
   const [filterType, setFilterType] = useState<FilterType>('all');
+  const [eventDialogOpen, setEventDialogOpen] = useState(false);
+  const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
 
   const getCategoryName = (id: string | null) =>
     id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-';
@@ -142,9 +146,13 @@ export function ForecastIndexPage() {
               ? `/forecasts/recurring/${forecast.sourceId}`
               : `/forecasts/${forecast.sourceId}`;
           return (
-            <Button variant="outline" size="sm" asChild>
-              <Link to={linkTo}>Edit</Link>
-            </Button>
+            <div className="flex justify-end">
+              <Button variant="ghost" size="sm" asChild title="Edit">
+                <Link to={linkTo}>
+                  <Pencil className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
           );
         },
       },
@@ -171,46 +179,27 @@ export function ForecastIndexPage() {
           </p>
         </div>
         <div className="flex w-full gap-2 sm:w-auto">
-          <Button asChild variant="outline" className="flex-1 sm:flex-none">
-            <Link to="/forecasts/new">
-              <Plus className="h-4 w-4" />
-              One-Time
-            </Link>
+          <Button variant="secondary" className="flex-1 sm:flex-none" onClick={() => setEventDialogOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Add One-Time
           </Button>
-          <Button asChild className="flex-1 sm:flex-none">
-            <Link to="/forecasts/recurring/new">
-              <Repeat className="h-4 w-4" />
-              Recurring
-            </Link>
+          <Button className="flex-1 sm:flex-none" onClick={() => setRuleDialogOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Add Recurring
           </Button>
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Date filter */}
       <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
-        <div className="flex flex-wrap items-end gap-4">
-          <DateFilter
-            startDate={filterStartDate}
-            endDate={filterEndDate}
-            onStartDateChange={setFilterStartDate}
-            onEndDateChange={setFilterEndDate}
-            onClear={clearDateFilter}
-            hasFilter={hasCustomDateFilter}
-          />
-          <div className="w-40">
-            <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="income">Income</SelectItem>
-                <SelectItem value="expense">Expense</SelectItem>
-                <SelectItem value="savings">Savings</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        <DateFilter
+          startDate={filterStartDate}
+          endDate={filterEndDate}
+          onStartDateChange={setFilterStartDate}
+          onEndDateChange={setFilterEndDate}
+          onClear={clearDateFilter}
+          hasFilter={hasCustomDateFilter}
+        />
         <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
           <Link to="/forecasts/recurring">
             <Settings2 className="h-4 w-4" />
@@ -225,24 +214,51 @@ export function ForecastIndexPage() {
             No forecasts found in the selected date range.
           </p>
           <div className="mt-4 flex justify-center gap-2">
-            <Button asChild variant="outline">
-              <Link to="/forecasts/new">Add one-time event</Link>
+            <Button variant="outline" onClick={() => setEventDialogOpen(true)}>
+              Add one-time event
             </Button>
-            <Button asChild>
-              <Link to="/forecasts/recurring/new">Add recurring</Link>
+            <Button onClick={() => setRuleDialogOpen(true)}>
+              Add recurring
             </Button>
           </div>
         </div>
       ) : (
-        <div className="mt-6">
+        <div className="mt-4">
           <DataTable
             columns={columns}
             data={filteredForecasts}
             searchKey="description"
             searchPlaceholder="Search forecasts..."
+            filterSlot={
+              <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
+                <SelectTrigger className="w-36">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="income">Income</SelectItem>
+                  <SelectItem value="expense">Expense</SelectItem>
+                  <SelectItem value="savings">Savings</SelectItem>
+                </SelectContent>
+              </Select>
+            }
           />
         </div>
       )}
+
+      <ForecastEventDialog
+        open={eventDialogOpen}
+        onOpenChange={setEventDialogOpen}
+        scenarioId={activeScenarioId}
+        event={null}
+      />
+
+      <ForecastRuleDialog
+        open={ruleDialogOpen}
+        onOpenChange={setRuleDialogOpen}
+        scenarioId={activeScenarioId}
+        rule={null}
+      />
     </div>
   );
 }

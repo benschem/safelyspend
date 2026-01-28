@@ -1,11 +1,12 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useOutletContext, Link } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus } from 'lucide-react';
+import { Plus, Eye } from 'lucide-react';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useTransactions } from '@/hooks/use-transactions';
+import { SavingsGoalDialog } from '@/components/dialogs/savings-goal-dialog';
 import { formatCents, formatDate } from '@/lib/utils';
 import type { SavingsGoal } from '@/lib/types';
 
@@ -24,6 +25,7 @@ export function SavingsIndexPage() {
   const { startDate, endDate } = useOutletContext<OutletContext>();
   const { savingsGoals } = useSavingsGoals();
   const { savingsTransactions } = useTransactions(startDate, endDate);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const getSavedAmount = (goalId: string) =>
     savingsTransactions
@@ -66,22 +68,18 @@ export function SavingsIndexPage() {
       },
       {
         accessorKey: 'progress',
-        header: ({ column }) => (
-          <SortableHeader column={column} className="justify-end">
-            Progress
-          </SortableHeader>
-        ),
+        header: ({ column }) => <SortableHeader column={column}>Progress</SortableHeader>,
         cell: ({ row }) => {
           const progress = row.getValue('progress') as number;
           return (
-            <div className="flex items-center justify-end gap-2">
-              <div className="h-2 w-24 rounded-full bg-gray-200 dark:bg-gray-700">
+            <div className="flex items-center gap-2">
+              <div className="h-2 flex-1 rounded-full bg-gray-200 dark:bg-gray-700">
                 <div
                   className="h-2 rounded-full bg-blue-600"
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <span className="text-sm text-muted-foreground">{progress}%</span>
+              <span className="w-10 text-right text-sm text-muted-foreground">{progress}%</span>
             </div>
           );
         },
@@ -113,9 +111,13 @@ export function SavingsIndexPage() {
       {
         id: 'actions',
         cell: ({ row }) => (
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/savings/${row.original.id}`}>View</Link>
-          </Button>
+          <div className="flex justify-end">
+            <Button variant="ghost" size="sm" asChild title="View">
+              <Link to={`/savings/${row.original.id}`}>
+                <Eye className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         ),
       },
     ],
@@ -129,19 +131,17 @@ export function SavingsIndexPage() {
           <h1 className="text-2xl font-bold">Savings Goals</h1>
           <p className="text-muted-foreground">Track progress toward your savings targets.</p>
         </div>
-        <Button asChild className="w-full sm:w-auto">
-          <Link to="/savings/new">
-            <Plus className="h-4 w-4" />
-            Add Goal
-          </Link>
+        <Button className="w-full sm:w-auto" onClick={() => setDialogOpen(true)}>
+          <Plus className="h-4 w-4" />
+          Add Goal
         </Button>
       </div>
 
       {savingsGoals.length === 0 ? (
         <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground">No savings goals yet.</p>
-          <Button asChild className="mt-4">
-            <Link to="/savings/new">Create your first goal</Link>
+          <Button className="mt-4" onClick={() => setDialogOpen(true)}>
+            Create your first goal
           </Button>
         </div>
       ) : (
@@ -155,6 +155,8 @@ export function SavingsIndexPage() {
           />
         </div>
       )}
+
+      <SavingsGoalDialog open={dialogOpen} onOpenChange={setDialogOpen} goal={null} />
     </div>
   );
 }
