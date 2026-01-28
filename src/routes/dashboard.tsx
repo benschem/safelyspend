@@ -204,6 +204,14 @@ export function DashboardPage() {
   // Format month name
   const monthName = new Date(today).toLocaleDateString('en-AU', { month: 'long' });
 
+  // Calculate upcoming net flow (income - expenses - savings)
+  const upcomingNetFlow = useMemo(() => {
+    return upcomingItems.reduce((sum, item) => {
+      if (item.type === 'income') return sum + item.amountCents;
+      return sum - item.amountCents;
+    }, 0);
+  }, [upcomingItems]);
+
   if (!activeScenarioId || !activeScenario) {
     return (
       <div className="space-y-6">
@@ -364,12 +372,12 @@ export function DashboardPage() {
           </div>
 
           {thisMonthSpending.categorySpending.length === 0 ? (
-            <div className="mt-4 flex h-64 items-center justify-center text-sm text-muted-foreground">
+            <div className="mt-6 flex h-64 items-center justify-center text-sm text-muted-foreground">
               No expenses recorded this month.
             </div>
           ) : (
             <>
-              <ResponsiveContainer width="100%" height={280}>
+              <ResponsiveContainer width="100%" height={280} className="mt-4">
                 <PieChart>
                   <Pie
                     data={thisMonthSpending.categorySpending}
@@ -419,15 +427,27 @@ export function DashboardPage() {
 
         {/* Upcoming */}
         <div className="rounded-lg border p-4">
-          <h2 className="text-lg font-semibold">Upcoming</h2>
-          <p className="text-sm text-muted-foreground">Next 14 days</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">Upcoming</h2>
+              <p className="text-sm text-muted-foreground">Next 14 days</p>
+            </div>
+            {upcomingItems.length > 0 && (
+              <div className="text-right">
+                <p className={`text-lg font-bold ${upcomingNetFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {upcomingNetFlow >= 0 ? '+' : ''}{formatCents(upcomingNetFlow)}
+                </p>
+                <p className="text-xs text-muted-foreground">net flow</p>
+              </div>
+            )}
+          </div>
 
           {upcomingItems.length === 0 ? (
-            <div className="mt-4 text-center text-sm text-muted-foreground">
+            <div className="mt-6 text-center text-sm text-muted-foreground">
               No forecasts in the next 14 days.
             </div>
           ) : (
-            <div className="mt-4 space-y-3">
+            <div className="mt-6 space-y-3">
               {upcomingItems.map((item, index) => (
                 <div key={`${item.sourceId}-${item.date}-${index}`} className="flex items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
