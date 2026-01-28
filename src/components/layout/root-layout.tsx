@@ -6,6 +6,7 @@ import { DateRangeBanner } from '@/components/date-range-banner';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useViewState } from '@/hooks/use-view-state';
 import { useAppConfig } from '@/hooks/use-app-config';
+import { useDataDateRange } from '@/hooks/use-data-date-range';
 
 // Routes where date range filtering applies
 const DATE_RELEVANT_ROUTES = ['/dashboard', '/forecast', '/budget', '/transactions', '/reports'];
@@ -20,6 +21,7 @@ export function RootLayout() {
   const { isInitialized, isDemo } = useAppConfig();
   const { scenarios, activeScenarioId, setActiveScenarioId } = useScenarios();
   const { startDate, endDate, setDateRange } = useViewState();
+  const dataRange = useDataDateRange();
   const location = useLocation();
 
   const showDateControls = isDateRelevantRoute(location.pathname);
@@ -44,6 +46,7 @@ export function RootLayout() {
               startDate={startDate}
               endDate={endDate}
               onDateRangeChange={setDateRange}
+              dataRange={dataRange}
             />
           )}
           <main className="flex-1 overflow-y-auto p-4 sm:p-6">

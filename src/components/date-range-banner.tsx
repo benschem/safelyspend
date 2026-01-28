@@ -15,6 +15,7 @@ interface DateRangeBannerProps {
   startDate: string;
   endDate: string;
   onDateRangeChange: (startDate: string, endDate: string) => void;
+  dataRange?: { startDate: string; endDate: string } | null;
 }
 
 const PRESET_SECTIONS: { title: string; presets: { label: string; value: DateRangePreset }[] }[] = [
@@ -60,6 +61,7 @@ export function DateRangeBanner({
   startDate,
   endDate,
   onDateRangeChange,
+  dataRange,
 }: DateRangeBannerProps) {
   const [open, setOpen] = useState(false);
   const [customStart, setCustomStart] = useState(startDate);
@@ -124,6 +126,30 @@ export function DateRangeBanner({
                 </div>
               ))}
             </div>
+
+            {dataRange && (
+              <>
+                <Separator />
+                <div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      onDateRangeChange(dataRange.startDate, dataRange.endDate);
+                      setCustomStart(dataRange.startDate);
+                      setCustomEnd(dataRange.endDate);
+                      setOpen(false);
+                    }}
+                    className="h-8 w-full justify-start px-2 text-sm font-normal"
+                  >
+                    All Data
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {formatDateRange(dataRange.startDate, dataRange.endDate)}
+                    </span>
+                  </Button>
+                </div>
+              </>
+            )}
 
             <Separator />
 
