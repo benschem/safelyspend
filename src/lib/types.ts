@@ -48,6 +48,8 @@ export interface BudgetRule extends BaseEntity {
   categoryId: string;
   amountCents: number;
   cadence: Cadence;
+  dayOfWeek?: number; // 0-6 for weekly/fortnightly
+  dayOfMonth?: number; // 1-31 for monthly/quarterly/yearly
   startDate?: string; // Optional, omit = always active
   endDate?: string;
 }

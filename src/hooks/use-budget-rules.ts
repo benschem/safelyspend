@@ -105,7 +105,13 @@ export function useBudgetRules(scenarioId: string | null, startDate?: string, en
 
   // Add or update a budget rule for a category
   const setBudgetForCategory = useCallback(
-    async (categoryId: string, amountCents: number, cadence: Cadence = 'monthly') => {
+    async (
+      categoryId: string,
+      amountCents: number,
+      cadence: Cadence = 'monthly',
+      dayOfWeek?: number,
+      dayOfMonth?: number,
+    ) => {
       if (!scenarioId) return;
 
       const existing = allBudgetRules.find(
@@ -114,11 +120,14 @@ export function useBudgetRules(scenarioId: string | null, startDate?: string, en
 
       if (existing) {
         // Update existing
-        await db.budgetRules.update(existing.id, {
+        const updates: Partial<BudgetRule> = {
           amountCents,
           cadence,
           updatedAt: now(),
-        });
+        };
+        if (dayOfWeek !== undefined) updates.dayOfWeek = dayOfWeek;
+        if (dayOfMonth !== undefined) updates.dayOfMonth = dayOfMonth;
+        await db.budgetRules.update(existing.id, updates);
       } else {
         // Create new
         const timestamp = now();
@@ -132,6 +141,8 @@ export function useBudgetRules(scenarioId: string | null, startDate?: string, en
           amountCents,
           cadence,
         };
+        if (dayOfWeek !== undefined) newBudgetRule.dayOfWeek = dayOfWeek;
+        if (dayOfMonth !== undefined) newBudgetRule.dayOfMonth = dayOfMonth;
         await db.budgetRules.add(newBudgetRule);
       }
     },
