@@ -2,6 +2,7 @@ import { Outlet, Navigate } from 'react-router';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
 import { DemoBanner } from '@/components/demo-banner';
+import { PageErrorBoundary } from '@/components/page-error-boundary';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useAppConfig } from '@/hooks/use-app-config';
 
@@ -33,7 +34,9 @@ export function RootLayout() {
           {/* Portal target for page-specific sticky headers */}
           <div id="sticky-header-portal" />
           <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-            <Outlet context={{ activeScenarioId }} />
+            <PageErrorBoundary>
+              <Outlet context={{ activeScenarioId }} />
+            </PageErrorBoundary>
           </main>
         </div>
       </div>
