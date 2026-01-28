@@ -94,7 +94,7 @@ export function ScenarioDialog({ open, onOpenChange, scenario }: ScenarioDialogP
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit' : 'Add'} Scenario</DialogTitle>
           <DialogDescription>
-            {isEditing ? 'Update the scenario details.' : 'Create a new budget scenario for what-if planning.'}
+            {isEditing ? 'Update the scenario details.' : 'Create a new budget scenario for "what-if" planning.'}
           </DialogDescription>
         </DialogHeader>
 
