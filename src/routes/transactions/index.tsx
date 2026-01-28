@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback, useEffect } from 'react';
-import { useOutletContext, Link } from 'react-router';
+import { Link } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,25 +16,34 @@ import { Plus, Pencil, Trash2, Check, X } from 'lucide-react';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
 import { CategorySelect } from '@/components/category-select';
-import { formatCents, formatDate, formatDateRange, parseCentsFromInput } from '@/lib/utils';
+import { DateFilter } from '@/components/date-filter';
+import { formatCents, formatDate, parseCentsFromInput } from '@/lib/utils';
 import type { Transaction, TransactionType } from '@/lib/types';
-
-interface OutletContext {
-  activeScenarioId: string | null;
-  startDate: string;
-  endDate: string;
-}
 
 type FilterType = 'all' | 'income' | 'expense' | 'savings' | 'adjustment';
 type CategoryFilter = 'all' | 'uncategorized' | string;
 
 export function TransactionsIndexPage() {
-  const { startDate, endDate } = useOutletContext<OutletContext>();
-  const { transactions, updateTransaction, deleteTransaction } = useTransactions(startDate, endDate);
+  // Date filter state - empty strings mean no filter
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+
+  const hasDateFilter = filterStartDate !== '' || filterEndDate !== '';
+
+  // Pass dates to hook only if both are set, otherwise get all transactions
+  const queryStartDate = filterStartDate && filterEndDate ? filterStartDate : undefined;
+  const queryEndDate = filterStartDate && filterEndDate ? filterEndDate : undefined;
+
+  const { transactions, updateTransaction, deleteTransaction } = useTransactions(queryStartDate, queryEndDate);
   const { categories, activeCategories } = useCategories();
 
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [filterCategory, setFilterCategory] = useState<CategoryFilter>('all');
+
+  const clearDateFilter = useCallback(() => {
+    setFilterStartDate('');
+    setFilterEndDate('');
+  }, []);
 
   // Inline editing state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -330,7 +339,15 @@ export function TransactionsIndexPage() {
       </div>
 
       {/* Filters */}
-      <div className="mt-6 flex flex-wrap gap-4">
+      <div className="mt-6 flex flex-wrap items-end gap-4">
+        <DateFilter
+          startDate={filterStartDate}
+          endDate={filterEndDate}
+          onStartDateChange={setFilterStartDate}
+          onEndDateChange={setFilterEndDate}
+          onClear={clearDateFilter}
+          hasFilter={hasDateFilter}
+        />
         <div className="w-40">
           <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
             <SelectTrigger>
@@ -368,7 +385,7 @@ export function TransactionsIndexPage() {
       {transactions.length === 0 ? (
         <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground">
-            No transactions found between {formatDateRange(startDate, endDate)}.
+            {hasDateFilter ? 'No transactions found in the selected date range.' : 'No transactions yet.'}
           </p>
           <Button asChild className="mt-4">
             <Link to="/transactions/new">Add a transaction</Link>

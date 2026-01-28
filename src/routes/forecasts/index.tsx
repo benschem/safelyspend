@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useOutletContext, Link } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
@@ -15,22 +15,35 @@ import { Plus, Repeat, Settings2 } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
-import { formatCents, formatDate, formatDateRange } from '@/lib/utils';
+import { DateFilter } from '@/components/date-filter';
+import { formatCents, formatDate, getCurrentFinancialYear } from '@/lib/utils';
 import type { ExpandedForecast } from '@/lib/types';
 
 interface OutletContext {
   activeScenarioId: string | null;
-  startDate: string;
-  endDate: string;
 }
 
 type FilterType = 'all' | 'income' | 'expense' | 'savings';
 
 export function ForecastIndexPage() {
-  const { activeScenarioId, startDate, endDate } = useOutletContext<OutletContext>();
+  const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
-  const { expandedForecasts } = useForecasts(activeScenarioId, startDate, endDate);
   const { categories } = useCategories();
+
+  // Default to current financial year for forecast expansion
+  const defaultRange = getCurrentFinancialYear();
+  const [filterStartDate, setFilterStartDate] = useState(defaultRange.startDate);
+  const [filterEndDate, setFilterEndDate] = useState(defaultRange.endDate);
+
+  const hasCustomDateFilter =
+    filterStartDate !== defaultRange.startDate || filterEndDate !== defaultRange.endDate;
+
+  const clearDateFilter = useCallback(() => {
+    setFilterStartDate(defaultRange.startDate);
+    setFilterEndDate(defaultRange.endDate);
+  }, [defaultRange.startDate, defaultRange.endDate]);
+
+  const { expandedForecasts } = useForecasts(activeScenarioId, filterStartDate, filterEndDate);
 
   const [filterType, setFilterType] = useState<FilterType>('all');
 
@@ -174,19 +187,29 @@ export function ForecastIndexPage() {
       </div>
 
       {/* Filters */}
-      <div className="mt-6 flex items-center justify-between gap-4">
-        <div className="w-40">
-          <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="income">Income</SelectItem>
-              <SelectItem value="expense">Expense</SelectItem>
-              <SelectItem value="savings">Savings</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-wrap items-end gap-4">
+          <DateFilter
+            startDate={filterStartDate}
+            endDate={filterEndDate}
+            onStartDateChange={setFilterStartDate}
+            onEndDateChange={setFilterEndDate}
+            onClear={clearDateFilter}
+            hasFilter={hasCustomDateFilter}
+          />
+          <div className="w-40">
+            <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="income">Income</SelectItem>
+                <SelectItem value="expense">Expense</SelectItem>
+                <SelectItem value="savings">Savings</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
           <Link to="/forecasts/recurring">
@@ -199,7 +222,7 @@ export function ForecastIndexPage() {
       {expandedForecasts.length === 0 ? (
         <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground">
-            No forecasts found between {formatDateRange(startDate, endDate)}.
+            No forecasts found in the selected date range.
           </p>
           <div className="mt-4 flex justify-center gap-2">
             <Button asChild variant="outline">
