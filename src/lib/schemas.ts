@@ -49,6 +49,8 @@ export const transactionFormSchema = z
     amount: moneyInputSchema,
     categoryId: z.string(),
     savingsGoalId: z.string(),
+    notes: z.string(),
+    paymentMethod: z.string(),
   })
   .refine(
     (data) => {

@@ -104,6 +104,41 @@ export interface Transaction extends BaseEntity {
   categoryId: string | null; // Optional for expenses, null for income/savings
   savingsGoalId: string | null; // Required if type === 'savings'
   notes?: string;
+  paymentMethod?: string;
+
+  // Import tracking
+  importFingerprint?: string; // For deduplication
+  importSource?: string; // e.g., 'up-csv', 'manual'
+  importedAt?: string; // Timestamp of import
+}
+
+// -----------------------------------------------------------------------------
+// Balance Anchor - Declarative balance snapshot at a point in time
+// -----------------------------------------------------------------------------
+
+export interface BalanceAnchor extends BaseEntity {
+  date: string; // ISO date (YYYY-MM-DD) - balance as of START of this date
+  balanceCents: number;
+  label?: string; // e.g., "Opening balance", "After reconciliation"
+}
+
+// -----------------------------------------------------------------------------
+// Category Rule - Auto-categorization rules for imported transactions
+// -----------------------------------------------------------------------------
+
+export type CategoryRuleMatchType = 'contains' | 'startsWith' | 'equals';
+
+export interface CategoryRule extends BaseEntity {
+  name: string;
+  matchField: 'description' | 'payee';
+  matchType: CategoryRuleMatchType;
+  matchValue: string; // Case-insensitive matching
+  categoryId: string;
+  amountMinCents?: number;
+  amountMaxCents?: number;
+  transactionType?: 'income' | 'expense';
+  priority: number; // Lower = higher priority
+  enabled: boolean;
 }
 
 // -----------------------------------------------------------------------------
@@ -137,6 +172,8 @@ export interface BudgetData {
   forecastEvents: ForecastEvent[];
   transactions: Transaction[];
   savingsGoals: SavingsGoal[];
+  balanceAnchors: BalanceAnchor[];
+  categoryRules: CategoryRule[];
 }
 
 // -----------------------------------------------------------------------------
