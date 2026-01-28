@@ -63,7 +63,7 @@ export function ForecastNewPage() {
         return;
       }
 
-      const event = addEvent({
+      const event = await addEvent({
         scenarioId: activeScenarioId,
         type: value.type,
         date: value.date,

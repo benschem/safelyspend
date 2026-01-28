@@ -56,7 +56,7 @@ export function ScenarioDetailPage() {
       setSubmitError(null);
       if (!scenario) return;
 
-      updateScenario(scenario.id, {
+      await updateScenario(scenario.id, {
         name: value.name.trim(),
         ...(value.description.trim() ? { description: value.description.trim() } : {}),
       });
@@ -89,27 +89,27 @@ export function ScenarioDetailPage() {
     );
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!confirmingDelete) {
       setConfirmingDelete(true);
       return;
     }
-    deleteScenario(scenario.id);
+    await deleteScenario(scenario.id);
     navigate('/scenarios');
   };
 
-  const handleDuplicate = () => {
-    const newScenario = duplicateScenario(scenario.id, `${scenario.name} (Copy)`);
+  const handleDuplicate = async () => {
+    const newScenario = await duplicateScenario(scenario.id, `${scenario.name} (Copy)`);
     if (newScenario) {
       // Also copy the forecast and budget rules
-      duplicateForecastsToScenario(scenario.id, newScenario.id);
-      duplicateBudgetsToScenario(scenario.id, newScenario.id);
+      await duplicateForecastsToScenario(scenario.id, newScenario.id);
+      await duplicateBudgetsToScenario(scenario.id, newScenario.id);
       navigate(`/scenarios/${newScenario.id}`);
     }
   };
 
-  const handleSetDefault = () => {
-    updateScenario(scenario.id, { isDefault: true });
+  const handleSetDefault = async () => {
+    await updateScenario(scenario.id, { isDefault: true });
   };
 
   const startEditing = () => {

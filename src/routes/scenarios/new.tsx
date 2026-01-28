@@ -50,7 +50,7 @@ export function ScenarioNewPage() {
     onSubmit: async ({ value }) => {
       setSubmitError(null);
 
-      const scenario = addScenario({
+      const scenario = await addScenario({
         name: value.name.trim(),
         ...(value.description.trim() ? { description: value.description.trim() } : {}),
         isDefault: scenarios.length === 0,
@@ -58,8 +58,8 @@ export function ScenarioNewPage() {
 
       // Copy rules from another scenario if selected
       if (value.copyFromId && value.copyFromId !== '__none__') {
-        duplicateForecastsToScenario(value.copyFromId, scenario.id);
-        duplicateBudgetsToScenario(value.copyFromId, scenario.id);
+        await duplicateForecastsToScenario(value.copyFromId, scenario.id);
+        await duplicateBudgetsToScenario(value.copyFromId, scenario.id);
       }
 
       navigate(`/scenarios/${scenario.id}`);

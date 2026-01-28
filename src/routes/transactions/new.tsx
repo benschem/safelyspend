@@ -73,7 +73,7 @@ export function TransactionNewPage() {
       if (value.paymentMethod) {
         transactionData.paymentMethod = value.paymentMethod;
       }
-      const transaction = addTransaction(transactionData);
+      const transaction = await addTransaction(transactionData);
 
       navigate(`/transactions/${transaction.id}`);
     },

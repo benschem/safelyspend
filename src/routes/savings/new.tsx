@@ -49,7 +49,7 @@ export function SavingsNewPage() {
     onSubmit: async ({ value }) => {
       setSubmitError(null);
 
-      const goal = addSavingsGoal({
+      const goal = await addSavingsGoal({
         name: value.name.trim(),
         targetAmountCents: parseCents(value.targetAmount),
         ...(value.deadline && { deadline: value.deadline }),
@@ -58,7 +58,7 @@ export function SavingsNewPage() {
       // Create starting balance transaction if amount > 0
       const startingBalanceCents = parseCents(value.startingBalance);
       if (startingBalanceCents > 0) {
-        addTransaction({
+        await addTransaction({
           type: 'savings',
           date: startDate || today(),
           amountCents: startingBalanceCents,
