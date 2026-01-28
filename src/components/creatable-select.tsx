@@ -229,7 +229,11 @@ export function CreatableSelect({
               );
             })}
             {filteredOptions.length === 0 && !showCreateOption && (
-              <div className="px-3 py-2 text-sm text-muted-foreground">No options found</div>
+              <div className="px-3 py-2 text-sm text-muted-foreground">
+                {options.length === 0 && onCreateNew
+                  ? 'Type to create one...'
+                  : 'No options found'}
+              </div>
             )}
             {showCreateOption && (
               <button
