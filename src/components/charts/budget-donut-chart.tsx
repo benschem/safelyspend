@@ -15,31 +15,48 @@ export function BudgetDonutChart({
   actual,
   forecasted,
 }: BudgetDonutChartProps) {
+  // Handle no budget set - show neutral display
+  const noBudgetSet = budgeted === 0;
+
   const remaining = Math.max(0, budgeted - actual - forecasted);
-  const isOver = actual > budgeted;
-  const willBeOver = actual + forecasted > budgeted;
+  const isOver = !noBudgetSet && actual > budgeted;
+  const willBeOver = !noBudgetSet && actual + forecasted > budgeted;
   const usedPercent = budgeted > 0 ? Math.round((actual / budgeted) * 100) : 0;
   const totalPercent = budgeted > 0 ? Math.round(((actual + forecasted) / budgeted) * 100) : 0;
 
-  // Colors based on whether budget will be exceeded
-  const spentColor = willBeOver ? '#dc2626' : '#22c55e'; // red-600 or green-500
-  const forecastColor = willBeOver ? '#fca5a5' : '#86efac'; // red-300 or green-300
+  // Colors based on whether budget will be exceeded (neutral gray if no budget set)
+  const spentColor = noBudgetSet ? '#6b7280' : willBeOver ? '#dc2626' : '#22c55e'; // gray-500, red-600, or green-500
+  const forecastColor = noBudgetSet ? '#9ca3af' : willBeOver ? '#fca5a5' : '#86efac'; // gray-400, red-300, or green-300
 
-  const chartData = [
-    { name: 'Spent', value: Math.min(actual, budgeted), color: spentColor },
-    { name: 'Forecast', value: Math.min(forecasted, Math.max(0, budgeted - actual)), color: forecastColor },
-    { name: 'Remaining', value: remaining, color: '#e5e7eb' }, // gray-200
-  ].filter((d) => d.value > 0);
+  let chartData: Array<{ name: string; value: number; color: string }> = [];
 
-  // Handle over-budget display - show full red
-  if (isOver) {
-    chartData.length = 0;
-    chartData.push({ name: 'Over', value: 1, color: '#dc2626' });
-  }
+  if (noBudgetSet) {
+    // No budget: show spending as gray segment, rest as lighter gray
+    if (actual > 0 || forecasted > 0) {
+      chartData = [
+        { name: 'Spent', value: actual, color: spentColor },
+        { name: 'Forecast', value: forecasted, color: forecastColor },
+      ].filter((d) => d.value > 0);
+    } else {
+      chartData = [{ name: 'Empty', value: 1, color: '#e5e7eb' }];
+    }
+  } else {
+    chartData = [
+      { name: 'Spent', value: Math.min(actual, budgeted), color: spentColor },
+      { name: 'Forecast', value: Math.min(forecasted, Math.max(0, budgeted - actual)), color: forecastColor },
+      { name: 'Remaining', value: remaining, color: '#e5e7eb' }, // gray-200
+    ].filter((d) => d.value > 0);
 
-  // If nothing to show, display empty state
-  if (chartData.length === 0 || budgeted === 0) {
-    chartData.push({ name: 'Empty', value: 1, color: '#e5e7eb' });
+    // Handle over-budget display - show full red
+    if (isOver) {
+      chartData.length = 0;
+      chartData.push({ name: 'Over', value: 1, color: '#dc2626' });
+    }
+
+    // If nothing to show, display empty state
+    if (chartData.length === 0) {
+      chartData.push({ name: 'Empty', value: 1, color: '#e5e7eb' });
+    }
   }
 
   return (
@@ -91,18 +108,20 @@ export function BudgetDonutChart({
             </Pie>
           </PieChart>
         </ResponsiveContainer>
-        <Badge
-          variant={willBeOver ? 'destructive' : 'secondary'}
-          className={`absolute -right-1 -top-1 text-[10px] px-1.5 py-0 ${
-            !willBeOver ? 'bg-green-100 text-green-700 hover:bg-green-100' : ''
-          }`}
-        >
-          {usedPercent}%{forecasted > 0 && ` → ${totalPercent}%`}
-        </Badge>
+        {!noBudgetSet && (
+          <Badge
+            variant={willBeOver ? 'destructive' : 'secondary'}
+            className={`absolute -right-1 -top-1 text-[10px] px-1.5 py-0 ${
+              !willBeOver ? 'bg-green-100 text-green-700 hover:bg-green-100' : ''
+            }`}
+          >
+            {usedPercent}%{forecasted > 0 && ` → ${totalPercent}%`}
+          </Badge>
+        )}
       </div>
       <p className="mt-1 text-center text-sm font-medium">{categoryName}</p>
       <p className="text-xs text-muted-foreground">
-        of {formatCentsShort(budgeted)}
+        {noBudgetSet ? 'No budget set' : `of ${formatCentsShort(budgeted)}`}
       </p>
     </div>
   );

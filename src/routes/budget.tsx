@@ -214,7 +214,8 @@ export function BudgetPage() {
         ),
         cell: ({ row }) => {
           const budgetRow = row.original;
-          if (budgetRow.budgeted === 0 && budgetRow.actual === 0) {
+          // Don't show remaining if no budget is set
+          if (budgetRow.budgeted === 0) {
             return <div className="text-right">-</div>;
           }
           return (
