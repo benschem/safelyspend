@@ -30,6 +30,8 @@ export function RootLayout() {
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
           <Header />
+          {/* Portal target for page-specific sticky headers */}
+          <div id="sticky-header-portal" />
           <main className="flex-1 overflow-y-auto p-4 sm:p-6">
             <Outlet context={{ activeScenarioId }} />
           </main>
