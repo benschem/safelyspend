@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useOutletContext, Link } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -11,12 +12,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X } from 'lucide-react';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
-import { formatCents, formatDate, formatDateRange } from '@/lib/utils';
-import type { Transaction } from '@/lib/types';
-import { useState } from 'react';
+import { CategorySelect } from '@/components/category-select';
+import { formatCents, formatDate, formatDateRange, parseCentsFromInput } from '@/lib/utils';
+import type { Transaction, TransactionType } from '@/lib/types';
 
 interface OutletContext {
   activeScenarioId: string | null;
@@ -25,20 +26,96 @@ interface OutletContext {
 }
 
 type FilterType = 'all' | 'income' | 'expense' | 'savings' | 'adjustment';
+type CategoryFilter = 'all' | 'uncategorized' | string;
 
 export function TransactionsIndexPage() {
   const { startDate, endDate } = useOutletContext<OutletContext>();
-  const { transactions } = useTransactions(startDate, endDate);
-  const { categories } = useCategories();
+  const { transactions, updateTransaction, deleteTransaction } = useTransactions(startDate, endDate);
+  const { categories, activeCategories } = useCategories();
 
   const [filterType, setFilterType] = useState<FilterType>('all');
+  const [filterCategory, setFilterCategory] = useState<CategoryFilter>('all');
 
-  const getCategoryName = (id: string | null) =>
-    id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-';
+  // Inline editing state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDate, setEditDate] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editType, setEditType] = useState<TransactionType>('expense');
+  const [editCategory, setEditCategory] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const getCategoryName = useCallback(
+    (id: string | null) => (id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-'),
+    [categories],
+  );
+
+  const startEditing = useCallback((transaction: Transaction) => {
+    setEditingId(transaction.id);
+    setEditDate(transaction.date);
+    setEditDescription(transaction.description);
+    setEditType(transaction.type);
+    setEditCategory(transaction.categoryId ?? '');
+    setEditAmount((transaction.amountCents / 100).toFixed(2));
+  }, []);
+
+  const cancelEditing = useCallback(() => {
+    setEditingId(null);
+    setEditDate('');
+    setEditDescription('');
+    setEditType('expense');
+    setEditCategory('');
+    setEditAmount('');
+  }, []);
+
+  const saveEditing = useCallback(() => {
+    if (!editingId || !editDescription.trim() || !editDate) return;
+
+    const amountCents = parseCentsFromInput(editAmount);
+    if (amountCents <= 0) return;
+
+    updateTransaction(editingId, {
+      date: editDate,
+      description: editDescription.trim(),
+      type: editType,
+      categoryId: editCategory || null,
+      amountCents,
+    });
+    cancelEditing();
+  }, [editingId, editDate, editDescription, editType, editCategory, editAmount, updateTransaction, cancelEditing]);
+
+  const handleDelete = useCallback((id: string) => {
+    if (deletingId === id) {
+      deleteTransaction(id);
+      setDeletingId(null);
+    } else {
+      setDeletingId(id);
+    }
+  }, [deletingId, deleteTransaction]);
+
+  // Close editors on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (editingId) cancelEditing();
+        if (deletingId) setDeletingId(null);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [editingId, deletingId, cancelEditing]);
 
   const filteredTransactions = useMemo(
-    () => transactions.filter((t) => filterType === 'all' || t.type === filterType),
-    [transactions, filterType],
+    () =>
+      transactions.filter((t) => {
+        // Type filter
+        if (filterType !== 'all' && t.type !== filterType) return false;
+        // Category filter
+        if (filterCategory === 'uncategorized' && t.categoryId !== null) return false;
+        if (filterCategory !== 'all' && filterCategory !== 'uncategorized' && t.categoryId !== filterCategory) return false;
+        return true;
+      }),
+    [transactions, filterType, filterCategory],
   );
 
   const columns: ColumnDef<Transaction>[] = useMemo(
@@ -46,20 +123,76 @@ export function TransactionsIndexPage() {
       {
         accessorKey: 'date',
         header: ({ column }) => <SortableHeader column={column}>Date</SortableHeader>,
-        cell: ({ row }) => formatDate(row.getValue('date')),
+        cell: ({ row }) => {
+          const transaction = row.original;
+          if (editingId === transaction.id) {
+            return (
+              <Input
+                type="date"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+                className="h-8 w-32"
+              />
+            );
+          }
+          return formatDate(row.getValue('date'));
+        },
         sortingFn: 'datetime',
       },
       {
         accessorKey: 'description',
         header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
-        cell: ({ row }) => (
-          <span className="font-medium">{row.getValue('description')}</span>
-        ),
+        cell: ({ row }) => {
+          const transaction = row.original;
+          if (editingId === transaction.id) {
+            return (
+              <Input
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                className="h-8 w-full min-w-[120px]"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveEditing();
+                  if (e.key === 'Escape') cancelEditing();
+                }}
+              />
+            );
+          }
+          return (
+            <Link
+              to={`/transactions/${transaction.id}`}
+              className="font-medium hover:underline"
+            >
+              {row.getValue('description')}
+            </Link>
+          );
+        },
+        filterFn: (row, _columnId, filterValue: string) => {
+          const search = filterValue.toLowerCase();
+          const description = row.original.description?.toLowerCase() ?? '';
+          const notes = row.original.notes?.toLowerCase() ?? '';
+          return description.includes(search) || notes.includes(search);
+        },
       },
       {
         accessorKey: 'type',
         header: 'Type',
         cell: ({ row }) => {
+          const transaction = row.original;
+          if (editingId === transaction.id) {
+            return (
+              <Select value={editType} onValueChange={(v) => setEditType(v as TransactionType)}>
+                <SelectTrigger className="h-8 w-28">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="expense">Expense</SelectItem>
+                  <SelectItem value="income">Income</SelectItem>
+                  <SelectItem value="savings">Savings</SelectItem>
+                  <SelectItem value="adjustment">Adjustment</SelectItem>
+                </SelectContent>
+              </Select>
+            );
+          }
           const type = row.getValue('type') as string;
           if (type === 'income') return <Badge variant="success">Income</Badge>;
           if (type === 'savings') return <Badge variant="info">Savings</Badge>;
@@ -74,7 +207,21 @@ export function TransactionsIndexPage() {
       {
         accessorKey: 'categoryId',
         header: 'Category',
-        cell: ({ row }) => getCategoryName(row.getValue('categoryId')),
+        cell: ({ row }) => {
+          const transaction = row.original;
+          if (editingId === transaction.id) {
+            return (
+              <div className="min-w-[140px]">
+                <CategorySelect
+                  value={editCategory}
+                  onChange={setEditCategory}
+                  allowNone
+                />
+              </div>
+            );
+          }
+          return getCategoryName(transaction.categoryId);
+        },
       },
       {
         accessorKey: 'amountCents',
@@ -84,7 +231,24 @@ export function TransactionsIndexPage() {
           </SortableHeader>
         ),
         cell: ({ row }) => {
-          const type = row.original.type;
+          const transaction = row.original;
+          if (editingId === transaction.id) {
+            return (
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+                className="h-8 w-24 text-right"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveEditing();
+                  if (e.key === 'Escape') cancelEditing();
+                }}
+              />
+            );
+          }
+          const type = transaction.type;
           const amount = row.getValue('amountCents') as number;
           const isPositive = type === 'income' || type === 'adjustment';
           const colorClass =
@@ -105,14 +269,49 @@ export function TransactionsIndexPage() {
       },
       {
         id: 'actions',
-        cell: ({ row }) => (
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/transactions/${row.original.id}`}>View</Link>
-          </Button>
-        ),
+        cell: ({ row }) => {
+          const transaction = row.original;
+          const isEditing = editingId === transaction.id;
+          const isDeleting = deletingId === transaction.id;
+
+          if (isEditing) {
+            return (
+              <div className="flex justify-end gap-1">
+                <Button variant="ghost" size="sm" onClick={saveEditing} title="Save">
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={cancelEditing} title="Cancel">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            );
+          }
+
+          return (
+            <div className="flex justify-end gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => startEditing(transaction)}
+                title="Edit"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={isDeleting ? 'destructive' : 'ghost'}
+                size="sm"
+                onClick={() => handleDelete(transaction.id)}
+                onBlur={() => setTimeout(() => setDeletingId(null), 200)}
+                title={isDeleting ? 'Click again to confirm' : 'Delete'}
+              >
+                {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+              </Button>
+            </div>
+          );
+        },
       },
     ],
-    [categories],
+    [categories, editingId, editDate, editDescription, editType, editCategory, editAmount, deletingId, startEditing, cancelEditing, saveEditing, handleDelete, getCategoryName],
   );
 
   return (
@@ -131,7 +330,7 @@ export function TransactionsIndexPage() {
       </div>
 
       {/* Filters */}
-      <div className="mt-6 flex gap-4">
+      <div className="mt-6 flex flex-wrap gap-4">
         <div className="w-40">
           <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
             <SelectTrigger>
@@ -143,6 +342,24 @@ export function TransactionsIndexPage() {
               <SelectItem value="expense">Expense</SelectItem>
               <SelectItem value="savings">Savings</SelectItem>
               <SelectItem value="adjustment">Adjustment</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-48">
+          <Select value={filterCategory} onValueChange={setFilterCategory}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              <SelectItem value="uncategorized">Uncategorized</SelectItem>
+              {activeCategories
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>
