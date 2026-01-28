@@ -51,6 +51,19 @@ const SKIP_PAYEES = new Set([
   '2UP',
 ]);
 
+/**
+ * Sanitize string to prevent CSV formula injection.
+ * Prefixes dangerous characters with a single quote to prevent
+ * formula execution if data is ever exported to Excel/Sheets.
+ */
+function sanitizeFormulaInjection(value: string): string {
+  const dangerous = /^[=+\-@\t\r]/;
+  if (dangerous.test(value)) {
+    return "'" + value;
+  }
+  return value;
+}
+
 function parseUpDate(dateStr: string): string {
   // Up CSV uses format like "2026-01-15 09:30:00 +11:00"
   // Extract just the date part
@@ -183,17 +196,17 @@ export function parseUpCsv(csvContent: string): Promise<ParseResult> {
 
           const transaction: ParsedTransaction = {
             date,
-            description: payee,
+            description: sanitizeFormulaInjection(payee),
             amountCents,
             type: isIncome ? 'income' : 'expense',
             category: row.Category?.trim() || null,
             paymentMethod: row['Payment Method']?.trim() || null,
-            notes: buildNotes(row),
+            notes: sanitizeFormulaInjection(buildNotes(row)),
             fingerprint: createFingerprint(
               row.Time,
               row['BSB/Account Number'] || '',
               amountCents,
-              payee,
+              payee, // Use original for fingerprint to match future imports
             ),
           };
 

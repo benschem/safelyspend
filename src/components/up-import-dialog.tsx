@@ -24,6 +24,9 @@ interface UpImportDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// Maximum file size: 50MB
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
+
 type ImportStep = 'upload' | 'preview' | 'importing' | 'complete';
 
 interface ImportStats {
@@ -74,13 +77,20 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
       // Reset file input so same files can be selected again
       event.target.value = '';
 
-      // Validate all files are CSVs
+      // Validate all files are CSVs and within size limit
       const invalidFiles: string[] = [];
+      const oversizedFiles: string[] = [];
       const validFiles: File[] = [];
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (!file) continue;
+
+        // Check file size first
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+          oversizedFiles.push(file.name);
+          continue;
+        }
 
         const isValidExtension = file.name.toLowerCase().endsWith('.csv');
         const isValidMimeType = file.type === 'text/csv' || file.type === 'application/vnd.ms-excel' || file.type === '';
@@ -90,6 +100,14 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
         } else {
           invalidFiles.push(file.name);
         }
+      }
+
+      if (oversizedFiles.length > 0) {
+        setErrors([
+          `File too large: ${oversizedFiles.join(', ')}`,
+          'Maximum file size is 50MB.',
+        ]);
+        return;
       }
 
       if (invalidFiles.length > 0) {
