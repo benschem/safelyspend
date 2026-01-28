@@ -149,7 +149,7 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
         }
 
         // Filter duplicates against existing transactions AND across files
-        const existingFingerprints = getExistingFingerprints();
+        const existingFingerprints = await getExistingFingerprints();
         const { unique, duplicates: dupes } = filterDuplicates(
           allTransactions,
           existingFingerprints,
@@ -209,8 +209,8 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
     await yieldToUI();
 
     // Bulk create categories and payment methods
-    const categoryMap = bulkGetOrCreateCategories(Array.from(categoryNames));
-    const paymentMethodMap = bulkGetOrCreatePaymentMethods(Array.from(paymentMethodNames));
+    const categoryMap = await bulkGetOrCreateCategories(Array.from(categoryNames));
+    const paymentMethodMap = await bulkGetOrCreatePaymentMethods(Array.from(paymentMethodNames));
 
     // Progress: 30% - Applying category rules (batch)
     setImportProgress(30);
@@ -278,7 +278,7 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
     await yieldToUI();
 
     // Import all at once
-    bulkImport(toImport);
+    await bulkImport(toImport);
 
     // Progress: 100% - Complete
     setImportProgress(100);
