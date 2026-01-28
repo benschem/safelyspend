@@ -302,7 +302,7 @@ export function DashboardPage() {
         </Link>
 
         <Link
-          to="/reports?tab=health"
+          to="/budget"
           className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
         >
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
