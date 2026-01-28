@@ -112,7 +112,7 @@ export function BudgetDonutChart({
           <Badge
             variant={willBeOver ? 'destructive' : 'secondary'}
             className={`absolute -right-1 -top-1 text-[10px] px-1.5 py-0 ${
-              !willBeOver ? 'bg-green-100 text-green-700 hover:bg-green-100' : ''
+              !willBeOver ? 'bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-900/50' : ''
             }`}
           >
             {usedPercent}%{forecasted > 0 && ` → ${totalPercent}%`}
