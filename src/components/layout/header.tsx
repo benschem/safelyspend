@@ -33,7 +33,7 @@ export function Header({
           <span className="text-sm text-muted-foreground italic">No scenarios</span>
         ) : (
           <Select {...selectProps}>
-            <SelectTrigger className="w-32 sm:w-40">
+            <SelectTrigger className="w-32 sm:w-40 cursor-pointer ">
               <SelectValue placeholder="Select scenario" />
             </SelectTrigger>
             <SelectContent>

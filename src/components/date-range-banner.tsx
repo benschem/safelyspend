@@ -94,7 +94,7 @@ export function DateRangeBanner({
     <div className="flex items-center justify-center border-b border-border bg-muted/50 px-4 py-1.5 text-sm">
       <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
-          <button className="flex items-center gap-2 rounded px-2 py-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+          <button className="flex items-center gap-2 rounded px-2 py-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground cursor-pointer">
             <Calendar className="h-3.5 w-3.5" />
             <span>
               Viewing:{' '}
