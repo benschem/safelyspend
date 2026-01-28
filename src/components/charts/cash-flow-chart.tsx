@@ -22,6 +22,7 @@ interface MonthlyNetFlow {
 
 interface CashFlowChartProps {
   monthlyNetFlow: MonthlyNetFlow[];
+  startingBalance?: number | null; // Balance at start of period (from anchor)
 }
 
 interface ChartDataPoint {
@@ -38,6 +39,7 @@ interface ChartDataPoint {
   netActual: number;
   netForecast: number;
   cumulativeSavings: number;
+  balance: number | null; // Running balance at end of month
 }
 
 interface TooltipPayload {
@@ -141,25 +143,46 @@ function CustomTooltip({
         </div>
       </div>
 
-      {/* Cumulative Savings */}
-      {data.cumulativeSavings > 0 && (
-        <div className="mt-2 border-t pt-2">
-          <div className="flex justify-between text-sm text-blue-600">
-            <span>Total Saved</span>
-            <span className="font-mono font-semibold">{formatCents(data.cumulativeSavings)}</span>
-          </div>
+      {/* Cumulative totals */}
+      {(data.cumulativeSavings > 0 || data.balance !== null) && (
+        <div className="mt-2 border-t pt-2 space-y-1">
+          {data.cumulativeSavings > 0 && (
+            <div className="flex justify-between text-sm text-blue-600">
+              <span>Total Saved</span>
+              <span className="font-mono font-semibold">{formatCents(data.cumulativeSavings)}</span>
+            </div>
+          )}
+          {data.balance !== null && (
+            <div className={`flex justify-between text-sm ${data.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <span>Balance</span>
+              <span className="font-mono font-semibold">{formatCents(data.balance)}</span>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-export function CashFlowChart({ monthlyNetFlow }: CashFlowChartProps) {
+export function CashFlowChart({ monthlyNetFlow, startingBalance }: CashFlowChartProps) {
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const hasCurrentMonth = monthlyNetFlow.some((m) => m.month === currentMonth);
+  const hasFutureData = monthlyNetFlow.some((m) => m.month > currentMonth);
+
   // Transform data for chart - combine actual + forecast for total line values
   const chartData = useMemo(() => {
     let cumulativeSavings = 0;
+    let runningBalance = startingBalance ?? null;
+
     return monthlyNetFlow.map((m) => {
       cumulativeSavings += m.savings.actual + m.savings.forecast;
+      const netTotal = m.net.actual + m.net.forecast;
+
+      // Update running balance if we have a starting balance
+      if (runningBalance !== null) {
+        runningBalance += netTotal;
+      }
+
       return {
         month: m.month,
         incomeTotal: m.income.actual + m.income.forecast,
@@ -174,9 +197,12 @@ export function CashFlowChart({ monthlyNetFlow }: CashFlowChartProps) {
         netActual: m.net.actual,
         netForecast: m.net.forecast,
         cumulativeSavings,
+        balance: runningBalance,
       };
     });
-  }, [monthlyNetFlow]);
+  }, [monthlyNetFlow, startingBalance]);
+
+  const hasBalance = startingBalance !== null && startingBalance !== undefined;
 
   const hasData = monthlyNetFlow.some(
     (m) => m.income.actual > 0 || m.expenses.actual > 0 || m.income.forecast > 0 || m.expenses.forecast > 0,
@@ -211,7 +237,36 @@ export function CashFlowChart({ monthlyNetFlow }: CashFlowChartProps) {
           <Tooltip content={<CustomTooltip />} />
           <ReferenceLine y={0} stroke="#e5e7eb" />
 
-          {/* Cumulative savings area in background */}
+          {/* "Now" reference line - only show if current month is in range */}
+          {hasCurrentMonth && (
+            <ReferenceLine
+              x={currentMonth}
+              stroke="#6b7280"
+              strokeWidth={2}
+              label={{
+                value: hasFutureData ? 'Now' : '',
+                position: 'top',
+                fontSize: 11,
+                fill: '#6b7280',
+              }}
+            />
+          )}
+
+          {/* Balance area in background (green) */}
+          {hasBalance && (
+            <Area
+              type="monotone"
+              dataKey="balance"
+              name="Balance"
+              fill={CHART_COLORS.income}
+              fillOpacity={0.12}
+              stroke={CHART_COLORS.income}
+              strokeWidth={1.5}
+              strokeOpacity={0.4}
+            />
+          )}
+
+          {/* Cumulative savings area (blue) */}
           <Area
             type="monotone"
             dataKey="cumulativeSavings"
@@ -272,10 +327,21 @@ export function CashFlowChart({ monthlyNetFlow }: CashFlowChartProps) {
           />
           <span>Total Saved</span>
         </div>
+        {hasBalance && (
+          <div className="flex items-center gap-2 text-sm">
+            <div
+              className="h-3 w-3 rounded-sm"
+              style={{ backgroundColor: CHART_COLORS.income, opacity: 0.25 }}
+            />
+            <span>Balance</span>
+          </div>
+        )}
       </div>
 
       <p className="mt-3 text-center text-xs text-muted-foreground">
-        Totals include forecasted amounts. Hover for breakdown.
+        {hasFutureData
+          ? 'Data after the "Now" line is forecast. Hover for breakdown.'
+          : 'Hover for breakdown.'}
       </p>
     </div>
   );

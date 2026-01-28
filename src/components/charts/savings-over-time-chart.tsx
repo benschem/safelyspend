@@ -5,6 +5,7 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  ReferenceLine,
 } from 'recharts';
 import { formatCents, formatCentsShort, formatMonth } from '@/lib/utils';
 import { CHART_COLORS } from '@/lib/chart-colors';
@@ -99,6 +100,10 @@ function CustomTooltip({
 }
 
 export function SavingsOverTimeChart({ monthlySavings }: SavingsOverTimeChartProps) {
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const hasCurrentMonth = monthlySavings.some((m) => m.month === currentMonth);
+  const hasFutureData = monthlySavings.some((m) => m.month > currentMonth);
+
   const hasSavings = monthlySavings.some((m) => m.actual > 0 || m.forecast > 0);
 
   if (!hasSavings) {
@@ -151,6 +156,22 @@ export function SavingsOverTimeChart({ monthlySavings }: SavingsOverTimeChartPro
             width={50}
           />
           <Tooltip content={<CustomTooltip />} />
+
+          {/* "Now" reference line - only show if current month is in range */}
+          {hasCurrentMonth && (
+            <ReferenceLine
+              x={currentMonth}
+              stroke="#6b7280"
+              strokeWidth={2}
+              label={{
+                value: hasFutureData ? 'Now' : '',
+                position: 'top',
+                fontSize: 11,
+                fill: '#6b7280',
+              }}
+            />
+          )}
+
           {hasForecast && (
             <Area
               type="monotone"
