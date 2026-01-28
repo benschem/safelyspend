@@ -1,8 +1,11 @@
 import { useMemo } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router';
 import { useReportsData } from '@/hooks/use-reports-data';
+import { useViewState } from '@/hooks/use-view-state';
+import { useDataDateRange } from '@/hooks/use-data-date-range';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { DateRangePicker } from '@/components/date-range-picker';
 import {
   CategorySpendingChart,
   BudgetComparisonChart,
@@ -13,16 +16,16 @@ import {
 
 interface OutletContext {
   activeScenarioId: string | null;
-  startDate: string;
-  endDate: string;
 }
 
 const VALID_TABS = ['spending', 'budget', 'cashflow', 'savings'] as const;
 type TabValue = (typeof VALID_TABS)[number];
 
 export function ReportsPage() {
-  const { activeScenarioId, startDate, endDate } = useOutletContext<OutletContext>();
+  const { activeScenarioId } = useOutletContext<OutletContext>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { startDate, endDate, setDateRange } = useViewState();
+  const dataRange = useDataDateRange();
 
   const currentTab = (searchParams.get('tab') as TabValue) || 'spending';
   const activeTab = VALID_TABS.includes(currentTab) ? currentTab : 'spending';
@@ -55,17 +58,25 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Reports</h1>
-        <p className="text-muted-foreground">Insights into your spending patterns</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Reports</h1>
+          <p className="text-muted-foreground">Insights into your spending patterns</p>
+        </div>
+        <DateRangePicker
+          startDate={startDate}
+          endDate={endDate}
+          onDateRangeChange={setDateRange}
+          dataRange={dataRange}
+        />
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="flex w-full overflow-x-auto">
-          <TabsTrigger value="spending" className="flex-1 min-w-fit">Spending</TabsTrigger>
-          <TabsTrigger value="budget" className="flex-1 min-w-fit">Budget</TabsTrigger>
-          <TabsTrigger value="cashflow" className="flex-1 min-w-fit">Cash Flow</TabsTrigger>
-          <TabsTrigger value="savings" className="flex-1 min-w-fit">Savings</TabsTrigger>
+        <TabsList>
+          <TabsTrigger value="spending">Spending</TabsTrigger>
+          <TabsTrigger value="budget">Budget</TabsTrigger>
+          <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
+          <TabsTrigger value="savings">Savings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="spending" className="mt-6">

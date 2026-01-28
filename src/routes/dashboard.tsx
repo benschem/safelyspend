@@ -10,22 +10,25 @@ import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useCategories } from '@/hooks/use-categories';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
+import { useViewState } from '@/hooks/use-view-state';
+import { useDataDateRange } from '@/hooks/use-data-date-range';
 import { formatCents, formatDate } from '@/lib/utils';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 import { SpendingBreakdownChart, SavingsDonutChart, BudgetDonutChart } from '@/components/charts';
+import { DateRangePicker } from '@/components/date-range-picker';
 
 interface OutletContext {
   activeScenarioId: string | null;
-  startDate: string;
-  endDate: string;
 }
 
 const VALID_TABS = ['current', 'forecast', 'budget', 'savings'] as const;
 type TabValue = (typeof VALID_TABS)[number];
 
 export function DashboardPage() {
-  const { activeScenarioId, startDate, endDate } = useOutletContext<OutletContext>();
+  const { activeScenarioId } = useOutletContext<OutletContext>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { startDate, endDate, setDateRange } = useViewState();
+  const dataRange = useDataDateRange();
 
   const currentTab = (searchParams.get('tab') as TabValue) || 'current';
   const activeTab = VALID_TABS.includes(currentTab) ? currentTab : 'current';
@@ -310,17 +313,25 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Overview of your finances</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">Overview of your finances</p>
+        </div>
+        <DateRangePicker
+          startDate={startDate}
+          endDate={endDate}
+          onDateRangeChange={setDateRange}
+          dataRange={dataRange}
+        />
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="flex w-full overflow-x-auto">
-          <TabsTrigger value="current" className="flex-1 min-w-fit">Current</TabsTrigger>
-          <TabsTrigger value="forecast" className="flex-1 min-w-fit">Forecast</TabsTrigger>
-          <TabsTrigger value="budget" className="flex-1 min-w-fit">Budget</TabsTrigger>
-          <TabsTrigger value="savings" className="flex-1 min-w-fit">Savings</TabsTrigger>
+        <TabsList>
+          <TabsTrigger value="current">Current</TabsTrigger>
+          <TabsTrigger value="forecast">Forecast</TabsTrigger>
+          <TabsTrigger value="budget">Budget</TabsTrigger>
+          <TabsTrigger value="savings">Savings</TabsTrigger>
         </TabsList>
 
         {/* Current Position Tab */}
