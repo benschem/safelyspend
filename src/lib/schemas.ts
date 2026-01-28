@@ -1,23 +1,46 @@
 import { z } from 'zod';
 
 // =============================================================================
+// Constants
+// =============================================================================
+
+/** Maximum amount in dollars (approximately $1 billion) */
+export const MAX_AMOUNT_DOLLARS = 999_999_999;
+
+/** Maximum amount in cents */
+export const MAX_AMOUNT_CENTS = MAX_AMOUNT_DOLLARS * 100;
+
+// =============================================================================
 // Shared Field Schemas
 // =============================================================================
 
-/** Money amount as string input, validated to be a positive number */
+/** Money amount as string input, validated to be a positive number within bounds */
 export const moneyInputSchema = z
   .string()
   .min(1, 'Amount is required')
-  .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
-    message: 'Amount must be greater than 0',
-  });
+  .refine(
+    (val) => {
+      const num = parseFloat(val);
+      return !isNaN(num) && isFinite(num) && num > 0 && num <= MAX_AMOUNT_DOLLARS;
+    },
+    {
+      message: `Amount must be between $0.01 and $${MAX_AMOUNT_DOLLARS.toLocaleString()}`,
+    },
+  );
 
-/** Optional money amount (can be empty string or positive number) */
+/** Optional money amount (can be empty string or positive number within bounds) */
 export const optionalMoneyInputSchema = z
   .string()
-  .refine((val) => val === '' || (!isNaN(parseFloat(val)) && parseFloat(val) >= 0), {
-    message: 'Amount must be 0 or greater',
-  });
+  .refine(
+    (val) => {
+      if (val === '') return true;
+      const num = parseFloat(val);
+      return !isNaN(num) && isFinite(num) && num >= 0 && num <= MAX_AMOUNT_DOLLARS;
+    },
+    {
+      message: `Amount must be between $0 and $${MAX_AMOUNT_DOLLARS.toLocaleString()}`,
+    },
+  );
 
 /** ISO date string (YYYY-MM-DD) */
 export const dateSchema = z.string().min(1, 'Date is required');
@@ -192,9 +215,20 @@ export type FirstRunSetupData = z.infer<typeof firstRunSetupSchema>;
 // Utilities
 // =============================================================================
 
-/** Convert string amount to integer cents */
+/**
+ * Convert string amount to integer cents with overflow protection.
+ * Throws if amount exceeds safe bounds.
+ */
 export function parseCents(amount: string): number {
   const parsed = parseFloat(amount);
-  if (isNaN(parsed)) return 0;
-  return Math.round(parsed * 100);
+  if (isNaN(parsed) || !isFinite(parsed)) return 0;
+  if (parsed < 0) return 0;
+  if (parsed > MAX_AMOUNT_DOLLARS) {
+    throw new Error(`Amount exceeds maximum of $${MAX_AMOUNT_DOLLARS.toLocaleString()}`);
+  }
+  const cents = Math.round(parsed * 100);
+  if (!Number.isSafeInteger(cents)) {
+    throw new Error('Amount precision error');
+  }
+  return cents;
 }
