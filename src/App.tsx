@@ -18,8 +18,6 @@ import { TransactionDetailPage } from '@/routes/transactions/detail';
 import { CategoriesIndexPage } from '@/routes/categories/index';
 import { CategoryImportRulesPage } from '@/routes/categories/import-rules';
 import { SavingsIndexPage } from '@/routes/savings/index';
-import { SavingsNewPage } from '@/routes/savings/new';
-import { SavingsDetailPage } from '@/routes/savings/detail';
 import { ReportsPage } from '@/routes/reports';
 import { ScenariosIndexPage } from '@/routes/scenarios/index';
 import { ScenarioNewPage } from '@/routes/scenarios/new';
@@ -62,8 +60,6 @@ const router = createBrowserRouter([
 
       // Savings (track)
       { path: 'savings', element: <SavingsIndexPage /> },
-      { path: 'savings/new', element: <SavingsNewPage /> },
-      { path: 'savings/:id', element: <SavingsDetailPage /> },
 
       // Reports (track)
       { path: 'reports', element: <ReportsPage /> },
