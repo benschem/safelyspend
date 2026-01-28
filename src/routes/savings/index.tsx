@@ -4,7 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Pencil, Trash2, Check, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, PiggyBank } from 'lucide-react';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useTransactions } from '@/hooks/use-transactions';
 import { SavingsGoalDialog } from '@/components/dialogs/savings-goal-dialog';
@@ -271,8 +271,11 @@ export function SavingsIndexPage() {
     <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Savings Goals</h1>
-          <p className="text-muted-foreground">Track progress toward your savings targets.</p>
+          <h1 className="flex items-center gap-3 text-3xl font-bold">
+            <PiggyBank className="h-7 w-7" />
+            Savings
+          </h1>
+          <p className="mt-1 text-muted-foreground">Track progress toward your savings targets.</p>
         </div>
         <Button className="w-full sm:w-auto" onClick={() => setDialogOpen(true)}>
           <Plus className="h-4 w-4" />

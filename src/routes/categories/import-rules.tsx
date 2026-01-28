@@ -17,7 +17,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Plus, Pencil, Trash2, GripVertical } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, GripVertical, FileInput } from 'lucide-react';
 import { useCategoryRules } from '@/hooks/use-category-rules';
 import { useCategories } from '@/hooks/use-categories';
 import type { CategoryRuleMatchType } from '@/lib/types';
@@ -134,8 +134,11 @@ export function CategoryImportRulesPage() {
 
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Category Import Rules</h1>
-          <p className="text-muted-foreground">
+          <h1 className="flex items-center gap-3 text-3xl font-bold">
+            <FileInput className="h-7 w-7" />
+            Category Import Rules
+          </h1>
+          <p className="mt-1 text-muted-foreground">
             Auto-categorise imported transactions based on description matching.
           </p>
         </div>

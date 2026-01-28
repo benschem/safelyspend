@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { CategorySelect } from '@/components/category-select';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CalendarDays } from 'lucide-react';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
@@ -148,7 +148,8 @@ export function ForecastDetailPage() {
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{event.description}</h1>
+            <CalendarDays className="h-7 w-7" />
+            <h1 className="text-3xl font-bold">{event.description}</h1>
             {event.type === 'income' ? (
               <Badge variant="success">Income</Badge>
             ) : event.type === 'savings' ? (
@@ -157,7 +158,7 @@ export function ForecastDetailPage() {
               <Badge variant="destructive">Expense</Badge>
             )}
           </div>
-          <p className="text-muted-foreground">{formatDate(event.date)}</p>
+          <p className="mt-1 text-muted-foreground">{formatDate(event.date)}</p>
         </div>
         <div
           className={`text-2xl font-bold ${

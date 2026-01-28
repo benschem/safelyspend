@@ -9,7 +9,7 @@ import { CategorySelect } from '@/components/category-select';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
 import { PaymentMethodSelect } from '@/components/payment-method-select';
 import { FormField, FormError } from '@/components/form-field';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Plus } from 'lucide-react';
 import { useTransactions } from '@/hooks/use-transactions';
 import { today } from '@/lib/utils';
 import { transactionFormSchema, parseCents } from '@/lib/schemas';
@@ -91,7 +91,10 @@ export function TransactionNewPage() {
       </div>
 
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">New Transaction</h1>
+        <h1 className="flex items-center gap-3 text-3xl font-semibold tracking-tight">
+          <Plus className="h-7 w-7" />
+          New Transaction
+        </h1>
         <p className="mt-1 text-muted-foreground">Record an income or expense.</p>
       </div>
 

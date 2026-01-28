@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, ArrowLeft, Pencil } from 'lucide-react';
+import { Plus, ArrowLeft, Pencil, RefreshCw } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
@@ -221,8 +221,11 @@ export function RecurringIndexPage() {
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Recurring Forecasts</h1>
-          <p className="text-muted-foreground">
+          <h1 className="flex items-center gap-3 text-3xl font-bold">
+            <RefreshCw className="h-7 w-7" />
+            Recurring Forecasts
+          </h1>
+          <p className="mt-1 text-muted-foreground">
             Recurring income, expense, and savings patterns for {activeScenario.name}.
           </p>
         </div>

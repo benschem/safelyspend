@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Pencil, Trash2, Check, X, Archive, ArchiveRestore, Settings2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Archive, ArchiveRestore, Settings2, FolderTree } from 'lucide-react';
 import { useCategories } from '@/hooks/use-categories';
 import { CategoryDialog } from '@/components/dialogs/category-dialog';
 import type { Category } from '@/lib/types';
@@ -144,8 +144,11 @@ export function CategoriesIndexPage() {
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Categories</h1>
-          <p className="text-muted-foreground">Organise your expenses by category.</p>
+          <h1 className="flex items-center gap-3 text-3xl font-bold">
+            <FolderTree className="h-7 w-7" />
+            Categories
+          </h1>
+          <p className="mt-1 text-muted-foreground">Organise your expenses by category.</p>
         </div>
         <Button onClick={() => setAddDialogOpen(true)}>
           <Plus className="h-4 w-4" />

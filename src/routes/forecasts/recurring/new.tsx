@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select';
 import { CategorySelect } from '@/components/category-select';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Plus } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { FormField, FormError } from '@/components/form-field';
@@ -116,7 +116,10 @@ export function RecurringNewPage() {
       </div>
 
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">New Recurring Forecast</h1>
+        <h1 className="flex items-center gap-3 text-3xl font-semibold tracking-tight">
+          <Plus className="h-7 w-7" />
+          New Recurring Forecast
+        </h1>
         <p className="mt-1 text-muted-foreground">
           Add a recurring income, expense, or savings pattern.
         </p>

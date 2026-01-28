@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { CategorySelect } from '@/components/category-select';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CalendarPlus } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { today } from '@/lib/utils';
@@ -98,7 +98,10 @@ export function ForecastNewPage() {
       </div>
 
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">New One-off Event</h1>
+        <h1 className="flex items-center gap-3 text-3xl font-semibold tracking-tight">
+          <CalendarPlus className="h-7 w-7" />
+          New One-off Event
+        </h1>
         <p className="mt-1 text-muted-foreground">Add a one-time forecast event (not recurring).</p>
       </div>
 

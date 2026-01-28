@@ -1,62 +1,42 @@
 import { useMemo } from 'react';
-import { Link, useOutletContext, useSearchParams } from 'react-router';
+import { Link, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, TrendingUp, TrendingDown, PiggyBank, LayoutDashboard } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
-import { useSavingsGoals } from '@/hooks/use-savings-goals';
-import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useCategories } from '@/hooks/use-categories';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
-import { useViewState } from '@/hooks/use-view-state';
-import { useDataDateRange } from '@/hooks/use-data-date-range';
 import { formatCents, formatDate } from '@/lib/utils';
-import { buildCategoryColorMap } from '@/lib/chart-colors';
-import { SpendingBreakdownChart, SavingsDonutChart, BudgetDonutChart } from '@/components/charts';
-import { DateRangePicker } from '@/components/date-range-picker';
 import { ScenarioSelector } from '@/components/scenario-selector';
 
 interface OutletContext {
   activeScenarioId: string | null;
 }
 
-const VALID_TABS = ['current', 'forecast', 'budget', 'savings'] as const;
-type TabValue = (typeof VALID_TABS)[number];
-
 export function DashboardPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { startDate, endDate, setDateRange } = useViewState();
-  const dataRange = useDataDateRange();
-
-  const currentTab = (searchParams.get('tab') as TabValue) || 'current';
-  const activeTab = VALID_TABS.includes(currentTab) ? currentTab : 'current';
-
-  const handleTabChange = (value: string) => {
-    setSearchParams({ tab: value }, { replace: true });
-  };
   const { activeScenario } = useScenarios();
-  const {
-    allTransactions,
-    incomeTransactions,
-    expenseTransactions,
-    savingsTransactions,
-    adjustmentTransactions,
-  } = useTransactions(startDate, endDate);
-  const { incomeForecasts, expenseForecasts, savingsForecasts } = useForecasts(
-    activeScenarioId,
-    startDate,
-    endDate,
-  );
-  const { savingsGoals } = useSavingsGoals();
-  const { getBudgetForCategory } = useBudgetRules(activeScenarioId, startDate, endDate);
   const { activeCategories } = useCategories();
-  const { getActiveAnchor, earliestAnchorDate } = useBalanceAnchors();
+  const { getActiveAnchor } = useBalanceAnchors();
 
-  // Get today's date for balance calculations
+  // Fixed date ranges - no user selection
   const today = new Date().toISOString().slice(0, 10);
+
+  // This month's date range
+  const thisMonthStart = today.slice(0, 7) + '-01';
+  const thisMonthEnd = today;
+
+  // Upcoming forecasts: next 14 days
+  const fourteenDaysFromNow = new Date();
+  fourteenDaysFromNow.setDate(fourteenDaysFromNow.getDate() + 14);
+  const upcomingEnd = fourteenDaysFromNow.toISOString().slice(0, 10);
+
+  // Get transactions for this month (for spending summary)
+  const { allTransactions, expenseTransactions } = useTransactions(thisMonthStart, thisMonthEnd);
+
+  // Get forecasts for upcoming period
+  const { expandedForecasts } = useForecasts(activeScenarioId, today, upcomingEnd);
 
   // Get the active anchor for current balance calculation
   const activeAnchor = getActiveAnchor(today);
@@ -65,7 +45,8 @@ export function DashboardPage() {
   const currentBalance = useMemo(() => {
     if (!activeAnchor) return null;
 
-    // Sum transactions from anchor date to today
+    // We need all transactions from anchor date to today for balance calc
+    // Filter allTransactions to those from anchor onwards
     const transactionsFromAnchor = allTransactions.filter(
       (t) => t.date >= activeAnchor.date && t.date <= today,
     );
@@ -81,233 +62,78 @@ export function DashboardPage() {
     return balance;
   }, [activeAnchor, allTransactions, today]);
 
-  // Check if viewing dates before anchor (for warning)
-  const isViewingBeforeAnchor = earliestAnchorDate && startDate < earliestAnchorDate;
   const hasNoAnchor = !activeAnchor;
 
-  // Calculate totals for display (these are for the viewed date range, not anchor-based)
-  const actualIncome = incomeTransactions.reduce((sum, t) => sum + t.amountCents, 0);
-  const actualExpenses = expenseTransactions.reduce((sum, t) => sum + t.amountCents, 0);
-  const actualSavings = savingsTransactions.reduce((sum, t) => sum + t.amountCents, 0);
-  const actualAdjustments = adjustmentTransactions.reduce((sum, t) => sum + t.amountCents, 0);
-  const actualNet = actualIncome + actualAdjustments - actualExpenses - actualSavings;
+  // Calculate this month's spending by category
+  const thisMonthSpending = useMemo(() => {
+    const byCategory: Record<string, number> = {};
+    let uncategorized = 0;
+    let total = 0;
 
-  // Filter forecasts to only include future dates (avoid double-counting with actuals)
-  const futureIncomeForecasts = incomeForecasts.filter((f) => f.date > today);
-  const futureExpenseForecasts = expenseForecasts.filter((f) => f.date > today);
-  const futureSavingsForecasts = savingsForecasts.filter((f) => f.date > today);
-
-  const forecastedIncome = futureIncomeForecasts.reduce((sum, f) => sum + f.amountCents, 0);
-  const forecastedExpenses = futureExpenseForecasts.reduce((sum, f) => sum + f.amountCents, 0);
-  const forecastedSavings = futureSavingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
-  const forecastedNet = forecastedIncome - forecastedExpenses - forecastedSavings;
-
-  const projectedEndBalance = currentBalance !== null ? currentBalance + forecastedNet : null;
-
-  // Calculate cash flow buffer (money available until next income)
-  const sortedFutureIncome = [...futureIncomeForecasts].sort((a, b) =>
-    a.date.localeCompare(b.date),
-  );
-  const nextIncomeDate = sortedFutureIncome[0]?.date ?? null;
-
-  // Calculate buffer end date with edge case handling
-  const sevenDaysFromNow = new Date();
-  sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-  const sevenDaysDate = sevenDaysFromNow.toISOString().slice(0, 10);
-
-  const thirtyDaysFromNow = new Date();
-  thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-  const thirtyDaysDate = thirtyDaysFromNow.toISOString().slice(0, 10);
-  const defaultBufferEnd = thirtyDaysDate < endDate ? thirtyDaysDate : endDate;
-
-  let bufferEndDate: string;
-  let bufferDescription: string;
-
-  if (!nextIncomeDate) {
-    // No income forecast - use 30 days
-    bufferEndDate = defaultBufferEnd;
-    bufferDescription = 'Next 30 days';
-  } else if (nextIncomeDate <= sevenDaysDate) {
-    // Next income is within 7 days - extend to the income after that
-    const incomeAfterNext = sortedFutureIncome.find((f) => f.date > nextIncomeDate);
-    if (incomeAfterNext) {
-      bufferEndDate = incomeAfterNext.date;
-      bufferDescription = `Until payment on ${formatDate(incomeAfterNext.date)}`;
-    } else {
-      bufferEndDate = defaultBufferEnd;
-      bufferDescription = 'Next 30 days';
-    }
-  } else {
-    bufferEndDate = nextIncomeDate;
-    bufferDescription = `Until payment on ${formatDate(nextIncomeDate)}`;
-  }
-
-  // Sum expenses and savings between now and buffer end date
-  const committedBeforeNextIncome = [
-    ...futureExpenseForecasts.filter((f) => f.date <= bufferEndDate),
-    ...futureSavingsForecasts.filter((f) => f.date <= bufferEndDate),
-  ].reduce((sum, f) => sum + f.amountCents, 0);
-
-  const cashFlowBuffer = currentBalance !== null ? currentBalance - committedBeforeNextIncome : null;
-
-
-  // Calculate budget tracking per category
-  const spendingByCategory = useMemo(() => {
-    const spending: Record<string, number> = {};
     for (const tx of expenseTransactions) {
+      total += tx.amountCents;
       if (tx.categoryId) {
-        spending[tx.categoryId] = (spending[tx.categoryId] ?? 0) + tx.amountCents;
-      }
-    }
-    return spending;
-  }, [expenseTransactions]);
-
-  const forecastedByCategory = useMemo(() => {
-    const forecasted: Record<string, number> = {};
-    for (const f of futureExpenseForecasts) {
-      if (f.categoryId) {
-        forecasted[f.categoryId] = (forecasted[f.categoryId] ?? 0) + f.amountCents;
-      }
-    }
-    return forecasted;
-  }, [futureExpenseForecasts]);
-
-  const budgetRows = useMemo(() => {
-    return activeCategories
-      .map((category) => {
-        const budgeted = getBudgetForCategory(category.id);
-        const actual = spendingByCategory[category.id] ?? 0;
-        const forecasted = forecastedByCategory[category.id] ?? 0;
-        const remaining = budgeted - actual - forecasted;
-        return { id: category.id, name: category.name, budgeted, actual, forecasted, remaining };
-      })
-      .filter((row) => row.budgeted > 0 || row.actual > 0 || row.forecasted > 0);
-  }, [activeCategories, getBudgetForCategory, spendingByCategory, forecastedByCategory]);
-
-  // Calculate actual spending breakdown by category
-  const actualBreakdown = useMemo(() => {
-    const segments: Array<{ id: string; name: string; amount: number }> = [];
-
-    // Add category spending
-    for (const category of activeCategories) {
-      const amount = spendingByCategory[category.id] ?? 0;
-      if (amount > 0) {
-        segments.push({
-          id: category.id,
-          name: category.name,
-          amount,
-        });
+        byCategory[tx.categoryId] = (byCategory[tx.categoryId] ?? 0) + tx.amountCents;
+      } else {
+        uncategorized += tx.amountCents;
       }
     }
 
-    // Add uncategorized expenses
-    const uncategorizedExpenses = expenseTransactions
-      .filter((t) => !t.categoryId)
-      .reduce((sum, t) => sum + t.amountCents, 0);
-    if (uncategorizedExpenses > 0) {
-      segments.push({
-        id: 'uncategorized',
-        name: 'Uncategorised',
-        amount: uncategorizedExpenses,
-      });
+    const categorySpending = activeCategories
+      .map((c) => ({ id: c.id, name: c.name, amount: byCategory[c.id] ?? 0 }))
+      .filter((c) => c.amount > 0)
+      .sort((a, b) => b.amount - a.amount);
+
+    if (uncategorized > 0) {
+      categorySpending.push({ id: 'uncategorized', name: 'Uncategorised', amount: uncategorized });
     }
 
-    // Add savings
-    if (actualSavings > 0) {
-      segments.push({
-        id: 'savings',
-        name: 'Savings',
-        amount: actualSavings,
-      });
-    }
+    return { categorySpending, total };
+  }, [expenseTransactions, activeCategories]);
 
-    // Add unallocated (remaining from income)
-    const totalAllocated = segments.reduce((sum, s) => sum + s.amount, 0);
-    const unallocated = actualIncome - totalAllocated;
-    if (unallocated > 0) {
-      segments.push({
-        id: 'unallocated',
-        name: 'Available',
-        amount: unallocated,
-      });
-    }
+  // Filter upcoming forecasts to only future dates and sort by date
+  const upcomingItems = useMemo(() => {
+    return expandedForecasts
+      .filter((f) => f.date > today)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(0, 10); // Show max 10 items
+  }, [expandedForecasts, today]);
 
-    return { segments, total: actualIncome };
-  }, [activeCategories, spendingByCategory, expenseTransactions, actualSavings, actualIncome]);
+  // Calculate free to spend (balance minus committed expenses until next income)
+  const freeToSpend = useMemo(() => {
+    if (currentBalance === null) return null;
 
-  // Calculate forecast breakdown by category (future only)
-  const forecastBreakdown = useMemo(() => {
-    const segments: Array<{ id: string; name: string; amount: number }> = [];
+    // Find next income
+    const sortedFutureIncome = upcomingItems
+      .filter((f) => f.type === 'income')
+      .sort((a, b) => a.date.localeCompare(b.date));
 
-    // Build forecast spending by category
-    const forecastByCategory: Record<string, number> = {};
-    for (const f of futureExpenseForecasts) {
-      if (f.categoryId) {
-        forecastByCategory[f.categoryId] = (forecastByCategory[f.categoryId] ?? 0) + f.amountCents;
-      }
-    }
+    const nextIncomeDate = sortedFutureIncome[0]?.date ?? upcomingEnd;
 
-    // Add category spending
-    for (const category of activeCategories) {
-      const amount = forecastByCategory[category.id] ?? 0;
-      if (amount > 0) {
-        segments.push({
-          id: category.id,
-          name: category.name,
-          amount,
-        });
-      }
-    }
-
-    // Add uncategorized forecast expenses
-    const uncategorizedForecasts = futureExpenseForecasts
-      .filter((f) => !f.categoryId)
+    // Sum expenses and savings until next income
+    const committed = upcomingItems
+      .filter((f) => f.date <= nextIncomeDate && (f.type === 'expense' || f.type === 'savings'))
       .reduce((sum, f) => sum + f.amountCents, 0);
-    if (uncategorizedForecasts > 0) {
-      segments.push({
-        id: 'uncategorized',
-        name: 'Uncategorised',
-        amount: uncategorizedForecasts,
-      });
-    }
 
-    // Add savings
-    if (forecastedSavings > 0) {
-      segments.push({
-        id: 'savings',
-        name: 'Savings',
-        amount: forecastedSavings,
-      });
-    }
+    return {
+      amount: currentBalance - committed,
+      untilDate: nextIncomeDate,
+      hasIncome: sortedFutureIncome.length > 0,
+    };
+  }, [currentBalance, upcomingItems, upcomingEnd]);
 
-    // Add unallocated (remaining from income)
-    const totalAllocated = segments.reduce((sum, s) => sum + s.amount, 0);
-    const unallocated = forecastedIncome - totalAllocated;
-    if (unallocated > 0) {
-      segments.push({
-        id: 'unallocated',
-        name: 'Unallocated',
-        amount: unallocated,
-      });
-    }
-
-    return { segments, total: forecastedIncome };
-  }, [activeCategories, futureExpenseForecasts, forecastedSavings, forecastedIncome]);
-
-  // Build shared colour map for all categories so both charts use consistent colours
-  const categoryColorMap = useMemo(
-    () => buildCategoryColorMap(activeCategories.map((c) => c.id)),
-    [activeCategories],
-  );
+  // Format month name
+  const monthName = new Date(today).toLocaleDateString('en-AU', { month: 'long' });
 
   if (!activeScenarioId || !activeScenario) {
     return (
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">Overview of your finances</p>
-          </div>
+        <div>
+          <h1 className="flex items-center gap-3 text-3xl font-bold">
+            <LayoutDashboard className="h-7 w-7" />
+            Dashboard
+          </h1>
+          <p className="mt-1 text-muted-foreground">Your current financial position</p>
         </div>
         <ScenarioSelector />
         <div className="rounded-lg border border-dashed p-8 text-center">
@@ -322,272 +148,163 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Overview of your finances</p>
-        </div>
-        <DateRangePicker
-          startDate={startDate}
-          endDate={endDate}
-          onDateRangeChange={setDateRange}
-          dataRange={dataRange}
-        />
+      <div>
+        <h1 className="flex items-center gap-3 text-3xl font-bold">
+          <LayoutDashboard className="h-7 w-7" />
+          Dashboard
+        </h1>
+        <p className="mt-1 text-muted-foreground">Your current financial position</p>
       </div>
 
       <ScenarioSelector />
 
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList>
-          <TabsTrigger value="current">Current</TabsTrigger>
-          <TabsTrigger value="forecast">Forecast</TabsTrigger>
-          <TabsTrigger value="budget">Budget</TabsTrigger>
-          <TabsTrigger value="savings">Savings</TabsTrigger>
-        </TabsList>
+      {/* Balance warning banner */}
+      {hasNoAnchor && (
+        <div className="flex items-start gap-3 rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4">
+          <AlertCircle className="mt-0.5 h-5 w-5 text-yellow-600" />
+          <div>
+            <p className="font-medium text-yellow-800 dark:text-yellow-200">
+              No balance anchor set
+            </p>
+            <p className="text-sm text-yellow-700 dark:text-yellow-300">
+              Set a starting balance in{' '}
+              <Link to="/settings" className="underline">
+                Settings
+              </Link>{' '}
+              to enable balance tracking.
+            </p>
+          </div>
+        </div>
+      )}
 
-        {/* Current Position Tab */}
-        <TabsContent value="current" className="mt-6">
-          <div className="space-y-4">
-            {/* Balance warning banner */}
-            {(hasNoAnchor || isViewingBeforeAnchor) && (
-              <div className="flex items-start gap-3 rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4">
-                <AlertCircle className="mt-0.5 h-5 w-5 text-yellow-600" />
-                <div>
-                  {hasNoAnchor ? (
-                    <>
-                      <p className="font-medium text-yellow-800 dark:text-yellow-200">
-                        No balance anchor set
-                      </p>
-                      <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                        Set a starting balance in{' '}
-                        <Link to="/settings" className="underline">
-                          Settings
-                        </Link>{' '}
-                        to enable balance tracking.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="font-medium text-yellow-800 dark:text-yellow-200">
-                        Viewing dates before balance anchor
-                      </p>
-                      <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                        Balances before {formatDate(earliestAnchorDate!)} are unknown. Spending
-                        totals are still accurate.
-                      </p>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
+      {/* Current Position Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="rounded-lg border p-4">
+          <p className="text-sm text-muted-foreground">Bank Balance</p>
+          {currentBalance !== null ? (
+            <p className="text-2xl font-bold">{formatCents(currentBalance)}</p>
+          ) : (
+            <p className="text-2xl font-bold text-muted-foreground">—</p>
+          )}
+          <p className="text-sm text-muted-foreground">As of today</p>
+        </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-lg border p-4">
-                <p className="text-sm text-muted-foreground">Bank Balance</p>
-                {currentBalance !== null ? (
-                  <>
-                    <p className="text-2xl font-bold">{formatCents(currentBalance)}</p>
-                    {actualNet !== 0 && (
-                      <p className={`text-sm ${actualNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {actualNet >= 0 ? '+' : ''}
-                        {formatCents(actualNet)} this period
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-2xl font-bold text-muted-foreground">Unknown</p>
-                )}
-              </div>
-
-              <div className="rounded-lg border p-4">
-                <p className="text-sm text-muted-foreground">Allocated Funds</p>
-                <p className="text-2xl font-bold">{formatCents(committedBeforeNextIncome)}</p>
-                <p className="text-sm text-muted-foreground">{bufferDescription}</p>
-              </div>
-
-              <div className="rounded-lg border p-4">
-                <p className="text-sm text-muted-foreground">Available to Spend</p>
-                {cashFlowBuffer !== null ? (
-                  <p
-                    className={`text-2xl font-bold ${cashFlowBuffer < 0 ? 'text-red-600' : 'text-green-600'}`}
-                  >
-                    {formatCents(cashFlowBuffer)}
-                  </p>
-                ) : (
-                  <p className="text-2xl font-bold text-muted-foreground">Unknown</p>
-                )}
-                <p className="text-sm text-muted-foreground">{bufferDescription}</p>
-              </div>
-
-              <div className="rounded-lg border p-4">
-                <p className="text-sm text-muted-foreground">Total Savings</p>
-                <p className="text-2xl font-bold text-blue-600">{formatCents(actualSavings)}</p>
-                <p className="text-sm text-blue-600">+{formatCents(actualSavings)} this period</p>
-              </div>
-            </div>
-
-            {/* Spending Breakdown */}
-            <div className="rounded-lg border p-4">
-              <h2 className="text-lg font-semibold">Spending Breakdown</h2>
-              <p className="text-sm text-muted-foreground">
-                How you spent {formatCents(actualBreakdown.total)} income from {formatDate(startDate)} until {formatDate(endDate)}
+        <div className="rounded-lg border p-4">
+          <p className="text-sm text-muted-foreground">Free to Spend</p>
+          {freeToSpend !== null ? (
+            <>
+              <p className={`text-2xl font-bold ${freeToSpend.amount < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {formatCents(freeToSpend.amount)}
               </p>
+              <p className="text-sm text-muted-foreground">
+                {freeToSpend.hasIncome
+                  ? `Until ${formatDate(freeToSpend.untilDate)}`
+                  : 'Next 14 days'}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-2xl font-bold text-muted-foreground">—</p>
+              <p className="text-sm text-muted-foreground">Set balance anchor first</p>
+            </>
+          )}
+        </div>
 
-              {actualBreakdown.total === 0 ? (
-                <div className="mt-4 text-center text-sm text-muted-foreground">
-                  No income recorded yet.
-                </div>
-              ) : (
-                <div className="mt-4">
-                  <SpendingBreakdownChart
-                    segments={actualBreakdown.segments}
-                    total={actualBreakdown.total}
-                    colorMap={categoryColorMap}
-                  />
-                </div>
-              )}
+        <div className="rounded-lg border p-4">
+          <p className="text-sm text-muted-foreground">Spent in {monthName}</p>
+          <p className="text-2xl font-bold">{formatCents(thisMonthSpending.total)}</p>
+          <p className="text-sm text-muted-foreground">
+            {thisMonthSpending.categorySpending.length} {thisMonthSpending.categorySpending.length === 1 ? 'category' : 'categories'}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* This Month's Spending */}
+        <div className="rounded-lg border p-4">
+          <h2 className="text-lg font-semibold">{monthName} Spending</h2>
+          <p className="text-sm text-muted-foreground">Breakdown by category</p>
+
+          {thisMonthSpending.categorySpending.length === 0 ? (
+            <div className="mt-4 text-center text-sm text-muted-foreground">
+              No expenses recorded this month.
             </div>
-          </div>
-        </TabsContent>
-
-        {/* Forecast Tab */}
-        <TabsContent value="forecast" className="mt-6">
-          <div className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-lg border p-4">
-                <p className="text-sm text-muted-foreground">Forecast Balance</p>
-                {projectedEndBalance !== null ? (
-                  <>
-                    <p className={`text-2xl font-bold ${projectedEndBalance < 0 ? 'text-red-600' : ''}`}>
-                      {formatCents(projectedEndBalance)}
-                    </p>
-                    <p className={`text-sm ${forecastedNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {forecastedNet >= 0 ? '+' : ''}
-                      {formatCents(forecastedNet)}
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-2xl font-bold text-muted-foreground">Unknown</p>
-                    <p className="text-sm text-muted-foreground">No balance anchor set</p>
-                  </>
-                )}
-              </div>
-
-              <div className="rounded-lg border p-4">
-                <p className="text-sm text-muted-foreground">Expected Income</p>
-                <p className="text-2xl font-bold text-green-600">+{formatCents(forecastedIncome)}</p>
-                <p className="text-sm text-muted-foreground">
-                  {futureIncomeForecasts.length} {futureIncomeForecasts.length === 1 ? 'payment' : 'payments'}
-                </p>
-              </div>
-
-              <div className="rounded-lg border p-4">
-                <p className="text-sm text-muted-foreground">Expected Expenses</p>
-                <p className="text-2xl font-bold text-red-600">
-                  -{formatCents(forecastedExpenses)}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {futureExpenseForecasts.length} {futureExpenseForecasts.length === 1 ? 'expense' : 'expenses'}
-                </p>
-              </div>
-
-              <div className="rounded-lg border p-4">
-                <p className="text-sm text-muted-foreground">Planned Savings</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  +{formatCents(forecastedSavings)}
-                </p>
-                <p className="text-sm text-blue-600">
-                  {actualSavings > 0
-                    ? `+${Math.round((forecastedSavings / actualSavings) * 100)}%`
-                    : `${futureSavingsForecasts.length} contributions`}
-                </p>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {thisMonthSpending.categorySpending.map((item) => (
+                <div key={item.id} className="flex items-center justify-between">
+                  <span className="text-sm">{item.name}</span>
+                  <span className="font-mono text-sm">{formatCents(item.amount)}</span>
+                </div>
+              ))}
+              <div className="border-t pt-2">
+                <div className="flex items-center justify-between font-medium">
+                  <span>Total</span>
+                  <span className="font-mono">{formatCents(thisMonthSpending.total)}</span>
+                </div>
               </div>
             </div>
+          )}
 
-            {/* Forecast Spending Breakdown */}
-            {forecastBreakdown.total > 0 && (
-              <div className="rounded-lg border p-4">
-                <h3 className="text-lg font-semibold">Forecast Spending</h3>
-                <p className="text-sm text-muted-foreground">
-                  How {formatCents(forecastBreakdown.total)} expected income will be allocated from now until {formatDate(endDate)}
-                </p>
+          <div className="mt-4">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/transactions">View all transactions</Link>
+            </Button>
+          </div>
+        </div>
 
-                <div className="mt-4">
-                  <SpendingBreakdownChart
-                    segments={forecastBreakdown.segments}
-                    total={forecastBreakdown.total}
-                    colorMap={categoryColorMap}
-                  />
+        {/* Upcoming */}
+        <div className="rounded-lg border p-4">
+          <h2 className="text-lg font-semibold">Upcoming</h2>
+          <p className="text-sm text-muted-foreground">Next 14 days</p>
+
+          {upcomingItems.length === 0 ? (
+            <div className="mt-4 text-center text-sm text-muted-foreground">
+              No forecasts in the next 14 days.
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {upcomingItems.map((item, index) => (
+                <div key={`${item.sourceId}-${item.date}-${index}`} className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                    {item.type === 'income' ? (
+                      <TrendingUp className="h-4 w-4 text-green-600" />
+                    ) : item.type === 'savings' ? (
+                      <PiggyBank className="h-4 w-4 text-blue-600" />
+                    ) : (
+                      <TrendingDown className="h-4 w-4 text-red-600" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm font-medium">{item.description}</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(item.date)}</p>
+                  </div>
+                  <div className="text-right">
+                    <span
+                      className={`font-mono text-sm ${
+                        item.type === 'income'
+                          ? 'text-green-600'
+                          : item.type === 'savings'
+                            ? 'text-blue-600'
+                            : 'text-red-600'
+                      }`}
+                    >
+                      {item.type === 'income' ? '+' : '-'}
+                      {formatCents(item.amountCents)}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        </TabsContent>
+              ))}
+            </div>
+          )}
 
-        {/* Budget Tab */}
-        <TabsContent value="budget" className="mt-6">
-          <div className="rounded-lg border p-4">
-            <h2 className="text-lg font-semibold">Budget Tracking</h2>
-            {budgetRows.length === 0 ? (
-              <div className="mt-4 text-center text-sm text-muted-foreground">
-                No budget set.{' '}
-                <Link to="/budget" className="text-primary underline">
-                  Set budgets
-                </Link>
-              </div>
-            ) : (
-              <div className="mt-6 grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
-                {budgetRows.map((row) => (
-                  <BudgetDonutChart
-                    key={row.id}
-                    categoryName={row.name}
-                    budgeted={row.budgeted}
-                    actual={row.actual}
-                    forecasted={row.forecasted}
-                  />
-                ))}
-              </div>
-            )}
+          <div className="mt-4">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/forecasts">Manage forecasts</Link>
+            </Button>
           </div>
-        </TabsContent>
-
-        {/* Savings Tab */}
-        <TabsContent value="savings" className="mt-6">
-          <div className="rounded-lg border p-4">
-            <h2 className="text-lg font-semibold">Savings Goals</h2>
-            {savingsGoals.length === 0 ? (
-              <div className="mt-4 text-center text-sm text-muted-foreground">
-                No savings goals yet.{' '}
-                <Link to="/savings/new" className="text-primary underline">
-                  Create one
-                </Link>
-              </div>
-            ) : (
-              <div className="mt-6 grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
-                {savingsGoals.map((goal) => {
-                  const savedAmount = savingsTransactions
-                    .filter((t) => t.savingsGoalId === goal.id)
-                    .reduce((sum, t) => sum + t.amountCents, 0);
-                  const forecastedAmount = savingsForecasts
-                    .filter((f) => f.savingsGoalId === goal.id)
-                    .reduce((sum, f) => sum + f.amountCents, 0);
-                  return (
-                    <SavingsDonutChart
-                      key={goal.id}
-                      goalId={goal.id}
-                      goalName={goal.name}
-                      targetAmount={goal.targetAmountCents}
-                      savedAmount={savedAmount}
-                      forecastedAmount={forecastedAmount}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
     </div>
   );
 }

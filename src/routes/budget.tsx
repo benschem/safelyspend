@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Pencil, Check, X, Trash2, Plus } from 'lucide-react';
+import { Pencil, Check, X, Trash2, Plus, FolderTree } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
@@ -402,8 +402,11 @@ export function BudgetPage() {
       <div>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Budget Rules</h1>
-            <p className="text-muted-foreground">Spending limits per category.</p>
+            <h1 className="flex items-center gap-3 text-3xl font-bold">
+              <FolderTree className="h-7 w-7" />
+              Budgets
+            </h1>
+            <p className="mt-1 text-muted-foreground">Spending limits per category.</p>
           </div>
         </div>
         <div className="mt-6">
@@ -420,8 +423,11 @@ export function BudgetPage() {
     <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Budget Rules</h1>
-          <p className="text-muted-foreground">
+          <h1 className="flex items-center gap-3 text-3xl font-bold">
+            <FolderTree className="h-7 w-7" />
+            Budgets
+          </h1>
+          <p className="mt-1 text-muted-foreground">
             Spending limits per category for {activeScenario.name}.
           </p>
         </div>

@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Repeat, Settings2, Pencil } from 'lucide-react';
+import { Plus, Repeat, Settings2, Pencil, TrendingUp } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useForecasts } from '@/hooks/use-forecasts';
@@ -166,9 +166,12 @@ export function ForecastIndexPage() {
       <div>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Forecasts</h1>
-            <p className="text-muted-foreground">
-              Projected income, expenses, and savings for the period.
+            <h1 className="flex items-center gap-3 text-3xl font-bold">
+              <TrendingUp className="h-7 w-7" />
+              Forecasts
+            </h1>
+            <p className="mt-1 text-muted-foreground">
+              Projected income, expenses, and savings for a scenario.
             </p>
           </div>
         </div>
@@ -186,9 +189,12 @@ export function ForecastIndexPage() {
     <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Forecasts</h1>
-          <p className="text-muted-foreground">
-            Projected income, expenses, and savings for the period.
+          <h1 className="flex items-center gap-3 text-3xl font-bold">
+            <TrendingUp className="h-7 w-7" />
+            Forecasts
+          </h1>
+          <p className="mt-1 text-muted-foreground">
+            Projected income, expenses, and savings for {activeScenario.name}.
           </p>
         </div>
         <div className="flex w-full gap-2 sm:w-auto">

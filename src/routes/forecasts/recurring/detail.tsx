@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select';
 import { CategorySelect } from '@/components/category-select';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
@@ -207,7 +207,8 @@ export function RecurringDetailPage() {
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{rule.description}</h1>
+            <RefreshCw className="h-7 w-7" />
+            <h1 className="text-3xl font-bold">{rule.description}</h1>
             {rule.type === 'income' ? (
               <Badge variant="success">Income</Badge>
             ) : rule.type === 'savings' ? (
@@ -216,7 +217,7 @@ export function RecurringDetailPage() {
               <Badge variant="destructive">Expense</Badge>
             )}
           </div>
-          <p className="text-muted-foreground">{CADENCE_LABELS[rule.cadence]}</p>
+          <p className="mt-1 text-muted-foreground">{CADENCE_LABELS[rule.cadence]}</p>
         </div>
         <div
           className={`text-2xl font-bold ${

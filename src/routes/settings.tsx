@@ -13,9 +13,9 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Pencil, Trash2, Plus, AlertTriangle, Download, Check } from 'lucide-react';
+import { Pencil, Trash2, Plus, AlertTriangle, Download, Upload, Check, Settings } from 'lucide-react';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
-import { exportAllData, importAllData, resetDatabase, fullReset } from '@/lib/db';
+import { exportAllData, importAllData, fullReset } from '@/lib/db';
 import { formatCents, formatDate, today } from '@/lib/utils';
 import {
   validateImport,
@@ -31,7 +31,7 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [confirmingClear, setConfirmingClear] = useState<'data' | 'full' | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [exportWarningOpen, setExportWarningOpen] = useState(false);
   const [lastImportTime, setLastImportTime] = useState(0);
   const [importPreviewOpen, setImportPreviewOpen] = useState(false);
@@ -152,24 +152,9 @@ export function SettingsPage() {
     setImportSuccess(false);
   };
 
-  const handleResetData = async () => {
-    if (confirmingClear !== 'data') {
-      setConfirmingClear('data');
-      return;
-    }
-
-    try {
-      await resetDatabase();
-      navigate('/landing');
-    } catch (error) {
-      console.error('Reset failed:', error);
-      showMessage('error', 'Reset failed. Please try again.');
-    }
-  };
-
-  const handleFullReset = async () => {
-    if (confirmingClear !== 'full') {
-      setConfirmingClear('full');
+  const handleDeleteAll = async () => {
+    if (!confirmingDelete) {
+      setConfirmingDelete(true);
       return;
     }
 
@@ -177,8 +162,8 @@ export function SettingsPage() {
       await fullReset();
       navigate('/landing');
     } catch (error) {
-      console.error('Full reset failed:', error);
-      showMessage('error', 'Reset failed. Please try again.');
+      console.error('Delete failed:', error);
+      showMessage('error', 'Delete failed. Please try again.');
     }
   };
 
@@ -252,8 +237,11 @@ export function SettingsPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold">Settings</h1>
-      <p className="text-muted-foreground">Manage your data and preferences.</p>
+      <h1 className="flex items-center gap-3 text-3xl font-bold">
+        <Settings className="h-7 w-7" />
+        Settings
+      </h1>
+      <p className="mt-1 text-muted-foreground">Manage your data and preferences.</p>
 
       {message && (
         <div
@@ -290,6 +278,7 @@ export function SettingsPage() {
             <p className="text-sm text-muted-foreground">Download all your budget data as JSON.</p>
           </div>
           <Button variant="outline" onClick={handleExportClick} className="w-full sm:w-auto">
+            <Upload className="h-4 w-4" />
             Export
           </Button>
         </div>
@@ -300,6 +289,7 @@ export function SettingsPage() {
             <p className="text-sm text-muted-foreground">Restore from a JSON backup file.</p>
           </div>
           <Button variant="outline" onClick={handleImportClick} className="w-full sm:w-auto">
+            <Download className="h-4 w-4" />
             Import
           </Button>
           <input
@@ -313,34 +303,18 @@ export function SettingsPage() {
 
         <div className="flex flex-col gap-3 rounded-lg border border-destructive/50 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="font-medium text-destructive">Reset Data</h3>
-            <p className="text-sm text-muted-foreground">Clear all budget data but keep preferences.</p>
+            <h3 className="font-medium text-destructive">Delete All Data</h3>
+            <p className="text-sm text-muted-foreground">Permanently delete all data and start fresh.</p>
           </div>
           <div className="flex gap-2">
-            {confirmingClear === 'data' && (
-              <Button variant="outline" onClick={() => setConfirmingClear(null)}>
+            {confirmingDelete && (
+              <Button variant="outline" onClick={() => setConfirmingDelete(false)}>
                 Cancel
               </Button>
             )}
-            <Button variant="destructive" onClick={handleResetData}>
-              {confirmingClear === 'data' ? 'Confirm Reset' : 'Reset Data'}
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3 rounded-lg border border-destructive/50 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 className="font-medium text-destructive">Full Reset</h3>
-            <p className="text-sm text-muted-foreground">Clear all data including preferences.</p>
-          </div>
-          <div className="flex gap-2">
-            {confirmingClear === 'full' && (
-              <Button variant="outline" onClick={() => setConfirmingClear(null)}>
-                Cancel
-              </Button>
-            )}
-            <Button variant="destructive" onClick={handleFullReset}>
-              {confirmingClear === 'full' ? 'Confirm Full Reset' : 'Full Reset'}
+            <Button variant="destructive" onClick={handleDeleteAll}>
+              <Trash2 className="h-4 w-4" />
+              {confirmingDelete ? 'Confirm Delete' : 'Delete All'}
             </Button>
           </div>
         </div>

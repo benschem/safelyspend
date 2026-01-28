@@ -20,7 +20,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Pencil, Trash2, Check, X, Upload, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Download, AlertTriangle, Receipt } from 'lucide-react';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
 import { useCategoryRules } from '@/hooks/use-category-rules';
@@ -359,12 +359,15 @@ export function TransactionsIndexPage() {
     <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Transactions</h1>
-          <p className="text-muted-foreground">Actual income, expenses, and savings.</p>
+          <h1 className="flex items-center gap-3 text-3xl font-bold">
+            <Receipt className="h-7 w-7" />
+            Transactions
+          </h1>
+          <p className="mt-1 text-muted-foreground">Actual income, expenses, and savings.</p>
         </div>
         <div className="flex w-full gap-2 sm:w-auto">
           <Button variant="secondary" onClick={handleImportClick} className="flex-1 sm:flex-none">
-            <Upload className="h-4 w-4" />
+            <Download className="h-4 w-4" />
             Import CSV
           </Button>
           <Button onClick={() => setAddDialogOpen(true)} className="flex-1 sm:flex-none">
