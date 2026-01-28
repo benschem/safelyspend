@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown, Search } from 'lucide-react';
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -31,6 +31,7 @@ interface DataTableProps<TData, TValue> {
   pageSize?: number;
   showPagination?: boolean;
   footer?: ReactNode;
+  filterSlot?: ReactNode;
 }
 
 export function DataTable<TData, TValue>({
@@ -41,6 +42,7 @@ export function DataTable<TData, TValue>({
   pageSize = 10,
   showPagination = true,
   footer,
+  filterSlot,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -67,16 +69,22 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      {searchKey && (
-        <div className="flex items-center">
-          <Input
-            placeholder={searchPlaceholder}
-            value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ''}
-            onChange={(event) =>
-              table.getColumn(searchKey)?.setFilterValue(event.target.value)
-            }
-            className="max-w-sm"
-          />
+      {(searchKey || filterSlot) && (
+        <div className="flex flex-wrap items-center gap-3">
+          {searchKey && (
+            <div className="relative w-64">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder={searchPlaceholder}
+                value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ''}
+                onChange={(event) =>
+                  table.getColumn(searchKey)?.setFilterValue(event.target.value)
+                }
+                className="pl-9"
+              />
+            </div>
+          )}
+          {filterSlot}
         </div>
       )}
       <div className="rounded-md border overflow-x-auto">
@@ -179,20 +187,24 @@ interface SortableHeaderProps {
 
 export function SortableHeader({ column, children, className }: SortableHeaderProps) {
   const sorted = column.getIsSorted();
+  const isRightAligned = className?.includes('justify-end');
+
   return (
-    <Button
-      variant="ghost"
-      onClick={() => column.toggleSorting(sorted === 'asc')}
-      className={`-ml-4 h-8 ${className ?? ''}`}
-    >
-      {children}
-      {sorted === 'asc' ? (
-        <ArrowUp className="ml-2 h-4 w-4" />
-      ) : sorted === 'desc' ? (
-        <ArrowDown className="ml-2 h-4 w-4" />
-      ) : (
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      )}
-    </Button>
+    <div className={isRightAligned ? 'flex justify-end' : ''}>
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(sorted === 'asc')}
+        className={`h-8 ${isRightAligned ? '-mr-4' : '-ml-4'} ${className ?? ''}`}
+      >
+        {children}
+        {sorted === 'asc' ? (
+          <ArrowUp className="ml-2 h-4 w-4" />
+        ) : sorted === 'desc' ? (
+          <ArrowDown className="ml-2 h-4 w-4" />
+        ) : (
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        )}
+      </Button>
+    </div>
   );
 }
