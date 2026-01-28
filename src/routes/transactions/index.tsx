@@ -11,13 +11,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Pencil, Trash2, Check, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Upload, AlertTriangle } from 'lucide-react';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
+import { useCategoryRules } from '@/hooks/use-category-rules';
 import { CategorySelect } from '@/components/category-select';
 import { DateFilter } from '@/components/date-filter';
 import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
+import { UpImportDialog } from '@/components/up-import-dialog';
 import { formatCents, formatDate, parseCentsFromInput } from '@/lib/utils';
 import type { Transaction, TransactionType } from '@/lib/types';
 
@@ -37,12 +47,30 @@ export function TransactionsIndexPage() {
 
   const { transactions, updateTransaction, deleteTransaction } = useTransactions(queryStartDate, queryEndDate);
   const { categories, activeCategories } = useCategories();
+  const { rules: categoryRules } = useCategoryRules();
 
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [filterCategory, setFilterCategory] = useState<CategoryFilter>('all');
 
   // Add dialog state
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+
+  // Import dialog state
+  const [importWarningOpen, setImportWarningOpen] = useState(false);
+  const [upImportOpen, setUpImportOpen] = useState(false);
+
+  const handleImportClick = useCallback(() => {
+    if (categoryRules.length === 0) {
+      setImportWarningOpen(true);
+    } else {
+      setUpImportOpen(true);
+    }
+  }, [categoryRules.length]);
+
+  const handleSkipWarning = useCallback(() => {
+    setImportWarningOpen(false);
+    setUpImportOpen(true);
+  }, []);
 
   // Inline editing state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -334,10 +362,16 @@ export function TransactionsIndexPage() {
           <h1 className="text-2xl font-bold">Transactions</h1>
           <p className="text-muted-foreground">Actual income, expenses, and savings.</p>
         </div>
-        <Button onClick={() => setAddDialogOpen(true)} className="w-full sm:w-auto">
-          <Plus className="h-4 w-4" />
-          Add Transaction
-        </Button>
+        <div className="flex w-full gap-2 sm:w-auto">
+          <Button variant="secondary" onClick={handleImportClick} className="flex-1 sm:flex-none">
+            <Upload className="h-4 w-4" />
+            Import CSV
+          </Button>
+          <Button onClick={() => setAddDialogOpen(true)} className="flex-1 sm:flex-none">
+            <Plus className="h-4 w-4" />
+            Add Transaction
+          </Button>
+        </div>
       </div>
 
       {/* Date filter */}
@@ -409,6 +443,35 @@ export function TransactionsIndexPage() {
         onOpenChange={setAddDialogOpen}
         transaction={null}
       />
+
+      <UpImportDialog open={upImportOpen} onOpenChange={setUpImportOpen} />
+
+      {/* Warning dialog for no category rules */}
+      <Dialog open={importWarningOpen} onOpenChange={setImportWarningOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              No Import Rules Set
+            </DialogTitle>
+            <DialogDescription>
+              You haven&apos;t set up any category import rules yet. Without rules, imported
+              transactions won&apos;t be automatically categorised.
+            </DialogDescription>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Would you like to set up rules first, or continue without auto-categorisation?
+          </p>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button variant="outline" onClick={() => setImportWarningOpen(false)} asChild>
+              <Link to="/categories/import-rules">Set Up Rules</Link>
+            </Button>
+            <Button onClick={handleSkipWarning}>
+              Continue Without Rules
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

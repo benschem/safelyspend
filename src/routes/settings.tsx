@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { UpImportDialog } from '@/components/up-import-dialog';
 import {
   Dialog,
   DialogContent,
@@ -33,7 +32,6 @@ export function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [confirmingClear, setConfirmingClear] = useState<'data' | 'full' | null>(null);
-  const [upImportOpen, setUpImportOpen] = useState(false);
   const [exportWarningOpen, setExportWarningOpen] = useState(false);
   const [lastImportTime, setLastImportTime] = useState(0);
   const [importPreviewOpen, setImportPreviewOpen] = useState(false);
@@ -420,24 +418,6 @@ export function SettingsPage() {
         </p>
       </section>
 
-      <Separator className="my-6" />
-
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold">Import Transactions</h2>
-
-        <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 className="font-medium">Import from Up Bank</h3>
-            <p className="text-sm text-muted-foreground">
-              Import transactions from an Up Bank CSV export.
-            </p>
-          </div>
-          <Button variant="outline" onClick={() => setUpImportOpen(true)} className="w-full sm:w-auto">
-            Import CSV
-          </Button>
-        </div>
-      </section>
-
       {/* Anchor Dialog */}
       <Dialog open={anchorDialogOpen} onOpenChange={setAnchorDialogOpen}>
         <DialogContent>
@@ -499,8 +479,6 @@ export function SettingsPage() {
           </div>
         </DialogContent>
       </Dialog>
-
-      <UpImportDialog open={upImportOpen} onOpenChange={setUpImportOpen} />
 
       {/* Export Warning Dialog */}
       <Dialog open={exportWarningOpen} onOpenChange={setExportWarningOpen}>
