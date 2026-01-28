@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -11,15 +12,30 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
-import { Pencil, Trash2, Plus } from 'lucide-react';
+import { Pencil, Trash2, Plus, AlertTriangle } from 'lucide-react';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { clearAllData } from '@/lib/demo-data';
 import { formatCents, formatDate, today } from '@/lib/utils';
+import {
+  CURRENT_DATA_VERSION,
+  validateImport,
+  getImportErrorMessage,
+} from '@/lib/import-schema';
 import type { BudgetData } from '@/lib/types';
 
-function getAllData(): BudgetData & { activeScenarioId: string | null } {
+// Rate limiting: minimum 5 seconds between imports
+const MIN_IMPORT_INTERVAL_MS = 5000;
+
+function getAllData(): BudgetData & {
+  activeScenarioId: string | null;
+  version: number;
+  exportedAt: string;
+} {
   return {
+    version: CURRENT_DATA_VERSION,
+    exportedAt: new Date().toISOString(),
     scenarios: JSON.parse(localStorage.getItem('budget:scenarios') ?? '[]'),
     activeScenarioId: JSON.parse(localStorage.getItem('budget:activeScenarioId') ?? 'null'),
     categories: JSON.parse(localStorage.getItem('budget:categories') ?? '[]'),
@@ -55,6 +71,8 @@ export function SettingsPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [upImportOpen, setUpImportOpen] = useState(false);
+  const [exportWarningOpen, setExportWarningOpen] = useState(false);
+  const [lastImportTime, setLastImportTime] = useState(0);
 
   // Anchor management state
   const { anchors, addAnchor, updateAnchor, deleteAnchor } = useBalanceAnchors();
@@ -71,7 +89,12 @@ export function SettingsPage() {
     setTimeout(() => setMessage(null), 3000);
   };
 
-  const handleExport = () => {
+  const handleExportClick = () => {
+    setExportWarningOpen(true);
+  };
+
+  const handleExportConfirm = () => {
+    setExportWarningOpen(false);
     const data = getAllData();
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
@@ -87,6 +110,12 @@ export function SettingsPage() {
   };
 
   const handleImportClick = () => {
+    // Rate limiting check
+    const now = Date.now();
+    if (now - lastImportTime < MIN_IMPORT_INTERVAL_MS) {
+      showMessage('error', 'Please wait a few seconds before importing again.');
+      return;
+    }
     fileInputRef.current?.click();
   };
 
@@ -94,24 +123,29 @@ export function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Update rate limiting timestamp
+    setLastImportTime(Date.now());
+
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const data = JSON.parse(event.target?.result as string);
+        const rawData = JSON.parse(event.target?.result as string);
 
-        // Basic validation
-        const requiredKeys = ['scenarios', 'categories', 'transactions'];
-        const missingKeys = requiredKeys.filter((key) => !Array.isArray(data[key]));
-        if (missingKeys.length > 0) {
-          showMessage('error', `Invalid file: missing ${missingKeys.join(', ')}`);
-          return;
-        }
+        // Validate against schema (includes prototype pollution protection)
+        const validatedData = validateImport(rawData);
 
-        setAllData(data);
+        // Cast to BudgetData - schema validation ensures type safety
+        setAllData(validatedData as unknown as BudgetData & { activeScenarioId?: string | null });
         showMessage('success', 'Data imported successfully. Refreshing...');
         setTimeout(() => window.location.reload(), 1000);
-      } catch {
-        showMessage('error', 'Failed to parse JSON file.');
+      } catch (err) {
+        if (err instanceof z.ZodError) {
+          showMessage('error', getImportErrorMessage(err));
+        } else if (err instanceof SyntaxError) {
+          showMessage('error', 'Failed to parse JSON file.');
+        } else {
+          showMessage('error', 'Import failed: Invalid data format.');
+        }
       }
     };
     reader.readAsText(file);
@@ -237,7 +271,7 @@ export function SettingsPage() {
             <h3 className="font-medium">Export Data</h3>
             <p className="text-sm text-muted-foreground">Download all your budget data as JSON.</p>
           </div>
-          <Button variant="outline" onClick={handleExport} className="w-full sm:w-auto">
+          <Button variant="outline" onClick={handleExportClick} className="w-full sm:w-auto">
             Export
           </Button>
         </div>
@@ -440,6 +474,37 @@ export function SettingsPage() {
       </Dialog>
 
       <UpImportDialog open={upImportOpen} onOpenChange={setUpImportOpen} />
+
+      {/* Export Warning Dialog */}
+      <Dialog open={exportWarningOpen} onOpenChange={setExportWarningOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Security Notice
+            </DialogTitle>
+            <DialogDescription>
+              The exported file will contain all your financial data in an unencrypted format.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <p>Please keep in mind:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Store the file in a secure location</li>
+              <li>Do not share it via email or upload to cloud storage</li>
+              <li>Delete the file after restoring from backup</li>
+            </ul>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExportWarningOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleExportConfirm}>
+              Download Export
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
