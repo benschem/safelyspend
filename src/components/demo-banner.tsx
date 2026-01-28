@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Alert } from '@/components/ui/alert';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,19 +24,23 @@ export function DemoBanner() {
 
   return (
     <>
-      <div className="flex items-center justify-between bg-amber-100 px-4 py-2 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">
-        <span className="text-sm font-medium">
-          You&apos;re exploring demo data
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setDialogOpen(true)}
-          className="border-amber-600 bg-transparent text-amber-900 hover:bg-amber-200 dark:border-amber-600 dark:text-amber-200 dark:hover:bg-amber-800"
-        >
-          Start your own budget
-        </Button>
-      </div>
+      <Alert
+        variant="warning"
+        hideIcon
+        className="items-center rounded-none border-x-0 border-t-0 py-2"
+        action={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setDialogOpen(true)}
+            className="border-yellow-600 bg-transparent hover:bg-yellow-200 dark:border-yellow-500 dark:hover:bg-yellow-900"
+          >
+            Start your own budget
+          </Button>
+        }
+      >
+        <span className="font-medium">You&apos;re exploring demo data</span>
+      </Alert>
 
       <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <AlertDialogContent>

@@ -1,5 +1,6 @@
 import { type ReactNode, type ReactElement, Children, cloneElement, isValidElement } from 'react';
 import { Label } from '@/components/ui/label';
+import { Alert } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 
 interface FieldState {
@@ -85,11 +86,8 @@ interface FormErrorProps {
 export function FormError({ error }: FormErrorProps) {
   if (!error) return null;
   return (
-    <div
-      className="rounded-lg bg-destructive/10 p-3 text-sm font-medium text-destructive"
-      role="alert"
-    >
+    <Alert variant="destructive" className="font-medium">
       {error}
-    </div>
+    </Alert>
   );
 }
