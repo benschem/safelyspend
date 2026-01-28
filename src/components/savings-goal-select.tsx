@@ -27,9 +27,9 @@ export function SavingsGoalSelect({
   );
 
   const handleCreateNew = useCallback(
-    (name: string) => {
+    async (name: string) => {
       // Create a basic savings goal - user can edit details later
-      const newGoal = addSavingsGoal({
+      const newGoal = await addSavingsGoal({
         name,
         targetAmountCents: 0,
       });

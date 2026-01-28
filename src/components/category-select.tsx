@@ -29,8 +29,8 @@ export function CategorySelect({
   );
 
   const handleCreateNew = useCallback(
-    (name: string) => {
-      const newCategory = addCategory({ name, isArchived: false });
+    async (name: string) => {
+      const newCategory = await addCategory({ name, isArchived: false });
       return newCategory.id;
     },
     [addCategory],

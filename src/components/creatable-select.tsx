@@ -13,7 +13,7 @@ interface CreatableSelectProps {
   options: SelectOption[];
   value: string;
   onChange: (value: string) => void;
-  onCreateNew?: (name: string) => string; // Returns the new item's value/id
+  onCreateNew?: (name: string) => string | Promise<string>; // Returns the new item's value/id
   placeholder?: string;
   allowNone?: boolean;
   noneLabel?: string;
@@ -72,9 +72,10 @@ export function CreatableSelect({
     [onChange],
   );
 
-  const handleCreateNew = useCallback(() => {
+  const handleCreateNew = useCallback(async () => {
     if (onCreateNew && search.trim()) {
-      const newId = onCreateNew(search.trim());
+      const result = onCreateNew(search.trim());
+      const newId = result instanceof Promise ? await result : result;
       onChange(newId);
       setSearch('');
       setOpen(false);
