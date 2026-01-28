@@ -14,7 +14,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Pencil, Trash2, Plus, AlertTriangle } from 'lucide-react';
+import { Pencil, Trash2, Plus, AlertTriangle, Download, Check } from 'lucide-react';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { clearAllData } from '@/lib/demo-data';
 import { formatCents, formatDate, today } from '@/lib/utils';
@@ -22,6 +22,7 @@ import {
   CURRENT_DATA_VERSION,
   validateImport,
   getImportErrorMessage,
+  type ValidatedBudgetData,
 } from '@/lib/import-schema';
 import type { BudgetData } from '@/lib/types';
 
@@ -73,6 +74,12 @@ export function SettingsPage() {
   const [upImportOpen, setUpImportOpen] = useState(false);
   const [exportWarningOpen, setExportWarningOpen] = useState(false);
   const [lastImportTime, setLastImportTime] = useState(0);
+  const [importPreviewOpen, setImportPreviewOpen] = useState(false);
+  const [pendingImport, setPendingImport] = useState<{
+    data: ValidatedBudgetData;
+    fileName: string;
+  } | null>(null);
+  const [importSuccess, setImportSuccess] = useState(false);
 
   // Anchor management state
   const { anchors, addAnchor, updateAnchor, deleteAnchor } = useBalanceAnchors();
@@ -126,6 +133,7 @@ export function SettingsPage() {
     // Update rate limiting timestamp
     setLastImportTime(Date.now());
 
+    const fileName = file.name;
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -134,10 +142,9 @@ export function SettingsPage() {
         // Validate against schema (includes prototype pollution protection)
         const validatedData = validateImport(rawData);
 
-        // Cast to BudgetData - schema validation ensures type safety
-        setAllData(validatedData as unknown as BudgetData & { activeScenarioId?: string | null });
-        showMessage('success', 'Data imported successfully. Refreshing...');
-        setTimeout(() => window.location.reload(), 1000);
+        // Show preview dialog instead of immediately importing
+        setPendingImport({ data: validatedData, fileName });
+        setImportPreviewOpen(true);
       } catch (err) {
         if (err instanceof z.ZodError) {
           showMessage('error', getImportErrorMessage(err));
@@ -152,6 +159,25 @@ export function SettingsPage() {
 
     // Reset input so the same file can be selected again
     e.target.value = '';
+  };
+
+  const handleImportConfirm = () => {
+    if (!pendingImport) return;
+
+    // Cast to BudgetData - schema validation ensures type safety
+    setAllData(pendingImport.data as unknown as BudgetData & { activeScenarioId?: string | null });
+
+    // Show success state in dialog before reload
+    setImportSuccess(true);
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+  };
+
+  const handleImportCancel = () => {
+    setImportPreviewOpen(false);
+    setPendingImport(null);
+    setImportSuccess(false);
   };
 
   const handleClear = () => {
@@ -503,6 +529,89 @@ export function SettingsPage() {
               Download Export
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Preview Dialog */}
+      <Dialog open={importPreviewOpen} onOpenChange={(open) => !open && !importSuccess && handleImportCancel()}>
+        <DialogContent>
+          {importSuccess ? (
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="rounded-full bg-green-100 p-3 mb-4">
+                <Check className="h-8 w-8 text-green-600" />
+              </div>
+              <h3 className="text-lg font-semibold mb-1">Import Successful</h3>
+              <p className="text-sm text-muted-foreground">Refreshing page...</p>
+            </div>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Download className="h-5 w-5 text-blue-500" />
+                  Import Data
+                </DialogTitle>
+                <DialogDescription>
+                  Review the data to be imported from{' '}
+                  <span className="font-medium">{pendingImport?.fileName}</span>
+                </DialogDescription>
+              </DialogHeader>
+
+              {pendingImport && (
+                <div className="space-y-4">
+                  <div className="rounded-lg border bg-muted/50 p-4">
+                    <h4 className="font-medium mb-2">Data Summary</h4>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                      <div className="text-muted-foreground">Scenarios:</div>
+                      <div>{pendingImport.data.scenarios.length}</div>
+                      <div className="text-muted-foreground">Categories:</div>
+                      <div>{pendingImport.data.categories.length}</div>
+                      <div className="text-muted-foreground">Transactions:</div>
+                      <div>{pendingImport.data.transactions.length}</div>
+                      <div className="text-muted-foreground">Budget Rules:</div>
+                      <div>{pendingImport.data.budgetRules.length}</div>
+                      <div className="text-muted-foreground">Forecast Rules:</div>
+                      <div>{pendingImport.data.forecastRules.length}</div>
+                      <div className="text-muted-foreground">Forecast Events:</div>
+                      <div>{pendingImport.data.forecastEvents.length}</div>
+                      <div className="text-muted-foreground">Savings Goals:</div>
+                      <div>{pendingImport.data.savingsGoals.length}</div>
+                      {pendingImport.data.balanceAnchors && (
+                        <>
+                          <div className="text-muted-foreground">Balance Anchors:</div>
+                          <div>{pendingImport.data.balanceAnchors.length}</div>
+                        </>
+                      )}
+                      {pendingImport.data.categoryRules && (
+                        <>
+                          <div className="text-muted-foreground">Category Rules:</div>
+                          <div>{pendingImport.data.categoryRules.length}</div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                    <div className="flex gap-2">
+                      <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                      <p>
+                        This will <strong>replace all existing data</strong>. Make sure you have a backup
+                        if you need to preserve your current data.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <DialogFooter>
+                <Button variant="outline" onClick={handleImportCancel}>
+                  Cancel
+                </Button>
+                <Button onClick={handleImportConfirm}>
+                  Import Data
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
