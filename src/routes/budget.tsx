@@ -3,6 +3,7 @@ import { Link, useOutletContext } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Alert } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -11,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Pencil, Check, X, Trash2, Plus, FolderTree } from 'lucide-react';
+import { Pencil, Check, X, Trash2, Plus, Target, CircleDollarSign, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
@@ -38,7 +39,12 @@ interface BudgetRow {
   projectedRemaining: number;
   spentPercent: number;
   projectedPercent: number;
-  status: 'over' | 'projected-over' | 'warning' | 'good' | 'untracked';
+  periodProgress: number; // 0-100, how far through the period we are
+  expectedSpend: number; // What we should have spent by now
+  burnRate: number; // spent / expectedSpend * 100 (100 = on pace)
+  daysElapsed: number;
+  totalDays: number;
+  status: 'over' | 'overspending' | 'watch' | 'good' | 'untracked';
   rule: BudgetRule | null;
 }
 
@@ -57,6 +63,27 @@ const CADENCE_FULL_LABELS: Record<Cadence, string> = {
   quarterly: 'Quarterly',
   yearly: 'Yearly',
 };
+
+/**
+ * Get period progress info for a given cadence
+ */
+function getPeriodProgress(cadence: Cadence): { daysElapsed: number; totalDays: number; progress: number } {
+  const range = getCurrentPeriodRange(cadence);
+  const start = new Date(range.start);
+  const end = new Date(range.end);
+  const now = new Date();
+
+  // Set to start of day for accurate day counting
+  now.setHours(0, 0, 0, 0);
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+
+  const totalDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  const daysElapsed = Math.round((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  const progress = Math.min((daysElapsed / totalDays) * 100, 100);
+
+  return { daysElapsed, totalDays, progress };
+}
 
 /**
  * Get the current period date range for a given cadence
@@ -106,27 +133,6 @@ function getCurrentPeriodRange(cadence: Cadence): { start: string; end: string }
 }
 
 /**
- * Get display label for current period (full version for header)
- */
-function getCurrentPeriodLabel(cadence: Cadence): string {
-  const now = new Date();
-  switch (cadence) {
-    case 'weekly':
-      return 'This week';
-    case 'fortnightly':
-      return 'This fortnight';
-    case 'monthly':
-      return now.toLocaleDateString('en-AU', { month: 'long' });
-    case 'quarterly': {
-      const quarter = Math.floor(now.getMonth() / 3) + 1;
-      return `Q${quarter} ${now.getFullYear()}`;
-    }
-    case 'yearly':
-      return String(now.getFullYear());
-  }
-}
-
-/**
  * Get remaining period range (from tomorrow to end of period)
  */
 function getRemainingPeriodRange(cadence: Cadence): { start: string; end: string } {
@@ -137,44 +143,40 @@ function getRemainingPeriodRange(cadence: Cadence): { start: string; end: string
 }
 
 /**
- * Get short period label for spent column
+ * Get status based on burn rate (spending pace vs period progress)
+ * - over: Already spent more than budget
+ * - overspending: Spending 20%+ faster than period allows
+ * - watch: Spending slightly faster than period allows
+ * - good: On pace or under
  */
-function getShortPeriodLabel(cadence: Cadence): string {
-  switch (cadence) {
-    case 'weekly':
-      return 'this week';
-    case 'fortnightly':
-      return 'this fortnight';
-    case 'monthly':
-      return 'this month';
-    case 'quarterly':
-      return 'this quarter';
-    case 'yearly':
-      return 'this year';
-  }
-}
-
-function getStatus(spentPercent: number, projectedPercent: number): 'over' | 'projected-over' | 'warning' | 'good' {
+function getStatus(spentPercent: number, burnRate: number): 'over' | 'overspending' | 'watch' | 'good' {
   if (spentPercent >= 100) return 'over';
-  if (projectedPercent >= 100) return 'projected-over';
-  if (projectedPercent >= 75) return 'warning';
+  if (burnRate > 120) return 'overspending';
+  if (burnRate > 100) return 'watch';
   return 'good';
 }
 
-function getSpentBarColor(spentPercent: number, projectedPercent: number): string {
-  if (spentPercent >= 100) return 'bg-red-500';
-  if (projectedPercent >= 100) return 'bg-amber-500';
-  if (projectedPercent >= 75) return 'bg-yellow-500';
-  return 'bg-green-500';
+function getSpentBarColor(status: 'over' | 'overspending' | 'watch' | 'good' | 'untracked'): string {
+  switch (status) {
+    case 'over':
+      return 'bg-red-500';
+    case 'overspending':
+      return 'bg-amber-500';
+    case 'watch':
+      return 'bg-yellow-500';
+    case 'good':
+    case 'untracked':
+      return 'bg-green-500';
+  }
 }
 
-function getStatusTextColor(status: 'over' | 'projected-over' | 'warning' | 'good' | 'untracked'): string {
+function getStatusTextColor(status: 'over' | 'overspending' | 'watch' | 'good' | 'untracked'): string {
   switch (status) {
     case 'over':
       return 'text-red-600';
-    case 'projected-over':
+    case 'overspending':
       return 'text-amber-600';
-    case 'warning':
+    case 'watch':
       return 'text-yellow-600';
     case 'good':
       return 'text-green-600';
@@ -316,9 +318,15 @@ export function BudgetPage() {
       const spentPercent = budgetAmount > 0 ? (spent / budgetAmount) * 100 : 0;
       const projectedPercent = budgetAmount > 0 ? (projectedTotal / budgetAmount) * 100 : 0;
 
+      // Calculate period progress and burn rate
+      const periodInfo = cadence ? getPeriodProgress(cadence) : { daysElapsed: 1, totalDays: 1, progress: 100 };
+      const expectedSpend = budgetAmount * (periodInfo.progress / 100);
+      // Burn rate: how fast we're spending vs expected pace (100 = exactly on pace)
+      const burnRate = expectedSpend > 0 ? (spent / expectedSpend) * 100 : (spent > 0 ? 200 : 0);
+
       const status: BudgetRow['status'] = !rule
         ? 'untracked'
-        : getStatus(spentPercent, projectedPercent);
+        : getStatus(spentPercent, burnRate);
 
       return {
         id: category.id,
@@ -332,36 +340,44 @@ export function BudgetPage() {
         projectedRemaining,
         spentPercent,
         projectedPercent,
+        periodProgress: periodInfo.progress,
+        expectedSpend,
+        burnRate,
+        daysElapsed: periodInfo.daysElapsed,
+        totalDays: periodInfo.totalDays,
         status,
         rule,
       };
     });
   }, [activeCategories, getRuleForCategory, categorySpending, categoryForecasts]);
 
-  // Sort: over first, then projected-over, then warning, then good, then untracked
+  // Sort: over first, then overspending, then watch, then good, then untracked
   const sortedRows = useMemo(() => {
-    const statusOrder = { over: 0, 'projected-over': 1, warning: 2, good: 3, untracked: 4 };
+    const statusOrder = { over: 0, overspending: 1, watch: 2, good: 3, untracked: 4 };
     return [...allRows].sort((a, b) => {
       const orderDiff = statusOrder[a.status] - statusOrder[b.status];
       if (orderDiff !== 0) return orderDiff;
-      // Within same status, sort by projected percent descending
-      return b.projectedPercent - a.projectedPercent;
+      // Within same status, sort by burn rate descending
+      return b.burnRate - a.burnRate;
     });
   }, [allRows]);
 
   // Calculate summary stats
   const summary = useMemo(() => {
     const tracked = allRows.filter((r) => r.rule);
+    const untracked = allRows.filter((r) => !r.rule);
     const totalSpent = tracked.reduce((sum, r) => sum + r.spent, 0);
     const totalForecasted = tracked.reduce((sum, r) => sum + r.forecasted, 0);
     const totalProjected = totalSpent + totalForecasted;
     const totalBudget = tracked.reduce((sum, r) => sum + r.budgetAmount, 0);
     const totalProjectedRemaining = totalBudget - totalProjected;
     const overCount = tracked.filter((r) => r.status === 'over').length;
-    const projectedOverCount = tracked.filter((r) => r.status === 'projected-over').length;
-    const warningCount = tracked.filter((r) => r.status === 'warning').length;
+    const overspendingCount = tracked.filter((r) => r.status === 'overspending').length;
+    const watchCount = tracked.filter((r) => r.status === 'watch').length;
     const goodCount = tracked.filter((r) => r.status === 'good').length;
-    const untrackedCount = allRows.filter((r) => !r.rule).length;
+    const untrackedCount = untracked.length;
+    // Sum spending on untracked categories (use monthly as reference period)
+    const untrackedSpent = untracked.reduce((sum, r) => sum + r.spent, 0);
 
     return {
       totalSpent,
@@ -370,10 +386,11 @@ export function BudgetPage() {
       totalBudget,
       totalProjectedRemaining,
       overCount,
-      projectedOverCount,
-      warningCount,
+      overspendingCount,
+      watchCount,
       goodCount,
       untrackedCount,
+      untrackedSpent,
       trackedCount: tracked.length,
     };
   }, [allRows]);
@@ -447,9 +464,9 @@ export function BudgetPage() {
               className={`h-2 w-2 rounded-full ${
                 row.original.status === 'over'
                   ? 'bg-red-500'
-                  : row.original.status === 'projected-over'
+                  : row.original.status === 'overspending'
                     ? 'bg-amber-500'
-                    : row.original.status === 'warning'
+                    : row.original.status === 'watch'
                       ? 'bg-yellow-500'
                       : row.original.status === 'good'
                         ? 'bg-green-500'
@@ -469,18 +486,19 @@ export function BudgetPage() {
         ),
         cell: ({ row }) => {
           const budgetRow = row.original;
-          const periodLabel = budgetRow.cadence ? getShortPeriodLabel(budgetRow.cadence) : 'this month';
+          const dayLabel = budgetRow.cadence
+            ? `Day ${budgetRow.daysElapsed}/${budgetRow.totalDays}`
+            : '';
           return (
             <div className="text-right">
               <div className="font-mono">{formatCents(row.getValue('spent'))}</div>
-              {budgetRow.forecasted > 0 && (
+              {budgetRow.forecasted > 0 ? (
                 <div className="text-xs text-muted-foreground">
                   +{formatCents(budgetRow.forecasted)} forecast
                 </div>
-              )}
-              {budgetRow.forecasted === 0 && (
-                <div className="text-xs text-muted-foreground">{periodLabel}</div>
-              )}
+              ) : dayLabel ? (
+                <div className="text-xs text-muted-foreground">{dayLabel}</div>
+              ) : null}
             </div>
           );
         },
@@ -575,7 +593,7 @@ export function BudgetPage() {
         },
       },
       {
-        accessorKey: 'projectedPercent',
+        accessorKey: 'spentPercent',
         header: ({ column }) => <SortableHeader column={column}>Progress</SortableHeader>,
         cell: ({ row }) => {
           const budgetRow = row.original;
@@ -585,67 +603,39 @@ export function BudgetPage() {
 
           const spentPercent = Math.min(budgetRow.spentPercent, 100);
           const forecastPercent = Math.min(budgetRow.projectedPercent, 100) - spentPercent;
-          const displayPercent = Math.round(budgetRow.projectedPercent);
-          const isOverBudget = budgetRow.projectedPercent >= 100;
-
-          // If over budget, show solid amber bar
-          if (isOverBudget) {
-            return (
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-full min-w-[80px] rounded-full bg-gray-200 dark:bg-gray-700">
-                  <div
-                    className={`h-2 rounded-full transition-all ${
-                      budgetRow.spentPercent >= 100 ? 'bg-red-500' : 'bg-amber-500'
-                    }`}
-                    style={{ width: '100%' }}
-                  />
-                </div>
-                <span className={`w-12 text-right text-sm ${getStatusTextColor(budgetRow.status)}`}>
-                  {displayPercent}%
-                </span>
-              </div>
-            );
-          }
-
-          // Normal case: two-tone bar (spent solid, forecast striped)
-          const baseColor = getSpentBarColor(budgetRow.spentPercent, budgetRow.projectedPercent);
-          // Extract color name for striped pattern (e.g., "bg-green-500" -> "green")
-          const colorMatch = baseColor.match(/bg-(\w+)-\d+/);
-          const colorName = colorMatch ? colorMatch[1] : 'green';
+          const displayPercent = Math.round(budgetRow.spentPercent);
+          const expectedPercent = budgetRow.periodProgress;
+          const baseColor = getSpentBarColor(budgetRow.status);
 
           return (
             <div className="flex items-center gap-2">
-              <div className="relative h-2 w-full min-w-[80px] overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                {/* Spent portion (solid) */}
+              <div className="relative w-full min-w-[80px]">
+                {/* Expected spend marker - triangle above the bar */}
                 <div
-                  className={`absolute left-0 h-2 transition-all ${baseColor} ${
-                    forecastPercent <= 0 ? 'rounded-full' : 'rounded-l-full'
-                  }`}
-                  style={{ width: `${spentPercent}%` }}
+                  className="absolute -top-1 h-0 w-0 border-x-[4px] border-t-[5px] border-x-transparent border-t-gray-500 dark:border-t-gray-400"
+                  style={{ left: `calc(${Math.min(expectedPercent, 100)}% - 4px)` }}
+                  title={`Day ${budgetRow.daysElapsed} of ${budgetRow.totalDays}`}
                 />
-                {/* Forecast portion (striped pattern) */}
-                {forecastPercent > 0 && (
+                {/* Progress bar */}
+                <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                  {/* Spent portion (solid) */}
                   <div
-                    className="absolute h-2 rounded-r-full transition-all"
-                    style={{
-                      left: `${spentPercent}%`,
-                      width: `${forecastPercent}%`,
-                      background: `repeating-linear-gradient(
-                        -45deg,
-                        var(--stripe-color),
-                        var(--stripe-color) 2px,
-                        transparent 2px,
-                        transparent 4px
-                      )`,
-                      // Set stripe color based on status
-                      ['--stripe-color' as string]:
-                        colorName === 'red' ? 'rgb(239 68 68)' :
-                        colorName === 'amber' ? 'rgb(245 158 11)' :
-                        colorName === 'yellow' ? 'rgb(234 179 8)' :
-                        'rgb(34 197 94)',
-                    }}
+                    className={`absolute left-0 h-2 transition-all ${baseColor} ${
+                      forecastPercent <= 0 ? 'rounded-full' : 'rounded-l-full'
+                    }`}
+                    style={{ width: `${spentPercent}%` }}
                   />
-                )}
+                  {/* Forecast portion (same color, transparent) */}
+                  {forecastPercent > 0 && (
+                    <div
+                      className={`absolute h-2 rounded-r-full transition-all ${baseColor} opacity-40`}
+                      style={{
+                        left: `${spentPercent}%`,
+                        width: `${forecastPercent}%`,
+                      }}
+                    />
+                  )}
+                </div>
               </div>
               <span className={`w-12 text-right text-sm ${getStatusTextColor(budgetRow.status)}`}>
                 {displayPercent}%
@@ -717,26 +707,21 @@ export function BudgetPage() {
     ],
   );
 
-  // Get current period label (use monthly as default for header)
-  const periodLabel = getCurrentPeriodLabel('monthly');
-
   if (!activeScenarioId || !activeScenario) {
     return (
       <div>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="flex items-center gap-3 text-3xl font-bold">
-              <FolderTree className="h-7 w-7" />
-              Budgets
-            </h1>
-            <p className="mt-1 text-muted-foreground">Track spending against your targets</p>
-          </div>
+        <div className="mb-20">
+          <h1 className="flex items-center gap-3 text-3xl font-bold">
+            <Target className="h-7 w-7" />
+            Budget
+          </h1>
+          <p className="mt-1 text-muted-foreground">Track spending against your targets</p>
         </div>
-        <div className="mt-6">
-          <ScenarioSelector />
-        </div>
-        <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
+        <div className="rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground">Select a scenario to view budgets.</p>
+          <Button asChild className="mt-4">
+            <Link to="/scenarios">Manage Scenarios</Link>
+          </Button>
         </div>
       </div>
     );
@@ -744,112 +729,98 @@ export function BudgetPage() {
 
   return (
     <div>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-20 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <FolderTree className="h-7 w-7" />
+            <Target className="h-7 w-7" />
             Budgets
           </h1>
           <p className="mt-1 text-muted-foreground">Track spending against your targets</p>
         </div>
-        <Button className="w-full sm:w-auto" onClick={() => setAddDialogOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Add Category
-        </Button>
+        <div className="flex items-center gap-4">
+          <ScenarioSelector />
+          <Button onClick={() => setAddDialogOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Add Category
+          </Button>
+        </div>
       </div>
 
-      <div className="mt-6">
-        <ScenarioSelector />
-      </div>
-
-      {/* Summary Card */}
+      {/* Summary Stats */}
       {summary.trackedCount > 0 && (
-        <div className="mt-6 rounded-lg border bg-card p-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">{periodLabel}</div>
-              <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-2xl font-bold">{formatCents(summary.totalSpent)}</span>
-                {summary.totalForecasted > 0 && (
-                  <span className="text-muted-foreground">
-                    +{formatCents(summary.totalForecasted)} forecast
-                  </span>
-                )}
-                <span className="text-muted-foreground">of {formatCents(summary.totalBudget)}</span>
-              </div>
+        <div className="mt-6 grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-lg border bg-card p-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CircleDollarSign className="h-4 w-4" />
+              Total Spent
             </div>
-            <div className="flex flex-wrap gap-4 text-sm">
-              {summary.overCount > 0 && (
-                <span className="text-red-600">{summary.overCount} over budget</span>
-              )}
-              {summary.projectedOverCount > 0 && (
-                <span className="text-amber-600">{summary.projectedOverCount} projected over</span>
-              )}
-              {summary.warningCount > 0 && (
-                <span className="text-yellow-600">{summary.warningCount} near limit</span>
-              )}
-              {summary.goodCount > 0 && (
-                <span className="text-green-600">{summary.goodCount} on track</span>
-              )}
-              {summary.untrackedCount > 0 && (
-                <span className="text-muted-foreground">{summary.untrackedCount} untracked</span>
-              )}
-            </div>
+            <p className="mt-1 text-xl font-bold">{formatCents(summary.totalSpent)}</p>
+            <p className="text-xs text-muted-foreground">across all current periods</p>
           </div>
-          <div className="mt-3 flex items-center gap-2">
-            <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-              {/* Spent portion */}
-              <div
-                className={`absolute left-0 h-2 transition-all ${
-                  summary.totalProjectedRemaining < 0
-                    ? summary.totalSpent >= summary.totalBudget
-                      ? 'bg-red-500'
-                      : 'bg-amber-500'
-                    : summary.totalProjected / summary.totalBudget >= 0.75
-                      ? 'bg-yellow-500'
-                      : 'bg-green-500'
-                } ${summary.totalForecasted <= 0 ? 'rounded-full' : 'rounded-l-full'}`}
-                style={{
-                  width: `${Math.min((summary.totalSpent / summary.totalBudget) * 100, 100)}%`,
-                }}
-              />
-              {/* Forecasted portion (striped) */}
-              {summary.totalForecasted > 0 && summary.totalProjectedRemaining >= 0 && (
-                <div
-                  className="absolute h-2 rounded-r-full transition-all"
-                  style={{
-                    left: `${Math.min((summary.totalSpent / summary.totalBudget) * 100, 100)}%`,
-                    width: `${Math.min((summary.totalForecasted / summary.totalBudget) * 100, 100 - (summary.totalSpent / summary.totalBudget) * 100)}%`,
-                    background: `repeating-linear-gradient(
-                      -45deg,
-                      ${summary.totalProjected / summary.totalBudget >= 0.75 ? 'rgb(234 179 8)' : 'rgb(34 197 94)'},
-                      ${summary.totalProjected / summary.totalBudget >= 0.75 ? 'rgb(234 179 8)' : 'rgb(34 197 94)'} 2px,
-                      transparent 2px,
-                      transparent 4px
-                    )`,
-                  }}
-                />
-              )}
+
+          <div className="rounded-lg border bg-card p-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <TrendingUp className="h-4 w-4" />
+              Total Budget
             </div>
-            <span
-              className={`text-sm font-medium ${
-                summary.totalProjectedRemaining >= 0 ? 'text-green-600' : 'text-red-600'
-              }`}
-            >
-              {summary.totalProjectedRemaining >= 0 ? '+' : ''}
-              {formatCents(summary.totalProjectedRemaining)} remaining
-              {summary.totalForecasted > 0 && ' (projected)'}
-            </span>
+            <p className="mt-1 text-xl font-bold">{formatCents(summary.totalBudget)}</p>
+            <p className="text-xs text-muted-foreground">{summary.trackedCount} categories tracked</p>
+          </div>
+
+          <div className="rounded-lg border bg-card p-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              {summary.totalProjectedRemaining >= 0 ? (
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+              )}
+              {summary.totalForecasted > 0 ? 'Projected' : 'Remaining'}
+            </div>
+            <p className={`mt-1 text-xl font-bold ${summary.totalProjectedRemaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCents(Math.abs(summary.totalProjectedRemaining))} {summary.totalProjectedRemaining >= 0 ? 'under' : 'over'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {summary.totalForecasted > 0 ? `incl. ${formatCents(summary.totalForecasted)} forecast` : 'budget remaining'}
+            </p>
+          </div>
+
+          <div className="rounded-lg border bg-card p-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CheckCircle2 className="h-4 w-4" />
+              Pace Check
+            </div>
+            <p className="mt-1 text-xl font-bold text-green-600">{summary.goodCount}/{summary.trackedCount} on track</p>
+            <p className="text-xs text-muted-foreground">
+              {[
+                summary.overCount > 0 && `${summary.overCount} over`,
+                summary.overspendingCount > 0 && `${summary.overspendingCount} fast`,
+                summary.watchCount > 0 && `${summary.watchCount} watch`,
+              ].filter(Boolean).join(', ') || 'all on pace'}
+            </p>
           </div>
         </div>
       )}
 
+      {/* Unbudgeted spending warning */}
+      {summary.untrackedSpent > 0 && (
+        <Alert variant="warning" className="mt-4">
+          <strong>{formatCents(summary.untrackedSpent)} unbudgeted spending</strong>
+          {' '}across {summary.untrackedCount} {summary.untrackedCount === 1 ? 'category' : 'categories'} without budgets
+        </Alert>
+      )}
+
       {activeCategories.length === 0 ? (
-        <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">No categories found.</p>
-          <Button asChild className="mt-4">
-            <Link to="/categories">Add your first category</Link>
-          </Button>
+        <div className="mt-8 space-y-4">
+          <Alert variant="info">
+            Budgets help you set spending limits for each category.
+            Create categories first, then come back here to set up your budget.
+          </Alert>
+          <div className="rounded-lg border border-dashed p-8 text-center">
+            <p className="text-muted-foreground">No categories found.</p>
+            <Button asChild className="mt-4">
+              <Link to="/categories">Add your first category</Link>
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="mt-6">
