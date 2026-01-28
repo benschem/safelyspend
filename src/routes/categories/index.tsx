@@ -74,7 +74,7 @@ export function CategoriesIndexPage() {
                   if (e.key === 'Enter') saveEdit(category.id);
                   if (e.key === 'Escape') cancelEdit();
                 }}
-                // eslint-disable-next-line jsx-a11y/no-autofocus -- Expected behavior when entering edit mode
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- Expected behaviour when entering edit mode
                 autoFocus
               />
               <Button size="sm" variant="ghost" onClick={() => saveEdit(category.id)}>
@@ -149,7 +149,7 @@ export function CategoriesIndexPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Categories</h1>
-          <p className="text-muted-foreground">Organize your expenses by category.</p>
+          <p className="text-muted-foreground">Organise your expenses by category.</p>
         </div>
       </div>
 

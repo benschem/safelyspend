@@ -64,7 +64,7 @@ export function generateDemoData(): BudgetData {
   // Generate all IDs upfront
   const scenarioId = generateId();
 
-  // Categories - organized by how humans think
+  // Categories - organised by how humans think
   const catRent = generateId();
   const catElectricity = generateId();
   const catGas = generateId();

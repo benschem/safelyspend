@@ -212,7 +212,7 @@ export type DateRangePreset =
   | 'next30days'
   | 'next3months'
   | 'next12months'
-  // Rolling (centered on today)
+  // Rolling (centred on today)
   | 'rolling30days'
   | 'rolling3months'
   | 'rolling6months'
@@ -299,7 +299,7 @@ export function getDateRangePreset(preset: DateRangePreset): {
       return { startDate: todayStr, endDate: formatISODate(end) };
     }
 
-    // Rolling (centered on today)
+    // Rolling (centred on today)
     case 'rolling30days': {
       const start = new Date(now);
       start.setDate(start.getDate() - 15);

@@ -40,7 +40,7 @@ export function ReportsPage() {
     usedCategories,
   } = useReportsData(activeScenarioId, startDate, endDate);
 
-  // Build a shared color map so categories have consistent colors across all charts
+  // Build a shared colour map so categories have consistent colours across all charts
   const allCategoryIds = useMemo(() => {
     const ids = new Set<string>();
     usedCategories.forEach((c) => ids.add(c.id));

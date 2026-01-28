@@ -24,7 +24,7 @@ export function BudgetDonutChart({
   const usedPercent = budgeted > 0 ? Math.round((actual / budgeted) * 100) : 0;
   const totalPercent = budgeted > 0 ? Math.round(((actual + forecasted) / budgeted) * 100) : 0;
 
-  // Colors based on whether budget will be exceeded (neutral gray if no budget set)
+  // Colours based on whether budget will be exceeded (neutral grey if no budget set)
   const spentColor = noBudgetSet ? '#6b7280' : willBeOver ? '#dc2626' : '#22c55e'; // gray-500, red-600, or green-500
   const forecastColor = noBudgetSet ? '#9ca3af' : willBeOver ? '#fca5a5' : '#86efac'; // gray-400, red-300, or green-300
 

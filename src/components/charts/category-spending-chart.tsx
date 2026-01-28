@@ -197,7 +197,7 @@ export function CategorySpendingChart({
             <Line
               type="monotone"
               dataKey="uncategorized"
-              name="Uncategorized"
+              name="Uncategorised"
               stroke={CHART_COLORS.uncategorized}
               strokeWidth={hiddenCategories.has('uncategorized') ? 0 : 2.5}
               dot={{ r: 4, strokeWidth: 0, fill: CHART_COLORS.uncategorized }}
@@ -264,7 +264,7 @@ export function CategorySpendingChart({
               style={{ backgroundColor: CHART_COLORS.uncategorized }}
             />
             <span className={hiddenCategories.has('uncategorized') ? 'line-through' : ''}>
-              Uncategorized
+              Uncategorised
             </span>
             <span className="font-mono text-xs text-muted-foreground">
               {formatCents(categoryTotals['uncategorized'] ?? 0)}

@@ -21,7 +21,7 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
   // Unique ID for this hook instance to avoid processing own events
   const instanceId = useRef(++instanceCounter);
 
-  // Initialize state from localStorage or use initial value
+  // Initialise state from localStorage or use initial value
   const [storedValue, setStoredValue] = useState<T>(() => {
     try {
       const item = window.localStorage.getItem(key);

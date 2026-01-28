@@ -203,7 +203,7 @@ export function DashboardPage() {
     if (uncategorizedExpenses > 0) {
       segments.push({
         id: 'uncategorized',
-        name: 'Uncategorized',
+        name: 'Uncategorised',
         amount: uncategorizedExpenses,
       });
     }
@@ -262,7 +262,7 @@ export function DashboardPage() {
     if (uncategorizedForecasts > 0) {
       segments.push({
         id: 'uncategorized',
-        name: 'Uncategorized',
+        name: 'Uncategorised',
         amount: uncategorizedForecasts,
       });
     }
@@ -290,7 +290,7 @@ export function DashboardPage() {
     return { segments, total: forecastedIncome };
   }, [activeCategories, futureExpenseForecasts, forecastedSavings, forecastedIncome]);
 
-  // Build shared color map for all categories so both charts use consistent colors
+  // Build shared colour map for all categories so both charts use consistent colours
   const categoryColorMap = useMemo(
     () => buildCategoryColorMap(activeCategories.map((c) => c.id)),
     [activeCategories],

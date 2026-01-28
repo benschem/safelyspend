@@ -486,7 +486,7 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
               </div>
               <div>
                 <p className="font-medium">{stats.autoCategorized}</p>
-                <p className="text-muted-foreground">Categorized</p>
+                <p className="text-muted-foreground">Categorised</p>
               </div>
               <div>
                 <p className="font-medium">{stats.needsReview}</p>

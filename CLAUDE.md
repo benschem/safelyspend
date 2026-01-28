@@ -30,7 +30,7 @@ A React 19 + TypeScript budgeting app with local-only persistence. Supports "wha
 All entities have base fields: `id`, `userId`, `createdAt`, `updatedAt`. Amounts stored as integer cents.
 
 #### Global Entities (facts)
-- **Category** - Expense categorization. Has `isArchived` flag.
+- **Category** - Expense categorisation. Has `isArchived` flag.
 - **Transaction** - Actual income/expenses/savings/adjustments (`type: 'income' | 'expense' | 'savings' | 'adjustment'`)
 - **SavingsGoal** - Global savings targets with `targetAmountCents` and optional `deadline`
 
@@ -43,7 +43,7 @@ Note: `adjustment` transactions are used for opening balance and manual correcti
 - **ForecastEvent** - One-off forecast items with specific dates
 
 #### Computed Types
-- **ExpandedForecast** - Materialized forecast for a specific date (computed from rules + events)
+- **ExpandedForecast** - Materialised forecast for a specific date (computed from rules + events)
 
 ### Cadence System
 
@@ -63,7 +63,7 @@ src/
 │   └── layout/       # Header, Sidebar, RootLayout
 ├── hooks/
 │   ├── use-local-storage.ts   # Base persistence hook
-│   ├── use-app-config.ts      # App initialization state
+│   ├── use-app-config.ts      # App initialisation state
 │   ├── use-scenarios.ts       # Scenario CRUD + active scenario
 │   ├── use-view-state.ts      # Date range selection (defaults to AU financial year)
 │   ├── use-categories.ts

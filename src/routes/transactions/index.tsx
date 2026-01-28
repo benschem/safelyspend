@@ -352,7 +352,7 @@ export function TransactionsIndexPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
-              <SelectItem value="uncategorized">Uncategorized</SelectItem>
+              <SelectItem value="uncategorized">Uncategorised</SelectItem>
               {activeCategories
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .map((cat) => (

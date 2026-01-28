@@ -21,7 +21,7 @@ export function usePaymentMethods() {
 
   const isLoading = paymentMethodRecords === undefined;
 
-  // Initialize default payment methods if table is empty (outside of query)
+  // Initialise default payment methods if table is empty (outside of query)
   useEffect(() => {
     if (paymentMethodRecords !== undefined && paymentMethodRecords.length === 0) {
       const defaultRecords: PaymentMethod[] = DEFAULT_PAYMENT_METHODS.map((name, index) => ({

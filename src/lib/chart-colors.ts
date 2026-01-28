@@ -1,8 +1,8 @@
 /**
- * Centralized color constants for recharts visualizations
+ * Centralised colour constants for recharts visualisations
  */
 export const CHART_COLORS = {
-  // Colors for category segments - ordered for maximum contrast between adjacent colors
+  // Colours for category segments - ordered for maximum contrast between adjacent colours
   categories: [
     '#ef4444', // red
     '#22c55e', // green
@@ -21,7 +21,7 @@ export const CHART_COLORS = {
     '#d946ef', // fuchsia
     '#0ea5e9', // sky
   ],
-  // Semantic colors
+  // Semantic colours
   income: '#22c55e', // green-500
   expense: '#ef4444', // red-500
   savings: '#3b82f6', // blue-500
@@ -31,15 +31,15 @@ export const CHART_COLORS = {
 };
 
 /**
- * Get a color for a category by index
+ * Get a colour for a category by index
  */
 export function getCategoryColor(index: number): string {
   return CHART_COLORS.categories[index % CHART_COLORS.categories.length]!;
 }
 
 /**
- * Build a stable color map for categories based on their IDs
- * This ensures the same category always gets the same color across charts
+ * Build a stable colour map for categories based on their IDs
+ * This ensures the same category always gets the same colour across charts
  */
 export function buildCategoryColorMap(categoryIds: string[]): Record<string, string> {
   const colorMap: Record<string, string> = {};

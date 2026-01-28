@@ -27,10 +27,10 @@ export function SpendingBreakdownChart({ segments, total, colorMap: externalColo
   const [hoveredSegment, setHoveredSegment] = useState<BreakdownSegment | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
-  // Build color map for segments (use external if provided)
+  // Build colour map for segments (use external if provided)
   const colorMap = useMemo(() => {
     if (externalColorMap) {
-      // Add special colors for non-category segments
+      // Add special colours for non-category segments
       return {
         ...externalColorMap,
         savings: CHART_COLORS.savings,

@@ -136,7 +136,7 @@ export function CategoryRulesPage() {
         <div>
           <h1 className="text-2xl font-bold">Category Rules</h1>
           <p className="text-muted-foreground">
-            Auto-categorize imported transactions based on description matching.
+            Auto-categorise imported transactions based on description matching.
           </p>
         </div>
         <Button onClick={openAddRule}>
@@ -228,7 +228,7 @@ export function CategoryRulesPage() {
           <DialogHeader>
             <DialogTitle>{editingRuleId ? 'Edit' : 'Add'} Category Rule</DialogTitle>
             <DialogDescription>
-              Create a rule to automatically categorize imported transactions.
+              Create a rule to automatically categorise imported transactions.
             </DialogDescription>
           </DialogHeader>
 

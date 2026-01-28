@@ -44,7 +44,7 @@ export function CategorySelect({
       onCreateNew={handleCreateNew}
       placeholder="Select category"
       allowNone={allowNone}
-      noneLabel="Uncategorized"
+      noneLabel="Uncategorised"
       createLabel="Create category"
       disabled={disabled}
     />

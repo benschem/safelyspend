@@ -440,7 +440,7 @@ export function SettingsPage() {
         <div className="rounded-lg border p-4">
           <h3 className="font-medium">Category Rules</h3>
           <p className="text-sm text-muted-foreground">
-            Auto-categorize imported transactions based on description matching.
+            Auto-categorise imported transactions based on description matching.
           </p>
           <Button variant="outline" size="sm" className="mt-3" asChild>
             <Link to="/settings/category-rules">Manage Rules</Link>

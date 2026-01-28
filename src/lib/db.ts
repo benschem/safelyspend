@@ -193,7 +193,7 @@ export async function importAllData(
         });
       }
 
-      // Mark as initialized
+      // Mark as initialised
       await db.appConfig.put({
         id: 'singleton',
         isInitialized: true,
@@ -307,7 +307,7 @@ export async function loadDemoData(data: BudgetData): Promise<void> {
         scenarioId: firstScenarioId,
       });
 
-      // Mark as initialized with demo flag
+      // Mark as initialised with demo flag
       await db.appConfig.put({
         id: 'singleton',
         isInitialized: true,
