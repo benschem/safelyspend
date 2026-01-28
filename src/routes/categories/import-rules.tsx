@@ -22,7 +22,7 @@ import { useCategoryRules } from '@/hooks/use-category-rules';
 import { useCategories } from '@/hooks/use-categories';
 import type { CategoryRuleMatchType } from '@/lib/types';
 
-export function CategoryRulesPage() {
+export function CategoryImportRulesPage() {
   const { rules, addRule, updateRule, deleteRule, getNextPriority } = useCategoryRules();
   const { activeCategories } = useCategories();
 
@@ -125,16 +125,16 @@ export function CategoryRulesPage() {
     <div className="max-w-2xl">
       <div className="mb-6">
         <Button variant="ghost" size="sm" className="-ml-2" asChild>
-          <Link to="/settings">
+          <Link to="/categories">
             <ArrowLeft className="h-4 w-4" />
-            Back to Settings
+            Back to Categories
           </Link>
         </Button>
       </div>
 
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Category Rules</h1>
+          <h1 className="text-2xl font-bold">Category Import Rules</h1>
           <p className="text-muted-foreground">
             Auto-categorise imported transactions based on description matching.
           </p>
@@ -191,7 +191,7 @@ export function CategoryRulesPage() {
                 onCheckedChange={(enabled) => handleToggleEnabled(rule.id, enabled)}
               />
 
-              <Button variant="ghost" size="sm" onClick={() => openEditRule(rule)}>
+              <Button variant="ghost" size="sm" onClick={() => openEditRule(rule)} title="Edit">
                 <Pencil className="h-4 w-4" />
               </Button>
 
@@ -209,7 +209,7 @@ export function CategoryRulesPage() {
                   </Button>
                 </>
               ) : (
-                <Button variant="ghost" size="sm" onClick={() => handleDeleteRule(rule.id)}>
+                <Button variant="ghost" size="sm" onClick={() => handleDeleteRule(rule.id)} title="Delete">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               )}

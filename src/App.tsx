@@ -16,6 +16,7 @@ import { TransactionsIndexPage } from '@/routes/transactions/index';
 import { TransactionNewPage } from '@/routes/transactions/new';
 import { TransactionDetailPage } from '@/routes/transactions/detail';
 import { CategoriesIndexPage } from '@/routes/categories/index';
+import { CategoryImportRulesPage } from '@/routes/categories/import-rules';
 import { SavingsIndexPage } from '@/routes/savings/index';
 import { SavingsNewPage } from '@/routes/savings/new';
 import { SavingsDetailPage } from '@/routes/savings/detail';
@@ -24,7 +25,6 @@ import { ScenariosIndexPage } from '@/routes/scenarios/index';
 import { ScenarioNewPage } from '@/routes/scenarios/new';
 import { ScenarioDetailPage } from '@/routes/scenarios/detail';
 import { SettingsPage } from '@/routes/settings';
-import { CategoryRulesPage } from '@/routes/settings/category-rules';
 
 const router = createBrowserRouter([
   // Landing page (outside of RootLayout - no sidebar/header)
@@ -58,6 +58,7 @@ const router = createBrowserRouter([
 
       // Categories (track)
       { path: 'categories', element: <CategoriesIndexPage /> },
+      { path: 'categories/import-rules', element: <CategoryImportRulesPage /> },
 
       // Savings (track)
       { path: 'savings', element: <SavingsIndexPage /> },
@@ -75,7 +76,6 @@ const router = createBrowserRouter([
 
       // Settings
       { path: 'settings', element: <SettingsPage /> },
-      { path: 'settings/category-rules', element: <CategoryRulesPage /> },
     ],
   },
 ]);
