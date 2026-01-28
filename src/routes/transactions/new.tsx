@@ -3,9 +3,11 @@ import { useForm } from '@tanstack/react-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { CategorySelect } from '@/components/category-select';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
+import { PaymentMethodSelect } from '@/components/payment-method-select';
 import { FormField, FormError } from '@/components/form-field';
 import { ArrowLeft } from 'lucide-react';
 import { useTransactions } from '@/hooks/use-transactions';
@@ -29,6 +31,8 @@ export function TransactionNewPage() {
       amount: '',
       categoryId: '',
       savingsGoalId: '',
+      notes: '',
+      paymentMethod: '',
     },
     validators: {
       onSubmit: ({ value }) => {
@@ -55,14 +59,21 @@ export function TransactionNewPage() {
         return;
       }
 
-      const transaction = addTransaction({
+      const transactionData: Parameters<typeof addTransaction>[0] = {
         type: value.type,
         date: value.date,
         description: value.description.trim(),
         amountCents: parseCents(value.amount),
         categoryId: value.type === 'savings' ? null : value.categoryId || null,
         savingsGoalId: value.type === 'savings' ? value.savingsGoalId : null,
-      });
+      };
+      if (value.notes.trim()) {
+        transactionData.notes = value.notes.trim();
+      }
+      if (value.paymentMethod) {
+        transactionData.paymentMethod = value.paymentMethod;
+      }
+      const transaction = addTransaction(transactionData);
 
       navigate(`/transactions/${transaction.id}`);
     },
@@ -202,6 +213,33 @@ export function TransactionNewPage() {
             )
           }
         </form.Subscribe>
+
+        <form.Field name="paymentMethod">
+          {(field) => (
+            <FormField field={field} label="Payment Method" optional>
+              <PaymentMethodSelect
+                value={field.state.value}
+                onChange={(v) => field.handleChange(v)}
+                allowNone
+              />
+            </FormField>
+          )}
+        </form.Field>
+
+        <form.Field name="notes">
+          {(field) => (
+            <FormField field={field} label="Notes" optional>
+              <Textarea
+                id={field.name}
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+                placeholder="Additional details..."
+                rows={2}
+              />
+            </FormField>
+          )}
+        </form.Field>
 
         <div className="flex gap-3 pt-2">
           <form.Subscribe selector={(state) => state.isSubmitting}>

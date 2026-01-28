@@ -4,11 +4,13 @@ import { useForm } from '@tanstack/react-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { CategorySelect } from '@/components/category-select';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
+import { PaymentMethodSelect } from '@/components/payment-method-select';
 import { ArrowLeft } from 'lucide-react';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
@@ -41,6 +43,8 @@ export function TransactionDetailPage() {
       amount: transaction ? (transaction.amountCents / 100).toFixed(2) : '',
       categoryId: transaction?.categoryId ?? '',
       savingsGoalId: transaction?.savingsGoalId ?? '',
+      notes: transaction?.notes ?? '',
+      paymentMethod: transaction?.paymentMethod ?? '',
     },
     validators: {
       onSubmit: ({ value }) => {
@@ -68,14 +72,21 @@ export function TransactionDetailPage() {
         return;
       }
 
-      updateTransaction(transaction.id, {
+      const updates: Parameters<typeof updateTransaction>[1] = {
         type: value.type,
         date: value.date,
         description: value.description.trim(),
         amountCents: parseCents(value.amount),
         categoryId: value.type === 'savings' ? null : value.categoryId || null,
         savingsGoalId: value.type === 'savings' ? value.savingsGoalId : null,
-      });
+      };
+      if (value.notes.trim()) {
+        updates.notes = value.notes.trim();
+      }
+      if (value.paymentMethod) {
+        updates.paymentMethod = value.paymentMethod;
+      }
+      updateTransaction(transaction.id, updates);
       setEditing(false);
     },
   });
@@ -90,6 +101,8 @@ export function TransactionDetailPage() {
       form.setFieldValue('amount', (transaction.amountCents / 100).toFixed(2));
       form.setFieldValue('categoryId', transaction.categoryId ?? '');
       form.setFieldValue('savingsGoalId', transaction.savingsGoalId ?? '');
+      form.setFieldValue('notes', transaction.notes ?? '');
+      form.setFieldValue('paymentMethod', transaction.paymentMethod ?? '');
     }
   }, [transaction?.id]);
 
@@ -133,6 +146,8 @@ export function TransactionDetailPage() {
     form.setFieldValue('amount', (transaction.amountCents / 100).toFixed(2));
     form.setFieldValue('categoryId', transaction.categoryId ?? '');
     form.setFieldValue('savingsGoalId', transaction.savingsGoalId ?? '');
+    form.setFieldValue('notes', transaction.notes ?? '');
+    form.setFieldValue('paymentMethod', transaction.paymentMethod ?? '');
     setEditing(true);
   };
 
@@ -308,6 +323,33 @@ export function TransactionDetailPage() {
               }
             </form.Subscribe>
 
+            <form.Field name="paymentMethod">
+              {(field) => (
+                <FormField field={field} label="Payment Method" optional>
+                  <PaymentMethodSelect
+                    value={field.state.value}
+                    onChange={(v) => field.handleChange(v)}
+                    allowNone
+                  />
+                </FormField>
+              )}
+            </form.Field>
+
+            <form.Field name="notes">
+              {(field) => (
+                <FormField field={field} label="Notes" optional>
+                  <Textarea
+                    id={field.name}
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                    placeholder="Additional details..."
+                    rows={2}
+                  />
+                </FormField>
+              )}
+            </form.Field>
+
             <div className="flex gap-3 pt-2">
               <form.Subscribe selector={(state) => state.isSubmitting}>
                 {(isSubmitting) => (
@@ -354,6 +396,18 @@ export function TransactionDetailPage() {
                 {getCategoryName(transaction.categoryId)}
               </p>
             ) : null}
+            {transaction.paymentMethod && (
+              <p>
+                <span className="text-muted-foreground">Payment Method:</span>{' '}
+                {transaction.paymentMethod}
+              </p>
+            )}
+            {transaction.notes && (
+              <p>
+                <span className="text-muted-foreground">Notes:</span>{' '}
+                {transaction.notes}
+              </p>
+            )}
           </div>
         )}
       </section>
