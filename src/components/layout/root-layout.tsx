@@ -1,30 +1,13 @@
-import { Outlet, useLocation, Navigate } from 'react-router';
+import { Outlet, Navigate } from 'react-router';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
 import { DemoBanner } from '@/components/demo-banner';
-import { DateRangeBanner } from '@/components/date-range-banner';
 import { useScenarios } from '@/hooks/use-scenarios';
-import { useViewState } from '@/hooks/use-view-state';
 import { useAppConfig } from '@/hooks/use-app-config';
-import { useDataDateRange } from '@/hooks/use-data-date-range';
-
-// Routes where date range filtering applies
-const DATE_RELEVANT_ROUTES = ['/dashboard', '/forecast', '/budget', '/transactions', '/reports'];
-
-function isDateRelevantRoute(pathname: string): boolean {
-  return DATE_RELEVANT_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(route + '/'),
-  );
-}
 
 export function RootLayout() {
   const { isInitialized, isDemo, isLoading: configLoading } = useAppConfig();
   const { scenarios, activeScenarioId, setActiveScenarioId, isLoading: scenariosLoading } = useScenarios();
-  const { startDate, endDate, setDateRange } = useViewState();
-  const dataRange = useDataDateRange();
-  const location = useLocation();
-
-  const showDateControls = isDateRelevantRoute(location.pathname);
 
   // Show nothing while loading initial config
   if (configLoading) {
@@ -35,7 +18,7 @@ export function RootLayout() {
     return <Navigate to="/landing" replace />;
   }
 
-  // Show nothing while loading scenarios after initialization
+  // Show nothing while loading scenarios after initialisation
   if (scenariosLoading) {
     return null;
   }
@@ -51,16 +34,8 @@ export function RootLayout() {
             activeScenarioId={activeScenarioId}
             onScenarioChange={setActiveScenarioId}
           />
-          {showDateControls && (
-            <DateRangeBanner
-              startDate={startDate}
-              endDate={endDate}
-              onDateRangeChange={setDateRange}
-              dataRange={dataRange}
-            />
-          )}
           <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-            <Outlet context={{ activeScenarioId, startDate, endDate }} />
+            <Outlet context={{ activeScenarioId }} />
           </main>
         </div>
       </div>
