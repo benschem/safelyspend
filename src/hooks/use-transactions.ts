@@ -1,23 +1,31 @@
 import { useCallback, useMemo } from 'react';
-import { useLocalStorage } from './use-local-storage';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/db';
 import type { Transaction, CreateEntity } from '@/lib/types';
 import { generateId, now } from '@/lib/utils';
 
-const STORAGE_KEY = 'budget:transactions';
 const USER_ID = 'local';
 
 /**
  * Hook for managing transactions
- * Transactions are global facts - filtering is done by date range
+ * Transactions are global facts - filtering is done by date range using indexed queries
  */
 export function useTransactions(startDate?: string, endDate?: string) {
-  const [allTransactions, setTransactions] = useLocalStorage<Transaction[]>(STORAGE_KEY, []);
+  // Use indexed date query for transactions in range
+  const transactions = useLiveQuery(
+    () => {
+      if (!startDate || !endDate) {
+        return db.transactions.toArray();
+      }
+      return db.transactions.where('date').between(startDate, endDate, true, true).toArray();
+    },
+    [startDate, endDate],
+  ) ?? [];
 
-  // Filter to transactions within the date range
-  const transactions = useMemo(() => {
-    if (!startDate || !endDate) return allTransactions;
-    return allTransactions.filter((t) => t.date >= startDate && t.date <= endDate);
-  }, [allTransactions, startDate, endDate]);
+  // For allTransactions, we need all of them (used for balance calculations, fingerprints, etc.)
+  const allTransactions = useLiveQuery(() => db.transactions.toArray(), []) ?? [];
+
+  const isLoading = transactions === undefined || allTransactions === undefined;
 
   const incomeTransactions = useMemo(
     () => transactions.filter((t) => t.type === 'income'),
@@ -38,64 +46,57 @@ export function useTransactions(startDate?: string, endDate?: string) {
 
   // Get transactions up to a specific date (for balance calculations)
   const getTransactionsUpTo = useCallback(
-    (date: string) => {
-      return allTransactions.filter((t) => t.date <= date);
+    async (date: string) => {
+      return db.transactions.where('date').belowOrEqual(date).toArray();
     },
-    [allTransactions],
+    [],
   );
 
-  const addTransaction = useCallback(
-    (data: CreateEntity<Transaction>) => {
-      const timestamp = now();
-      const newTransaction: Transaction = {
-        id: generateId(),
-        userId: USER_ID,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        ...data,
-      };
-      setTransactions((prev) => [...prev, newTransaction]);
-      return newTransaction;
-    },
-    [setTransactions],
-  );
+  const addTransaction = useCallback(async (data: CreateEntity<Transaction>) => {
+    const timestamp = now();
+    const newTransaction: Transaction = {
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...data,
+    };
+    await db.transactions.add(newTransaction);
+    return newTransaction;
+  }, []);
 
   const updateTransaction = useCallback(
-    (id: string, updates: Partial<Omit<Transaction, 'id' | 'userId' | 'createdAt'>>) => {
-      setTransactions((prev) =>
-        prev.map((transaction) =>
-          transaction.id === id ? { ...transaction, ...updates, updatedAt: now() } : transaction,
-        ),
-      );
+    async (id: string, updates: Partial<Omit<Transaction, 'id' | 'userId' | 'createdAt'>>) => {
+      await db.transactions.update(id, { ...updates, updatedAt: now() });
     },
-    [setTransactions],
+    [],
   );
 
-  const deleteTransaction = useCallback(
-    (id: string) => {
-      setTransactions((prev) => prev.filter((transaction) => transaction.id !== id));
-    },
-    [setTransactions],
-  );
+  const deleteTransaction = useCallback(async (id: string) => {
+    await db.transactions.delete(id);
+  }, []);
 
   // Get set of fingerprints for existing transactions (for duplicate detection during import)
-  const getExistingFingerprints = useCallback((): Set<string> => {
+  const getExistingFingerprints = useCallback(async (): Promise<Set<string>> => {
     const fingerprints = new Set<string>();
-    for (const t of allTransactions) {
+    // Use indexed query for fingerprints that exist
+    const transactionsWithFingerprints = await db.transactions
+      .where('importFingerprint')
+      .notEqual('')
+      .toArray();
+    for (const t of transactionsWithFingerprints) {
       if (t.importFingerprint) {
         fingerprints.add(t.importFingerprint);
       }
     }
     return fingerprints;
-  }, [allTransactions]);
+  }, []);
 
   // Bulk import transactions (for CSV import)
   const bulkImport = useCallback(
-    (
-      transactions: Array<CreateEntity<Transaction>>,
-    ): Transaction[] => {
+    async (transactionsData: Array<CreateEntity<Transaction>>): Promise<Transaction[]> => {
       const timestamp = now();
-      const newTransactions: Transaction[] = transactions.map((data) => ({
+      const newTransactions: Transaction[] = transactionsData.map((data) => ({
         id: generateId(),
         userId: USER_ID,
         createdAt: timestamp,
@@ -103,10 +104,10 @@ export function useTransactions(startDate?: string, endDate?: string) {
         ...data,
       }));
 
-      setTransactions((prev) => [...prev, ...newTransactions]);
+      await db.transactions.bulkAdd(newTransactions);
       return newTransactions;
     },
-    [setTransactions],
+    [],
   );
 
   return {
@@ -116,6 +117,7 @@ export function useTransactions(startDate?: string, endDate?: string) {
     expenseTransactions,
     savingsTransactions,
     adjustmentTransactions,
+    isLoading,
     getTransactionsUpTo,
     addTransaction,
     updateTransaction,

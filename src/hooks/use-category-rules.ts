@@ -1,13 +1,15 @@
 import { useCallback, useMemo } from 'react';
-import { useLocalStorage } from './use-local-storage';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/db';
 import type { CategoryRule, CreateEntity, Transaction } from '@/lib/types';
 import { generateId, now } from '@/lib/utils';
 
-const STORAGE_KEY = 'budget:categoryRules';
 const USER_ID = 'local';
 
 export function useCategoryRules() {
-  const [rules, setRules] = useLocalStorage<CategoryRule[]>(STORAGE_KEY, []);
+  const rules = useLiveQuery(() => db.categoryRules.toArray(), []) ?? [];
+
+  const isLoading = rules === undefined;
 
   // Sort rules by priority (lower = higher priority)
   const sortedRules = useMemo(
@@ -84,53 +86,44 @@ export function useCategoryRules() {
     [applyRules],
   );
 
-  const addRule = useCallback(
-    (data: CreateEntity<CategoryRule>) => {
-      const timestamp = now();
-      const newRule: CategoryRule = {
-        id: generateId(),
-        userId: USER_ID,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        ...data,
-      };
-      setRules((prev) => [...prev, newRule]);
-      return newRule;
-    },
-    [setRules],
-  );
+  const addRule = useCallback(async (data: CreateEntity<CategoryRule>) => {
+    const timestamp = now();
+    const newRule: CategoryRule = {
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...data,
+    };
+    await db.categoryRules.add(newRule);
+    return newRule;
+  }, []);
 
   const updateRule = useCallback(
-    (id: string, updates: Partial<Omit<CategoryRule, 'id' | 'userId' | 'createdAt'>>) => {
-      setRules((prev) =>
-        prev.map((rule) =>
-          rule.id === id ? { ...rule, ...updates, updatedAt: now() } : rule,
-        ),
-      );
+    async (id: string, updates: Partial<Omit<CategoryRule, 'id' | 'userId' | 'createdAt'>>) => {
+      await db.categoryRules.update(id, { ...updates, updatedAt: now() });
     },
-    [setRules],
+    [],
   );
 
-  const deleteRule = useCallback(
-    (id: string) => {
-      setRules((prev) => prev.filter((rule) => rule.id !== id));
-    },
-    [setRules],
-  );
+  const deleteRule = useCallback(async (id: string) => {
+    await db.categoryRules.delete(id);
+  }, []);
 
   // Reorder rules (set new priorities)
-  const reorderRules = useCallback(
-    (orderedIds: string[]) => {
-      setRules((prev) =>
-        prev.map((rule) => {
-          const newPriority = orderedIds.indexOf(rule.id);
-          if (newPriority === -1) return rule;
-          return { ...rule, priority: newPriority, updatedAt: now() };
-        }),
-      );
-    },
-    [setRules],
-  );
+  const reorderRules = useCallback(async (orderedIds: string[]) => {
+    const timestamp = now();
+    const updates = orderedIds.map((id, index) => ({
+      key: id,
+      changes: { priority: index, updatedAt: timestamp },
+    }));
+
+    await db.transaction('rw', db.categoryRules, async () => {
+      for (const update of updates) {
+        await db.categoryRules.update(update.key, update.changes);
+      }
+    });
+  }, []);
 
   // Get the next available priority number
   const getNextPriority = useCallback(() => {
@@ -141,6 +134,7 @@ export function useCategoryRules() {
   return {
     rules: sortedRules,
     enabledRules,
+    isLoading,
     applyRules,
     applyRulesToBatch,
     matchesRule,

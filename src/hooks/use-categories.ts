@@ -1,54 +1,53 @@
-import { useCallback } from 'react';
-import { useLocalStorage } from './use-local-storage';
+import { useCallback, useMemo } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/db';
 import type { Category, CreateEntity } from '@/lib/types';
 import { generateId, now } from '@/lib/utils';
 
-const STORAGE_KEY = 'budget:categories';
 const USER_ID = 'local';
 
 export function useCategories() {
-  const [categories, setCategories] = useLocalStorage<Category[]>(STORAGE_KEY, []);
+  const categories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
 
-  const addCategory = useCallback(
-    (data: CreateEntity<Category>) => {
-      const timestamp = now();
-      const newCategory: Category = {
-        id: generateId(),
-        userId: USER_ID,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        ...data,
-      };
-      setCategories((prev) => [...prev, newCategory]);
-      return newCategory;
-    },
-    [setCategories],
-  );
+  const isLoading = categories === undefined;
+
+  const addCategory = useCallback(async (data: CreateEntity<Category>) => {
+    const timestamp = now();
+    const newCategory: Category = {
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...data,
+    };
+    await db.categories.add(newCategory);
+    return newCategory;
+  }, []);
 
   const updateCategory = useCallback(
-    (id: string, updates: Partial<Omit<Category, 'id' | 'userId' | 'createdAt'>>) => {
-      setCategories((prev) =>
-        prev.map((category) =>
-          category.id === id ? { ...category, ...updates, updatedAt: now() } : category,
-        ),
-      );
+    async (id: string, updates: Partial<Omit<Category, 'id' | 'userId' | 'createdAt'>>) => {
+      await db.categories.update(id, { ...updates, updatedAt: now() });
     },
-    [setCategories],
+    [],
   );
 
-  const deleteCategory = useCallback(
-    (id: string) => {
-      setCategories((prev) => prev.filter((category) => category.id !== id));
-    },
-    [setCategories],
+  const deleteCategory = useCallback(async (id: string) => {
+    await db.categories.delete(id);
+  }, []);
+
+  const activeCategories = useMemo(
+    () => categories.filter((c) => !c.isArchived),
+    [categories],
   );
 
-  const activeCategories = categories.filter((c) => !c.isArchived);
-  const archivedCategories = categories.filter((c) => c.isArchived);
+  const archivedCategories = useMemo(
+    () => categories.filter((c) => c.isArchived),
+    [categories],
+  );
 
   // Get existing category by name or create a new one
   const getOrCreate = useCallback(
-    (name: string): string | null => {
+    async (name: string): Promise<string | null> => {
       const trimmed = name.trim();
       if (!trimmed) return null;
 
@@ -59,7 +58,7 @@ export function useCategories() {
       if (existing) return existing.id;
 
       // Create new category
-      const newCategory = addCategory({ name: trimmed, isArchived: false });
+      const newCategory = await addCategory({ name: trimmed, isArchived: false });
       return newCategory.id;
     },
     [categories, addCategory],
@@ -67,10 +66,11 @@ export function useCategories() {
 
   // Bulk get or create for import (returns map of input name -> category id)
   const bulkGetOrCreate = useCallback(
-    (names: string[]): Map<string, string> => {
+    async (names: string[]): Promise<Map<string, string>> => {
       const result = new Map<string, string>();
-      const newCategories: Array<{ name: string }> = [];
+      const newCategories: Category[] = [];
       const nameToPendingId = new Map<string, string>();
+      const timestamp = now();
 
       for (const name of names) {
         const trimmed = name.trim();
@@ -96,33 +96,32 @@ export function useCategories() {
         // Queue for creation
         const id = generateId();
         nameToPendingId.set(lowerName, id);
-        newCategories.push({ name: trimmed });
+        newCategories.push({
+          id,
+          userId: USER_ID,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          name: trimmed,
+          isArchived: false,
+        });
         result.set(trimmed, id);
       }
 
       // Create all new categories at once
       if (newCategories.length > 0) {
-        const timestamp = now();
-        const categoriesToAdd = newCategories.map((data) => ({
-          id: result.get(data.name)!,
-          userId: USER_ID,
-          createdAt: timestamp,
-          updatedAt: timestamp,
-          name: data.name,
-          isArchived: false,
-        }));
-        setCategories((prev) => [...prev, ...categoriesToAdd]);
+        await db.categories.bulkAdd(newCategories);
       }
 
       return result;
     },
-    [categories, setCategories],
+    [categories],
   );
 
   return {
     categories,
     activeCategories,
     archivedCategories,
+    isLoading,
     addCategory,
     updateCategory,
     deleteCategory,

@@ -1,18 +1,20 @@
 import { useCallback, useMemo } from 'react';
-import { useLocalStorage } from './use-local-storage';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/db';
 import type { BalanceAnchor, CreateEntity } from '@/lib/types';
 import { generateId, now } from '@/lib/utils';
 
-const STORAGE_KEY = 'budget:balanceAnchors';
 const USER_ID = 'local';
 
 export function useBalanceAnchors() {
-  const [anchors, setAnchors] = useLocalStorage<BalanceAnchor[]>(STORAGE_KEY, []);
+  const rawAnchors = useLiveQuery(() => db.balanceAnchors.toArray(), []) ?? [];
+
+  const isLoading = rawAnchors === undefined;
 
   // Sort anchors by date descending (most recent first)
   const sortedAnchors = useMemo(
-    () => [...anchors].sort((a, b) => b.date.localeCompare(a.date)),
-    [anchors],
+    () => [...rawAnchors].sort((a, b) => b.date.localeCompare(a.date)),
+    [rawAnchors],
   );
 
   // Get the earliest anchor date (for warning about data before anchors)
@@ -36,9 +38,9 @@ export function useBalanceAnchors() {
   );
 
   const addAnchor = useCallback(
-    (data: CreateEntity<BalanceAnchor>) => {
+    async (data: CreateEntity<BalanceAnchor>) => {
       // Check for existing anchor on same date
-      const existingOnDate = anchors.find((a) => a.date === data.date);
+      const existingOnDate = rawAnchors.find((a) => a.date === data.date);
       if (existingOnDate) {
         throw new Error('An anchor already exists for this date');
       }
@@ -51,41 +53,35 @@ export function useBalanceAnchors() {
         updatedAt: timestamp,
         ...data,
       };
-      setAnchors((prev) => [...prev, newAnchor]);
+      await db.balanceAnchors.add(newAnchor);
       return newAnchor;
     },
-    [anchors, setAnchors],
+    [rawAnchors],
   );
 
   const updateAnchor = useCallback(
-    (id: string, updates: Partial<Omit<BalanceAnchor, 'id' | 'userId' | 'createdAt'>>) => {
+    async (id: string, updates: Partial<Omit<BalanceAnchor, 'id' | 'userId' | 'createdAt'>>) => {
       // If updating date, check for conflicts
       if (updates.date) {
-        const existingOnDate = anchors.find((a) => a.date === updates.date && a.id !== id);
+        const existingOnDate = rawAnchors.find((a) => a.date === updates.date && a.id !== id);
         if (existingOnDate) {
           throw new Error('An anchor already exists for this date');
         }
       }
 
-      setAnchors((prev) =>
-        prev.map((anchor) =>
-          anchor.id === id ? { ...anchor, ...updates, updatedAt: now() } : anchor,
-        ),
-      );
+      await db.balanceAnchors.update(id, { ...updates, updatedAt: now() });
     },
-    [anchors, setAnchors],
+    [rawAnchors],
   );
 
-  const deleteAnchor = useCallback(
-    (id: string) => {
-      setAnchors((prev) => prev.filter((anchor) => anchor.id !== id));
-    },
-    [setAnchors],
-  );
+  const deleteAnchor = useCallback(async (id: string) => {
+    await db.balanceAnchors.delete(id);
+  }, []);
 
   return {
     anchors: sortedAnchors,
     earliestAnchorDate,
+    isLoading,
     getActiveAnchor,
     addAnchor,
     updateAnchor,

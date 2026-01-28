@@ -1,18 +1,22 @@
 import { useCallback, useMemo } from 'react';
-import { useLocalStorage } from './use-local-storage';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/db';
 import type { Scenario, CreateEntity } from '@/lib/types';
 import { generateId, now } from '@/lib/utils';
 
-const STORAGE_KEY = 'budget:scenarios';
-const ACTIVE_SCENARIO_KEY = 'budget:activeScenarioId';
 const USER_ID = 'local';
 
 export function useScenarios() {
-  const [scenarios, setScenarios] = useLocalStorage<Scenario[]>(STORAGE_KEY, []);
-  const [activeScenarioId, setActiveScenarioId] = useLocalStorage<string | null>(
-    ACTIVE_SCENARIO_KEY,
-    null,
+  const rawScenarios = useLiveQuery(() => db.scenarios.toArray(), []);
+  const scenarios = rawScenarios ?? [];
+
+  const activeScenarioRecord = useLiveQuery(
+    () => db.activeScenario.get('singleton'),
+    [],
   );
+  const activeScenarioId = activeScenarioRecord?.scenarioId ?? null;
+
+  const isLoading = rawScenarios === undefined;
 
   const defaultScenario = useMemo(
     () => scenarios.find((s) => s.isDefault) ?? null,
@@ -24,8 +28,15 @@ export function useScenarios() {
     [scenarios, activeScenarioId, defaultScenario],
   );
 
+  const setActiveScenarioId = useCallback(async (scenarioId: string | null) => {
+    await db.activeScenario.put({
+      id: 'singleton',
+      scenarioId,
+    });
+  }, []);
+
   const addScenario = useCallback(
-    (data: CreateEntity<Scenario>) => {
+    async (data: CreateEntity<Scenario>) => {
       const timestamp = now();
       // If this is the first scenario or marked as default, ensure it's the only default
       const isDefault = data.isDefault || scenarios.length === 0;
@@ -39,71 +50,83 @@ export function useScenarios() {
         isDefault,
       };
 
-      setScenarios((prev) => {
-        // If new scenario is default, unset other defaults
-        if (isDefault) {
-          return [...prev.map((s) => ({ ...s, isDefault: false })), newScenario];
-        }
-        return [...prev, newScenario];
-      });
+      // If new scenario is default, unset other defaults
+      if (isDefault && scenarios.length > 0) {
+        await db.transaction('rw', db.scenarios, async () => {
+          // Update all existing scenarios to not be default
+          await Promise.all(
+            scenarios.map((s) =>
+              db.scenarios.update(s.id, { isDefault: false, updatedAt: timestamp }),
+            ),
+          );
+          await db.scenarios.add(newScenario);
+        });
+      } else {
+        await db.scenarios.add(newScenario);
+      }
 
       // Auto-select if first scenario
       if (scenarios.length === 0) {
-        setActiveScenarioId(newScenario.id);
+        await setActiveScenarioId(newScenario.id);
       }
 
       return newScenario;
     },
-    [scenarios.length, setScenarios, setActiveScenarioId],
+    [scenarios, setActiveScenarioId],
   );
 
   const updateScenario = useCallback(
-    (id: string, updates: Partial<Omit<Scenario, 'id' | 'userId' | 'createdAt'>>) => {
-      setScenarios((prev) => {
-        let updated = prev.map((scenario) =>
-          scenario.id === id ? { ...scenario, ...updates, updatedAt: now() } : scenario,
-        );
+    async (id: string, updates: Partial<Omit<Scenario, 'id' | 'userId' | 'createdAt'>>) => {
+      const timestamp = now();
 
-        // If setting this scenario as default, unset others
-        if (updates.isDefault) {
-          updated = updated.map((s) =>
-            s.id === id ? s : { ...s, isDefault: false },
+      // If setting this scenario as default, unset others
+      if (updates.isDefault) {
+        await db.transaction('rw', db.scenarios, async () => {
+          await Promise.all(
+            scenarios.map((s) =>
+              s.id !== id
+                ? db.scenarios.update(s.id, { isDefault: false, updatedAt: timestamp })
+                : Promise.resolve(),
+            ),
           );
-        }
-
-        return updated;
-      });
+          await db.scenarios.update(id, { ...updates, updatedAt: timestamp });
+        });
+      } else {
+        await db.scenarios.update(id, { ...updates, updatedAt: timestamp });
+      }
     },
-    [setScenarios],
+    [scenarios],
   );
 
   const deleteScenario = useCallback(
-    (id: string) => {
+    async (id: string) => {
       const scenarioToDelete = scenarios.find((s) => s.id === id);
+      const remaining = scenarios.filter((s) => s.id !== id);
 
-      setScenarios((prev) => {
-        const remaining = prev.filter((scenario) => scenario.id !== id);
-
+      await db.transaction('rw', [db.scenarios, db.activeScenario], async () => {
         // If we deleted the default, make the first remaining one default
         if (scenarioToDelete?.isDefault && remaining.length > 0) {
-          remaining[0] = { ...remaining[0]!, isDefault: true };
+          const newDefault = remaining[0]!;
+          await db.scenarios.update(newDefault.id, { isDefault: true, updatedAt: now() });
         }
 
-        return remaining;
-      });
+        await db.scenarios.delete(id);
 
-      if (activeScenarioId === id) {
-        // Switch to default or first scenario
-        const remaining = scenarios.filter((s) => s.id !== id);
-        const newActive = remaining.find((s) => s.isDefault) ?? remaining[0];
-        setActiveScenarioId(newActive?.id ?? null);
-      }
+        // Update active scenario if needed
+        if (activeScenarioId === id) {
+          const newActive = remaining.find((s) => s.isDefault) ?? remaining[0];
+          await db.activeScenario.put({
+            id: 'singleton',
+            scenarioId: newActive?.id ?? null,
+          });
+        }
+      });
     },
-    [scenarios, activeScenarioId, setScenarios, setActiveScenarioId],
+    [scenarios, activeScenarioId],
   );
 
   const duplicateScenario = useCallback(
-    (id: string, newName: string) => {
+    async (id: string, newName: string) => {
       const source = scenarios.find((s) => s.id === id);
       if (!source) return null;
 
@@ -118,10 +141,10 @@ export function useScenarios() {
         isDefault: false,
       };
 
-      setScenarios((prev) => [...prev, newScenario]);
+      await db.scenarios.add(newScenario);
       return newScenario;
     },
-    [scenarios, setScenarios],
+    [scenarios],
   );
 
   return {
@@ -129,6 +152,7 @@ export function useScenarios() {
     activeScenarioId,
     activeScenario,
     defaultScenario,
+    isLoading,
     setActiveScenarioId,
     addScenario,
     updateScenario,

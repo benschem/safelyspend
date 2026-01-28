@@ -1,9 +1,9 @@
 import { useCallback, useMemo } from 'react';
-import { useLocalStorage } from './use-local-storage';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/db';
 import type { BudgetRule, CreateEntity, Cadence } from '@/lib/types';
 import { generateId, now } from '@/lib/utils';
 
-const STORAGE_KEY = 'budget:budgetRules';
 const USER_ID = 'local';
 
 /**
@@ -61,7 +61,9 @@ function expandBudgetRule(
  * Hook for managing budget rules with cadence
  */
 export function useBudgetRules(scenarioId: string | null, startDate?: string, endDate?: string) {
-  const [allBudgetRules, setBudgetRules] = useLocalStorage<BudgetRule[]>(STORAGE_KEY, []);
+  const allBudgetRules = useLiveQuery(() => db.budgetRules.toArray(), []) ?? [];
+
+  const isLoading = allBudgetRules === undefined;
 
   // Filter to current scenario
   const budgetRules = useMemo(
@@ -103,7 +105,7 @@ export function useBudgetRules(scenarioId: string | null, startDate?: string, en
 
   // Add or update a budget rule for a category
   const setBudgetForCategory = useCallback(
-    (categoryId: string, amountCents: number, cadence: Cadence = 'monthly') => {
+    async (categoryId: string, amountCents: number, cadence: Cadence = 'monthly') => {
       if (!scenarioId) return;
 
       const existing = allBudgetRules.find(
@@ -112,11 +114,11 @@ export function useBudgetRules(scenarioId: string | null, startDate?: string, en
 
       if (existing) {
         // Update existing
-        setBudgetRules((prev) =>
-          prev.map((br) =>
-            br.id === existing.id ? { ...br, amountCents, cadence, updatedAt: now() } : br,
-          ),
-        );
+        await db.budgetRules.update(existing.id, {
+          amountCents,
+          cadence,
+          updatedAt: now(),
+        });
       } else {
         // Create new
         const timestamp = now();
@@ -130,49 +132,39 @@ export function useBudgetRules(scenarioId: string | null, startDate?: string, en
           amountCents,
           cadence,
         };
-        setBudgetRules((prev) => [...prev, newBudgetRule]);
+        await db.budgetRules.add(newBudgetRule);
       }
     },
-    [allBudgetRules, scenarioId, setBudgetRules],
+    [allBudgetRules, scenarioId],
   );
 
-  const addBudgetRule = useCallback(
-    (data: CreateEntity<BudgetRule>) => {
-      const timestamp = now();
-      const newRule: BudgetRule = {
-        id: generateId(),
-        userId: USER_ID,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        ...data,
-      };
-      setBudgetRules((prev) => [...prev, newRule]);
-      return newRule;
-    },
-    [setBudgetRules],
-  );
+  const addBudgetRule = useCallback(async (data: CreateEntity<BudgetRule>) => {
+    const timestamp = now();
+    const newRule: BudgetRule = {
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...data,
+    };
+    await db.budgetRules.add(newRule);
+    return newRule;
+  }, []);
 
   const updateBudgetRule = useCallback(
-    (id: string, updates: Partial<Omit<BudgetRule, 'id' | 'userId' | 'createdAt'>>) => {
-      setBudgetRules((prev) =>
-        prev.map((rule) =>
-          rule.id === id ? { ...rule, ...updates, updatedAt: now() } : rule,
-        ),
-      );
+    async (id: string, updates: Partial<Omit<BudgetRule, 'id' | 'userId' | 'createdAt'>>) => {
+      await db.budgetRules.update(id, { ...updates, updatedAt: now() });
     },
-    [setBudgetRules],
+    [],
   );
 
-  const deleteBudgetRule = useCallback(
-    (id: string) => {
-      setBudgetRules((prev) => prev.filter((rule) => rule.id !== id));
-    },
-    [setBudgetRules],
-  );
+  const deleteBudgetRule = useCallback(async (id: string) => {
+    await db.budgetRules.delete(id);
+  }, []);
 
   // Duplicate rules from one scenario to another
   const duplicateToScenario = useCallback(
-    (fromScenarioId: string, toScenarioId: string) => {
+    async (fromScenarioId: string, toScenarioId: string) => {
       const timestamp = now();
 
       const rulesToCopy = allBudgetRules.filter((r) => r.scenarioId === fromScenarioId);
@@ -184,14 +176,15 @@ export function useBudgetRules(scenarioId: string | null, startDate?: string, en
         updatedAt: timestamp,
       }));
 
-      setBudgetRules((prev) => [...prev, ...newRules]);
+      await db.budgetRules.bulkAdd(newRules);
     },
-    [allBudgetRules, setBudgetRules],
+    [allBudgetRules],
   );
 
   return {
     budgetRules,
     expandedBudgets,
+    isLoading,
     getBudgetForCategory,
     getRuleForCategory,
     setBudgetForCategory,

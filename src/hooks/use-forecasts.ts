@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
-import { useLocalStorage } from './use-local-storage';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/db';
 import type {
   ForecastRule,
   ForecastEvent,
@@ -8,8 +9,6 @@ import type {
 } from '@/lib/types';
 import { generateId, now, getLastDayOfMonth, formatISODate } from '@/lib/utils';
 
-const RULES_STORAGE_KEY = 'budget:forecastRules';
-const EVENTS_STORAGE_KEY = 'budget:forecastEvents';
 const USER_ID = 'local';
 
 /**
@@ -183,15 +182,18 @@ function expandRule(
  * Hook for managing forecast rules and events
  */
 export function useForecasts(scenarioId: string | null, startDate?: string, endDate?: string) {
-  const [allRules, setRules] = useLocalStorage<ForecastRule[]>(RULES_STORAGE_KEY, []);
-  const [allEvents, setEvents] = useLocalStorage<ForecastEvent[]>(EVENTS_STORAGE_KEY, []);
+  const allRules = useLiveQuery(() => db.forecastRules.toArray(), []) ?? [];
+  const allEvents = useLiveQuery(() => db.forecastEvents.toArray(), []) ?? [];
 
-  // Filter rules and events to current scenario
+  const isLoading = allRules === undefined || allEvents === undefined;
+
+  // Filter rules to current scenario
   const rules = useMemo(
     () => (scenarioId ? allRules.filter((r) => r.scenarioId === scenarioId) : []),
     [allRules, scenarioId],
   );
 
+  // Filter events to current scenario
   const events = useMemo(
     () => (scenarioId ? allEvents.filter((e) => e.scenarioId === scenarioId) : []),
     [allEvents, scenarioId],
@@ -249,78 +251,58 @@ export function useForecasts(scenarioId: string | null, startDate?: string, endD
   );
 
   // CRUD for rules
-  const addRule = useCallback(
-    (data: CreateEntity<ForecastRule>) => {
-      const timestamp = now();
-      const newRule: ForecastRule = {
-        id: generateId(),
-        userId: USER_ID,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        ...data,
-      };
-      setRules((prev) => [...prev, newRule]);
-      return newRule;
-    },
-    [setRules],
-  );
+  const addRule = useCallback(async (data: CreateEntity<ForecastRule>) => {
+    const timestamp = now();
+    const newRule: ForecastRule = {
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...data,
+    };
+    await db.forecastRules.add(newRule);
+    return newRule;
+  }, []);
 
   const updateRule = useCallback(
-    (id: string, updates: Partial<Omit<ForecastRule, 'id' | 'userId' | 'createdAt'>>) => {
-      setRules((prev) =>
-        prev.map((rule) =>
-          rule.id === id ? { ...rule, ...updates, updatedAt: now() } : rule,
-        ),
-      );
+    async (id: string, updates: Partial<Omit<ForecastRule, 'id' | 'userId' | 'createdAt'>>) => {
+      await db.forecastRules.update(id, { ...updates, updatedAt: now() });
     },
-    [setRules],
+    [],
   );
 
-  const deleteRule = useCallback(
-    (id: string) => {
-      setRules((prev) => prev.filter((rule) => rule.id !== id));
-    },
-    [setRules],
-  );
+  const deleteRule = useCallback(async (id: string) => {
+    await db.forecastRules.delete(id);
+  }, []);
 
   // CRUD for events
-  const addEvent = useCallback(
-    (data: CreateEntity<ForecastEvent>) => {
-      const timestamp = now();
-      const newEvent: ForecastEvent = {
-        id: generateId(),
-        userId: USER_ID,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        ...data,
-      };
-      setEvents((prev) => [...prev, newEvent]);
-      return newEvent;
-    },
-    [setEvents],
-  );
+  const addEvent = useCallback(async (data: CreateEntity<ForecastEvent>) => {
+    const timestamp = now();
+    const newEvent: ForecastEvent = {
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...data,
+    };
+    await db.forecastEvents.add(newEvent);
+    return newEvent;
+  }, []);
 
   const updateEvent = useCallback(
-    (id: string, updates: Partial<Omit<ForecastEvent, 'id' | 'userId' | 'createdAt'>>) => {
-      setEvents((prev) =>
-        prev.map((event) =>
-          event.id === id ? { ...event, ...updates, updatedAt: now() } : event,
-        ),
-      );
+    async (id: string, updates: Partial<Omit<ForecastEvent, 'id' | 'userId' | 'createdAt'>>) => {
+      await db.forecastEvents.update(id, { ...updates, updatedAt: now() });
     },
-    [setEvents],
+    [],
   );
 
-  const deleteEvent = useCallback(
-    (id: string) => {
-      setEvents((prev) => prev.filter((event) => event.id !== id));
-    },
-    [setEvents],
-  );
+  const deleteEvent = useCallback(async (id: string) => {
+    await db.forecastEvents.delete(id);
+  }, []);
 
   // Duplicate rules and events from one scenario to another
   const duplicateToScenario = useCallback(
-    (fromScenarioId: string, toScenarioId: string) => {
+    async (fromScenarioId: string, toScenarioId: string) => {
       const timestamp = now();
 
       // Duplicate rules
@@ -343,10 +325,12 @@ export function useForecasts(scenarioId: string | null, startDate?: string, endD
         updatedAt: timestamp,
       }));
 
-      setRules((prev) => [...prev, ...newRules]);
-      setEvents((prev) => [...prev, ...newEvents]);
+      await Promise.all([
+        db.forecastRules.bulkAdd(newRules),
+        db.forecastEvents.bulkAdd(newEvents),
+      ]);
     },
-    [allRules, allEvents, setRules, setEvents],
+    [allRules, allEvents],
   );
 
   return {
@@ -354,6 +338,7 @@ export function useForecasts(scenarioId: string | null, startDate?: string, endD
     rules,
     events,
     eventsInRange,
+    isLoading,
     // Expanded forecasts (materialized from rules + events)
     expandedForecasts,
     incomeForecasts,
