@@ -9,3 +9,7 @@
   - Client downloads, decrypts, loads on startup, and encrypts and uploads on save
 
 [X] Import transactions from exported Up Bank CSV
+
+[ ] Editing an exisiting recurring forecast still goes to an old style details edit view.
+
+[X] Can we move or have another error boundary within the sidebar?
