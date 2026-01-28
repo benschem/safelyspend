@@ -215,9 +215,10 @@ export function useReportsData(
     return result;
   }, [activeCategories, expandedBudgets, expenseTransactions]);
 
-  // Monthly budget vs actual per category
+  // Monthly budget vs actual per category (includes forecasts for future dates)
   const monthlyBudgetComparison = useMemo((): MonthlyBudgetComparison[] => {
     const months = getMonthsBetween(startDate, endDate);
+    const today = new Date().toISOString().slice(0, 10);
     const result: MonthlyBudgetComparison[] = [];
 
     for (const month of months) {
@@ -228,7 +229,7 @@ export function useReportsData(
 
       const categories: Record<string, { budgeted: number; actual: number }> = {};
 
-      // Calculate actual spending per category for this month
+      // Calculate actual spending per category for this month (from transactions)
       const monthExpenses = expenseTransactions.filter(
         (t) => t.date >= monthStart && t.date <= monthEnd,
       );
@@ -239,6 +240,20 @@ export function useReportsData(
             categories[tx.categoryId] = { budgeted: 0, actual: 0 };
           }
           categories[tx.categoryId]!.actual += tx.amountCents;
+        }
+      }
+
+      // Add forecast spending for future dates
+      const monthForecasts = expenseForecasts.filter(
+        (f) => f.date >= monthStart && f.date <= monthEnd && f.date > today,
+      );
+
+      for (const forecast of monthForecasts) {
+        if (forecast.categoryId) {
+          if (!categories[forecast.categoryId]) {
+            categories[forecast.categoryId] = { budgeted: 0, actual: 0 };
+          }
+          categories[forecast.categoryId]!.actual += forecast.amountCents;
         }
       }
 
@@ -255,7 +270,7 @@ export function useReportsData(
     }
 
     return result;
-  }, [startDate, endDate, expenseTransactions, budgetRules]);
+  }, [startDate, endDate, expenseTransactions, expenseForecasts, budgetRules]);
 
   // Get categories used in budget comparison (have budget or spending)
   const budgetCategories = useMemo(() => {
