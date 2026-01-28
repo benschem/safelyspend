@@ -38,8 +38,10 @@ export function useScenarios() {
   const addScenario = useCallback(
     async (data: CreateEntity<Scenario>) => {
       const timestamp = now();
-      // If this is the first scenario or marked as default, ensure it's the only default
-      const isDefault = data.isDefault || scenarios.length === 0;
+
+      // Query current scenarios directly from DB to avoid stale closure
+      const currentScenarios = await db.scenarios.toArray();
+      const isDefault = data.isDefault || currentScenarios.length === 0;
 
       const newScenario: Scenario = {
         id: generateId(),
@@ -51,11 +53,11 @@ export function useScenarios() {
       };
 
       // If new scenario is default, unset other defaults
-      if (isDefault && scenarios.length > 0) {
+      if (isDefault && currentScenarios.length > 0) {
         await db.transaction('rw', db.scenarios, async () => {
           // Update all existing scenarios to not be default
           await Promise.all(
-            scenarios.map((s) =>
+            currentScenarios.map((s) =>
               db.scenarios.update(s.id, { isDefault: false, updatedAt: timestamp }),
             ),
           );
@@ -66,13 +68,13 @@ export function useScenarios() {
       }
 
       // Auto-select if first scenario
-      if (scenarios.length === 0) {
+      if (currentScenarios.length === 0) {
         await setActiveScenarioId(newScenario.id);
       }
 
       return newScenario;
     },
-    [scenarios, setActiveScenarioId],
+    [setActiveScenarioId],
   );
 
   const updateScenario = useCallback(
@@ -82,8 +84,9 @@ export function useScenarios() {
       // If setting this scenario as default, unset others
       if (updates.isDefault) {
         await db.transaction('rw', db.scenarios, async () => {
+          const currentScenarios = await db.scenarios.toArray();
           await Promise.all(
-            scenarios.map((s) =>
+            currentScenarios.map((s) =>
               s.id !== id
                 ? db.scenarios.update(s.id, { isDefault: false, updatedAt: timestamp })
                 : Promise.resolve(),
@@ -95,15 +98,16 @@ export function useScenarios() {
         await db.scenarios.update(id, { ...updates, updatedAt: timestamp });
       }
     },
-    [scenarios],
+    [],
   );
 
   const deleteScenario = useCallback(
     async (id: string) => {
-      const scenarioToDelete = scenarios.find((s) => s.id === id);
-      const remaining = scenarios.filter((s) => s.id !== id);
-
       await db.transaction('rw', [db.scenarios, db.activeScenario], async () => {
+        const currentScenarios = await db.scenarios.toArray();
+        const scenarioToDelete = currentScenarios.find((s) => s.id === id);
+        const remaining = currentScenarios.filter((s) => s.id !== id);
+
         // If we deleted the default, make the first remaining one default
         if (scenarioToDelete?.isDefault && remaining.length > 0) {
           const newDefault = remaining[0]!;
@@ -113,7 +117,8 @@ export function useScenarios() {
         await db.scenarios.delete(id);
 
         // Update active scenario if needed
-        if (activeScenarioId === id) {
+        const activeRecord = await db.activeScenario.get('singleton');
+        if (activeRecord?.scenarioId === id) {
           const newActive = remaining.find((s) => s.isDefault) ?? remaining[0];
           await db.activeScenario.put({
             id: 'singleton',
@@ -122,12 +127,12 @@ export function useScenarios() {
         }
       });
     },
-    [scenarios, activeScenarioId],
+    [],
   );
 
   const duplicateScenario = useCallback(
     async (id: string, newName: string) => {
-      const source = scenarios.find((s) => s.id === id);
+      const source = await db.scenarios.get(id);
       if (!source) return null;
 
       const timestamp = now();
@@ -144,7 +149,7 @@ export function useScenarios() {
       await db.scenarios.add(newScenario);
       return newScenario;
     },
-    [scenarios],
+    [],
   );
 
   return {
