@@ -102,7 +102,7 @@ function getCurrentPeriodRange(cadence: Cadence): { start: string; end: string }
 }
 
 /**
- * Get display label for current period
+ * Get display label for current period (full version for header)
  */
 function getCurrentPeriodLabel(cadence: Cadence): string {
   const now = new Date();
@@ -119,6 +119,24 @@ function getCurrentPeriodLabel(cadence: Cadence): string {
     }
     case 'yearly':
       return String(now.getFullYear());
+  }
+}
+
+/**
+ * Get short period label for spent column
+ */
+function getShortPeriodLabel(cadence: Cadence): string {
+  switch (cadence) {
+    case 'weekly':
+      return 'this week';
+    case 'fortnightly':
+      return 'this fortnight';
+    case 'monthly':
+      return 'this month';
+    case 'quarterly':
+      return 'this quarter';
+    case 'yearly':
+      return 'this year';
   }
 }
 
@@ -352,9 +370,16 @@ export function BudgetPage() {
             Spent
           </SortableHeader>
         ),
-        cell: ({ row }) => (
-          <div className="text-right font-mono">{formatCents(row.getValue('spent'))}</div>
-        ),
+        cell: ({ row }) => {
+          const budgetRow = row.original;
+          const periodLabel = budgetRow.cadence ? getShortPeriodLabel(budgetRow.cadence) : 'this month';
+          return (
+            <div className="text-right">
+              <div className="font-mono">{formatCents(row.getValue('spent'))}</div>
+              <div className="text-xs text-muted-foreground">{periodLabel}</div>
+            </div>
+          );
+        },
       },
       {
         accessorKey: 'budgetAmount',
