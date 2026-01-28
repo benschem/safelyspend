@@ -332,3 +332,120 @@ export function getDateRangePreset(preset: DateRangePreset): {
     }
   }
 }
+
+// -----------------------------------------------------------------------------
+// Timeline Picker Helpers
+// -----------------------------------------------------------------------------
+
+import type { TimelineMode, ZoomLevel } from './types';
+
+/**
+ * Number of days offset for each zoom level
+ */
+const ZOOM_OFFSETS: Record<ZoomLevel, number> = {
+  weeks: 28, // ±4 weeks
+  months: 90, // ±3 months
+  quarters: 180, // ±6 months
+  years: 730, // ±2 years
+  decade: 1825, // ±5 years
+};
+
+/**
+ * Human-readable labels for zoom levels
+ */
+export const ZOOM_LEVEL_LABELS: Record<ZoomLevel, string> = {
+  weeks: '2 months',
+  months: '6 months',
+  quarters: '1 year',
+  years: '4 years',
+  decade: '10 years',
+};
+
+/**
+ * Add days to a date and return formatted ISO date string
+ */
+export function addDays(date: Date, days: number): string {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return formatISODate(result);
+}
+
+/**
+ * Calculate date range based on timeline mode and zoom level
+ */
+export function calculateTimelineDateRange(
+  mode: TimelineMode,
+  zoomLevel: ZoomLevel,
+  customStartDate?: string,
+  customEndDate?: string,
+): { startDate: string; endDate: string } {
+  const todayDate = new Date();
+  const offset = ZOOM_OFFSETS[zoomLevel];
+
+  switch (mode) {
+    case 'past':
+      // Now is end date, start is offset days before
+      return {
+        startDate: addDays(todayDate, -offset * 2),
+        endDate: formatISODate(todayDate),
+      };
+    case 'around-present':
+      // Now is centered
+      return {
+        startDate: addDays(todayDate, -offset),
+        endDate: addDays(todayDate, offset),
+      };
+    case 'future':
+      // Now is start date, end is offset days after
+      return {
+        startDate: formatISODate(todayDate),
+        endDate: addDays(todayDate, offset * 2),
+      };
+    case 'custom':
+      // Use stored custom dates, fallback to around-present if not set
+      if (customStartDate && customEndDate) {
+        return { startDate: customStartDate, endDate: customEndDate };
+      }
+      return {
+        startDate: addDays(todayDate, -offset),
+        endDate: addDays(todayDate, offset),
+      };
+  }
+}
+
+/**
+ * Format a duration in days as a human-readable string
+ */
+export function formatDuration(startDate: string, endDate: string): string {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 14) {
+    return `${diffDays} days`;
+  } else if (diffDays < 60) {
+    const weeks = Math.round(diffDays / 7);
+    return `${weeks} week${weeks !== 1 ? 's' : ''}`;
+  } else if (diffDays < 365) {
+    const months = Math.round(diffDays / 30);
+    return `${months} month${months !== 1 ? 's' : ''}`;
+  } else {
+    const years = Math.round(diffDays / 365);
+    return `${years} year${years !== 1 ? 's' : ''}`;
+  }
+}
+
+/**
+ * Format date for compact display (e.g., "Jan 1" or "Jan 1, 2025")
+ */
+export function formatCompactDate(isoDate: string, includeYear = false): string {
+  const date = new Date(isoDate);
+  const options: Intl.DateTimeFormatOptions = {
+    day: 'numeric',
+    month: 'short',
+  };
+  if (includeYear) {
+    options.year = 'numeric';
+  }
+  return date.toLocaleDateString('en-AU', options);
+}

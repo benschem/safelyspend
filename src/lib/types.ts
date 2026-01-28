@@ -155,12 +155,21 @@ export interface SavingsGoal extends BaseEntity {
 }
 
 // -----------------------------------------------------------------------------
+// Timeline Picker Types
+// -----------------------------------------------------------------------------
+
+export type TimelineMode = 'past' | 'around-present' | 'future' | 'custom';
+export type ZoomLevel = 'weeks' | 'months' | 'quarters' | 'years' | 'decade';
+
+// -----------------------------------------------------------------------------
 // View State - UI state for date range selection (not persisted as entity)
 // -----------------------------------------------------------------------------
 
 export interface ViewState {
-  startDate: string;
-  endDate: string;
+  mode: TimelineMode;
+  zoomLevel: ZoomLevel;
+  customStartDate?: string;
+  customEndDate?: string;
 }
 
 // -----------------------------------------------------------------------------
