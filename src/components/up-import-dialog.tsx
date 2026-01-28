@@ -420,8 +420,8 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
             )}
 
             {errors.length > 0 && (
-              <div className="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4">
-                <div className="flex items-center gap-2 text-yellow-600">
+              <div className="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4 text-yellow-800 dark:text-yellow-200">
+                <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400">
                   <AlertCircle className="h-4 w-4" />
                   <span className="font-medium">Warnings</span>
                 </div>
@@ -467,8 +467,8 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
 
         {step === 'complete' && stats && (
           <div className="space-y-4">
-            <div className="rounded-lg border border-green-500/50 bg-green-500/10 p-6 text-center">
-              <CheckCircle2 className="mx-auto h-12 w-12 text-green-600" />
+            <div className="rounded-lg border border-green-500/50 bg-green-500/10 p-6 text-center text-green-800 dark:text-green-200">
+              <CheckCircle2 className="mx-auto h-12 w-12 text-green-600 dark:text-green-400" />
               <p className="mt-4 text-lg font-medium">Import Complete!</p>
               <p className="mt-2 text-muted-foreground">
                 Successfully imported {stats.imported} transaction{stats.imported !== 1 ? 's' : ''}.
