@@ -7,7 +7,11 @@ import {
 } from '@/components/ui/select';
 import { useScenarios } from '@/hooks/use-scenarios';
 
-export function ScenarioSelector() {
+interface ScenarioSelectorProps {
+  hideLabel?: boolean;
+}
+
+export function ScenarioSelector({ hideLabel = false }: ScenarioSelectorProps) {
   const { scenarios, activeScenarioId, setActiveScenarioId } = useScenarios();
 
   if (scenarios.length === 0) {
@@ -20,7 +24,7 @@ export function ScenarioSelector() {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-sm text-muted-foreground">Scenario:</span>
+      {!hideLabel && <span className="text-sm text-muted-foreground">Scenario:</span>}
       <Select {...selectProps}>
         <SelectTrigger className="w-40 cursor-pointer">
           <SelectValue placeholder="Select scenario" />
