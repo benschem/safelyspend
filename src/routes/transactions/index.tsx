@@ -25,7 +25,7 @@ import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
 import { useCategoryRules } from '@/hooks/use-category-rules';
 import { CategorySelect } from '@/components/category-select';
-import { DateFilter } from '@/components/date-filter';
+import { DateRangeFilter } from '@/components/date-range-filter';
 import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { UpImportDialog } from '@/components/up-import-dialog';
 import { formatCents, formatDate, parseCentsFromInput } from '@/lib/utils';
@@ -357,7 +357,7 @@ export function TransactionsIndexPage() {
 
   return (
     <div>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-20 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
             <Receipt className="h-7 w-7" />
@@ -365,32 +365,20 @@ export function TransactionsIndexPage() {
           </h1>
           <p className="mt-1 text-muted-foreground">Actual income, expenses, and savings.</p>
         </div>
-        <div className="flex w-full gap-2 sm:w-auto">
-          <Button variant="secondary" onClick={handleImportClick} className="flex-1 sm:flex-none">
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={handleImportClick}>
             <Download className="h-4 w-4" />
             Import CSV
           </Button>
-          <Button onClick={() => setAddDialogOpen(true)} className="flex-1 sm:flex-none">
+          <Button onClick={() => setAddDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             Add Transaction
           </Button>
         </div>
       </div>
 
-      {/* Date filter */}
-      <div className="mt-6">
-        <DateFilter
-          startDate={filterStartDate}
-          endDate={filterEndDate}
-          onStartDateChange={setFilterStartDate}
-          onEndDateChange={setFilterEndDate}
-          onClear={clearDateFilter}
-          hasFilter={hasDateFilter}
-        />
-      </div>
-
       {transactions.length === 0 ? (
-        <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
+        <div className="rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground">
             {hasDateFilter ? 'No transactions found in the selected date range.' : 'No transactions yet.'}
           </p>
@@ -399,46 +387,52 @@ export function TransactionsIndexPage() {
           </Button>
         </div>
       ) : (
-        <div className="mt-4">
-          <DataTable
-            columns={columns}
-            data={filteredTransactions}
-            searchKey="description"
-            searchPlaceholder="Search transactions..."
-            filterSlot={
-              <>
-                <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
-                  <SelectTrigger className="w-36">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="income">Income</SelectItem>
-                    <SelectItem value="expense">Expense</SelectItem>
-                    <SelectItem value="savings">Savings</SelectItem>
-                    <SelectItem value="adjustment">Adjustment</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={filterCategory} onValueChange={setFilterCategory}>
-                  <SelectTrigger className="w-44">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    <SelectItem value="uncategorized">Uncategorised</SelectItem>
-                    {activeCategories
-                      .sort((a, b) => a.name.localeCompare(b.name))
-                      .map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </>
-            }
-          />
-        </div>
+        <DataTable
+          columns={columns}
+          data={filteredTransactions}
+          searchKey="description"
+          searchPlaceholder="Search transactions..."
+          filterSlot={
+            <>
+              <DateRangeFilter
+                startDate={filterStartDate}
+                endDate={filterEndDate}
+                onStartDateChange={setFilterStartDate}
+                onEndDateChange={setFilterEndDate}
+                onClear={clearDateFilter}
+                hasFilter={hasDateFilter}
+              />
+              <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
+                <SelectTrigger className="w-36">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="income">Income</SelectItem>
+                  <SelectItem value="expense">Expense</SelectItem>
+                  <SelectItem value="savings">Savings</SelectItem>
+                  <SelectItem value="adjustment">Adjustment</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterCategory} onValueChange={setFilterCategory}>
+                <SelectTrigger className="w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="uncategorized">Uncategorised</SelectItem>
+                  {activeCategories
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </>
+          }
+        />
       )}
 
       <TransactionDialog
