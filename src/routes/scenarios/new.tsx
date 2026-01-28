@@ -62,7 +62,7 @@ export function ScenarioNewPage() {
         duplicateBudgetsToScenario(value.copyFromId, scenario.id);
       }
 
-      navigate(`/manage/scenarios/${scenario.id}`);
+      navigate(`/scenarios/${scenario.id}`);
     },
   });
 
@@ -70,7 +70,7 @@ export function ScenarioNewPage() {
     <div className="mx-auto max-w-lg">
       <div className="mb-8">
         <Button variant="ghost" size="sm" className="-ml-2" asChild>
-          <Link to="/manage/scenarios">
+          <Link to="/scenarios">
             <ArrowLeft className="h-4 w-4" />
             Back to Scenarios
           </Link>
@@ -160,7 +160,7 @@ export function ScenarioNewPage() {
             )}
           </form.Subscribe>
           <Button type="button" variant="outline" asChild>
-            <Link to="/manage/scenarios">Cancel</Link>
+            <Link to="/scenarios">Cancel</Link>
           </Button>
         </div>
       </form>

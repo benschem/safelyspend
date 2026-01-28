@@ -78,7 +78,7 @@ export function ScenarioDetailPage() {
       <div className="mx-auto max-w-lg">
         <div className="mb-8">
           <Button variant="ghost" size="sm" className="-ml-2" asChild>
-            <Link to="/manage/scenarios">
+            <Link to="/scenarios">
               <ArrowLeft className="h-4 w-4" />
               Back to Scenarios
             </Link>
@@ -95,7 +95,7 @@ export function ScenarioDetailPage() {
       return;
     }
     deleteScenario(scenario.id);
-    navigate('/manage/scenarios');
+    navigate('/scenarios');
   };
 
   const handleDuplicate = () => {
@@ -104,7 +104,7 @@ export function ScenarioDetailPage() {
       // Also copy the forecast and budget rules
       duplicateForecastsToScenario(scenario.id, newScenario.id);
       duplicateBudgetsToScenario(scenario.id, newScenario.id);
-      navigate(`/manage/scenarios/${newScenario.id}`);
+      navigate(`/scenarios/${newScenario.id}`);
     }
   };
 
@@ -126,7 +126,7 @@ export function ScenarioDetailPage() {
     <div className="mx-auto max-w-lg">
       <div className="mb-8">
         <Button variant="ghost" size="sm" className="-ml-2" asChild>
-          <Link to="/manage/scenarios">
+          <Link to="/scenarios">
             <ArrowLeft className="h-4 w-4" />
             Back to Scenarios
           </Link>

@@ -20,9 +20,9 @@ import { SavingsIndexPage } from '@/routes/savings/index';
 import { SavingsNewPage } from '@/routes/savings/new';
 import { SavingsDetailPage } from '@/routes/savings/detail';
 import { ReportsPage } from '@/routes/reports';
-import { ScenariosIndexPage } from '@/routes/manage/scenarios/index';
-import { ScenarioNewPage } from '@/routes/manage/scenarios/new';
-import { ScenarioDetailPage } from '@/routes/manage/scenarios/detail';
+import { ScenariosIndexPage } from '@/routes/scenarios/index';
+import { ScenarioNewPage } from '@/routes/scenarios/new';
+import { ScenarioDetailPage } from '@/routes/scenarios/detail';
 import { SettingsPage } from '@/routes/settings';
 import { CategoryRulesPage } from '@/routes/settings/category-rules';
 
@@ -67,10 +67,10 @@ const router = createBrowserRouter([
       // Reports (track)
       { path: 'reports', element: <ReportsPage /> },
 
-      // Manage - Scenarios
-      { path: 'manage/scenarios', element: <ScenariosIndexPage /> },
-      { path: 'manage/scenarios/new', element: <ScenarioNewPage /> },
-      { path: 'manage/scenarios/:id', element: <ScenarioDetailPage /> },
+      // Scenarios (plan)
+      { path: 'scenarios', element: <ScenariosIndexPage /> },
+      { path: 'scenarios/new', element: <ScenarioNewPage /> },
+      { path: 'scenarios/:id', element: <ScenarioDetailPage /> },
 
 
       // Settings

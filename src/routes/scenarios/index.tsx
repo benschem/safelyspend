@@ -47,7 +47,7 @@ export function ScenariosIndexPage() {
         id: 'actions',
         cell: ({ row }) => (
           <Button variant="outline" size="sm" asChild>
-            <Link to={`/manage/scenarios/${row.original.id}`}>View</Link>
+            <Link to={`/scenarios/${row.original.id}`}>View</Link>
           </Button>
         ),
       },
@@ -65,7 +65,7 @@ export function ScenariosIndexPage() {
           </p>
         </div>
         <Button asChild className="w-full sm:w-auto">
-          <Link to="/manage/scenarios/new">
+          <Link to="/scenarios/new">
             <Plus className="h-4 w-4" />
             New Scenario
           </Link>
@@ -76,7 +76,7 @@ export function ScenariosIndexPage() {
         <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground">No scenarios yet.</p>
           <Button asChild className="mt-4">
-            <Link to="/manage/scenarios/new">Create your first scenario</Link>
+            <Link to="/scenarios/new">Create your first scenario</Link>
           </Button>
         </div>
       ) : (

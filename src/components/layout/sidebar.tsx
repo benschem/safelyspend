@@ -88,6 +88,9 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         <NavItem to="/budget" icon={<FolderTree className="h-4 w-4" />} onClick={onNavigate}>
           Budgets
         </NavItem>
+        <NavItem to="/scenarios" icon={<Layers className="h-4 w-4" />} onClick={onNavigate}>
+          Scenarios
+        </NavItem>
       </NavSection>
 
       <Separator className="my-2" />
@@ -107,9 +110,6 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       <NavSection title="Manage">
         <NavItem to="/categories" icon={<FolderTree className="h-4 w-4" />} onClick={onNavigate}>
           Categories
-        </NavItem>
-        <NavItem to="/manage/scenarios" icon={<Layers className="h-4 w-4" />} onClick={onNavigate}>
-          Scenarios
         </NavItem>
       </NavSection>
 
