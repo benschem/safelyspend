@@ -36,12 +36,14 @@ function CustomTooltip({
   label,
   budgetCategories,
   colorMap,
+  showBudget,
 }: {
   active?: boolean;
   payload?: TooltipPayload[];
   label?: string;
   budgetCategories: Category[];
   colorMap: Record<string, string>;
+  showBudget: boolean;
 }) {
   if (!active || !payload || payload.length === 0) return null;
 
@@ -71,8 +73,8 @@ function CustomTooltip({
     }
   });
 
-  // Sort by variance (most over budget first)
-  comparisons.sort((a, b) => a.variance - b.variance);
+  // Sort by actual spending (highest first)
+  comparisons.sort((a, b) => b.actual - a.actual);
 
   const totalActual = comparisons.reduce((sum, c) => sum + c.actual, 0);
   const totalBudget = comparisons.reduce((sum, c) => sum + c.budget, 0);
@@ -95,11 +97,18 @@ function CustomTooltip({
               </div>
               <div className="ml-4 flex items-center gap-2 text-xs text-muted-foreground">
                 <span>{formatCents(item.actual)} spent</span>
-                <span>/</span>
-                <span>{formatCents(item.budget)} budget</span>
-                <span className={`font-medium ${isOver ? 'text-red-600' : 'text-green-600'}`}>
-                  ({isOver ? '+' : ''}{formatCents(item.variance * -1)} {isOver ? 'over' : 'under'})
-                </span>
+                {showBudget && item.budget > 0 && (
+                  <>
+                    <span>/</span>
+                    <span>{formatCents(item.budget)} budget</span>
+                    <span className={`font-medium ${isOver ? 'text-red-600' : 'text-green-600'}`}>
+                      ({isOver ? '+' : ''}{formatCents(item.variance * -1)} {isOver ? 'over' : 'under'})
+                    </span>
+                  </>
+                )}
+                {showBudget && item.budget === 0 && (
+                  <span className="italic">(no budget)</span>
+                )}
               </div>
             </div>
           );
@@ -110,14 +119,18 @@ function CustomTooltip({
           <span>Total Spent</span>
           <span className="font-mono">{formatCents(totalActual)}</span>
         </div>
-        <div className="flex justify-between text-muted-foreground">
-          <span>Total Budget</span>
-          <span className="font-mono">{formatCents(totalBudget)}</span>
-        </div>
-        <div className={`flex justify-between font-semibold ${totalVariance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-          <span>{totalVariance >= 0 ? 'Under Budget' : 'Over Budget'}</span>
-          <span className="font-mono">{formatCents(Math.abs(totalVariance))}</span>
-        </div>
+        {showBudget && totalBudget > 0 && (
+          <>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Total Budget</span>
+              <span className="font-mono">{formatCents(totalBudget)}</span>
+            </div>
+            <div className={`flex justify-between font-semibold ${totalVariance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <span>{totalVariance >= 0 ? 'Under Budget' : 'Over Budget'}</span>
+              <span className="font-mono">{formatCents(Math.abs(totalVariance))}</span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -129,6 +142,11 @@ export function BudgetComparisonChart({
   colorMap,
 }: BudgetComparisonChartProps) {
   const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(new Set());
+  const [showBudget, setShowBudget] = useState(true);
+
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const hasCurrentMonth = monthlyBudgetComparison.some((m) => m.month === currentMonth);
+  const hasFutureData = monthlyBudgetComparison.some((m) => m.month > currentMonth);
 
   // Transform data for paired lines (actual + budget per category)
   const chartData = useMemo(() => {
@@ -143,9 +161,9 @@ export function BudgetComparisonChart({
     });
   }, [monthlyBudgetComparison, budgetCategories]);
 
-  // Calculate period totals and variance for each category
+  // Calculate period totals for each category
   const categoryStats = useMemo(() => {
-    const stats: Record<string, { actual: number; budget: number; variance: number }> = {};
+    const stats: Record<string, { actual: number; budget: number; variance: number; hasBudget: boolean }> = {};
     for (const cat of budgetCategories) {
       const actual = monthlyBudgetComparison.reduce((sum, m) => {
         return sum + (m.categories[cat.id]?.actual ?? 0);
@@ -153,15 +171,15 @@ export function BudgetComparisonChart({
       const budget = monthlyBudgetComparison.reduce((sum, m) => {
         return sum + (m.categories[cat.id]?.budgeted ?? 0);
       }, 0);
-      stats[cat.id] = { actual, budget, variance: budget - actual };
+      stats[cat.id] = { actual, budget, variance: budget - actual, hasBudget: budget > 0 };
     }
     return stats;
   }, [monthlyBudgetComparison, budgetCategories]);
 
-  // Sort categories by variance (most over budget first)
+  // Sort categories by actual spending (highest first)
   const sortedCategories = useMemo(() => {
     return [...budgetCategories].sort(
-      (a, b) => (categoryStats[a.id]?.variance ?? 0) - (categoryStats[b.id]?.variance ?? 0),
+      (a, b) => (categoryStats[b.id]?.actual ?? 0) - (categoryStats[a.id]?.actual ?? 0),
     );
   }, [budgetCategories, categoryStats]);
 
@@ -180,7 +198,7 @@ export function BudgetComparisonChart({
   if (budgetCategories.length === 0) {
     return (
       <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
-        No budget data available. Set budgets to track spending against targets.
+        No spending data available for this period.
       </div>
     );
   }
@@ -204,26 +222,44 @@ export function BudgetComparisonChart({
             width={60}
           />
           <Tooltip
-            content={<CustomTooltip budgetCategories={budgetCategories} colorMap={colorMap} />}
+            content={<CustomTooltip budgetCategories={budgetCategories} colorMap={colorMap} showBudget={showBudget} />}
           />
           <ReferenceLine y={0} stroke="#e5e7eb" />
+
+          {/* "Now" reference line - only show if current month is in range */}
+          {hasCurrentMonth && (
+            <ReferenceLine
+              x={currentMonth}
+              stroke="#6b7280"
+              strokeWidth={2}
+              label={{
+                value: hasFutureData ? 'Now' : '',
+                position: 'top',
+                fontSize: 11,
+                fill: '#6b7280',
+              }}
+            />
+          )}
 
           {sortedCategories.map((cat) => {
             const isHidden = hiddenCategories.has(cat.id);
             const color = colorMap[cat.id] ?? '#9ca3af';
+            const hasBudget = categoryStats[cat.id]?.hasBudget ?? false;
             return [
-              // Budget line (dashed)
-              <Line
-                key={`${cat.id}_budget`}
-                type="monotone"
-                dataKey={`${cat.id}_budget`}
-                name={`${cat.name} Budget`}
-                stroke={color}
-                strokeWidth={isHidden ? 0 : 2}
-                strokeDasharray="6 4"
-                dot={false}
-                hide={isHidden}
-              />,
+              // Budget line (dashed) - only show if toggle is on AND category has a budget
+              showBudget && hasBudget && (
+                <Line
+                  key={`${cat.id}_budget`}
+                  type="monotone"
+                  dataKey={`${cat.id}_budget`}
+                  name={`${cat.name} Budget`}
+                  stroke={color}
+                  strokeWidth={isHidden ? 0 : 2}
+                  strokeDasharray="6 4"
+                  dot={false}
+                  hide={isHidden}
+                />
+              ),
               // Actual line (solid)
               <Line
                 key={`${cat.id}_actual`}
@@ -241,61 +277,75 @@ export function BudgetComparisonChart({
         </LineChart>
       </ResponsiveContainer>
 
-      {/* Legend Controls */}
-      <div className="mt-4 flex justify-center gap-2">
+      {/* Controls row */}
+      <div className="mt-4 flex items-center justify-between">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setHiddenCategories(new Set())}
+            className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            Show All
+          </button>
+          <button
+            onClick={() => setHiddenCategories(new Set(sortedCategories.map((c) => c.id)))}
+            className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            Hide All
+          </button>
+        </div>
         <button
-          onClick={() => setHiddenCategories(new Set())}
-          className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+          onClick={() => setShowBudget(!showBudget)}
+          className={`flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors ${
+            showBudget
+              ? 'bg-muted text-foreground'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          }`}
         >
-          Select All
-        </button>
-        <button
-          onClick={() => setHiddenCategories(new Set(sortedCategories.map((c) => c.id)))}
-          className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          Deselect All
+          <div className="h-0.5 w-3 border-t-2 border-dashed border-current" />
+          Budget Lines
         </button>
       </div>
 
-      {/* Interactive Legend */}
-      <div className="mt-2 flex flex-wrap justify-center gap-2">
+      {/* Category legend - left aligned, sorted by spending */}
+      <div className="mt-3 flex flex-wrap gap-2">
         {sortedCategories.map((cat) => {
           const isHidden = hiddenCategories.has(cat.id);
           const stats = categoryStats[cat.id];
-          const isOver = stats && stats.actual > stats.budget;
+          const hasBudget = stats?.hasBudget ?? false;
+          const isOver = showBudget && hasBudget && stats && stats.actual > stats.budget;
           return (
             <button
               key={cat.id}
               onClick={() => toggleCategory(cat.id)}
-              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all hover:bg-muted ${
+              className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm transition-all hover:bg-muted ${
                 isHidden ? 'opacity-40' : ''
               }`}
             >
               <div
-                className="h-3 w-3 rounded-full"
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ backgroundColor: colorMap[cat.id] }}
               />
               <span className={isHidden ? 'line-through' : ''}>{cat.name}</span>
-              <span className={`font-mono text-xs ${isOver ? 'text-red-600' : 'text-green-600'}`}>
-                {isOver ? '+' : ''}{formatCents(Math.abs(stats?.variance ?? 0))}
-                <span className="ml-0.5 text-muted-foreground">{isOver ? 'over' : 'under'}</span>
+              <span className="font-mono text-xs text-muted-foreground">
+                {formatCents(stats?.actual ?? 0)}
               </span>
+              {showBudget && hasBudget && stats && (
+                <span className={`text-xs ${isOver ? 'text-red-600' : 'text-green-600'}`}>
+                  {isOver ? '▲' : '▼'}{formatCents(Math.abs(stats.variance))}
+                </span>
+              )}
+              {showBudget && !hasBudget && (
+                <span className="text-xs text-muted-foreground">(no budget)</span>
+              )}
             </button>
           );
         })}
       </div>
 
-      <div className="mt-3 flex items-center justify-center gap-4 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1.5">
-          <div className="h-0.5 w-4 border-t-2 border-dashed border-current" />
-          <span>Budget</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="h-0.5 w-4 border-t-2 border-current" />
-          <span>Actual</span>
-        </div>
-        <span className="ml-2">Click categories to show/hide</span>
-      </div>
+      <p className="mt-3 text-xs text-muted-foreground">
+        Click categories to show/hide.
+        {hasFutureData && ' Data after "Now" is forecast.'}
+      </p>
     </div>
   );
 }
