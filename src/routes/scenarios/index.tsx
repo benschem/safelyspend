@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Pencil, Trash2, Check, X, Star } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Star, Split, Share2 } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { db } from '@/lib/db';
 import { ScenarioDialog } from '@/components/dialogs/scenario-dialog';
@@ -267,8 +267,20 @@ export function ScenariosIndexPage() {
         </Button>
       </div>
 
+      <div className="mt-6 flex gap-4">
+        <div className="flex-1 rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground">
+          <Split className="mb-2 h-5 w-5" />
+          Each scenario has separate <span className="font-semibold">Budgets</span> and <span className="font-semibold">Forecasts</span>.
+        </div>
+
+        <div className="flex-1 rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground">
+          <Share2 className="mb-2 h-5 w-5" />
+          Every scenario shares <span className="font-semibold">Transactions</span>, <span className="font-semibold">Savings</span> and <span className="font-semibold">Categories</span>.
+        </div>
+      </div>
+
       {scenarios.length === 0 ? (
-        <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
+        <div className="mt-6 rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground">No scenarios yet.</p>
           <Button className="mt-4" onClick={() => setDialogOpen(true)}>
             Create your first scenario
