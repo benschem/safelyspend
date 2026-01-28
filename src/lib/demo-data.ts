@@ -377,23 +377,24 @@ export function generateDemoData(): BudgetData {
   }));
 
   // ==========================================================================
+  // BALANCE ANCHORS
+  // ==========================================================================
+  const balanceAnchors = [
+    {
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      date: monthsFromNow(-12),
+      balanceCents: 320000, // $3,200 opening balance
+      label: 'Opening balance',
+    },
+  ];
+
+  // ==========================================================================
   // TRANSACTIONS (12 months of history)
   // ==========================================================================
   const transactions: BudgetData['transactions'] = [];
-
-  // Opening balance (12 months ago)
-  transactions.push({
-    id: generateId(),
-    userId: USER_ID,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-    type: 'adjustment',
-    date: monthsFromNow(-12),
-    amountCents: 320000, // $3,200 starting balance
-    description: 'Opening balance',
-    categoryId: null,
-    savingsGoalId: null,
-  });
 
   // Generate 12 months of transaction history
   for (let month = -12; month <= 0; month++) {
@@ -835,6 +836,8 @@ export function generateDemoData(): BudgetData {
     forecastEvents,
     transactions,
     savingsGoals,
+    balanceAnchors,
+    categoryRules: [],
   };
 }
 
@@ -849,6 +852,8 @@ export function loadDemoDataToStorage(): void {
   localStorage.setItem('budget:forecastEvents', JSON.stringify(data.forecastEvents));
   localStorage.setItem('budget:transactions', JSON.stringify(data.transactions));
   localStorage.setItem('budget:savingsGoals', JSON.stringify(data.savingsGoals));
+  localStorage.setItem('budget:balanceAnchors', JSON.stringify(data.balanceAnchors));
+  localStorage.setItem('budget:categoryRules', JSON.stringify(data.categoryRules));
   localStorage.setItem('budget:appConfig', JSON.stringify({ isInitialized: true, isDemo: true }));
 }
 
@@ -862,6 +867,9 @@ export function clearAllData(): void {
     'budget:forecastEvents',
     'budget:transactions',
     'budget:savingsGoals',
+    'budget:balanceAnchors',
+    'budget:categoryRules',
+    'budget:paymentMethods',
     'budget:viewState',
     'budget:appConfig',
   ];

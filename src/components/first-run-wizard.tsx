@@ -4,7 +4,7 @@ import { useForm } from '@tanstack/react-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAppConfig } from '@/hooks/use-app-config';
-import { useTransactions } from '@/hooks/use-transactions';
+import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { today } from '@/lib/utils';
 import { loadDemoDataToStorage } from '@/lib/demo-data';
@@ -17,7 +17,7 @@ type WizardStep = 'choose' | 'setup';
 export function FirstRunWizard() {
   const navigate = useNavigate();
   const { markInitialized } = useAppConfig();
-  const { addTransaction } = useTransactions();
+  const { addAnchor } = useBalanceAnchors();
   const { scenarios, addScenario, setActiveScenarioId } = useScenarios();
 
   const [step, setStep] = useState<WizardStep>('choose');
@@ -65,17 +65,12 @@ export function FirstRunWizard() {
         setActiveScenarioId(scenario.id);
       }
 
-      // Create opening balance adjustment transaction
-      if (balanceCents > 0) {
-        addTransaction({
-          type: 'adjustment',
-          date: value.balanceDate,
-          amountCents: balanceCents,
-          description: 'Opening balance',
-          categoryId: null,
-          savingsGoalId: null,
-        });
-      }
+      // Create balance anchor (even if 0, as it sets the anchor date)
+      addAnchor({
+        date: value.balanceDate,
+        balanceCents: balanceCents,
+        label: 'Opening balance',
+      });
 
       markInitialized(false);
       navigate('/dashboard');

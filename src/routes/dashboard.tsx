@@ -2,12 +2,14 @@ import { useMemo } from 'react';
 import { Link, useOutletContext, useSearchParams } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { AlertCircle } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useCategories } from '@/hooks/use-categories';
+import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { formatCents, formatDate } from '@/lib/utils';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 import { SpendingBreakdownChart, SavingsDonutChart, BudgetDonutChart } from '@/components/charts';
@@ -32,8 +34,13 @@ export function DashboardPage() {
     setSearchParams({ tab: value }, { replace: true });
   };
   const { activeScenario } = useScenarios();
-  const { incomeTransactions, expenseTransactions, savingsTransactions, adjustmentTransactions } =
-    useTransactions(startDate, endDate);
+  const {
+    allTransactions,
+    incomeTransactions,
+    expenseTransactions,
+    savingsTransactions,
+    adjustmentTransactions,
+  } = useTransactions(startDate, endDate);
   const { incomeForecasts, expenseForecasts, savingsForecasts } = useForecasts(
     activeScenarioId,
     startDate,
@@ -42,22 +49,46 @@ export function DashboardPage() {
   const { savingsGoals } = useSavingsGoals();
   const { getBudgetForCategory } = useBudgetRules(activeScenarioId, startDate, endDate);
   const { activeCategories } = useCategories();
+  const { getActiveAnchor, earliestAnchorDate } = useBalanceAnchors();
 
-  // Calculate totals - opening balance from adjustment transactions
-  const totalOpeningBalance = adjustmentTransactions.reduce(
-    (sum, t) => sum + t.amountCents,
-    0,
-  );
+  // Get today's date for balance calculations
+  const today = new Date().toISOString().slice(0, 10);
 
+  // Get the active anchor for current balance calculation
+  const activeAnchor = getActiveAnchor(today);
+
+  // Calculate current balance using anchor-based approach
+  const currentBalance = useMemo(() => {
+    if (!activeAnchor) return null;
+
+    // Sum transactions from anchor date to today
+    const transactionsFromAnchor = allTransactions.filter(
+      (t) => t.date >= activeAnchor.date && t.date <= today,
+    );
+
+    let balance = activeAnchor.balanceCents;
+    for (const t of transactionsFromAnchor) {
+      if (t.type === 'income' || t.type === 'adjustment') {
+        balance += t.amountCents;
+      } else {
+        balance -= t.amountCents;
+      }
+    }
+    return balance;
+  }, [activeAnchor, allTransactions, today]);
+
+  // Check if viewing dates before anchor (for warning)
+  const isViewingBeforeAnchor = earliestAnchorDate && startDate < earliestAnchorDate;
+  const hasNoAnchor = !activeAnchor;
+
+  // Calculate totals for display (these are for the viewed date range, not anchor-based)
   const actualIncome = incomeTransactions.reduce((sum, t) => sum + t.amountCents, 0);
   const actualExpenses = expenseTransactions.reduce((sum, t) => sum + t.amountCents, 0);
   const actualSavings = savingsTransactions.reduce((sum, t) => sum + t.amountCents, 0);
-  const actualNet = actualIncome - actualExpenses - actualSavings;
-
-  const currentBalance = totalOpeningBalance + actualNet;
+  const actualAdjustments = adjustmentTransactions.reduce((sum, t) => sum + t.amountCents, 0);
+  const actualNet = actualIncome + actualAdjustments - actualExpenses - actualSavings;
 
   // Filter forecasts to only include future dates (avoid double-counting with actuals)
-  const today = new Date().toISOString().slice(0, 10);
   const futureIncomeForecasts = incomeForecasts.filter((f) => f.date > today);
   const futureExpenseForecasts = expenseForecasts.filter((f) => f.date > today);
   const futureSavingsForecasts = savingsForecasts.filter((f) => f.date > today);
@@ -67,7 +98,7 @@ export function DashboardPage() {
   const forecastedSavings = futureSavingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
   const forecastedNet = forecastedIncome - forecastedExpenses - forecastedSavings;
 
-  const projectedEndBalance = currentBalance + forecastedNet;
+  const projectedEndBalance = currentBalance !== null ? currentBalance + forecastedNet : null;
 
   // Calculate cash flow buffer (money available until next income)
   const sortedFutureIncome = [...futureIncomeForecasts].sort((a, b) =>
@@ -113,7 +144,7 @@ export function DashboardPage() {
     ...futureSavingsForecasts.filter((f) => f.date <= bufferEndDate),
   ].reduce((sum, f) => sum + f.amountCents, 0);
 
-  const cashFlowBuffer = currentBalance - committedBeforeNextIncome;
+  const cashFlowBuffer = currentBalance !== null ? currentBalance - committedBeforeNextIncome : null;
 
 
   // Calculate budget tracking per category
@@ -295,15 +326,54 @@ export function DashboardPage() {
         {/* Current Position Tab */}
         <TabsContent value="current" className="mt-6">
           <div className="space-y-4">
+            {/* Balance warning banner */}
+            {(hasNoAnchor || isViewingBeforeAnchor) && (
+              <div className="flex items-start gap-3 rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4">
+                <AlertCircle className="mt-0.5 h-5 w-5 text-yellow-600" />
+                <div>
+                  {hasNoAnchor ? (
+                    <>
+                      <p className="font-medium text-yellow-800 dark:text-yellow-200">
+                        No balance anchor set
+                      </p>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                        Set a starting balance in{' '}
+                        <Link to="/settings" className="underline">
+                          Settings
+                        </Link>{' '}
+                        to enable balance tracking.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-medium text-yellow-800 dark:text-yellow-200">
+                        Viewing dates before balance anchor
+                      </p>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                        Balances before {formatDate(earliestAnchorDate!)} are unknown. Spending
+                        totals are still accurate.
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-lg border p-4">
                 <p className="text-sm text-muted-foreground">Bank Balance</p>
-                <p className="text-2xl font-bold">{formatCents(currentBalance)}</p>
-                {totalOpeningBalance !== 0 && (
-                  <p className={`text-sm ${actualNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {actualNet >= 0 ? '+' : ''}
-                    {formatCents(actualNet)} this period
-                  </p>
+                {currentBalance !== null ? (
+                  <>
+                    <p className="text-2xl font-bold">{formatCents(currentBalance)}</p>
+                    {actualNet !== 0 && (
+                      <p className={`text-sm ${actualNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {actualNet >= 0 ? '+' : ''}
+                        {formatCents(actualNet)} this period
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-2xl font-bold text-muted-foreground">Unknown</p>
                 )}
               </div>
 
@@ -315,11 +385,15 @@ export function DashboardPage() {
 
               <div className="rounded-lg border p-4">
                 <p className="text-sm text-muted-foreground">Available to Spend</p>
-                <p
-                  className={`text-2xl font-bold ${cashFlowBuffer < 0 ? 'text-red-600' : 'text-green-600'}`}
-                >
-                  {formatCents(cashFlowBuffer)}
-                </p>
+                {cashFlowBuffer !== null ? (
+                  <p
+                    className={`text-2xl font-bold ${cashFlowBuffer < 0 ? 'text-red-600' : 'text-green-600'}`}
+                  >
+                    {formatCents(cashFlowBuffer)}
+                  </p>
+                ) : (
+                  <p className="text-2xl font-bold text-muted-foreground">Unknown</p>
+                )}
                 <p className="text-sm text-muted-foreground">{bufferDescription}</p>
               </div>
 
@@ -360,13 +434,22 @@ export function DashboardPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-lg border p-4">
                 <p className="text-sm text-muted-foreground">Forecast Balance</p>
-                <p className={`text-2xl font-bold ${projectedEndBalance < 0 ? 'text-red-600' : ''}`}>
-                  {formatCents(projectedEndBalance)}
-                </p>
-                <p className={`text-sm ${forecastedNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {forecastedNet >= 0 ? '+' : ''}
-                  {formatCents(forecastedNet)}
-                </p>
+                {projectedEndBalance !== null ? (
+                  <>
+                    <p className={`text-2xl font-bold ${projectedEndBalance < 0 ? 'text-red-600' : ''}`}>
+                      {formatCents(projectedEndBalance)}
+                    </p>
+                    <p className={`text-sm ${forecastedNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {forecastedNet >= 0 ? '+' : ''}
+                      {formatCents(forecastedNet)}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold text-muted-foreground">Unknown</p>
+                    <p className="text-sm text-muted-foreground">No balance anchor set</p>
+                  </>
+                )}
               </div>
 
               <div className="rounded-lg border p-4">
