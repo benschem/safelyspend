@@ -186,7 +186,7 @@ export function RulesIndexPage() {
     <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Forecast Rules</h1>
+          <h1 className="text-2xl font-bold">Recurring Forecasts</h1>
           <p className="text-muted-foreground">
             Recurring income, expense, and savings patterns for {activeScenario.name}.
           </p>

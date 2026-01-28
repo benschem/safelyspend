@@ -324,7 +324,7 @@ export function BudgetPage() {
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Budget</h1>
+          <h1 className="text-2xl font-bold">Budgets</h1>
           <p className="text-muted-foreground">
             Spending limits per category for {activeScenario.name}.
           </p>

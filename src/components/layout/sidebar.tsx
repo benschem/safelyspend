@@ -84,13 +84,13 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
       <NavSection title="Plan">
         <NavItem to="/forecast" icon={<TrendingUp className="h-4 w-4" />} onClick={onNavigate}>
-          Forecast
+          Forecasts
         </NavItem>
         <NavItem to="/manage/rules" icon={<Repeat className="h-4 w-4" />} onClick={onNavigate}>
-          Recurring
+          Recurring Forecasts
         </NavItem>
         <NavItem to="/budget" icon={<FolderTree className="h-4 w-4" />} onClick={onNavigate}>
-          Budget
+          Budgets
         </NavItem>
       </NavSection>
 
