@@ -17,6 +17,7 @@ import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
+import { useForecasts } from '@/hooks/use-forecasts';
 import { CategoryBudgetDialog } from '@/components/dialogs/category-budget-dialog';
 import { formatCents, parseCentsFromInput, formatISODate } from '@/lib/utils';
 import type { Cadence, BudgetRule } from '@/lib/types';
@@ -30,11 +31,14 @@ interface BudgetRow {
   categoryId: string;
   categoryName: string;
   spent: number;
+  forecasted: number;
+  projectedTotal: number;
   budgetAmount: number;
   cadence: Cadence | null;
-  remaining: number;
-  percentUsed: number;
-  status: 'over' | 'warning' | 'good' | 'untracked';
+  projectedRemaining: number;
+  spentPercent: number;
+  projectedPercent: number;
+  status: 'over' | 'projected-over' | 'warning' | 'good' | 'untracked';
   rule: BudgetRule | null;
 }
 
@@ -123,6 +127,16 @@ function getCurrentPeriodLabel(cadence: Cadence): string {
 }
 
 /**
+ * Get remaining period range (from tomorrow to end of period)
+ */
+function getRemainingPeriodRange(cadence: Cadence): { start: string; end: string } {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const periodEnd = getCurrentPeriodRange(cadence).end;
+  return { start: formatISODate(tomorrow), end: periodEnd };
+}
+
+/**
  * Get short period label for spent column
  */
 function getShortPeriodLabel(cadence: Cadence): string {
@@ -140,25 +154,28 @@ function getShortPeriodLabel(cadence: Cadence): string {
   }
 }
 
-function getStatus(percentUsed: number): 'over' | 'warning' | 'good' {
-  if (percentUsed >= 100) return 'over';
-  if (percentUsed >= 90) return 'warning';
+function getStatus(spentPercent: number, projectedPercent: number): 'over' | 'projected-over' | 'warning' | 'good' {
+  if (spentPercent >= 100) return 'over';
+  if (projectedPercent >= 100) return 'projected-over';
+  if (projectedPercent >= 75) return 'warning';
   return 'good';
 }
 
-function getProgressColor(percentUsed: number): string {
-  if (percentUsed >= 100) return 'bg-red-500';
-  if (percentUsed >= 90) return 'bg-amber-500';
-  if (percentUsed >= 75) return 'bg-yellow-500';
+function getSpentBarColor(spentPercent: number, projectedPercent: number): string {
+  if (spentPercent >= 100) return 'bg-red-500';
+  if (projectedPercent >= 100) return 'bg-amber-500';
+  if (projectedPercent >= 75) return 'bg-yellow-500';
   return 'bg-green-500';
 }
 
-function getStatusTextColor(status: 'over' | 'warning' | 'good' | 'untracked'): string {
+function getStatusTextColor(status: 'over' | 'projected-over' | 'warning' | 'good' | 'untracked'): string {
   switch (status) {
     case 'over':
       return 'text-red-600';
-    case 'warning':
+    case 'projected-over':
       return 'text-amber-600';
+    case 'warning':
+      return 'text-yellow-600';
     case 'good':
       return 'text-green-600';
     case 'untracked':
@@ -173,6 +190,35 @@ export function BudgetPage() {
   const { allTransactions } = useTransactions();
   const { getRuleForCategory, setBudgetForCategory, deleteBudgetRule } =
     useBudgetRules(activeScenarioId);
+
+  // Get forecasts for each cadence's remaining period
+  // We need to compute forecasts from tomorrow to end of period for each cadence type
+  const remainingPeriodRanges = useMemo(() => {
+    const ranges: Record<Cadence, { start: string; end: string }> = {
+      weekly: getRemainingPeriodRange('weekly'),
+      fortnightly: getRemainingPeriodRange('fortnightly'),
+      monthly: getRemainingPeriodRange('monthly'),
+      quarterly: getRemainingPeriodRange('quarterly'),
+      yearly: getRemainingPeriodRange('yearly'),
+    };
+    return ranges;
+  }, []);
+
+  // Get forecasts for all periods - use the max range to cover all cadences
+  const maxEndDate = useMemo(() => {
+    return Object.values(remainingPeriodRanges).reduce(
+      (max, range) => (range.end > max ? range.end : max),
+      '',
+    );
+  }, [remainingPeriodRanges]);
+
+  const tomorrow = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return formatISODate(d);
+  }, []);
+
+  const { expenseForecasts } = useForecasts(activeScenarioId, tomorrow, maxEndDate);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState('');
@@ -216,6 +262,38 @@ export function BudgetPage() {
     return spending;
   }, [allTransactions, activeCategories]);
 
+  // Calculate forecasted expenses per category per cadence (for remaining period)
+  const categoryForecasts = useMemo(() => {
+    const forecasts: Record<string, Record<Cadence, number>> = {};
+
+    for (const cat of activeCategories) {
+      forecasts[cat.id] = {
+        weekly: 0,
+        fortnightly: 0,
+        monthly: 0,
+        quarterly: 0,
+        yearly: 0,
+      };
+    }
+
+    // Sum expense forecasts by category and determine which cadence periods they fall into
+    for (const forecast of expenseForecasts) {
+      if (!forecast.categoryId) continue;
+
+      // For each cadence, check if this forecast date falls within that remaining period
+      for (const cadence of Object.keys(remainingPeriodRanges) as Cadence[]) {
+        const { start, end } = remainingPeriodRanges[cadence];
+        if (forecast.date >= start && forecast.date <= end) {
+          if (forecasts[forecast.categoryId]) {
+            forecasts[forecast.categoryId]![cadence] += forecast.amountCents;
+          }
+        }
+      }
+    }
+
+    return forecasts;
+  }, [expenseForecasts, activeCategories, remainingPeriodRanges]);
+
   // Build rows for all active categories
   const allRows: BudgetRow[] = useMemo(() => {
     return activeCategories.map((category) => {
@@ -228,35 +306,46 @@ export function BudgetPage() {
         ? categorySpending[category.id]?.[cadence] ?? 0
         : categorySpending[category.id]?.monthly ?? 0;
 
-      const remaining = budgetAmount - spent;
-      const percentUsed = budgetAmount > 0 ? (spent / budgetAmount) * 100 : 0;
+      // Get forecasted amount for remaining period
+      const forecasted = cadence
+        ? categoryForecasts[category.id]?.[cadence] ?? 0
+        : categoryForecasts[category.id]?.monthly ?? 0;
+
+      const projectedTotal = spent + forecasted;
+      const projectedRemaining = budgetAmount - projectedTotal;
+      const spentPercent = budgetAmount > 0 ? (spent / budgetAmount) * 100 : 0;
+      const projectedPercent = budgetAmount > 0 ? (projectedTotal / budgetAmount) * 100 : 0;
+
       const status: BudgetRow['status'] = !rule
         ? 'untracked'
-        : getStatus(percentUsed);
+        : getStatus(spentPercent, projectedPercent);
 
       return {
         id: category.id,
         categoryId: category.id,
         categoryName: category.name,
         spent,
+        forecasted,
+        projectedTotal,
         budgetAmount,
         cadence,
-        remaining,
-        percentUsed,
+        projectedRemaining,
+        spentPercent,
+        projectedPercent,
         status,
         rule,
       };
     });
-  }, [activeCategories, getRuleForCategory, categorySpending]);
+  }, [activeCategories, getRuleForCategory, categorySpending, categoryForecasts]);
 
-  // Sort: over first, then warning, then good, then untracked
+  // Sort: over first, then projected-over, then warning, then good, then untracked
   const sortedRows = useMemo(() => {
-    const statusOrder = { over: 0, warning: 1, good: 2, untracked: 3 };
+    const statusOrder = { over: 0, 'projected-over': 1, warning: 2, good: 3, untracked: 4 };
     return [...allRows].sort((a, b) => {
       const orderDiff = statusOrder[a.status] - statusOrder[b.status];
       if (orderDiff !== 0) return orderDiff;
-      // Within same status, sort by percent used descending
-      return b.percentUsed - a.percentUsed;
+      // Within same status, sort by projected percent descending
+      return b.projectedPercent - a.projectedPercent;
     });
   }, [allRows]);
 
@@ -264,18 +353,24 @@ export function BudgetPage() {
   const summary = useMemo(() => {
     const tracked = allRows.filter((r) => r.rule);
     const totalSpent = tracked.reduce((sum, r) => sum + r.spent, 0);
+    const totalForecasted = tracked.reduce((sum, r) => sum + r.forecasted, 0);
+    const totalProjected = totalSpent + totalForecasted;
     const totalBudget = tracked.reduce((sum, r) => sum + r.budgetAmount, 0);
-    const totalRemaining = totalBudget - totalSpent;
+    const totalProjectedRemaining = totalBudget - totalProjected;
     const overCount = tracked.filter((r) => r.status === 'over').length;
+    const projectedOverCount = tracked.filter((r) => r.status === 'projected-over').length;
     const warningCount = tracked.filter((r) => r.status === 'warning').length;
     const goodCount = tracked.filter((r) => r.status === 'good').length;
     const untrackedCount = allRows.filter((r) => !r.rule).length;
 
     return {
       totalSpent,
+      totalForecasted,
+      totalProjected,
       totalBudget,
-      totalRemaining,
+      totalProjectedRemaining,
       overCount,
+      projectedOverCount,
       warningCount,
       goodCount,
       untrackedCount,
@@ -352,11 +447,13 @@ export function BudgetPage() {
               className={`h-2 w-2 rounded-full ${
                 row.original.status === 'over'
                   ? 'bg-red-500'
-                  : row.original.status === 'warning'
+                  : row.original.status === 'projected-over'
                     ? 'bg-amber-500'
-                    : row.original.status === 'good'
-                      ? 'bg-green-500'
-                      : 'bg-gray-300'
+                    : row.original.status === 'warning'
+                      ? 'bg-yellow-500'
+                      : row.original.status === 'good'
+                        ? 'bg-green-500'
+                        : 'bg-gray-300'
               }`}
             />
             <span className="font-medium">{row.getValue('categoryName')}</span>
@@ -376,7 +473,14 @@ export function BudgetPage() {
           return (
             <div className="text-right">
               <div className="font-mono">{formatCents(row.getValue('spent'))}</div>
-              <div className="text-xs text-muted-foreground">{periodLabel}</div>
+              {budgetRow.forecasted > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  +{formatCents(budgetRow.forecasted)} forecast
+                </div>
+              )}
+              {budgetRow.forecasted === 0 && (
+                <div className="text-xs text-muted-foreground">{periodLabel}</div>
+              )}
             </div>
           );
         },
@@ -445,7 +549,7 @@ export function BudgetPage() {
         },
       },
       {
-        accessorKey: 'remaining',
+        accessorKey: 'projectedRemaining',
         header: ({ column }) => (
           <SortableHeader column={column} className="justify-end">
             Remaining
@@ -456,31 +560,92 @@ export function BudgetPage() {
           if (!budgetRow.rule) {
             return <div className="text-right text-muted-foreground">—</div>;
           }
+          const isProjected = budgetRow.forecasted > 0;
           return (
-            <div className={`text-right font-mono ${getStatusTextColor(budgetRow.status)}`}>
-              {budgetRow.remaining >= 0 ? '+' : ''}
-              {formatCents(budgetRow.remaining)}
+            <div className="text-right">
+              <div className={`font-mono ${getStatusTextColor(budgetRow.status)}`}>
+                {budgetRow.projectedRemaining >= 0 ? '+' : ''}
+                {formatCents(budgetRow.projectedRemaining)}
+              </div>
+              {isProjected && (
+                <div className="text-xs text-muted-foreground">projected</div>
+              )}
             </div>
           );
         },
       },
       {
-        accessorKey: 'percentUsed',
+        accessorKey: 'projectedPercent',
         header: ({ column }) => <SortableHeader column={column}>Progress</SortableHeader>,
         cell: ({ row }) => {
           const budgetRow = row.original;
           if (!budgetRow.rule) {
             return <div className="text-muted-foreground">—</div>;
           }
-          const percent = Math.min(budgetRow.percentUsed, 100);
-          const displayPercent = Math.round(budgetRow.percentUsed);
+
+          const spentPercent = Math.min(budgetRow.spentPercent, 100);
+          const forecastPercent = Math.min(budgetRow.projectedPercent, 100) - spentPercent;
+          const displayPercent = Math.round(budgetRow.projectedPercent);
+          const isOverBudget = budgetRow.projectedPercent >= 100;
+
+          // If over budget, show solid amber bar
+          if (isOverBudget) {
+            return (
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-full min-w-[80px] rounded-full bg-gray-200 dark:bg-gray-700">
+                  <div
+                    className={`h-2 rounded-full transition-all ${
+                      budgetRow.spentPercent >= 100 ? 'bg-red-500' : 'bg-amber-500'
+                    }`}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <span className={`w-12 text-right text-sm ${getStatusTextColor(budgetRow.status)}`}>
+                  {displayPercent}%
+                </span>
+              </div>
+            );
+          }
+
+          // Normal case: two-tone bar (spent solid, forecast striped)
+          const baseColor = getSpentBarColor(budgetRow.spentPercent, budgetRow.projectedPercent);
+          // Extract color name for striped pattern (e.g., "bg-green-500" -> "green")
+          const colorMatch = baseColor.match(/bg-(\w+)-\d+/);
+          const colorName = colorMatch ? colorMatch[1] : 'green';
+
           return (
             <div className="flex items-center gap-2">
-              <div className="h-2 w-full min-w-[80px] rounded-full bg-gray-200 dark:bg-gray-700">
+              <div className="relative h-2 w-full min-w-[80px] overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                {/* Spent portion (solid) */}
                 <div
-                  className={`h-2 rounded-full transition-all ${getProgressColor(budgetRow.percentUsed)}`}
-                  style={{ width: `${percent}%` }}
+                  className={`absolute left-0 h-2 transition-all ${baseColor} ${
+                    forecastPercent <= 0 ? 'rounded-full' : 'rounded-l-full'
+                  }`}
+                  style={{ width: `${spentPercent}%` }}
                 />
+                {/* Forecast portion (striped pattern) */}
+                {forecastPercent > 0 && (
+                  <div
+                    className="absolute h-2 rounded-r-full transition-all"
+                    style={{
+                      left: `${spentPercent}%`,
+                      width: `${forecastPercent}%`,
+                      background: `repeating-linear-gradient(
+                        -45deg,
+                        var(--stripe-color),
+                        var(--stripe-color) 2px,
+                        transparent 2px,
+                        transparent 4px
+                      )`,
+                      // Set stripe color based on status
+                      ['--stripe-color' as string]:
+                        colorName === 'red' ? 'rgb(239 68 68)' :
+                        colorName === 'amber' ? 'rgb(245 158 11)' :
+                        colorName === 'yellow' ? 'rgb(234 179 8)' :
+                        'rgb(34 197 94)',
+                    }}
+                  />
+                )}
               </div>
               <span className={`w-12 text-right text-sm ${getStatusTextColor(budgetRow.status)}`}>
                 {displayPercent}%
@@ -605,6 +770,11 @@ export function BudgetPage() {
               <div className="text-sm font-medium text-muted-foreground">{periodLabel}</div>
               <div className="mt-1 flex items-baseline gap-2">
                 <span className="text-2xl font-bold">{formatCents(summary.totalSpent)}</span>
+                {summary.totalForecasted > 0 && (
+                  <span className="text-muted-foreground">
+                    +{formatCents(summary.totalForecasted)} forecast
+                  </span>
+                )}
                 <span className="text-muted-foreground">of {formatCents(summary.totalBudget)}</span>
               </div>
             </div>
@@ -612,8 +782,11 @@ export function BudgetPage() {
               {summary.overCount > 0 && (
                 <span className="text-red-600">{summary.overCount} over budget</span>
               )}
+              {summary.projectedOverCount > 0 && (
+                <span className="text-amber-600">{summary.projectedOverCount} projected over</span>
+              )}
               {summary.warningCount > 0 && (
-                <span className="text-amber-600">{summary.warningCount} near limit</span>
+                <span className="text-yellow-600">{summary.warningCount} near limit</span>
               )}
               {summary.goodCount > 0 && (
                 <span className="text-green-600">{summary.goodCount} on track</span>
@@ -624,27 +797,48 @@ export function BudgetPage() {
             </div>
           </div>
           <div className="mt-3 flex items-center gap-2">
-            <div className="h-2 flex-1 rounded-full bg-gray-200 dark:bg-gray-700">
+            <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+              {/* Spent portion */}
               <div
-                className={`h-2 rounded-full transition-all ${
-                  summary.totalRemaining < 0
-                    ? 'bg-red-500'
-                    : summary.totalSpent / summary.totalBudget >= 0.9
-                      ? 'bg-amber-500'
+                className={`absolute left-0 h-2 transition-all ${
+                  summary.totalProjectedRemaining < 0
+                    ? summary.totalSpent >= summary.totalBudget
+                      ? 'bg-red-500'
+                      : 'bg-amber-500'
+                    : summary.totalProjected / summary.totalBudget >= 0.75
+                      ? 'bg-yellow-500'
                       : 'bg-green-500'
-                }`}
+                } ${summary.totalForecasted <= 0 ? 'rounded-full' : 'rounded-l-full'}`}
                 style={{
                   width: `${Math.min((summary.totalSpent / summary.totalBudget) * 100, 100)}%`,
                 }}
               />
+              {/* Forecasted portion (striped) */}
+              {summary.totalForecasted > 0 && summary.totalProjectedRemaining >= 0 && (
+                <div
+                  className="absolute h-2 rounded-r-full transition-all"
+                  style={{
+                    left: `${Math.min((summary.totalSpent / summary.totalBudget) * 100, 100)}%`,
+                    width: `${Math.min((summary.totalForecasted / summary.totalBudget) * 100, 100 - (summary.totalSpent / summary.totalBudget) * 100)}%`,
+                    background: `repeating-linear-gradient(
+                      -45deg,
+                      ${summary.totalProjected / summary.totalBudget >= 0.75 ? 'rgb(234 179 8)' : 'rgb(34 197 94)'},
+                      ${summary.totalProjected / summary.totalBudget >= 0.75 ? 'rgb(234 179 8)' : 'rgb(34 197 94)'} 2px,
+                      transparent 2px,
+                      transparent 4px
+                    )`,
+                  }}
+                />
+              )}
             </div>
             <span
               className={`text-sm font-medium ${
-                summary.totalRemaining >= 0 ? 'text-green-600' : 'text-red-600'
+                summary.totalProjectedRemaining >= 0 ? 'text-green-600' : 'text-red-600'
               }`}
             >
-              {summary.totalRemaining >= 0 ? '+' : ''}
-              {formatCents(summary.totalRemaining)} remaining
+              {summary.totalProjectedRemaining >= 0 ? '+' : ''}
+              {formatCents(summary.totalProjectedRemaining)} remaining
+              {summary.totalForecasted > 0 && ' (projected)'}
             </span>
           </div>
         </div>

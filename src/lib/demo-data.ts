@@ -42,7 +42,7 @@ function getWeekdayInMonth(monthsFromNow: number, weekNumber: number, dayOfWeek:
   return date.toISOString().slice(0, 10);
 }
 
-// Add slight variation to an amount (±10%)
+// Add slight variation to an amount (±variance%)
 function vary(amount: number, variance: number = 0.1): number {
   const factor = 1 + (Math.random() * 2 - 1) * variance;
   return Math.round(amount * factor);
@@ -58,31 +58,51 @@ function randomDayInMonth(monthsFromNow: number, startDay: number, endDay: numbe
   return date.toISOString().slice(0, 10);
 }
 
+// Pick random item from array
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)]!;
+}
+
 export function generateDemoData(): BudgetData {
   const timestamp = now();
 
   // Generate all IDs upfront
   const scenarioId = generateId();
 
-  // Categories - organised by how humans think
+  // ==========================================================================
+  // CATEGORIES - Organised like a real Aussie budget
+  // ==========================================================================
   const catRent = generateId();
   const catElectricity = generateId();
   const catGas = generateId();
+  const catWater = generateId();
   const catInternet = generateId();
   const catGroceries = generateId();
-  const catTransport = generateId();
+  const catPetrol = generateId();
+  const catPublicTransport = generateId();
+  const catCarMaintenance = generateId();
+  const catCarInsurance = generateId();
   const catPhone = generateId();
+  const catCoffee = generateId();
   const catDiningOut = generateId();
+  const catTakeaway = generateId();
   const catEntertainment = generateId();
   const catShopping = generateId();
+  const catClothing = generateId();
   const catSubscriptions = generateId();
   const catHealthcare = generateId();
+  const catPersonalCare = generateId();
+  const catGifts = generateId();
+  const catPet = generateId();
+  const catHomeInsurance = generateId();
+  const catHealthInsurance = generateId();
 
   // Savings goals
   const goalEmergency = generateId();
   const goalHoliday = generateId();
-  const goalLaptop = generateId();
+  const goalNewCar = generateId();
   const goalHouseDeposit = generateId();
+  const goalChristmas = generateId();
 
   // ==========================================================================
   // SCENARIOS
@@ -94,7 +114,7 @@ export function generateDemoData(): BudgetData {
       createdAt: timestamp,
       updatedAt: timestamp,
       name: 'Main Budget',
-      description: 'My primary budget scenario',
+      description: 'My everyday budget',
       isDefault: true,
     },
   ];
@@ -103,21 +123,36 @@ export function generateDemoData(): BudgetData {
   // CATEGORIES
   // ==========================================================================
   const categories = [
-    // Home
+    // Housing & Utilities
     { id: catRent, name: 'Rent' },
     { id: catElectricity, name: 'Electricity' },
     { id: catGas, name: 'Gas' },
+    { id: catWater, name: 'Water' },
     { id: catInternet, name: 'Internet' },
-    // Living
+    { id: catHomeInsurance, name: 'Home Insurance' },
+    // Transport
+    { id: catPetrol, name: 'Petrol' },
+    { id: catPublicTransport, name: 'Public Transport' },
+    { id: catCarMaintenance, name: 'Car Maintenance' },
+    { id: catCarInsurance, name: 'Car Insurance' },
+    // Food & Drink
     { id: catGroceries, name: 'Groceries' },
-    { id: catTransport, name: 'Transport' },
-    { id: catPhone, name: 'Phone' },
-    { id: catHealthcare, name: 'Healthcare' },
-    // Lifestyle
+    { id: catCoffee, name: 'Coffee' },
     { id: catDiningOut, name: 'Dining Out' },
+    { id: catTakeaway, name: 'Takeaway' },
+    // Lifestyle
     { id: catEntertainment, name: 'Entertainment' },
     { id: catShopping, name: 'Shopping' },
+    { id: catClothing, name: 'Clothing' },
     { id: catSubscriptions, name: 'Subscriptions' },
+    { id: catGifts, name: 'Gifts' },
+    // Health & Personal
+    { id: catHealthcare, name: 'Healthcare' },
+    { id: catHealthInsurance, name: 'Health Insurance' },
+    { id: catPersonalCare, name: 'Personal Care' },
+    // Other
+    { id: catPhone, name: 'Phone' },
+    { id: catPet, name: 'Pet' },
   ].map((c) => ({
     ...c,
     userId: USER_ID,
@@ -133,26 +168,32 @@ export function generateDemoData(): BudgetData {
     {
       id: goalEmergency,
       name: 'Emergency Fund',
-      targetAmountCents: 1500000, // $15,000
+      targetAmountCents: 1500000, // $15,000 (3 months expenses)
       deadline: monthsFromNow(18),
     },
     {
       id: goalHoliday,
-      name: 'Bali Holiday',
-      targetAmountCents: 350000, // $3,500
-      deadline: monthsFromNow(8),
+      name: 'Bali Trip',
+      targetAmountCents: 400000, // $4,000
+      deadline: monthsFromNow(6),
     },
     {
-      id: goalLaptop,
-      name: 'New Laptop',
-      targetAmountCents: 250000, // $2,500
-      deadline: monthsFromNow(5),
+      id: goalNewCar,
+      name: 'New Car Fund',
+      targetAmountCents: 2500000, // $25,000
+      deadline: monthsFromNow(36),
     },
     {
       id: goalHouseDeposit,
       name: 'House Deposit',
-      targetAmountCents: 8000000, // $80,000 - long term
+      targetAmountCents: 10000000, // $100,000
       deadline: monthsFromNow(60),
+    },
+    {
+      id: goalChristmas,
+      name: 'Christmas Fund',
+      targetAmountCents: 150000, // $1,500
+      deadline: monthsFromNow(11), // Next Christmas
     },
   ].map((g) => ({
     ...g,
@@ -162,21 +203,42 @@ export function generateDemoData(): BudgetData {
   }));
 
   // ==========================================================================
-  // BUDGET RULES (monthly limits)
+  // BUDGET RULES - Mixed cadences like a real Aussie budget
   // ==========================================================================
   const budgetRules = [
-    { categoryId: catRent, amountCents: 200000 }, // $2,000
-    { categoryId: catElectricity, amountCents: 15000 }, // $150
-    { categoryId: catGas, amountCents: 8000 }, // $80
-    { categoryId: catInternet, amountCents: 9000 }, // $90
-    { categoryId: catGroceries, amountCents: 60000 }, // $600
-    { categoryId: catTransport, amountCents: 25000 }, // $250
-    { categoryId: catPhone, amountCents: 6500 }, // $65
-    { categoryId: catDiningOut, amountCents: 30000 }, // $300
-    { categoryId: catEntertainment, amountCents: 15000 }, // $150
-    { categoryId: catShopping, amountCents: 20000 }, // $200
-    { categoryId: catSubscriptions, amountCents: 8000 }, // $80
-    { categoryId: catHealthcare, amountCents: 10000 }, // $100
+    // FORTNIGHTLY - Aligned with typical Aussie pay cycle
+    { categoryId: catRent, amountCents: 92500, cadence: 'fortnightly' as const }, // $925/fn ($2,000/mo equivalent)
+    { categoryId: catGroceries, amountCents: 30000, cadence: 'fortnightly' as const }, // $300/fn
+    { categoryId: catPetrol, amountCents: 12000, cadence: 'fortnightly' as const }, // $120/fn
+    { categoryId: catDiningOut, amountCents: 15000, cadence: 'fortnightly' as const }, // $150/fn
+    { categoryId: catTakeaway, amountCents: 8000, cadence: 'fortnightly' as const }, // $80/fn (Uber Eats etc)
+
+    // WEEKLY - Things you track week by week
+    { categoryId: catCoffee, amountCents: 3500, cadence: 'weekly' as const }, // $35/wk (about $5/day)
+    { categoryId: catPublicTransport, amountCents: 5000, cadence: 'weekly' as const }, // $50/wk Opal
+    { categoryId: catEntertainment, amountCents: 5000, cadence: 'weekly' as const }, // $50/wk
+
+    // MONTHLY - Regular monthly expenses
+    { categoryId: catInternet, amountCents: 8900, cadence: 'monthly' as const }, // $89/mo
+    { categoryId: catPhone, amountCents: 6500, cadence: 'monthly' as const }, // $65/mo
+    { categoryId: catSubscriptions, amountCents: 7500, cadence: 'monthly' as const }, // $75/mo (Netflix, Spotify, etc)
+    { categoryId: catShopping, amountCents: 20000, cadence: 'monthly' as const }, // $200/mo
+    { categoryId: catClothing, amountCents: 15000, cadence: 'monthly' as const }, // $150/mo
+    { categoryId: catPersonalCare, amountCents: 8000, cadence: 'monthly' as const }, // $80/mo
+    { categoryId: catHealthcare, amountCents: 10000, cadence: 'monthly' as const }, // $100/mo
+    { categoryId: catPet, amountCents: 15000, cadence: 'monthly' as const }, // $150/mo (food + vet fund)
+    { categoryId: catGifts, amountCents: 10000, cadence: 'monthly' as const }, // $100/mo
+
+    // QUARTERLY - Australian utilities are typically quarterly
+    { categoryId: catElectricity, amountCents: 45000, cadence: 'quarterly' as const }, // $450/qtr
+    { categoryId: catGas, amountCents: 20000, cadence: 'quarterly' as const }, // $200/qtr
+    { categoryId: catWater, amountCents: 25000, cadence: 'quarterly' as const }, // $250/qtr
+    { categoryId: catCarMaintenance, amountCents: 40000, cadence: 'quarterly' as const }, // $400/qtr (service fund)
+
+    // YEARLY - Annual expenses
+    { categoryId: catCarInsurance, amountCents: 120000, cadence: 'yearly' as const }, // $1,200/yr
+    { categoryId: catHomeInsurance, amountCents: 150000, cadence: 'yearly' as const }, // $1,500/yr (contents)
+    { categoryId: catHealthInsurance, amountCents: 180000, cadence: 'yearly' as const }, // $1,800/yr (after rebate)
   ].map((r) => ({
     id: generateId(),
     userId: USER_ID,
@@ -184,50 +246,61 @@ export function generateDemoData(): BudgetData {
     updatedAt: timestamp,
     scenarioId,
     ...r,
-    cadence: 'monthly' as const,
   }));
 
   // ==========================================================================
   // FORECAST RULES (recurring patterns)
   // ==========================================================================
   const forecastRules = [
-    // Income - fortnightly salary on Thursday
+    // Income - fortnightly salary on Thursday (typical Aussie pay day)
     {
       type: 'income' as const,
-      amountCents: 285000, // $2,850 net fortnightly (~$74k gross annual)
+      amountCents: 295000, // $2,950 net fortnightly (~$77k gross annual)
       cadence: 'fortnightly' as const,
       dayOfWeek: 4, // Thursday
-      description: 'Salary',
+      description: 'Salary - PAYG',
       categoryId: null,
       savingsGoalId: null,
     },
-    // Rent - 1st of month
+    // Rent - fortnightly on Monday (common in Aus)
     {
       type: 'expense' as const,
-      amountCents: 200000, // $2,000
-      cadence: 'monthly' as const,
-      dayOfMonth: 1,
+      amountCents: 92500, // $925 fortnightly
+      cadence: 'fortnightly' as const,
+      dayOfWeek: 1, // Monday
       description: 'Rent',
       categoryId: catRent,
       savingsGoalId: null,
     },
-    // Utilities - quarterly
+    // Utilities - quarterly (Australian standard)
     {
       type: 'expense' as const,
-      amountCents: 42000, // $420 quarterly electricity
+      amountCents: 45000, // $450 quarterly electricity
       cadence: 'quarterly' as const,
       dayOfMonth: 15,
-      description: 'Electricity bill',
+      monthOfQuarter: 1, // 2nd month of quarter
+      description: 'AGL Electricity',
       categoryId: catElectricity,
       savingsGoalId: null,
     },
     {
       type: 'expense' as const,
-      amountCents: 18000, // $180 quarterly gas
+      amountCents: 20000, // $200 quarterly gas
       cadence: 'quarterly' as const,
       dayOfMonth: 20,
-      description: 'Gas bill',
+      monthOfQuarter: 1,
+      description: 'Origin Gas',
       categoryId: catGas,
+      savingsGoalId: null,
+    },
+    {
+      type: 'expense' as const,
+      amountCents: 25000, // $250 quarterly water
+      cadence: 'quarterly' as const,
+      dayOfMonth: 10,
+      monthOfQuarter: 2, // 3rd month of quarter
+      description: 'Sydney Water',
+      categoryId: catWater,
       savingsGoalId: null,
     },
     // Monthly bills
@@ -236,7 +309,7 @@ export function generateDemoData(): BudgetData {
       amountCents: 8900, // $89 internet
       cadence: 'monthly' as const,
       dayOfMonth: 5,
-      description: 'Internet',
+      description: 'Aussie Broadband',
       categoryId: catInternet,
       savingsGoalId: null,
     },
@@ -245,18 +318,47 @@ export function generateDemoData(): BudgetData {
       amountCents: 6500, // $65 phone
       cadence: 'monthly' as const,
       dayOfMonth: 12,
-      description: 'Phone plan',
+      description: 'Telstra Mobile',
       categoryId: catPhone,
       savingsGoalId: null,
     },
-    // Weekly groceries - Saturday
     {
       type: 'expense' as const,
-      amountCents: 14000, // $140/week
+      amountCents: 15000, // $150 health insurance
+      cadence: 'monthly' as const,
+      dayOfMonth: 1,
+      description: 'Medibank Private',
+      categoryId: catHealthInsurance,
+      savingsGoalId: null,
+    },
+    // Weekly groceries - Saturday shop
+    {
+      type: 'expense' as const,
+      amountCents: 15000, // $150/week main shop
       cadence: 'weekly' as const,
       dayOfWeek: 6, // Saturday
-      description: 'Groceries',
+      description: 'Weekly groceries',
       categoryId: catGroceries,
+      savingsGoalId: null,
+    },
+    // Weekly public transport
+    {
+      type: 'expense' as const,
+      amountCents: 5000, // $50/week Opal
+      cadence: 'weekly' as const,
+      dayOfWeek: 1, // Monday (weekly cap resets)
+      description: 'Opal top-up',
+      categoryId: catPublicTransport,
+      savingsGoalId: null,
+    },
+    // Fortnightly petrol
+    {
+      type: 'expense' as const,
+      amountCents: 12000, // $120 fortnightly
+      cadence: 'fortnightly' as const,
+      dayOfWeek: 0, // Sunday fill-up
+      description: 'Petrol',
+      categoryId: catPetrol,
       savingsGoalId: null,
     },
     // Monthly subscriptions
@@ -280,40 +382,96 @@ export function generateDemoData(): BudgetData {
     },
     {
       type: 'expense' as const,
-      amountCents: 999, // iCloud
+      amountCents: 699, // iCloud
       cadence: 'monthly' as const,
       dayOfMonth: 22,
       description: 'iCloud Storage',
       categoryId: catSubscriptions,
       savingsGoalId: null,
     },
-    // Savings contributions
+    {
+      type: 'expense' as const,
+      amountCents: 1799, // Stan
+      cadence: 'monthly' as const,
+      dayOfMonth: 3,
+      description: 'Stan',
+      categoryId: catSubscriptions,
+      savingsGoalId: null,
+    },
+    // Pet expenses - monthly
+    {
+      type: 'expense' as const,
+      amountCents: 8000, // $80 pet food
+      cadence: 'monthly' as const,
+      dayOfMonth: 1,
+      description: 'Pet Circle - Dog food',
+      categoryId: catPet,
+      savingsGoalId: null,
+    },
+    // Annual insurance (monthly direct debit equivalent shown)
+    {
+      type: 'expense' as const,
+      amountCents: 10000, // $100/mo car insurance
+      cadence: 'monthly' as const,
+      dayOfMonth: 28,
+      description: 'NRMA Car Insurance',
+      categoryId: catCarInsurance,
+      savingsGoalId: null,
+    },
+    {
+      type: 'expense' as const,
+      amountCents: 12500, // $125/mo contents insurance
+      cadence: 'monthly' as const,
+      dayOfMonth: 28,
+      description: 'RACV Contents Insurance',
+      categoryId: catHomeInsurance,
+      savingsGoalId: null,
+    },
+    // Savings contributions - day after pay day
     {
       type: 'savings' as const,
-      amountCents: 40000, // $400/month to emergency fund
-      cadence: 'monthly' as const,
-      dayOfMonth: 2,
+      amountCents: 20000, // $200/fortnight to emergency fund
+      cadence: 'fortnightly' as const,
+      dayOfWeek: 5, // Friday (day after payday)
       description: 'Emergency fund',
       categoryId: null,
       savingsGoalId: goalEmergency,
     },
     {
       type: 'savings' as const,
-      amountCents: 20000, // $200/month to holiday
-      cadence: 'monthly' as const,
-      dayOfMonth: 2,
-      description: 'Holiday savings',
+      amountCents: 15000, // $150/fortnight to holiday
+      cadence: 'fortnightly' as const,
+      dayOfWeek: 5,
+      description: 'Bali trip fund',
       categoryId: null,
       savingsGoalId: goalHoliday,
     },
     {
       type: 'savings' as const,
-      amountCents: 30000, // $300/month to house deposit
-      cadence: 'monthly' as const,
-      dayOfMonth: 2,
+      amountCents: 20000, // $200/fortnight to house deposit
+      cadence: 'fortnightly' as const,
+      dayOfWeek: 5,
       description: 'House deposit',
       categoryId: null,
       savingsGoalId: goalHouseDeposit,
+    },
+    {
+      type: 'savings' as const,
+      amountCents: 10000, // $100/fortnight to car fund
+      cadence: 'fortnightly' as const,
+      dayOfWeek: 5,
+      description: 'New car fund',
+      categoryId: null,
+      savingsGoalId: goalNewCar,
+    },
+    {
+      type: 'savings' as const,
+      amountCents: 5000, // $50/fortnight to Christmas
+      cadence: 'fortnightly' as const,
+      dayOfWeek: 5,
+      description: 'Christmas fund',
+      categoryId: null,
+      savingsGoalId: goalChristmas,
     },
   ].map((r) => ({
     id: generateId(),
@@ -328,44 +486,98 @@ export function generateDemoData(): BudgetData {
   // FORECAST EVENTS (one-off future items)
   // ==========================================================================
   const forecastEvents = [
+    // Car expenses
     {
       type: 'expense' as const,
-      date: daysFromNow(45),
-      amountCents: 85000, // $850 car service
-      description: 'Car service',
-      categoryId: catTransport,
+      date: daysFromNow(60),
+      amountCents: 55000, // $550 car service
+      description: 'Car service - 80,000km',
+      categoryId: catCarMaintenance,
       savingsGoalId: null,
     },
     {
       type: 'expense' as const,
       date: daysFromNow(90),
       amountCents: 78000, // $780 car rego
-      description: 'Car registration',
-      categoryId: catTransport,
+      description: 'Car rego renewal',
+      categoryId: catCarMaintenance,
       savingsGoalId: null,
     },
     {
       type: 'expense' as const,
       date: daysFromNow(120),
-      amountCents: 45000, // $450 car insurance
-      description: 'Car insurance (annual)',
-      categoryId: catTransport,
+      amountCents: 35000, // $350 green slip
+      description: 'CTP Green Slip',
+      categoryId: catCarInsurance,
       savingsGoalId: null,
     },
+    // Health
     {
       type: 'expense' as const,
-      date: daysFromNow(60),
-      amountCents: 25000, // $250 dentist
+      date: daysFromNow(45),
+      amountCents: 22000, // $220 dentist
       description: 'Dentist checkup',
       categoryId: catHealthcare,
       savingsGoalId: null,
     },
     {
-      type: 'income' as const,
+      type: 'expense' as const,
       date: daysFromNow(75),
-      amountCents: 35000, // $350 tax refund
-      description: 'Tax refund',
+      amountCents: 18000, // $180 optometrist
+      description: 'Eye test + new glasses',
+      categoryId: catHealthcare,
+      savingsGoalId: null,
+    },
+    // Pet
+    {
+      type: 'expense' as const,
+      date: daysFromNow(30),
+      amountCents: 25000, // $250 vet
+      description: 'Dog annual vaccination',
+      categoryId: catPet,
+      savingsGoalId: null,
+    },
+    // Tax refund
+    {
+      type: 'income' as const,
+      date: daysFromNow(150),
+      amountCents: 180000, // $1,800 tax refund
+      description: 'ATO Tax Refund',
       categoryId: null,
+      savingsGoalId: null,
+    },
+    // Near-term forecasts to demonstrate budget states
+    // These appear in the remaining period for their respective cadences
+    {
+      type: 'expense' as const,
+      date: daysFromNow(1), // Tomorrow
+      amountCents: 8500, // $85 - will push dining out toward limit
+      description: "Friend's birthday dinner",
+      categoryId: catDiningOut,
+      savingsGoalId: null,
+    },
+    {
+      type: 'expense' as const,
+      date: daysFromNow(2),
+      amountCents: 4500, // $45 - entertainment forecast
+      description: 'Movie tickets',
+      categoryId: catEntertainment,
+      savingsGoalId: null,
+    },
+    {
+      type: 'expense' as const,
+      date: daysFromNow(3),
+      amountCents: 15000, // $150 - shopping forecast
+      description: 'New headphones',
+      categoryId: catShopping,
+      savingsGoalId: null,
+    },
+    {
+      type: 'expense' as const,
+      date: daysFromNow(4),
+      amountCents: 3500, // $35 - coffee week
+      description: 'Coffee subscription box',
+      categoryId: catCoffee,
       savingsGoalId: null,
     },
   ].map((e) => ({
@@ -387,8 +599,8 @@ export function generateDemoData(): BudgetData {
       createdAt: timestamp,
       updatedAt: timestamp,
       date: monthsFromNow(-12),
-      balanceCents: 320000, // $3,200 opening balance
-      label: 'Opening balance',
+      balanceCents: 850000, // $8,500 opening balance
+      label: 'Starting balance',
     },
   ];
 
@@ -397,13 +609,43 @@ export function generateDemoData(): BudgetData {
   // ==========================================================================
   const transactions: BudgetData['transactions'] = [];
 
+  // Australian grocery stores
+  const groceryStores = ['Woolworths', 'Coles', 'Aldi', 'IGA', 'Harris Farm'];
+  const coffeeShops = ['The Local', 'Soul Origin', 'Guzman y Gomez', 'Campos', 'Single O'];
+  const petrolStations = ['7-Eleven', 'BP', 'Ampol', 'Shell', 'Costco Fuel'];
+  const restaurants = [
+    'Thai Pothong', 'Grill\'d', 'Nando\'s', 'Oporto', 'Betty\'s Burgers',
+    'Pho Pasteur', 'Sake Restaurant', 'Bar Luca', 'Mister Wong',
+  ];
+  const takeawayPlaces = [
+    'Uber Eats - Thai', 'DoorDash - Indian', 'Menulog - Pizza', 'Uber Eats - Sushi',
+    'DoorDash - Burgers', 'Uber Eats - Chinese', 'Menulog - Kebab',
+  ];
+  const entertainmentPlaces = [
+    'Event Cinemas', 'Hoyts', 'Palace Cinema', 'Strike Bowling', 'Archie Brothers',
+    'Timezone', 'Taronga Zoo', 'Vivid Sydney', 'Sydney FC tickets',
+  ];
+  const shoppingPlaces = [
+    'Kmart', 'Target', 'Big W', 'JB Hi-Fi', 'Officeworks', 'IKEA', 'Bunnings',
+    'Amazon AU', 'eBay', 'Catch',
+  ];
+  const clothingStores = [
+    'Uniqlo', 'H&M', 'Cotton On', 'The Iconic', 'ASOS', 'Country Road',
+  ];
+  const personalCare = [
+    'Priceline', 'Chemist Warehouse', 'Mecca', 'Sephora', 'Barber',
+  ];
+
   // Generate 12 months of transaction history
   for (let month = -12; month <= 0; month++) {
     const isCurrentMonth = month === 0;
     const currentDate = new Date();
     const currentDayOfMonth = currentDate.getDate();
+    const maxDay = isCurrentMonth ? currentDayOfMonth : 28;
 
-    // Salary - fortnightly on Thursdays (roughly 2 per month)
+    // ==========================================================================
+    // INCOME - Fortnightly on Thursdays
+    // ==========================================================================
     const salaryDates = [
       getWeekdayInMonth(month, 1, 4),
       getWeekdayInMonth(month, 3, 4),
@@ -417,15 +659,15 @@ export function generateDemoData(): BudgetData {
         updatedAt: timestamp,
         type: 'income',
         date,
-        amountCents: vary(285000, 0.02), // Slight variation for bonuses/deductions
-        description: 'Salary',
+        amountCents: vary(295000, 0.02),
+        description: 'Salary - PAYG',
         categoryId: null,
         savingsGoalId: null,
       });
     }
 
-    // Occasional bonus/refund (roughly every 4 months)
-    if (month % 4 === -2) {
+    // Occasional extra income
+    if (month % 3 === -1) {
       transactions.push({
         id: generateId(),
         userId: USER_ID,
@@ -433,32 +675,87 @@ export function generateDemoData(): BudgetData {
         updatedAt: timestamp,
         type: 'income',
         date: randomDayInMonth(month, 10, 20),
-        amountCents: vary(25000, 0.5), // $150-$375 random refund
-        description: ['Cashback reward', 'Sold item on Marketplace', 'Work expense reimbursement'][Math.floor(Math.random() * 3)] ?? 'Other income',
+        amountCents: vary(15000, 0.5),
+        description: pick(['Sold on Marketplace', 'Cash back reward', 'Work expense claim']),
         categoryId: null,
         savingsGoalId: null,
       });
     }
 
-    // Only add expenses if date has passed (for current month)
-    const maxDay = isCurrentMonth ? currentDayOfMonth : 28;
+    // ==========================================================================
+    // RENT - Fortnightly on Mondays
+    // ==========================================================================
+    const rentDates = [
+      getWeekdayInMonth(month, 1, 1),
+      getWeekdayInMonth(month, 3, 1),
+    ].filter((d) => !isCurrentMonth || d <= daysFromNow(0));
 
-    // Rent - 1st of month
-    if (!isCurrentMonth || currentDayOfMonth >= 1) {
+    for (const date of rentDates) {
       transactions.push({
         id: generateId(),
         userId: USER_ID,
         createdAt: timestamp,
         updatedAt: timestamp,
         type: 'expense',
-        date: getDateInMonth(month, 1),
-        amountCents: 200000,
+        date,
+        amountCents: 92500,
         description: 'Rent',
         categoryId: catRent,
         savingsGoalId: null,
       });
     }
 
+    // ==========================================================================
+    // QUARTERLY UTILITIES (every 3 months)
+    // ==========================================================================
+    if (month % 3 === 0) {
+      if (!isCurrentMonth || currentDayOfMonth >= 15) {
+        transactions.push({
+          id: generateId(),
+          userId: USER_ID,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          type: 'expense',
+          date: getDateInMonth(month, 15),
+          amountCents: vary(45000, 0.15), // Electricity varies with season
+          description: 'AGL Electricity',
+          categoryId: catElectricity,
+          savingsGoalId: null,
+        });
+      }
+      if (!isCurrentMonth || currentDayOfMonth >= 20) {
+        transactions.push({
+          id: generateId(),
+          userId: USER_ID,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          type: 'expense',
+          date: getDateInMonth(month, 20),
+          amountCents: vary(20000, 0.2),
+          description: 'Origin Gas',
+          categoryId: catGas,
+          savingsGoalId: null,
+        });
+      }
+      if (!isCurrentMonth || currentDayOfMonth >= 10) {
+        transactions.push({
+          id: generateId(),
+          userId: USER_ID,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          type: 'expense',
+          date: getDateInMonth(month, 10),
+          amountCents: vary(25000, 0.1),
+          description: 'Sydney Water',
+          categoryId: catWater,
+          savingsGoalId: null,
+        });
+      }
+    }
+
+    // ==========================================================================
+    // MONTHLY BILLS
+    // ==========================================================================
     // Internet - 5th
     if (!isCurrentMonth || currentDayOfMonth >= 5) {
       transactions.push({
@@ -469,7 +766,7 @@ export function generateDemoData(): BudgetData {
         type: 'expense',
         date: getDateInMonth(month, 5),
         amountCents: 8900,
-        description: 'Internet',
+        description: 'Aussie Broadband',
         categoryId: catInternet,
         savingsGoalId: null,
       });
@@ -485,8 +782,52 @@ export function generateDemoData(): BudgetData {
         type: 'expense',
         date: getDateInMonth(month, 12),
         amountCents: 6500,
-        description: 'Phone plan',
+        description: 'Telstra Mobile',
         categoryId: catPhone,
+        savingsGoalId: null,
+      });
+    }
+
+    // Health Insurance - 1st
+    if (!isCurrentMonth || currentDayOfMonth >= 1) {
+      transactions.push({
+        id: generateId(),
+        userId: USER_ID,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        type: 'expense',
+        date: getDateInMonth(month, 1),
+        amountCents: 15000,
+        description: 'Medibank Private',
+        categoryId: catHealthInsurance,
+        savingsGoalId: null,
+      });
+    }
+
+    // Insurance direct debits - 28th
+    if (!isCurrentMonth || currentDayOfMonth >= 28) {
+      transactions.push({
+        id: generateId(),
+        userId: USER_ID,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        type: 'expense',
+        date: getDateInMonth(month, 28),
+        amountCents: 10000,
+        description: 'NRMA Car Insurance',
+        categoryId: catCarInsurance,
+        savingsGoalId: null,
+      });
+      transactions.push({
+        id: generateId(),
+        userId: USER_ID,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        type: 'expense',
+        date: getDateInMonth(month, 28),
+        amountCents: 12500,
+        description: 'RACV Contents Insurance',
+        categoryId: catHomeInsurance,
         savingsGoalId: null,
       });
     }
@@ -528,46 +869,46 @@ export function generateDemoData(): BudgetData {
         updatedAt: timestamp,
         type: 'expense',
         date: getDateInMonth(month, 22),
-        amountCents: 999,
+        amountCents: 699,
         description: 'iCloud Storage',
         categoryId: catSubscriptions,
         savingsGoalId: null,
       });
     }
-
-    // Quarterly utilities (every 3 months)
-    if (month % 3 === 0) {
-      if (!isCurrentMonth || currentDayOfMonth >= 15) {
-        transactions.push({
-          id: generateId(),
-          userId: USER_ID,
-          createdAt: timestamp,
-          updatedAt: timestamp,
-          type: 'expense',
-          date: getDateInMonth(month, 15),
-          amountCents: vary(42000, 0.15), // Electricity varies with season
-          description: 'Electricity bill',
-          categoryId: catElectricity,
-          savingsGoalId: null,
-        });
-      }
-      if (!isCurrentMonth || currentDayOfMonth >= 20) {
-        transactions.push({
-          id: generateId(),
-          userId: USER_ID,
-          createdAt: timestamp,
-          updatedAt: timestamp,
-          type: 'expense',
-          date: getDateInMonth(month, 20),
-          amountCents: vary(18000, 0.2),
-          description: 'Gas bill',
-          categoryId: catGas,
-          savingsGoalId: null,
-        });
-      }
+    if (!isCurrentMonth || currentDayOfMonth >= 3) {
+      transactions.push({
+        id: generateId(),
+        userId: USER_ID,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        type: 'expense',
+        date: getDateInMonth(month, 3),
+        amountCents: 1799,
+        description: 'Stan',
+        categoryId: catSubscriptions,
+        savingsGoalId: null,
+      });
     }
 
-    // Weekly groceries (4-5 per month, usually Saturday)
+    // Pet food - 1st
+    if (!isCurrentMonth || currentDayOfMonth >= 1) {
+      transactions.push({
+        id: generateId(),
+        userId: USER_ID,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        type: 'expense',
+        date: getDateInMonth(month, 1),
+        amountCents: vary(8000, 0.1),
+        description: 'Pet Circle - Dog food',
+        categoryId: catPet,
+        savingsGoalId: null,
+      });
+    }
+
+    // ==========================================================================
+    // WEEKLY GROCERIES (Saturday shop)
+    // ==========================================================================
     const groceryDates = [
       getWeekdayInMonth(month, 1, 6),
       getWeekdayInMonth(month, 2, 6),
@@ -575,18 +916,7 @@ export function generateDemoData(): BudgetData {
       getWeekdayInMonth(month, 4, 6),
     ].filter((d) => !isCurrentMonth || d <= daysFromNow(0));
 
-    // Intentional imperfection: one month had an expensive grocery week
-    const isExpensiveGroceryMonth = month === -3;
-
-    for (let i = 0; i < groceryDates.length; i++) {
-      const date = groceryDates[i]!;
-      let amount = vary(14000, 0.15);
-
-      // Expensive week in the imperfect month
-      if (isExpensiveGroceryMonth && i === 2) {
-        amount = 22500; // Had guests over
-      }
-
+    for (const date of groceryDates) {
       transactions.push({
         id: generateId(),
         userId: USER_ID,
@@ -594,166 +924,255 @@ export function generateDemoData(): BudgetData {
         updatedAt: timestamp,
         type: 'expense',
         date,
-        amountCents: amount,
-        description: ['Woolworths', 'Coles', 'Aldi', 'IGA'][i % 4] ?? 'Groceries',
+        amountCents: vary(15000, 0.2),
+        description: pick(groceryStores),
         categoryId: catGroceries,
         savingsGoalId: null,
       });
     }
 
-    // Transport - mix of weekly public transport and occasional uber
-    const transportDays = Math.min(maxDay, 28);
-    for (let week = 0; week < 4; week++) {
-      const day = 3 + week * 7; // Roughly Wednesdays
-      if (day <= transportDays) {
-        transactions.push({
-          id: generateId(),
-          userId: USER_ID,
-          createdAt: timestamp,
-          updatedAt: timestamp,
-          type: 'expense',
-          date: getDateInMonth(month, day),
-          amountCents: vary(4500, 0.1), // Weekly Opal top-up
-          description: 'Opal card',
-          categoryId: catTransport,
-          savingsGoalId: null,
-        });
-      }
-    }
-
-    // 1-2 Ubers per month
+    // Mid-week top-up shop
     if (Math.random() > 0.3) {
-      const uberDay = 5 + Math.floor(Math.random() * 20);
-      if (uberDay <= maxDay) {
+      const topUpDay = 3 + Math.floor(Math.random() * 2); // Tue or Wed
+      const topUpDate = getWeekdayInMonth(month, 2, topUpDay);
+      if (!isCurrentMonth || topUpDate <= daysFromNow(0)) {
         transactions.push({
           id: generateId(),
           userId: USER_ID,
           createdAt: timestamp,
           updatedAt: timestamp,
           type: 'expense',
-          date: getDateInMonth(month, uberDay),
-          amountCents: vary(2800, 0.3),
-          description: 'Uber',
-          categoryId: catTransport,
+          date: topUpDate,
+          amountCents: vary(4500, 0.3),
+          description: pick(['Woolworths', 'Coles', 'IGA']) + ' - top up',
+          categoryId: catGroceries,
           savingsGoalId: null,
         });
       }
     }
 
-    // Dining out - 3-5 times per month, scattered
-    const diningCount = 3 + Math.floor(Math.random() * 3);
-
-    // Intentional imperfection: one month had extra dining (birthday month)
-    const isBirthdayMonth = month === -5;
-    const actualDiningCount = isBirthdayMonth ? diningCount + 3 : diningCount;
-
-    for (let i = 0; i < actualDiningCount; i++) {
-      const day = 2 + Math.floor(Math.random() * Math.min(26, maxDay - 2));
-      if (day <= maxDay) {
-        const descriptions = [
-          'Coffee catch-up', 'Lunch with friends', 'Dinner date',
-          'Takeaway Thai', 'Friday drinks', 'Brunch', 'Pizza night',
-        ];
+    // ==========================================================================
+    // WEEKLY PUBLIC TRANSPORT (Opal)
+    // ==========================================================================
+    for (let week = 1; week <= 4; week++) {
+      const opalDate = getWeekdayInMonth(month, week, 1); // Mondays
+      if (!isCurrentMonth || opalDate <= daysFromNow(0)) {
         transactions.push({
           id: generateId(),
           userId: USER_ID,
           createdAt: timestamp,
           updatedAt: timestamp,
           type: 'expense',
-          date: getDateInMonth(month, day),
-          amountCents: vary(isBirthdayMonth && i > diningCount - 1 ? 8500 : 4500, 0.4),
-          description: descriptions[Math.floor(Math.random() * descriptions.length)] ?? 'Dining out',
-          categoryId: catDiningOut,
+          date: opalDate,
+          amountCents: vary(5000, 0.15),
+          description: 'Opal top-up',
+          categoryId: catPublicTransport,
           savingsGoalId: null,
         });
       }
     }
 
-    // Entertainment - 1-3 times per month
-    const entertainmentCount = 1 + Math.floor(Math.random() * 3);
-    for (let i = 0; i < entertainmentCount; i++) {
-      const day = 5 + Math.floor(Math.random() * Math.min(20, maxDay - 5));
-      if (day <= maxDay) {
-        const items = [
-          { desc: 'Cinema', amount: 2500 },
-          { desc: 'Concert tickets', amount: 12000 },
-          { desc: 'Museum entry', amount: 2000 },
-          { desc: 'Bowling', amount: 3500 },
-          { desc: 'Mini golf', amount: 2800 },
-        ];
-        const item = items[Math.floor(Math.random() * items.length)]!;
-        transactions.push({
-          id: generateId(),
-          userId: USER_ID,
-          createdAt: timestamp,
-          updatedAt: timestamp,
-          type: 'expense',
-          date: getDateInMonth(month, day),
-          amountCents: vary(item.amount, 0.2),
-          description: item.desc,
-          categoryId: catEntertainment,
-          savingsGoalId: null,
-        });
-      }
-    }
+    // ==========================================================================
+    // FORTNIGHTLY PETROL
+    // ==========================================================================
+    const petrolDates = [
+      getWeekdayInMonth(month, 1, 0), // Sunday week 1
+      getWeekdayInMonth(month, 3, 0), // Sunday week 3
+    ].filter((d) => !isCurrentMonth || d <= daysFromNow(0));
 
-    // Shopping - 0-2 times per month
-    const shoppingCount = Math.floor(Math.random() * 3);
-
-    // Intentional imperfection: surprise expense month
-    const isSurpriseExpenseMonth = month === -2;
-
-    for (let i = 0; i < shoppingCount; i++) {
-      const day = 3 + Math.floor(Math.random() * Math.min(24, maxDay - 3));
-      if (day <= maxDay) {
-        const items = [
-          { desc: 'Kmart', amount: 4500 },
-          { desc: 'Target', amount: 6000 },
-          { desc: 'Amazon', amount: 5500 },
-          { desc: 'IKEA', amount: 12000 },
-        ];
-        const item = items[Math.floor(Math.random() * items.length)]!;
-        transactions.push({
-          id: generateId(),
-          userId: USER_ID,
-          createdAt: timestamp,
-          updatedAt: timestamp,
-          type: 'expense',
-          date: getDateInMonth(month, day),
-          amountCents: vary(item.amount, 0.3),
-          description: item.desc,
-          categoryId: catShopping,
-          savingsGoalId: null,
-        });
-      }
-    }
-
-    // Surprise expense: washing machine broke
-    if (isSurpriseExpenseMonth) {
+    for (const date of petrolDates) {
       transactions.push({
         id: generateId(),
         userId: USER_ID,
         createdAt: timestamp,
         updatedAt: timestamp,
         type: 'expense',
-        date: getDateInMonth(month, 18),
-        amountCents: 65000, // $650 emergency appliance replacement
-        description: 'Washing machine replacement',
-        categoryId: catShopping,
+        date,
+        amountCents: vary(12000, 0.15),
+        description: pick(petrolStations),
+        categoryId: catPetrol,
         savingsGoalId: null,
       });
     }
 
-    // Healthcare - occasional
+    // ==========================================================================
+    // COFFEE - Daily habit (weekdays)
+    // ==========================================================================
+    for (let week = 1; week <= 4; week++) {
+      // 3-5 coffees per week
+      const coffeeCount = 3 + Math.floor(Math.random() * 3);
+      const coffeeDays = [1, 2, 3, 4, 5].sort(() => Math.random() - 0.5).slice(0, coffeeCount);
+      for (const dayOfWeek of coffeeDays) {
+        const coffeeDate = getWeekdayInMonth(month, week, dayOfWeek);
+        if (!isCurrentMonth || coffeeDate <= daysFromNow(0)) {
+          transactions.push({
+            id: generateId(),
+            userId: USER_ID,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            type: 'expense',
+            date: coffeeDate,
+            amountCents: vary(550, 0.2), // $5.50 average flat white
+            description: pick(coffeeShops),
+            categoryId: catCoffee,
+            savingsGoalId: null,
+          });
+        }
+      }
+    }
+
+    // ==========================================================================
+    // DINING OUT - 2-4 times per fortnight
+    // ==========================================================================
+    const diningCount = 2 + Math.floor(Math.random() * 3);
+    // Intentional over-spend: current month has more dining out
+    const actualDiningCount = isCurrentMonth ? diningCount + 2 : diningCount;
+
+    for (let i = 0; i < actualDiningCount; i++) {
+      const day = 2 + Math.floor(Math.random() * Math.min(26, maxDay - 2));
+      if (day <= maxDay) {
+        transactions.push({
+          id: generateId(),
+          userId: USER_ID,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          type: 'expense',
+          date: getDateInMonth(month, day),
+          amountCents: vary(isCurrentMonth ? 7500 : 5500, 0.3), // More expensive this month
+          description: pick(restaurants),
+          categoryId: catDiningOut,
+          savingsGoalId: null,
+        });
+      }
+    }
+
+    // ==========================================================================
+    // TAKEAWAY - 2-3 times per fortnight
+    // ==========================================================================
+    const takeawayCount = 2 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < takeawayCount; i++) {
+      const day = 3 + Math.floor(Math.random() * Math.min(24, maxDay - 3));
+      if (day <= maxDay) {
+        transactions.push({
+          id: generateId(),
+          userId: USER_ID,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          type: 'expense',
+          date: getDateInMonth(month, day),
+          amountCents: vary(3500, 0.3),
+          description: pick(takeawayPlaces),
+          categoryId: catTakeaway,
+          savingsGoalId: null,
+        });
+      }
+    }
+
+    // ==========================================================================
+    // ENTERTAINMENT - 1-3 times per week
+    // ==========================================================================
+    for (let week = 1; week <= 4; week++) {
+      const entertainmentCount = 1 + Math.floor(Math.random() * 2);
+      for (let i = 0; i < entertainmentCount; i++) {
+        // Usually on weekends
+        const dayOfWeek = Math.random() > 0.3 ? pick([5, 6, 0]) : pick([3, 4]);
+        const entertainmentDate = getWeekdayInMonth(month, week, dayOfWeek);
+        if (!isCurrentMonth || entertainmentDate <= daysFromNow(0)) {
+          transactions.push({
+            id: generateId(),
+            userId: USER_ID,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            type: 'expense',
+            date: entertainmentDate,
+            amountCents: vary(3500, 0.4),
+            description: pick(entertainmentPlaces),
+            categoryId: catEntertainment,
+            savingsGoalId: null,
+          });
+        }
+      }
+    }
+
+    // ==========================================================================
+    // SHOPPING - 1-3 times per month
+    // ==========================================================================
+    const shoppingCount = 1 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < shoppingCount; i++) {
+      const day = 3 + Math.floor(Math.random() * Math.min(24, maxDay - 3));
+      if (day <= maxDay) {
+        transactions.push({
+          id: generateId(),
+          userId: USER_ID,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          type: 'expense',
+          date: getDateInMonth(month, day),
+          amountCents: vary(6000, 0.5),
+          description: pick(shoppingPlaces),
+          categoryId: catShopping,
+          savingsGoalId: null,
+        });
+      }
+    }
+
+    // ==========================================================================
+    // CLOTHING - 0-2 times per month
+    // ==========================================================================
+    const clothingCount = Math.floor(Math.random() * 3);
+    for (let i = 0; i < clothingCount; i++) {
+      const day = 5 + Math.floor(Math.random() * Math.min(20, maxDay - 5));
+      if (day <= maxDay) {
+        transactions.push({
+          id: generateId(),
+          userId: USER_ID,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          type: 'expense',
+          date: getDateInMonth(month, day),
+          amountCents: vary(7500, 0.4),
+          description: pick(clothingStores),
+          categoryId: catClothing,
+          savingsGoalId: null,
+        });
+      }
+    }
+
+    // ==========================================================================
+    // PERSONAL CARE - 1-2 times per month
+    // ==========================================================================
+    const personalCareCount = 1 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < personalCareCount; i++) {
+      const day = 5 + Math.floor(Math.random() * Math.min(20, maxDay - 5));
+      if (day <= maxDay) {
+        transactions.push({
+          id: generateId(),
+          userId: USER_ID,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          type: 'expense',
+          date: getDateInMonth(month, day),
+          amountCents: vary(4000, 0.4),
+          description: pick(personalCare),
+          categoryId: catPersonalCare,
+          savingsGoalId: null,
+        });
+      }
+    }
+
+    // ==========================================================================
+    // HEALTHCARE - occasional
+    // ==========================================================================
     if (Math.random() > 0.6) {
       const day = 5 + Math.floor(Math.random() * Math.min(20, maxDay - 5));
       if (day <= maxDay) {
-        const items = [
-          { desc: 'Pharmacy', amount: 3500 },
-          { desc: 'GP visit', amount: 4500 },
+        const healthcareItems = [
+          { desc: 'Chemist Warehouse', amount: 3500 },
+          { desc: 'GP bulk-billed (gap)', amount: 4500 },
           { desc: 'Physio', amount: 9000 },
+          { desc: 'Pharmacy - prescription', amount: 2500 },
         ];
-        const item = items[Math.floor(Math.random() * items.length)]!;
+        const item = pick(healthcareItems);
         transactions.push({
           id: generateId(),
           userId: USER_ID,
@@ -769,60 +1188,155 @@ export function generateDemoData(): BudgetData {
       }
     }
 
-    // Savings contributions - 2nd of month
-    if (!isCurrentMonth || currentDayOfMonth >= 2) {
-      transactions.push({
-        id: generateId(),
-        userId: USER_ID,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        type: 'savings',
-        date: getDateInMonth(month, 2),
-        amountCents: 40000,
-        description: 'Emergency fund',
-        categoryId: null,
-        savingsGoalId: goalEmergency,
-      });
-      transactions.push({
-        id: generateId(),
-        userId: USER_ID,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        type: 'savings',
-        date: getDateInMonth(month, 2),
-        amountCents: 20000,
-        description: 'Holiday savings',
-        categoryId: null,
-        savingsGoalId: goalHoliday,
-      });
-      transactions.push({
-        id: generateId(),
-        userId: USER_ID,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        type: 'savings',
-        date: getDateInMonth(month, 2),
-        amountCents: 30000,
-        description: 'House deposit',
-        categoryId: null,
-        savingsGoalId: goalHouseDeposit,
-      });
-
-      // Intentional imperfection: skipped laptop savings for 2 months (underfunded goal)
-      if (month < -6 || month > -5) {
+    // ==========================================================================
+    // PET - occasional extras
+    // ==========================================================================
+    if (Math.random() > 0.7) {
+      const day = 5 + Math.floor(Math.random() * Math.min(20, maxDay - 5));
+      if (day <= maxDay) {
+        const petItems = [
+          { desc: 'PetBarn - treats', amount: 2500 },
+          { desc: 'Vet checkup', amount: 8500 },
+          { desc: 'Dog grooming', amount: 6500 },
+          { desc: 'PetStock - toys', amount: 3500 },
+        ];
+        const item = pick(petItems);
         transactions.push({
           id: generateId(),
           userId: USER_ID,
           createdAt: timestamp,
           updatedAt: timestamp,
-          type: 'savings',
-          date: getDateInMonth(month, 2),
-          amountCents: 15000, // Only saving $150/month for laptop (slower progress)
-          description: 'Laptop fund',
-          categoryId: null,
-          savingsGoalId: goalLaptop,
+          type: 'expense',
+          date: getDateInMonth(month, day),
+          amountCents: vary(item.amount, 0.2),
+          description: item.desc,
+          categoryId: catPet,
+          savingsGoalId: null,
         });
       }
+    }
+
+    // ==========================================================================
+    // GIFTS - occasional
+    // ==========================================================================
+    if (Math.random() > 0.6) {
+      const day = 5 + Math.floor(Math.random() * Math.min(20, maxDay - 5));
+      if (day <= maxDay) {
+        const giftItems = [
+          { desc: 'Birthday present', amount: 5000 },
+          { desc: 'Flowers delivery', amount: 6500 },
+          { desc: 'Gift card', amount: 5000 },
+          { desc: 'Donation', amount: 2500 },
+        ];
+        const item = pick(giftItems);
+        transactions.push({
+          id: generateId(),
+          userId: USER_ID,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          type: 'expense',
+          date: getDateInMonth(month, day),
+          amountCents: vary(item.amount, 0.3),
+          description: item.desc,
+          categoryId: catGifts,
+          savingsGoalId: null,
+        });
+      }
+    }
+
+    // ==========================================================================
+    // CAR MAINTENANCE - occasional
+    // ==========================================================================
+    if (month % 4 === -2) {
+      // Roughly quarterly
+      transactions.push({
+        id: generateId(),
+        userId: USER_ID,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        type: 'expense',
+        date: randomDayInMonth(month, 10, 20),
+        amountCents: vary(25000, 0.4),
+        description: pick(['Car wash', 'New tyres', 'Oil change', 'Windscreen repair']),
+        categoryId: catCarMaintenance,
+        savingsGoalId: null,
+      });
+    }
+
+    // ==========================================================================
+    // SAVINGS - Fortnightly on Fridays (day after payday)
+    // ==========================================================================
+    const savingsDates = [
+      getWeekdayInMonth(month, 1, 5),
+      getWeekdayInMonth(month, 3, 5),
+    ].filter((d) => !isCurrentMonth || d <= daysFromNow(0));
+
+    for (const date of savingsDates) {
+      // Emergency fund
+      transactions.push({
+        id: generateId(),
+        userId: USER_ID,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        type: 'savings',
+        date,
+        amountCents: 20000,
+        description: 'Emergency fund',
+        categoryId: null,
+        savingsGoalId: goalEmergency,
+      });
+      // Holiday
+      transactions.push({
+        id: generateId(),
+        userId: USER_ID,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        type: 'savings',
+        date,
+        amountCents: 15000,
+        description: 'Bali trip fund',
+        categoryId: null,
+        savingsGoalId: goalHoliday,
+      });
+      // House deposit
+      transactions.push({
+        id: generateId(),
+        userId: USER_ID,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        type: 'savings',
+        date,
+        amountCents: 20000,
+        description: 'House deposit',
+        categoryId: null,
+        savingsGoalId: goalHouseDeposit,
+      });
+      // Car fund
+      transactions.push({
+        id: generateId(),
+        userId: USER_ID,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        type: 'savings',
+        date,
+        amountCents: 10000,
+        description: 'New car fund',
+        categoryId: null,
+        savingsGoalId: goalNewCar,
+      });
+      // Christmas fund
+      transactions.push({
+        id: generateId(),
+        userId: USER_ID,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        type: 'savings',
+        date,
+        amountCents: 5000,
+        description: 'Christmas fund',
+        categoryId: null,
+        savingsGoalId: goalChristmas,
+      });
     }
   }
 

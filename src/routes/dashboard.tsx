@@ -21,8 +21,56 @@ import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
-import { formatCents, formatDate } from '@/lib/utils';
+import { formatCents, formatDate, formatISODate } from '@/lib/utils';
 import { ScenarioSelector } from '@/components/scenario-selector';
+import type { Cadence } from '@/lib/types';
+
+/**
+ * Get the current period date range for a given cadence
+ */
+function getCurrentPeriodRange(cadence: Cadence): { start: string; end: string } {
+  const now = new Date();
+
+  switch (cadence) {
+    case 'weekly': {
+      // Monday to Sunday containing today
+      const day = now.getDay();
+      const diffToMonday = day === 0 ? -6 : 1 - day;
+      const monday = new Date(now);
+      monday.setDate(monday.getDate() + diffToMonday);
+      const sunday = new Date(monday);
+      sunday.setDate(sunday.getDate() + 6);
+      return { start: formatISODate(monday), end: formatISODate(sunday) };
+    }
+    case 'fortnightly': {
+      // Use a fixed epoch (Jan 1, 2024 was a Monday) to determine fortnight boundaries
+      const epoch = new Date('2024-01-01');
+      const diffDays = Math.floor((now.getTime() - epoch.getTime()) / (1000 * 60 * 60 * 24));
+      const fortnightNumber = Math.floor(diffDays / 14);
+      const fortnightStart = new Date(epoch);
+      fortnightStart.setDate(fortnightStart.getDate() + fortnightNumber * 14);
+      const fortnightEnd = new Date(fortnightStart);
+      fortnightEnd.setDate(fortnightEnd.getDate() + 13);
+      return { start: formatISODate(fortnightStart), end: formatISODate(fortnightEnd) };
+    }
+    case 'monthly': {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      return { start: formatISODate(start), end: formatISODate(end) };
+    }
+    case 'quarterly': {
+      const quarterStart = Math.floor(now.getMonth() / 3) * 3;
+      const start = new Date(now.getFullYear(), quarterStart, 1);
+      const end = new Date(now.getFullYear(), quarterStart + 3, 0);
+      return { start: formatISODate(start), end: formatISODate(end) };
+    }
+    case 'yearly': {
+      const start = new Date(now.getFullYear(), 0, 1);
+      const end = new Date(now.getFullYear(), 11, 31);
+      return { start: formatISODate(start), end: formatISODate(end) };
+    }
+  }
+}
 
 interface OutletContext {
   activeScenarioId: string | null;
@@ -62,8 +110,8 @@ export function DashboardPage() {
   const thisMonthStart = today.slice(0, 7) + '-01';
   const thisMonthEnd = today;
 
-  // Get budget rules for this month
-  const { expandedBudgets } = useBudgetRules(activeScenarioId, thisMonthStart, thisMonthEnd);
+  // Get budget rules (without date range to get raw rules)
+  const { budgetRules } = useBudgetRules(activeScenarioId);
 
   // Upcoming forecasts: next 14 days
   const fourteenDaysFromNow = new Date();
@@ -142,22 +190,32 @@ export function DashboardPage() {
     return buildCategoryColorMap(categoryIds);
   }, [activeCategories]);
 
-  // Calculate budget health for the month
+  // Calculate budget health - same logic as budget page (respects per-category cadences)
   const budgetHealth = useMemo(() => {
-    const budgetedCategoryIds = Object.keys(expandedBudgets);
-    if (budgetedCategoryIds.length === 0) {
+    if (!budgetRules || budgetRules.length === 0) {
       return { status: 'no-budget' as const, onTrack: 0, overBudget: 0, total: 0 };
     }
 
     let onTrack = 0;
     let overBudget = 0;
 
-    for (const categoryId of budgetedCategoryIds) {
-      const budget = expandedBudgets[categoryId] ?? 0;
-      if (budget === 0) continue;
+    for (const rule of budgetRules) {
+      if (rule.amountCents === 0) continue;
 
-      const spent = thisMonthSpending.categorySpending.find((c) => c.id === categoryId)?.amount ?? 0;
-      if (spent > budget) {
+      // Calculate period range based on rule's cadence
+      const periodRange = getCurrentPeriodRange(rule.cadence);
+
+      // Sum expenses for this category in the period
+      const categoryExpenses = allTransactions.filter(
+        (t) =>
+          t.type === 'expense' &&
+          t.categoryId === rule.categoryId &&
+          t.date >= periodRange.start &&
+          t.date <= periodRange.end,
+      );
+      const spent = categoryExpenses.reduce((sum, t) => sum + t.amountCents, 0);
+
+      if (spent > rule.amountCents) {
         overBudget++;
       } else {
         onTrack++;
@@ -168,7 +226,7 @@ export function DashboardPage() {
     const status = overBudget === 0 ? 'good' : overBudget <= total / 2 ? 'warning' : 'bad';
 
     return { status: status as 'good' | 'warning' | 'bad', onTrack, overBudget, total };
-  }, [expandedBudgets, thisMonthSpending.categorySpending]);
+  }, [budgetRules, allTransactions]);
 
   // Filter upcoming forecasts to only future dates and sort by date
   const upcomingItems = useMemo(() => {
@@ -351,7 +409,7 @@ export function DashboardPage() {
             Total Savings
           </div>
           <p className="mt-1 text-2xl font-bold text-blue-600">{formatCents(totalSavings)}</p>
-          <p className="text-sm text-muted-foreground">All time</p>
+          <p className="text-sm text-muted-foreground">As of today</p>
         </Link>
       </div>
 
