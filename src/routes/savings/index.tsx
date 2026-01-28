@@ -269,7 +269,7 @@ export function SavingsIndexPage() {
 
   return (
     <div>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-20 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
             <PiggyBank className="h-7 w-7" />
@@ -277,14 +277,14 @@ export function SavingsIndexPage() {
           </h1>
           <p className="mt-1 text-muted-foreground">Track progress toward your savings targets.</p>
         </div>
-        <Button className="w-full sm:w-auto" onClick={() => setDialogOpen(true)}>
+        <Button onClick={() => setDialogOpen(true)}>
           <Plus className="h-4 w-4" />
           Add Goal
         </Button>
       </div>
 
       {savingsGoals.length === 0 ? (
-        <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
+        <div className="rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground">No savings goals yet.</p>
           <Button className="mt-4" onClick={() => setDialogOpen(true)}>
             Create your first goal

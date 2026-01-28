@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Pencil, Trash2, Check, X, Star, Split, Share2, Layers } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Star, Layers } from 'lucide-react';
+import { Alert } from '@/components/ui/alert';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { db } from '@/lib/db';
 import { ScenarioDialog } from '@/components/dialogs/scenario-dialog';
@@ -254,7 +255,7 @@ export function ScenariosIndexPage() {
 
   return (
     <div>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-20 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
             <Layers className="h-7 w-7" />
@@ -264,22 +265,19 @@ export function ScenariosIndexPage() {
             Create and manage budget scenarios for &quot;what-if&quot; planning.
           </p>
         </div>
-        <Button className="w-full sm:w-auto" onClick={() => setDialogOpen(true)}>
+        <Button onClick={() => setDialogOpen(true)}>
           <Plus className="h-4 w-4" />
           Add Scenario
         </Button>
       </div>
 
-      <div className="mt-6 flex gap-4">
-        <div className="flex-1 rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground">
-          <Split className="mb-2 h-5 w-5" />
-          Each scenario has separate <span className="font-semibold">Budgets</span> and <span className="font-semibold">Forecasts</span>.
-        </div>
-
-        <div className="flex-1 rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground">
-          <Share2 className="mb-2 h-5 w-5" />
-          Every scenario shares <span className="font-semibold">Transactions</span>, <span className="font-semibold">Savings</span> and <span className="font-semibold">Categories</span>.
-        </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Alert variant="info">
+          Each scenario has separate <strong>Budgets</strong> and <strong>Forecasts</strong>.
+        </Alert>
+        <Alert variant="info">
+          Every scenario shares <strong>Transactions</strong>, <strong>Savings</strong> and <strong>Categories</strong>.
+        </Alert>
       </div>
 
       {scenarios.length === 0 ? (

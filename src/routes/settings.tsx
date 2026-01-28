@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { Alert } from '@/components/ui/alert';
 import { ThemeToggle } from '@/components/theme-toggle';
 import {
   Dialog,
@@ -237,20 +238,21 @@ export function SettingsPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="flex items-center gap-3 text-3xl font-bold">
-        <Settings className="h-7 w-7" />
-        Settings
-      </h1>
-      <p className="mt-1 text-muted-foreground">Manage your data and preferences.</p>
+      <div className="mb-20">
+        <h1 className="flex items-center gap-3 text-3xl font-bold">
+          <Settings className="h-7 w-7" />
+          Settings
+        </h1>
+        <p className="mt-1 text-muted-foreground">Manage your data and preferences.</p>
+      </div>
 
       {message && (
-        <div
-          className={`mt-4 rounded-lg p-3 ${
-            message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-          }`}
+        <Alert
+          variant={message.type === 'success' ? 'success' : 'destructive'}
+          className="mt-4"
         >
           {message.text}
-        </div>
+        </Alert>
       )}
 
       <Separator className="my-6" />
@@ -490,8 +492,8 @@ export function SettingsPage() {
         <DialogContent>
           {importSuccess ? (
             <div className="flex flex-col items-center justify-center py-8">
-              <div className="rounded-full bg-green-100 p-3 mb-4">
-                <Check className="h-8 w-8 text-green-600" />
+              <div className="rounded-full bg-green-100 p-3 mb-4 dark:bg-green-900/50">
+                <Check className="h-8 w-8 text-green-600 dark:text-green-400" />
               </div>
               <h3 className="text-lg font-semibold mb-1">Import Successful</h3>
               <p className="text-sm text-muted-foreground">Refreshing page...</p>
@@ -543,15 +545,10 @@ export function SettingsPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                    <div className="flex gap-2">
-                      <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                      <p>
-                        This will <strong>replace all existing data</strong>. Make sure you have a backup
-                        if you need to preserve your current data.
-                      </p>
-                    </div>
-                  </div>
+                  <Alert variant="warning" className="text-sm">
+                    This will <strong>replace all existing data</strong>. Make sure you have a backup
+                    if you need to preserve your current data.
+                  </Alert>
                 </div>
               )}
 
