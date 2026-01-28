@@ -11,10 +11,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Pencil, Check, X, Trash2 } from 'lucide-react';
+import { Pencil, Check, X, Trash2, Plus } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useCategories } from '@/hooks/use-categories';
+import { CategoryBudgetDialog } from '@/components/dialogs/category-budget-dialog';
 import { formatCents, parseCentsFromInput } from '@/lib/utils';
 import type { Cadence, BudgetRule } from '@/lib/types';
 
@@ -26,32 +27,41 @@ interface BudgetRow {
   id: string;
   categoryId: string;
   categoryName: string;
+  amountCents: number;
+  cadence: Cadence | null;
+  day: number | null;
+  monthOfQuarter: number | null;
   rule: BudgetRule | null;
 }
 
 const CADENCE_LABELS: Record<Cadence, string> = {
-  weekly: 'weekly',
-  fortnightly: 'fortnightly',
-  monthly: 'monthly',
-  quarterly: 'quarterly',
-  yearly: 'yearly',
+  weekly: 'Weekly',
+  fortnightly: 'Fortnightly',
+  monthly: 'Monthly',
+  quarterly: 'Quarterly',
+  yearly: 'Yearly',
 };
 
 const DAY_OF_WEEK_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTH_OF_QUARTER_LABELS = ['1st month', '2nd month', '3rd month'];
 
-function formatBudgetRule(rule: BudgetRule): string {
-  const amount = formatCents(rule.amountCents);
-  const cadence = CADENCE_LABELS[rule.cadence];
-
-  if (rule.cadence === 'weekly' || rule.cadence === 'fortnightly') {
-    const dayName = DAY_OF_WEEK_LABELS[rule.dayOfWeek ?? 0];
-    return `${amount} ${cadence} on ${dayName}`;
-  } else {
-    const day = rule.dayOfMonth ?? 1;
-    const suffix = day === 1 ? 'st' : day === 2 ? 'nd' : day === 3 ? 'rd' : 'th';
-    return `${amount} ${cadence} on the ${day}${suffix}`;
+function formatDay(
+  cadence: Cadence | null,
+  day: number | null,
+  monthOfQuarter: number | null,
+): string {
+  if (cadence === null || day === null) return '-';
+  if (cadence === 'weekly' || cadence === 'fortnightly') {
+    return DAY_OF_WEEK_LABELS[day] ?? '-';
   }
+  if (cadence === 'quarterly') {
+    const monthLabel = MONTH_OF_QUARTER_LABELS[monthOfQuarter ?? 0] ?? '1st month';
+    return `${monthLabel}, day ${day}`;
+  }
+  return String(day);
 }
+
+type FilterMode = 'all' | 'no-budget';
 
 export function BudgetPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
@@ -60,23 +70,42 @@ export function BudgetPage() {
   const { getRuleForCategory, setBudgetForCategory, deleteBudgetRule } =
     useBudgetRules(activeScenarioId);
 
+  const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState('');
   const [editCadence, setEditCadence] = useState<Cadence>('monthly');
   const [editDay, setEditDay] = useState('1');
+  const [editMonthOfQuarter, setEditMonthOfQuarter] = useState('0');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   // Build rows for all active categories
-  const categoryRows: BudgetRow[] = useMemo(() => {
-    return activeCategories
-      .map((category) => ({
+  const allRows: BudgetRow[] = useMemo(() => {
+    return activeCategories.map((category) => {
+      const rule = getRuleForCategory(category.id);
+      const isWeekly = rule?.cadence === 'weekly' || rule?.cadence === 'fortnightly';
+      return {
         id: category.id,
         categoryId: category.id,
         categoryName: category.name,
-        rule: getRuleForCategory(category.id),
-      }))
-      .sort((a, b) => a.categoryName.localeCompare(b.categoryName));
+        amountCents: rule?.amountCents ?? 0,
+        cadence: rule?.cadence ?? null,
+        day: rule ? (isWeekly ? (rule.dayOfWeek ?? 0) : (rule.dayOfMonth ?? 1)) : null,
+        monthOfQuarter: rule?.monthOfQuarter ?? null,
+        rule,
+      };
+    });
   }, [activeCategories, getRuleForCategory]);
+
+  // Apply filter
+  const categoryRows = useMemo(() => {
+    if (filterMode === 'no-budget') {
+      return allRows.filter((row) => !row.rule);
+    }
+    return allRows;
+  }, [allRows, filterMode]);
+
+  const noBudgetCount = useMemo(() => allRows.filter((row) => !row.rule).length, [allRows]);
 
   const startEditing = useCallback((categoryId: string) => {
     const rule = getRuleForCategory(categoryId);
@@ -87,6 +116,7 @@ export function BudgetPage() {
     } else {
       setEditDay(String(rule?.dayOfMonth ?? 1));
     }
+    setEditMonthOfQuarter(String(rule?.monthOfQuarter ?? 0));
     setEditingId(categoryId);
   }, [getRuleForCategory]);
 
@@ -95,18 +125,21 @@ export function BudgetPage() {
     setEditAmount('');
     setEditCadence('monthly');
     setEditDay('1');
+    setEditMonthOfQuarter('0');
   }, []);
 
   const saveEditing = useCallback((categoryId: string) => {
     const amountCents = parseCentsFromInput(editAmount);
     if (amountCents > 0) {
       const isWeekly = editCadence === 'weekly' || editCadence === 'fortnightly';
+      const isQuarterly = editCadence === 'quarterly';
       setBudgetForCategory(
         categoryId,
         amountCents,
         editCadence,
         isWeekly ? parseInt(editDay) : undefined,
         isWeekly ? undefined : parseInt(editDay),
+        isQuarterly ? parseInt(editMonthOfQuarter) : undefined,
       );
     } else {
       // If amount is 0 or empty, delete the rule
@@ -116,7 +149,7 @@ export function BudgetPage() {
       }
     }
     cancelEditing();
-  }, [editAmount, editCadence, editDay, setBudgetForCategory, getRuleForCategory, deleteBudgetRule, cancelEditing]);
+  }, [editAmount, editCadence, editDay, editMonthOfQuarter, setBudgetForCategory, getRuleForCategory, deleteBudgetRule, cancelEditing]);
 
   const handleDelete = useCallback((categoryId: string) => {
     if (deletingId === categoryId) {
@@ -143,6 +176,7 @@ export function BudgetPage() {
   }, [editingId, deletingId, cancelEditing]);
 
   const isWeeklyCadence = editCadence === 'weekly' || editCadence === 'fortnightly';
+  const isQuarterlyCadence = editCadence === 'quarterly';
 
   const columns: ColumnDef<BudgetRow>[] = useMemo(
     () => [
@@ -152,68 +186,123 @@ export function BudgetPage() {
         cell: ({ row }) => <span className="font-medium">{row.getValue('categoryName')}</span>,
       },
       {
-        id: 'budget',
-        header: 'Budget',
+        accessorKey: 'amountCents',
+        header: ({ column }) => (
+          <SortableHeader column={column} className="justify-end">
+            Amount
+          </SortableHeader>
+        ),
         cell: ({ row }) => {
           const budgetRow = row.original;
           const isEditing = editingId === budgetRow.id;
 
           if (isEditing) {
             return (
-              <div className="flex flex-wrap items-center gap-2">
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={editAmount}
-                  onChange={(e) => setEditAmount(e.target.value)}
-                  className="h-8 w-24"
-                  placeholder="0.00"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') saveEditing(budgetRow.id);
-                    if (e.key === 'Escape') cancelEditing();
-                  }}
-                />
-                <Select
-                  value={editCadence}
-                  onValueChange={(v) => {
-                    setEditCadence(v as Cadence);
-                    // Reset day when switching cadence type
-                    if (v === 'weekly' || v === 'fortnightly') {
-                      setEditDay('1'); // Monday
-                    } else {
-                      setEditDay('1'); // 1st of month
-                    }
-                  }}
-                >
-                  <SelectTrigger className="h-8 w-32">
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+                className="h-8 w-28"
+                placeholder="0.00"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveEditing(budgetRow.id);
+                  if (e.key === 'Escape') cancelEditing();
+                }}
+                autoFocus
+              />
+            );
+          }
+
+          const amount = row.getValue('amountCents') as number;
+          return (
+            <div className="text-right font-mono">
+              {amount > 0 ? formatCents(amount) : <span className="text-muted-foreground">-</span>}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: 'cadence',
+        header: ({ column }) => <SortableHeader column={column}>Cadence</SortableHeader>,
+        cell: ({ row }) => {
+          const budgetRow = row.original;
+          const isEditing = editingId === budgetRow.id;
+
+          if (isEditing) {
+            return (
+              <Select
+                value={editCadence}
+                onValueChange={(v) => {
+                  setEditCadence(v as Cadence);
+                  if (v === 'weekly' || v === 'fortnightly') {
+                    setEditDay('1'); // Monday
+                  } else {
+                    setEditDay('1'); // 1st of month
+                  }
+                }}
+              >
+                <SelectTrigger className="h-8 w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="fortnightly">Fortnightly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                  <SelectItem value="yearly">Yearly</SelectItem>
+                </SelectContent>
+              </Select>
+            );
+          }
+
+          const cadence = row.getValue('cadence') as Cadence | null;
+          return cadence ? CADENCE_LABELS[cadence] : <span className="text-muted-foreground">-</span>;
+        },
+      },
+      {
+        accessorKey: 'day',
+        header: ({ column }) => <SortableHeader column={column}>Day</SortableHeader>,
+        cell: ({ row }) => {
+          const budgetRow = row.original;
+          const isEditing = editingId === budgetRow.id;
+
+          if (isEditing) {
+            if (isWeeklyCadence) {
+              return (
+                <Select value={editDay} onValueChange={setEditDay}>
+                  <SelectTrigger className="h-8 w-20">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="fortnightly">Fortnightly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="quarterly">Quarterly</SelectItem>
-                    <SelectItem value="yearly">Yearly</SelectItem>
+                    {DAY_OF_WEEK_LABELS.map((day, i) => (
+                      <SelectItem key={i} value={String(i)}>
+                        {day}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-                <span className="text-sm text-muted-foreground">on</span>
-                {isWeeklyCadence ? (
-                  <Select value={editDay} onValueChange={setEditDay}>
+              );
+            }
+
+            if (isQuarterlyCadence) {
+              return (
+                <div className="flex gap-1">
+                  <Select value={editMonthOfQuarter} onValueChange={setEditMonthOfQuarter}>
                     <SelectTrigger className="h-8 w-24">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {DAY_OF_WEEK_LABELS.map((day, i) => (
+                      {MONTH_OF_QUARTER_LABELS.map((label, i) => (
                         <SelectItem key={i} value={String(i)}>
-                          {day}
+                          {label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                ) : (
                   <Select value={editDay} onValueChange={setEditDay}>
-                    <SelectTrigger className="h-8 w-20">
+                    <SelectTrigger className="h-8 w-16">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -224,16 +313,28 @@ export function BudgetPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                )}
-              </div>
+                </div>
+              );
+            }
+
+            // Monthly or yearly
+            return (
+              <Select value={editDay} onValueChange={setEditDay}>
+                <SelectTrigger className="h-8 w-16">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+                    <SelectItem key={day} value={String(day)}>
+                      {day}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             );
           }
 
-          if (budgetRow.rule) {
-            return <span>{formatBudgetRule(budgetRow.rule)}</span>;
-          }
-
-          return <span className="text-muted-foreground">No budget set</span>;
+          return formatDay(budgetRow.cadence, budgetRow.day, budgetRow.monthOfQuarter);
         },
       },
       {
@@ -292,7 +393,7 @@ export function BudgetPage() {
         },
       },
     ],
-    [editingId, editAmount, editCadence, editDay, isWeeklyCadence, deletingId, startEditing, cancelEditing, saveEditing, handleDelete],
+    [editingId, editAmount, editCadence, editDay, editMonthOfQuarter, isWeeklyCadence, isQuarterlyCadence, deletingId, startEditing, cancelEditing, saveEditing, handleDelete],
   );
 
   if (!activeScenarioId || !activeScenario) {
@@ -306,13 +407,17 @@ export function BudgetPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Budget Rules</h1>
           <p className="text-muted-foreground">
             Spending limits per category for {activeScenario.name}.
           </p>
         </div>
+        <Button className="w-full sm:w-auto" onClick={() => setAddDialogOpen(true)}>
+          <Plus className="h-4 w-4" />
+          Add Category
+        </Button>
       </div>
 
       {activeCategories.length === 0 ? (
@@ -330,9 +435,28 @@ export function BudgetPage() {
             searchKey="categoryName"
             searchPlaceholder="Search categories..."
             showPagination={false}
+            filterSlot={
+              <Select value={filterMode} onValueChange={(v) => setFilterMode(v as FilterMode)}>
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All categories</SelectItem>
+                  <SelectItem value="no-budget">
+                    No budget set ({noBudgetCount})
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            }
           />
         </div>
       )}
+
+      <CategoryBudgetDialog
+        open={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        scenarioId={activeScenarioId}
+      />
     </div>
   );
 }

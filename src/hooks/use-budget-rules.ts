@@ -111,6 +111,7 @@ export function useBudgetRules(scenarioId: string | null, startDate?: string, en
       cadence: Cadence = 'monthly',
       dayOfWeek?: number,
       dayOfMonth?: number,
+      monthOfQuarter?: number,
     ) => {
       if (!scenarioId) return;
 
@@ -127,6 +128,7 @@ export function useBudgetRules(scenarioId: string | null, startDate?: string, en
         };
         if (dayOfWeek !== undefined) updates.dayOfWeek = dayOfWeek;
         if (dayOfMonth !== undefined) updates.dayOfMonth = dayOfMonth;
+        if (monthOfQuarter !== undefined) updates.monthOfQuarter = monthOfQuarter;
         await db.budgetRules.update(existing.id, updates);
       } else {
         // Create new
@@ -143,6 +145,7 @@ export function useBudgetRules(scenarioId: string | null, startDate?: string, en
         };
         if (dayOfWeek !== undefined) newBudgetRule.dayOfWeek = dayOfWeek;
         if (dayOfMonth !== undefined) newBudgetRule.dayOfMonth = dayOfMonth;
+        if (monthOfQuarter !== undefined) newBudgetRule.monthOfQuarter = monthOfQuarter;
         await db.budgetRules.add(newBudgetRule);
       }
     },
