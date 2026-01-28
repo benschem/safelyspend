@@ -7,7 +7,7 @@ import { useAppConfig } from '@/hooks/use-app-config';
 
 export function RootLayout() {
   const { isInitialized, isDemo, isLoading: configLoading } = useAppConfig();
-  const { scenarios, activeScenarioId, setActiveScenarioId, isLoading: scenariosLoading } = useScenarios();
+  const { activeScenarioId, isLoading: scenariosLoading } = useScenarios();
 
   // Show nothing while loading initial config
   if (configLoading) {
@@ -29,11 +29,7 @@ export function RootLayout() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <Header
-            scenarios={scenarios}
-            activeScenarioId={activeScenarioId}
-            onScenarioChange={setActiveScenarioId}
-          />
+          <Header />
           <main className="flex-1 overflow-y-auto p-4 sm:p-6">
             <Outlet context={{ activeScenarioId }} />
           </main>

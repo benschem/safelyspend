@@ -13,6 +13,7 @@ import {
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Pencil, Check, X, Trash2, Plus } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
+import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useCategories } from '@/hooks/use-categories';
 import { CategoryBudgetDialog } from '@/components/dialogs/category-budget-dialog';
@@ -398,9 +399,19 @@ export function BudgetPage() {
 
   if (!activeScenarioId || !activeScenario) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <h2 className="text-lg font-semibold">No scenario selected</h2>
-        <p className="text-muted-foreground">Select a scenario to view budgets.</p>
+      <div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Budget Rules</h1>
+            <p className="text-muted-foreground">Spending limits per category.</p>
+          </div>
+        </div>
+        <div className="mt-6">
+          <ScenarioSelector />
+        </div>
+        <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
+          <p className="text-muted-foreground">Select a scenario to view budgets.</p>
+        </div>
       </div>
     );
   }
@@ -418,6 +429,10 @@ export function BudgetPage() {
           <Plus className="h-4 w-4" />
           Add Category
         </Button>
+      </div>
+
+      <div className="mt-6">
+        <ScenarioSelector />
       </div>
 
       {activeCategories.length === 0 ? (

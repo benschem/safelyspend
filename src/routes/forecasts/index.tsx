@@ -13,6 +13,7 @@ import {
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus, Repeat, Settings2, Pencil } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
+import { ScenarioSelector } from '@/components/scenario-selector';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
 import { DateFilter } from '@/components/date-filter';
@@ -162,9 +163,21 @@ export function ForecastIndexPage() {
 
   if (!activeScenarioId || !activeScenario) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <h2 className="text-lg font-semibold">No scenario selected</h2>
-        <p className="text-muted-foreground">Select a scenario to view forecasts.</p>
+      <div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Forecasts</h1>
+            <p className="text-muted-foreground">
+              Projected income, expenses, and savings for the period.
+            </p>
+          </div>
+        </div>
+        <div className="mt-6">
+          <ScenarioSelector />
+        </div>
+        <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
+          <p className="text-muted-foreground">Select a scenario to view forecasts.</p>
+        </div>
       </div>
     );
   }
@@ -190,8 +203,12 @@ export function ForecastIndexPage() {
         </div>
       </div>
 
+      <div className="mt-6">
+        <ScenarioSelector />
+      </div>
+
       {/* Date filter */}
-      <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
+      <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
         <DateFilter
           startDate={filterStartDate}
           endDate={filterEndDate}

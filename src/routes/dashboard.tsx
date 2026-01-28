@@ -16,6 +16,7 @@ import { formatCents, formatDate } from '@/lib/utils';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 import { SpendingBreakdownChart, SavingsDonutChart, BudgetDonutChart } from '@/components/charts';
 import { DateRangePicker } from '@/components/date-range-picker';
+import { ScenarioSelector } from '@/components/scenario-selector';
 
 interface OutletContext {
   activeScenarioId: string | null;
@@ -301,12 +302,20 @@ export function DashboardPage() {
 
   if (!activeScenarioId || !activeScenario) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <h2 className="text-lg font-semibold">No scenario selected</h2>
-        <p className="text-muted-foreground">Create a scenario to get started.</p>
-        <Button asChild className="mt-4">
-          <Link to="/manage/scenarios/new">Create Scenario</Link>
-        </Button>
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Dashboard</h1>
+            <p className="text-muted-foreground">Overview of your finances</p>
+          </div>
+        </div>
+        <ScenarioSelector />
+        <div className="rounded-lg border border-dashed p-8 text-center">
+          <p className="text-muted-foreground">Select a scenario to view your dashboard.</p>
+          <Button asChild className="mt-4">
+            <Link to="/scenarios">Manage Scenarios</Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -325,6 +334,8 @@ export function DashboardPage() {
           dataRange={dataRange}
         />
       </div>
+
+      <ScenarioSelector />
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList>

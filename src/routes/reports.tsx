@@ -13,6 +13,7 @@ import {
   SavingsOverTimeChart,
   SavingsGoalChart,
 } from '@/components/charts';
+import { ScenarioSelector } from '@/components/scenario-selector';
 
 interface OutletContext {
   activeScenarioId: string | null;
@@ -70,6 +71,8 @@ export function ReportsPage() {
           dataRange={dataRange}
         />
       </div>
+
+      <ScenarioSelector />
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList>
