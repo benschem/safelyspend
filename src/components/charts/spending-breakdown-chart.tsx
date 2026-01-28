@@ -79,7 +79,7 @@ export function SpendingBreakdownChart({ segments, total, colorMap: externalColo
 
       // Find which segment the mouse is over
       const boundary = segmentBoundaries.find(
-        (b) => relativeX >= b.start && relativeX < b.end
+        (b) => relativeX >= b.start && relativeX < b.end,
       );
 
       if (boundary) {
@@ -89,7 +89,7 @@ export function SpendingBreakdownChart({ segments, total, colorMap: externalColo
         setHoveredSegment(null);
       }
     },
-    [segmentBoundaries]
+    [segmentBoundaries],
   );
 
   const handleMouseLeave = useCallback(() => {
