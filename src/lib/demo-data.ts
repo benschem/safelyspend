@@ -223,11 +223,11 @@ export function generateDemoData(): BudgetData {
     { categoryId: catPhone, amountCents: 6500, cadence: 'monthly' as const }, // $65/mo
     { categoryId: catSubscriptions, amountCents: 7500, cadence: 'monthly' as const }, // $75/mo (Netflix, Spotify, etc)
     { categoryId: catShopping, amountCents: 20000, cadence: 'monthly' as const }, // $200/mo
-    { categoryId: catClothing, amountCents: 15000, cadence: 'monthly' as const }, // $150/mo
+    // catClothing intentionally unbudgeted to demo the warning
     { categoryId: catPersonalCare, amountCents: 8000, cadence: 'monthly' as const }, // $80/mo
     { categoryId: catHealthcare, amountCents: 10000, cadence: 'monthly' as const }, // $100/mo
     { categoryId: catPet, amountCents: 15000, cadence: 'monthly' as const }, // $150/mo (food + vet fund)
-    { categoryId: catGifts, amountCents: 10000, cadence: 'monthly' as const }, // $100/mo
+    // catGifts intentionally unbudgeted to demo the warning
 
     // QUARTERLY - Australian utilities are typically quarterly
     { categoryId: catElectricity, amountCents: 45000, cadence: 'quarterly' as const }, // $450/qtr
@@ -1025,10 +1025,8 @@ export function generateDemoData(): BudgetData {
     // DINING OUT - 2-4 times per fortnight
     // ==========================================================================
     const diningCount = 2 + Math.floor(Math.random() * 3);
-    // Intentional over-spend: current month has more dining out
-    const actualDiningCount = isCurrentMonth ? diningCount + 2 : diningCount;
 
-    for (let i = 0; i < actualDiningCount; i++) {
+    for (let i = 0; i < diningCount; i++) {
       const day = 2 + Math.floor(Math.random() * Math.min(26, maxDay - 2));
       if (day <= maxDay) {
         transactions.push({
@@ -1038,7 +1036,7 @@ export function generateDemoData(): BudgetData {
           updatedAt: timestamp,
           type: 'expense',
           date: getDateInMonth(month, day),
-          amountCents: vary(isCurrentMonth ? 7500 : 5500, 0.3), // More expensive this month
+          amountCents: vary(5500, 0.3),
           description: pick(restaurants),
           categoryId: catDiningOut,
           savingsGoalId: null,
@@ -1338,6 +1336,42 @@ export function generateDemoData(): BudgetData {
         savingsGoalId: goalChristmas,
       });
     }
+  }
+
+  // ==========================================================================
+  // ADD SPECIFIC TRANSACTIONS IN CURRENT FORTNIGHT TO DEMO FORECAST FEATURE
+  // ==========================================================================
+  // Calculate current fortnight boundaries (same logic as budget page)
+  const currentDate = new Date();
+  const epoch = new Date('2024-01-01');
+  const diffDays = Math.floor((currentDate.getTime() - epoch.getTime()) / (1000 * 60 * 60 * 24));
+  const fortnightNumber = Math.floor(diffDays / 14);
+  const fortnightStart = new Date(epoch);
+  fortnightStart.setDate(fortnightStart.getDate() + fortnightNumber * 14);
+
+  // Add dining out transactions in current fortnight to demonstrate forecast bar
+  // Budget is $150/fn. We want to show the two-tone bar clearly:
+  // - Spent: $50 (33%) - solid color
+  // - Forecast: $85 (57%) - lighter color
+  // - Total: $135 (90%) = warning status, nice visible two-tone yellow bar
+  const daysIntoFortnight = Math.floor((currentDate.getTime() - fortnightStart.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (daysIntoFortnight >= 1) {
+    // Add a dinner from earlier in the fortnight
+    const dinnerDate = new Date(fortnightStart);
+    dinnerDate.setDate(dinnerDate.getDate() + Math.min(daysIntoFortnight - 1, 1));
+    transactions.push({
+      id: generateId(),
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      type: 'expense',
+      date: dinnerDate.toISOString().slice(0, 10),
+      amountCents: 5000, // $50
+      description: 'Thai Pothong',
+      categoryId: catDiningOut,
+      savingsGoalId: null,
+    });
   }
 
   // Sort transactions by date
