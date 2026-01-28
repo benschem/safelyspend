@@ -241,8 +241,24 @@ export function BudgetComparisonChart({
         </LineChart>
       </ResponsiveContainer>
 
+      {/* Legend Controls */}
+      <div className="mt-4 flex justify-center gap-2">
+        <button
+          onClick={() => setHiddenCategories(new Set())}
+          className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Select All
+        </button>
+        <button
+          onClick={() => setHiddenCategories(new Set(sortedCategories.map((c) => c.id)))}
+          className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Deselect All
+        </button>
+      </div>
+
       {/* Interactive Legend */}
-      <div className="mt-4 flex flex-wrap justify-center gap-2">
+      <div className="mt-2 flex flex-wrap justify-center gap-2">
         {sortedCategories.map((cat) => {
           const isHidden = hiddenCategories.has(cat.id);
           const stats = categoryStats[cat.id];
