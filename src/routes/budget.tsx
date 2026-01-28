@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Link, useOutletContext } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
@@ -55,6 +55,12 @@ export function BudgetPage() {
   const [editAmount, setEditAmount] = useState('');
   const [editCadence, setEditCadence] = useState<Cadence>('monthly');
 
+  // Refs to access current values in memoized column cell functions
+  const editAmountRef = useRef(editAmount);
+  const editCadenceRef = useRef(editCadence);
+  editAmountRef.current = editAmount;
+  editCadenceRef.current = editCadence;
+
   // Calculate actual spending per category
   const spendingByCategory = useMemo(() => {
     const spending: Record<string, number> = {};
@@ -110,9 +116,9 @@ export function BudgetPage() {
   };
 
   const saveEditing = (categoryId: string) => {
-    const amountCents = parseCentsFromInput(editAmount);
+    const amountCents = parseCentsFromInput(editAmountRef.current);
     if (amountCents > 0) {
-      setBudgetForCategory(categoryId, amountCents, editCadence);
+      setBudgetForCategory(categoryId, amountCents, editCadenceRef.current);
     } else {
       // If amount is 0 or empty, delete the rule
       const rule = getRuleForCategory(categoryId);
@@ -144,13 +150,13 @@ export function BudgetPage() {
                   type="number"
                   step="0.01"
                   min="0"
-                  value={editAmount}
+                  value={editAmountRef.current}
                   onChange={(e) => setEditAmount(e.target.value)}
                   className="w-24"
                   placeholder="0.00"
                 />
                 <Select
-                  value={editCadence}
+                  value={editCadenceRef.current}
                   onValueChange={(v) => setEditCadence(v as Cadence)}
                 >
                   <SelectTrigger className="w-32">
@@ -287,7 +293,7 @@ export function BudgetPage() {
         },
       },
     ],
-    [editingId, editAmount, editCadence],
+    [editingId],
   );
 
   const footerRow = (
