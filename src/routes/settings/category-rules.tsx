@@ -277,8 +277,8 @@ export function CategoryRulesPage() {
 
             <div className="space-y-2">
               <span id="category-label" className="text-sm font-medium">Assign Category</span>
-              <Select value={categoryId} onValueChange={setCategoryId}>
-                <SelectTrigger aria-labelledby="category-label">
+              <Select value={categoryId} onValueChange={setCategoryId} disabled={activeCategories.length === 0}>
+                <SelectTrigger aria-labelledby="category-label" disabled={activeCategories.length === 0}>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -292,7 +292,7 @@ export function CategoryRulesPage() {
               {activeCategories.length === 0 && (
                 <p className="text-xs text-muted-foreground">
                   No categories found.{' '}
-                  <Link to="/categories/new" className="underline">
+                  <Link to="/categories" className="underline">
                     Create one first
                   </Link>
                   .
