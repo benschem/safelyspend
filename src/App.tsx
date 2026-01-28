@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router';
 import { RootLayout } from '@/components/layout/root-layout';
 import { FirstRunWizard } from '@/components/first-run-wizard';
+import { ErrorBoundary } from '@/components/error-boundary';
 
 // Route components
 import { DashboardPage } from '@/routes/dashboard';
@@ -23,13 +24,15 @@ import { RulesIndexPage } from '@/routes/manage/rules/index';
 import { RuleNewPage } from '@/routes/manage/rules/new';
 import { RuleDetailPage } from '@/routes/manage/rules/detail';
 import { SettingsPage } from '@/routes/settings';
+import { CategoryRulesPage } from '@/routes/settings/category-rules';
 
 const router = createBrowserRouter([
   // Landing page (outside of RootLayout - no sidebar/header)
-  { path: '/landing', element: <FirstRunWizard /> },
+  { path: '/landing', element: <FirstRunWizard />, errorElement: <ErrorBoundary /> },
   {
     path: '/',
     element: <RootLayout />,
+    errorElement: <ErrorBoundary />,
     children: [
       // Redirect root to dashboard
       { index: true, element: <Navigate to="/dashboard" replace /> },
@@ -73,6 +76,7 @@ const router = createBrowserRouter([
 
       // Settings
       { path: 'settings', element: <SettingsPage /> },
+      { path: 'settings/category-rules', element: <CategoryRulesPage /> },
     ],
   },
 ]);

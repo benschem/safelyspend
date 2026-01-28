@@ -78,6 +78,37 @@ export function useTransactions(startDate?: string, endDate?: string) {
     [setTransactions],
   );
 
+  // Get set of fingerprints for existing transactions (for duplicate detection during import)
+  const getExistingFingerprints = useCallback((): Set<string> => {
+    const fingerprints = new Set<string>();
+    for (const t of allTransactions) {
+      if (t.importFingerprint) {
+        fingerprints.add(t.importFingerprint);
+      }
+    }
+    return fingerprints;
+  }, [allTransactions]);
+
+  // Bulk import transactions (for CSV import)
+  const bulkImport = useCallback(
+    (
+      transactions: Array<CreateEntity<Transaction>>,
+    ): Transaction[] => {
+      const timestamp = now();
+      const newTransactions: Transaction[] = transactions.map((data) => ({
+        id: generateId(),
+        userId: USER_ID,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        ...data,
+      }));
+
+      setTransactions((prev) => [...prev, ...newTransactions]);
+      return newTransactions;
+    },
+    [setTransactions],
+  );
+
   return {
     allTransactions,
     transactions,
@@ -89,5 +120,7 @@ export function useTransactions(startDate?: string, endDate?: string) {
     addTransaction,
     updateTransaction,
     deleteTransaction,
+    getExistingFingerprints,
+    bulkImport,
   };
 }
