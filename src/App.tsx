@@ -20,8 +20,6 @@ import { CategoryImportRulesPage } from '@/routes/categories/import-rules';
 import { SavingsIndexPage } from '@/routes/savings/index';
 import { ReportsPage } from '@/routes/reports';
 import { ScenariosIndexPage } from '@/routes/scenarios/index';
-import { ScenarioNewPage } from '@/routes/scenarios/new';
-import { ScenarioDetailPage } from '@/routes/scenarios/detail';
 import { SettingsPage } from '@/routes/settings';
 
 const router = createBrowserRouter([
@@ -66,8 +64,6 @@ const router = createBrowserRouter([
 
       // Scenarios (plan)
       { path: 'scenarios', element: <ScenariosIndexPage /> },
-      { path: 'scenarios/new', element: <ScenarioNewPage /> },
-      { path: 'scenarios/:id', element: <ScenarioDetailPage /> },
 
 
       // Settings

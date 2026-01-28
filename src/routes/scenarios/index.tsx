@@ -1,64 +1,255 @@
-import { useState, useMemo } from 'react';
-import { Link } from 'react-router';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Eye } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Star } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
+import { db } from '@/lib/db';
 import { ScenarioDialog } from '@/components/dialogs/scenario-dialog';
-import { formatDate } from '@/lib/utils';
 import type { Scenario } from '@/lib/types';
 
+interface ScenarioRow extends Scenario {
+  budgetRuleCount: number;
+  forecastRuleCount: number;
+}
+
 export function ScenariosIndexPage() {
-  const { scenarios } = useScenarios();
+  const { scenarios, updateScenario, deleteScenario } = useScenarios();
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const columns: ColumnDef<Scenario>[] = useMemo(
+  // Get rule counts per scenario
+  const allBudgetRules = useLiveQuery(() => db.budgetRules.toArray(), []) ?? [];
+  const allForecastRules = useLiveQuery(() => db.forecastRules.toArray(), []) ?? [];
+
+  // Inline editing state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Build scenario rows with counts
+  const scenarioRows: ScenarioRow[] = useMemo(() => {
+    const budgetCountByScenario = new Map<string, number>();
+    const forecastCountByScenario = new Map<string, number>();
+
+    for (const rule of allBudgetRules) {
+      budgetCountByScenario.set(
+        rule.scenarioId,
+        (budgetCountByScenario.get(rule.scenarioId) ?? 0) + 1,
+      );
+    }
+
+    for (const rule of allForecastRules) {
+      forecastCountByScenario.set(
+        rule.scenarioId,
+        (forecastCountByScenario.get(rule.scenarioId) ?? 0) + 1,
+      );
+    }
+
+    return scenarios.map((scenario) => ({
+      ...scenario,
+      budgetRuleCount: budgetCountByScenario.get(scenario.id) ?? 0,
+      forecastRuleCount: forecastCountByScenario.get(scenario.id) ?? 0,
+    }));
+  }, [scenarios, allBudgetRules, allForecastRules]);
+
+  const startEditing = useCallback((scenario: Scenario) => {
+    setEditingId(scenario.id);
+    setEditName(scenario.name);
+    setEditDescription(scenario.description ?? '');
+  }, []);
+
+  const cancelEditing = useCallback(() => {
+    setEditingId(null);
+    setEditName('');
+    setEditDescription('');
+  }, []);
+
+  const saveEditing = useCallback(() => {
+    if (!editingId || !editName.trim()) return;
+
+    const updates: Parameters<typeof updateScenario>[1] = {
+      name: editName.trim(),
+    };
+    if (editDescription.trim()) {
+      updates.description = editDescription.trim();
+    }
+    updateScenario(editingId, updates);
+    cancelEditing();
+  }, [editingId, editName, editDescription, updateScenario, cancelEditing]);
+
+  const handleDelete = useCallback(
+    (id: string) => {
+      if (deletingId === id) {
+        deleteScenario(id);
+        setDeletingId(null);
+      } else {
+        setDeletingId(id);
+      }
+    },
+    [deletingId, deleteScenario],
+  );
+
+  const handleSetDefault = useCallback(
+    (id: string) => {
+      updateScenario(id, { isDefault: true });
+    },
+    [updateScenario],
+  );
+
+  // Close editors on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (editingId) cancelEditing();
+        if (deletingId) setDeletingId(null);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [editingId, deletingId, cancelEditing]);
+
+  const columns: ColumnDef<ScenarioRow>[] = useMemo(
     () => [
       {
         accessorKey: 'name',
         header: ({ column }) => <SortableHeader column={column}>Name</SortableHeader>,
-        cell: ({ row }) => (
-          <div className="flex items-center gap-2">
-            <span className="font-medium">{row.getValue('name')}</span>
-            {row.original.isDefault && <Badge variant="secondary">Default</Badge>}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const scenario = row.original;
+          if (editingId === scenario.id) {
+            return (
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="h-8 w-full min-w-[120px]"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveEditing();
+                  if (e.key === 'Escape') cancelEditing();
+                }}
+              />
+            );
+          }
+          return (
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{scenario.name}</span>
+              {scenario.isDefault && <Badge variant="secondary">Default</Badge>}
+            </div>
+          );
+        },
       },
       {
         accessorKey: 'description',
         header: 'Description',
+        cell: ({ row }) => {
+          const scenario = row.original;
+          if (editingId === scenario.id) {
+            return (
+              <Input
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                className="h-8 w-full min-w-[150px]"
+                placeholder="Optional description"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveEditing();
+                  if (e.key === 'Escape') cancelEditing();
+                }}
+              />
+            );
+          }
+          return (
+            <span className="text-muted-foreground">
+              {row.getValue('description') || '-'}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: 'budgetRuleCount',
+        header: ({ column }) => (
+          <SortableHeader column={column} className="justify-end">
+            Budgets
+          </SortableHeader>
+        ),
         cell: ({ row }) => (
-          <span className="text-muted-foreground">
-            {row.getValue('description') || '-'}
-          </span>
+          <div className="text-right tabular-nums">{row.getValue('budgetRuleCount')}</div>
         ),
       },
       {
-        accessorKey: 'createdAt',
-        header: ({ column }) => <SortableHeader column={column}>Created</SortableHeader>,
-        cell: ({ row }) => {
-          const createdAt = row.getValue('createdAt') as string;
-          const createdDate = createdAt?.split('T')[0];
-          return createdDate ? formatDate(createdDate) : '-';
-        },
-        sortingFn: 'datetime',
+        accessorKey: 'forecastRuleCount',
+        header: ({ column }) => (
+          <SortableHeader column={column} className="justify-end">
+            Forecasts
+          </SortableHeader>
+        ),
+        cell: ({ row }) => (
+          <div className="text-right tabular-nums">{row.getValue('forecastRuleCount')}</div>
+        ),
       },
       {
         id: 'actions',
-        cell: ({ row }) => (
-          <div className="flex justify-end">
-            <Button variant="ghost" size="sm" asChild title="View">
-              <Link to={`/scenarios/${row.original.id}`}>
-                <Eye className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        ),
+        cell: ({ row }) => {
+          const scenario = row.original;
+          const isEditing = editingId === scenario.id;
+          const isDeleting = deletingId === scenario.id;
+
+          if (isEditing) {
+            return (
+              <div className="flex justify-end gap-1">
+                <Button variant="ghost" size="sm" onClick={saveEditing} title="Save">
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={cancelEditing} title="Cancel">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            );
+          }
+
+          return (
+            <div className="flex justify-end gap-1">
+              {!scenario.isDefault && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSetDefault(scenario.id)}
+                  title="Set as default"
+                >
+                  <Star className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => startEditing(scenario)}
+                title="Edit"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={isDeleting ? 'destructive' : 'ghost'}
+                size="sm"
+                onClick={() => handleDelete(scenario.id)}
+                onBlur={() => setTimeout(() => setDeletingId(null), 200)}
+                disabled={scenario.isDefault}
+                title={
+                  scenario.isDefault
+                    ? 'Cannot delete default scenario'
+                    : isDeleting
+                      ? 'Click again to confirm'
+                      : 'Delete'
+                }
+              >
+                {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+              </Button>
+            </div>
+          );
+        },
       },
     ],
-    [],
+    [editingId, editName, editDescription, deletingId, startEditing, cancelEditing, saveEditing, handleDelete, handleSetDefault],
   );
 
   return (
@@ -87,7 +278,7 @@ export function ScenariosIndexPage() {
         <div className="mt-6">
           <DataTable
             columns={columns}
-            data={scenarios}
+            data={scenarioRows}
             searchKey="name"
             searchPlaceholder="Search scenarios..."
             showPagination={false}
