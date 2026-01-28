@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link, useOutletContext, useSearchParams } from 'react-router';
 import { AlertCircle, BarChart3 } from 'lucide-react';
 import { useReportsData } from '@/hooks/use-reports-data';
@@ -22,8 +22,9 @@ interface OutletContext {
   activeScenarioId: string | null;
 }
 
-const VALID_TABS = ['spending', 'health', 'cashflow', 'savings'] as const;
+const VALID_TABS = ['cashflow', 'spending', 'health', 'savings'] as const;
 type TabValue = (typeof VALID_TABS)[number];
+const STORAGE_KEY = 'budget:reportsTab';
 
 export function ReportsPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
@@ -40,11 +41,28 @@ export function ReportsPage() {
     setCustomDateRange,
   } = useViewState();
 
-  const currentTab = (searchParams.get('tab') as TabValue) || 'spending';
-  const activeTab = VALID_TABS.includes(currentTab) ? currentTab : 'spending';
+  // Tab state: localStorage persists selection, URL param overrides for direct links
+  const [activeTab, setActiveTab] = useState<TabValue>(() => {
+    const stored = localStorage.getItem(STORAGE_KEY) as TabValue | null;
+    if (stored && VALID_TABS.includes(stored)) return stored;
+    return 'cashflow';
+  });
+
+  // Handle URL param override (for direct links from dashboard)
+  const urlTab = searchParams.get('tab') as TabValue | null;
+  useEffect(() => {
+    if (urlTab && VALID_TABS.includes(urlTab)) {
+      setActiveTab(urlTab);
+      localStorage.setItem(STORAGE_KEY, urlTab);
+      // Clear URL param after applying
+      setSearchParams({}, { replace: true });
+    }
+  }, [urlTab, setSearchParams]);
 
   const handleTabChange = (value: string) => {
-    setSearchParams({ tab: value }, { replace: true });
+    const tab = value as TabValue;
+    setActiveTab(tab);
+    localStorage.setItem(STORAGE_KEY, tab);
   };
   const {
     monthlyBudgetComparison,
