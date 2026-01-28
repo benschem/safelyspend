@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useOutletContext, useSearchParams } from 'react-router';
-import { AlertCircle, BarChart3 } from 'lucide-react';
+import { ChartSpline } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useReportsData } from '@/hooks/use-reports-data';
 import { useViewState } from '@/hooks/use-view-state';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
@@ -118,10 +119,10 @@ export function ReportsPage() {
       <StickyDateBar startDate={startDate} endDate={endDate} />
 
       {/* Header row: Title + Timeline controls */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="mb-20 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <BarChart3 className="h-7 w-7" />
+            <ChartSpline className="h-7 w-7" />
             Reports
           </h1>
           <p className="mt-1 text-muted-foreground">Analyse your financial patterns</p>
@@ -139,14 +140,15 @@ export function ReportsPage() {
         />
       </div>
 
-      <ScenarioSelector />
-
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList>
-          <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
-          <TabsTrigger value="spending">Spending</TabsTrigger>
-          <TabsTrigger value="savings">Savings</TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
+            <TabsTrigger value="spending">Spending</TabsTrigger>
+            <TabsTrigger value="savings">Savings</TabsTrigger>
+          </TabsList>
+          <ScenarioSelector />
+        </div>
 
         {/* Spending Tab - Spending by category with budget comparison */}
         <TabsContent value="spending" className="mt-6">
@@ -171,21 +173,16 @@ export function ReportsPage() {
         <TabsContent value="cashflow" className="mt-6">
           <div className="space-y-4">
             {startingBalance === null && (
-              <div className="flex items-start gap-3 rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4">
-                <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-yellow-600" />
-                <div>
-                  <p className="font-medium text-yellow-800 dark:text-yellow-200">
-                    No balance anchor set
-                  </p>
-                  <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                    Set a starting balance in{' '}
-                    <Link to="/settings" className="underline">
-                      Settings
-                    </Link>{' '}
-                    to see your bank balance over time.
-                  </p>
-                </div>
-              </div>
+              <Alert variant="warning">
+                <AlertTitle>No balance anchor set</AlertTitle>
+                <AlertDescription>
+                  Set a starting balance in{' '}
+                  <Link to="/settings" className="underline">
+                    Settings
+                  </Link>{' '}
+                  to see your bank balance over time.
+                </AlertDescription>
+              </Alert>
             )}
             <div className="rounded-lg border p-6">
               <div>
