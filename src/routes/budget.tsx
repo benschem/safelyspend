@@ -494,18 +494,12 @@ export function BudgetPage() {
               return (
                 <div key={item.id} className="space-y-1">
                   <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="h-3 w-3 rounded-full"
-                        style={{ backgroundColor: colorMap[item.id] ?? CHART_COLORS.uncategorized }}
-                      />
-                      <span className="font-medium">{item.name}</span>
-                    </div>
+                    <span className="font-medium">{item.name}</span>
                     <span className="font-mono text-muted-foreground">{formatCents(item.amount)}</span>
                   </div>
-                  <div className="relative h-2 rounded-full bg-muted">
+                  <div className="relative h-3 rounded-full bg-muted">
                     <div
-                      className="absolute h-2 rounded-full"
+                      className="absolute h-3 rounded-full"
                       style={{
                         width: `${percentage}%`,
                         backgroundColor: colorMap[item.id] ?? CHART_COLORS.uncategorized,
