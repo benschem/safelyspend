@@ -20,7 +20,7 @@ import { useCategories } from '@/hooks/use-categories';
 import { DateRangeFilter } from '@/components/date-range-filter';
 import { ForecastEventDialog } from '@/components/dialogs/forecast-event-dialog';
 import { ForecastRuleDialog } from '@/components/dialogs/forecast-rule-dialog';
-import { formatCents, formatDate, getCurrentFinancialYear, today as getToday } from '@/lib/utils';
+import { formatCents, formatDate } from '@/lib/utils';
 import type { ExpandedForecast } from '@/lib/types';
 
 interface OutletContext {
@@ -36,21 +36,27 @@ export function ForecastIndexPage() {
   const { activeScenario } = useScenarios();
   const { categories, activeCategories } = useCategories();
 
-  // Default to today through end of financial year for forecasts
-  const financialYear = getCurrentFinancialYear();
-  const todayDate = getToday();
-  const [filterStartDate, setFilterStartDate] = useState(todayDate);
-  const [filterEndDate, setFilterEndDate] = useState(financialYear.endDate);
+  // Date filter - empty by default (shows all)
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
 
-  const hasCustomDateFilter =
-    filterStartDate !== todayDate || filterEndDate !== financialYear.endDate;
+  const hasDateFilter = filterStartDate !== '' && filterEndDate !== '';
 
   const clearDateFilter = useCallback(() => {
-    setFilterStartDate(todayDate);
-    setFilterEndDate(financialYear.endDate);
-  }, [todayDate, financialYear.endDate]);
+    setFilterStartDate('');
+    setFilterEndDate('');
+  }, []);
 
-  const { expandedForecasts } = useForecasts(activeScenarioId, filterStartDate, filterEndDate);
+  // When no date filter, use a wide range to show all forecasts
+  const defaultStart = '2020-01-01';
+  const defaultEnd = '2099-12-31';
+  const queryStartDate = hasDateFilter ? filterStartDate : defaultStart;
+  const queryEndDate = hasDateFilter ? filterEndDate : defaultEnd;
+
+  const { expandedForecasts, rules, events } = useForecasts(activeScenarioId, queryStartDate, queryEndDate);
+
+  // Check if any forecasts exist at all (rules or events)
+  const hasAnyForecasts = rules.length > 0 || events.length > 0;
 
   const [filterType, setFilterType] = useState<FilterType>('all');
   // Initialize category filter from URL param if present
@@ -228,16 +234,14 @@ export function ForecastIndexPage() {
         </div>
       </div>
 
-      {expandedForecasts.length === 0 ? (
+      {!hasAnyForecasts ? (
         <div className="mt-6 space-y-4">
           <Alert variant="info">
             Forecasts predict your future cash flow based on recurring income and expenses.
             Add your salary, rent, subscriptions, and other regular payments to see what&apos;s coming.
           </Alert>
           <div className="rounded-lg border border-dashed p-8 text-center">
-            <p className="text-muted-foreground">
-              No forecasts found in the selected date range.
-            </p>
+            <p className="text-muted-foreground">No forecasts yet.</p>
             <div className="mt-4 flex justify-center gap-2">
               <Button variant="outline" onClick={() => setEventDialogOpen(true)}>
                 Add one-time event
@@ -246,6 +250,54 @@ export function ForecastIndexPage() {
                 Add recurring
               </Button>
             </div>
+          </div>
+        </div>
+      ) : filteredForecasts.length === 0 ? (
+        <div className="mt-6">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <DateRangeFilter
+              startDate={filterStartDate}
+              endDate={filterEndDate}
+              onStartDateChange={setFilterStartDate}
+              onEndDateChange={setFilterEndDate}
+              onClear={clearDateFilter}
+              hasFilter={hasDateFilter}
+            />
+            <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
+              <SelectTrigger className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="income">Income</SelectItem>
+                <SelectItem value="expense">Expense</SelectItem>
+                <SelectItem value="savings">Savings</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {activeCategories
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            <ScenarioSelector hideLabel />
+          </div>
+          <div className="rounded-lg border border-dashed p-8 text-center">
+            <p className="text-muted-foreground">
+              No forecasts found in the selected date range.
+            </p>
+            <Button variant="outline" className="mt-4" onClick={clearDateFilter}>
+              Clear date filter
+            </Button>
           </div>
         </div>
       ) : (
@@ -262,7 +314,7 @@ export function ForecastIndexPage() {
                 onStartDateChange={setFilterStartDate}
                 onEndDateChange={setFilterEndDate}
                 onClear={clearDateFilter}
-                hasFilter={hasCustomDateFilter}
+                hasFilter={hasDateFilter}
               />
               <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
                 <SelectTrigger className="w-36">
