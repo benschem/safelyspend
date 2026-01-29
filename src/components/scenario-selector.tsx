@@ -12,7 +12,8 @@ interface ScenarioSelectorProps {
 }
 
 export function ScenarioSelector({ hideLabel = false }: ScenarioSelectorProps) {
-  const { scenarios, activeScenarioId, setActiveScenarioId } = useScenarios();
+  const { scenarios, activeScenarioId, activeScenario, setActiveScenarioId } = useScenarios();
+  const isDefaultSelected = activeScenario?.isDefault ?? true;
 
   if (scenarios.length === 0) {
     return null;
@@ -26,7 +27,7 @@ export function ScenarioSelector({ hideLabel = false }: ScenarioSelectorProps) {
     <div className="flex items-center gap-2">
       {!hideLabel && <span className="text-sm text-muted-foreground">Scenario:</span>}
       <Select {...selectProps}>
-        <SelectTrigger className="w-40 cursor-pointer">
+        <SelectTrigger className={`w-48 ${isDefaultSelected ? 'text-muted-foreground' : ''}`}>
           <SelectValue placeholder="Select scenario" />
         </SelectTrigger>
         <SelectContent>

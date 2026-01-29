@@ -417,7 +417,7 @@ export function TransactionsIndexPage() {
                 hasFilter={hasDateFilter}
               />
               <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
-                <SelectTrigger className="w-36">
+                <SelectTrigger className={`w-36 ${filterType === 'all' ? 'text-muted-foreground' : ''}`}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -429,7 +429,7 @@ export function TransactionsIndexPage() {
                 </SelectContent>
               </Select>
               <Select value={filterCategory} onValueChange={setFilterCategory}>
-                <SelectTrigger className="w-44">
+                <SelectTrigger className={`w-44 ${filterCategory === 'all' ? 'text-muted-foreground' : ''}`}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
