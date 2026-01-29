@@ -41,13 +41,17 @@ export function TransactionsIndexPage() {
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
 
+  // Has filter if either date is set (supports partial ranges)
   const hasDateFilter = filterStartDate !== '' || filterEndDate !== '';
 
-  // Pass dates to hook only if both are set, otherwise get all transactions
-  const queryStartDate = filterStartDate && filterEndDate ? filterStartDate : undefined;
-  const queryEndDate = filterStartDate && filterEndDate ? filterEndDate : undefined;
+  // Pass dates to hook (supports partial ranges: from-only, to-only, or both)
+  const queryStartDate = filterStartDate || undefined;
+  const queryEndDate = filterEndDate || undefined;
 
-  const { transactions, updateTransaction, deleteTransaction } = useTransactions(queryStartDate, queryEndDate);
+  const { transactions, allTransactions, updateTransaction, deleteTransaction } = useTransactions(queryStartDate, queryEndDate);
+
+  // Check if any transactions exist at all
+  const hasAnyTransactions = allTransactions.length > 0;
   const { categories, activeCategories } = useCategories();
   const { rules: categoryRules } = useCategoryRules();
 
@@ -383,14 +387,61 @@ export function TransactionsIndexPage() {
         </div>
       </div>
 
-      {transactions.length === 0 ? (
+      {!hasAnyTransactions ? (
         <div className="rounded-lg border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">
-            {hasDateFilter ? 'No transactions found in the selected date range.' : 'No transactions yet.'}
-          </p>
+          <p className="text-muted-foreground">No transactions yet.</p>
           <Button onClick={() => setAddDialogOpen(true)} className="mt-4">
             Add a transaction
           </Button>
+        </div>
+      ) : filteredTransactions.length === 0 ? (
+        <div className="mt-6">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <DateRangeFilter
+              startDate={filterStartDate}
+              endDate={filterEndDate}
+              onStartDateChange={setFilterStartDate}
+              onEndDateChange={setFilterEndDate}
+              onClear={clearDateFilter}
+              hasFilter={hasDateFilter}
+            />
+            <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
+              <SelectTrigger className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="income">Income</SelectItem>
+                <SelectItem value="expense">Expense</SelectItem>
+                <SelectItem value="savings">Savings</SelectItem>
+                <SelectItem value="adjustment">Adjustment</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="uncategorized">Uncategorised</SelectItem>
+                {activeCategories
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="rounded-lg border border-dashed p-8 text-center">
+            <p className="text-muted-foreground">
+              No transactions found matching your filters.
+            </p>
+            <Button variant="outline" className="mt-4" onClick={clearDateFilter}>
+              Clear date filter
+            </Button>
+          </div>
         </div>
       ) : (
         <DataTable
