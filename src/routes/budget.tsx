@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Pencil, Check, X, Trash2, Plus, Target, AlertTriangle, CheckCircle2, XCircle, PiggyBank, Wallet } from 'lucide-react';
+import { Pencil, Check, X, Trash2, Plus, Target, AlertTriangle, CheckCircle2, XCircle, PiggyBank } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
@@ -371,7 +371,6 @@ export function BudgetPage() {
     const totalProjected = totalSpent + totalForecasted;
     const totalBudget = tracked.reduce((sum, r) => sum + r.budgetAmount, 0);
     const totalProjectedRemaining = totalBudget - totalProjected;
-    const totalRemaining = totalBudget - totalSpent; // Actual remaining right now
     const overCount = tracked.filter((r) => r.status === 'over').length;
     const overspendingCount = tracked.filter((r) => r.status === 'overspending').length;
     const watchCount = tracked.filter((r) => r.status === 'watch').length;
@@ -388,7 +387,6 @@ export function BudgetPage() {
       totalProjected,
       totalBudget,
       totalProjectedRemaining,
-      totalRemaining,
       totalSavingsForecasted,
       overCount,
       overspendingCount,
@@ -811,38 +809,45 @@ export function BudgetPage() {
 
           <div className="rounded-lg border bg-card p-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <PiggyBank className="h-4 w-4 text-blue-600" />
-              Projected Savings
+              {summary.untrackedSpent > 0 ? (
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+              )}
+              Unbudgeted Spending
             </div>
-            <p className="mt-1 text-xl font-bold text-blue-600">
-              {formatCents(summary.totalSavingsForecasted)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              forecasted this period
-            </p>
+            {summary.untrackedSpent > 0 ? (
+              <>
+                <p className="mt-1 text-xl font-bold text-amber-600">
+                  {formatCents(summary.untrackedSpent)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {summary.untrackedCount} {summary.untrackedCount === 1 ? 'category' : 'categories'} without budgets
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="mt-1 text-xl font-bold text-green-600">All tracked</p>
+                <p className="text-xs text-muted-foreground">
+                  all spending has a budget
+                </p>
+              </>
+            )}
           </div>
 
           <div className="rounded-lg border bg-card p-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Wallet className="h-4 w-4" />
-              Budget Remaining
+              <PiggyBank className="h-4 w-4 text-blue-600" />
+              Projected Savings
             </div>
-            <p className={`mt-1 text-xl font-bold ${summary.totalRemaining >= 0 ? '' : 'text-red-600'}`}>
-              {formatCents(Math.abs(summary.totalRemaining))}
+            <p className="mt-1 text-xl font-bold text-blue-600">
+              +{formatCents(summary.totalSavingsForecasted)}
             </p>
             <p className="text-xs text-muted-foreground">
-              {formatCents(summary.totalBudget)} budgeted, {formatCents(summary.totalSpent)} spent
+              forecast
             </p>
           </div>
         </div>
-      )}
-
-      {/* Unbudgeted spending warning */}
-      {summary.untrackedSpent > 0 && (
-        <Alert variant="warning" className="mt-4">
-          <strong>{formatCents(summary.untrackedSpent)} unbudgeted spending</strong>
-          {' '}across {summary.untrackedCount} {summary.untrackedCount === 1 ? 'category' : 'categories'} without budgets
-        </Alert>
       )}
 
       {activeCategories.length === 0 ? (
