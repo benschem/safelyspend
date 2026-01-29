@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Pencil, Check, X, Trash2, Plus, Target, CircleDollarSign, NotebookTabs, AlertTriangle, CircleGauge, CheckCircle2 } from 'lucide-react';
+import { Pencil, Check, X, Trash2, Plus, Target, CircleDollarSign, NotebookTabs, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
@@ -769,33 +769,56 @@ export function BudgetPage() {
 
           <div className="rounded-lg border bg-card p-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              {summary.overCount > 0 ? (
+                <XCircle className="h-4 w-4 text-red-600" />
+              ) : summary.overspendingCount > 0 ? (
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+              )}
+              Spending Speed
+            </div>
+            {summary.overCount > 0 ? (
+              <>
+                <p className="mt-1 text-xl font-bold text-red-600">Over Budget</p>
+                <p className="text-xs text-muted-foreground">
+                  {summary.overCount} {summary.overCount === 1 ? 'budget' : 'budgets'} exceeded
+                  {summary.overspendingCount > 0 && `, ${summary.overspendingCount} overspending`}
+                </p>
+              </>
+            ) : summary.overspendingCount > 0 ? (
+              <>
+                <p className="mt-1 text-xl font-bold text-amber-600">Slipping</p>
+                <p className="text-xs text-muted-foreground">
+                  {summary.overspendingCount} {summary.overspendingCount === 1 ? 'budget' : 'budgets'} overspending
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="mt-1 text-xl font-bold text-green-600">On Track</p>
+                <p className="text-xs text-muted-foreground">
+                  {summary.watchCount > 0
+                    ? `${summary.goodCount} on pace, ${summary.watchCount} to watch`
+                    : `All ${summary.trackedCount} budgets on pace`}
+                </p>
+              </>
+            )}
+          </div>
+
+          <div className="rounded-lg border bg-card p-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               {summary.totalProjectedRemaining >= 0 ? (
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
               ) : (
                 <AlertTriangle className="h-4 w-4 text-red-600" />
               )}
-              {summary.totalForecasted > 0 ? 'Projected' : 'Remaining'}
+              {summary.totalForecasted > 0 ? 'Projected Spending' : 'Remaining Spending'}
             </div>
             <p className={`mt-1 text-xl font-bold ${summary.totalProjectedRemaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatCents(Math.abs(summary.totalProjectedRemaining))} {summary.totalProjectedRemaining >= 0 ? 'under' : 'over'}
+              {formatCents(Math.abs(summary.totalProjectedRemaining))} {summary.totalProjectedRemaining >= 0 ? 'under budget' : 'over budget'}
             </p>
             <p className="text-xs text-muted-foreground">
               {summary.totalForecasted > 0 ? `incl. ${formatCents(summary.totalForecasted)} forecast` : 'budget remaining'}
-            </p>
-          </div>
-
-          <div className="rounded-lg border bg-card p-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <CircleGauge className="h-4 w-4" />
-              Spend per Category
-            </div>
-            <p className="mt-1 text-xl font-bold text-green-600">{summary.goodCount}/{summary.trackedCount} on track</p>
-            <p className="text-xs text-muted-foreground">
-              {[
-                summary.overCount > 0 && `${summary.overCount} over`,
-                summary.overspendingCount > 0 && `${summary.overspendingCount} fast`,
-                summary.watchCount > 0 && `${summary.watchCount} watch`,
-              ].filter(Boolean).join(', ') || 'all on pace'}
             </p>
           </div>
         </div>

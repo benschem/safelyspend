@@ -10,7 +10,9 @@ import {
   Eye,
   Landmark,
   Wallet,
-  HeartPulse,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
 } from 'lucide-react';
 import { CHART_COLORS, buildCategoryColorMap } from '@/lib/chart-colors';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -399,27 +401,44 @@ export function OverviewPage() {
           className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
         >
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <HeartPulse className="h-4 w-4" />
-            Budget Health
+            {budgetHealth.status === 'no-budget' ? (
+              <CheckCircle2 className="h-4 w-4" />
+            ) : budgetHealth.overBudget > 0 ? (
+              <XCircle className="h-4 w-4 text-red-600" />
+            ) : budgetHealth.overspending > 0 ? (
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            )}
+            Spending Speed
           </div>
           {budgetHealth.status === 'no-budget' ? (
             <>
               <p className="mt-1 text-2xl font-bold text-muted-foreground">—</p>
               <p className="text-sm text-muted-foreground">No budgets set</p>
             </>
+          ) : budgetHealth.overBudget > 0 ? (
+            <>
+              <p className="mt-1 text-2xl font-bold text-red-600">Over Budget</p>
+              <p className="text-sm text-muted-foreground">
+                {budgetHealth.overBudget} {budgetHealth.overBudget === 1 ? 'budget' : 'budgets'} exceeded
+                {budgetHealth.overspending > 0 && `, ${budgetHealth.overspending} overspending`}
+              </p>
+            </>
+          ) : budgetHealth.overspending > 0 ? (
+            <>
+              <p className="mt-1 text-2xl font-bold text-amber-600">Slipping</p>
+              <p className="text-sm text-muted-foreground">
+                {budgetHealth.overspending} {budgetHealth.overspending === 1 ? 'budget' : 'budgets'} overspending
+              </p>
+            </>
           ) : (
             <>
-              <p className="mt-1 text-2xl font-bold text-green-600">
-                {budgetHealth.onTrack}/{budgetHealth.total} on track
-              </p>
+              <p className="mt-1 text-2xl font-bold text-green-600">On Track</p>
               <p className="text-sm text-muted-foreground">
-                {budgetHealth.overBudget === 0 && budgetHealth.overspending === 0 && budgetHealth.watch === 0
-                  ? 'All on pace'
-                  : [
-                      budgetHealth.overBudget > 0 && `${budgetHealth.overBudget} over`,
-                      budgetHealth.overspending > 0 && `${budgetHealth.overspending} fast`,
-                      budgetHealth.watch > 0 && `${budgetHealth.watch} watch`,
-                    ].filter(Boolean).join(', ')}
+                {budgetHealth.watch > 0
+                  ? `${budgetHealth.onTrack} on pace, ${budgetHealth.watch} to watch`
+                  : `All ${budgetHealth.total} budgets on pace`}
               </p>
             </>
           )}
