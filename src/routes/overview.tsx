@@ -412,128 +412,140 @@ export function OverviewPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Link
           to="/analyse?tab=cashflow"
-          className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
+          className="flex min-h-[180px] flex-col rounded-lg border p-5 transition-colors hover:bg-muted/50"
         >
+          {/* Header */}
           <div>
             <div className="flex items-center gap-2 font-medium">
               <Landmark className="h-4 w-4 text-muted-foreground" />
               Cash Position
             </div>
-            <p className="text-xs text-muted-foreground">Your actual money right now</p>
+            <p className="mt-1 text-xs text-muted-foreground">Your actual money right now</p>
           </div>
+          {/* Spacer */}
+          <div className="flex-1" />
+          {/* Value */}
           {currentBalance !== null ? (
-            <p className="mt-2 text-2xl font-bold">{formatCents(currentBalance)}</p>
+            <p className="text-2xl font-bold">{formatCents(currentBalance)}</p>
           ) : (
-            <p className="mt-2 text-2xl font-bold text-muted-foreground">—</p>
+            <p className="text-2xl font-bold text-muted-foreground">—</p>
           )}
+          {/* Footer */}
+          <div className="mt-3 border-t pt-3">
+            <p className="text-xs text-muted-foreground">
+              {currentBalance !== null ? 'Balance as of today' : 'Set a balance anchor in Settings'}
+            </p>
+          </div>
         </Link>
 
         <Link
           to="/budget"
-          className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
+          className="flex min-h-[180px] flex-col rounded-lg border p-5 transition-colors hover:bg-muted/50"
         >
+          {/* Header */}
           <div>
             <div className="flex items-center gap-2 font-medium">
               <Wallet className="h-4 w-4 text-muted-foreground" />
               Spendable
             </div>
-            <p className="text-xs text-muted-foreground">Can your income cover your budget?</p>
+            <p className="mt-1 text-xs text-muted-foreground">Can your income cover your budget?</p>
           </div>
+          {/* Spacer */}
+          <div className="flex-1" />
+          {/* Value */}
           {safeToSpend.status === 'no-budget' ? (
-            <>
-              <p className="mt-2 text-2xl font-bold text-muted-foreground">—</p>
-              <p className="text-sm text-muted-foreground">Set up budgets first</p>
-            </>
+            <p className="text-2xl font-bold text-muted-foreground">—</p>
           ) : safeToSpend.status === 'no-balance' ? (
-            <>
-              <p className="mt-2 text-2xl font-bold text-green-600">
-                {formatCents(safeToSpend.remainingBudget)}
-              </p>
-              <p className="text-sm text-muted-foreground">Set balance to verify cash</p>
-            </>
+            <p className="text-2xl font-bold text-green-600">
+              {formatCents(safeToSpend.remainingBudget)}
+            </p>
           ) : safeToSpend.amount < 0 ? (
-            <>
-              <p className="mt-2 text-2xl font-bold text-red-600">$0</p>
-              <p className="text-sm text-muted-foreground">
-                {formatCents(safeToSpend.amount)} shortfall on budgeted
-              </p>
-            </>
+            <p className="text-2xl font-bold text-red-600">$0</p>
           ) : safeToSpend.constrainedByBalance ? (
-            <>
-              <p className="mt-2 text-2xl font-bold text-amber-600">
-                {formatCents(safeToSpend.amount)}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {formatCents(safeToSpend.remainingBudget)} budgeted but cash is tight
-              </p>
-            </>
+            <p className="text-2xl font-bold text-amber-600">
+              {formatCents(safeToSpend.amount)}
+            </p>
           ) : (
-            <>
-              <p className="mt-2 text-2xl font-bold text-green-600">
-                {formatCents(safeToSpend.amount)}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Remaining from {formatCents(safeToSpend.totalBudgeted)} budget
-              </p>
-            </>
+            <p className="text-2xl font-bold text-green-600">
+              {formatCents(safeToSpend.amount)}
+            </p>
           )}
+          {/* Footer */}
+          <div className="mt-3 border-t pt-3">
+            <p className="text-xs text-muted-foreground">
+              {safeToSpend.status === 'no-budget'
+                ? 'Set up budgets first'
+                : safeToSpend.status === 'no-balance'
+                  ? 'Set balance to verify cash'
+                  : safeToSpend.amount < 0
+                    ? `${formatCents(safeToSpend.amount)} shortfall on budgeted`
+                    : safeToSpend.constrainedByBalance
+                      ? `${formatCents(safeToSpend.remainingBudget)} budgeted but cash is tight`
+                      : `Remaining from ${formatCents(safeToSpend.totalBudgeted)} budget`}
+            </p>
+          </div>
         </Link>
 
         <Link
           to="/budget"
-          className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
+          className="flex min-h-[180px] flex-col rounded-lg border p-5 transition-colors hover:bg-muted/50"
         >
+          {/* Header */}
           <div>
             <div className="flex items-center gap-2 font-medium">
               <CircleGauge className="h-4 w-4 text-muted-foreground" />
               Spending Rate
             </div>
-            <p className="text-xs text-muted-foreground">Are you burning budget too fast?</p>
+            <p className="mt-1 text-xs text-muted-foreground">Are you burning budget too fast?</p>
           </div>
+          {/* Spacer */}
+          <div className="flex-1" />
+          {/* Value */}
           {budgetHealth.status === 'no-budget' ? (
-            <>
-              <p className="mt-2 text-2xl font-bold text-muted-foreground">—</p>
-              <p className="text-sm text-muted-foreground">No budgets set</p>
-            </>
+            <p className="text-2xl font-bold text-muted-foreground">—</p>
           ) : budgetHealth.overBudget > 0 ? (
-            <>
-              <p className="mt-2 text-2xl font-bold text-red-600">Too Fast</p>
-              <p className="text-sm text-muted-foreground">
-                {budgetHealth.overBudget} {budgetHealth.overBudget === 1 ? 'budget' : 'budgets'} exceeded
-                {budgetHealth.overspending > 0 && `, ${budgetHealth.overspending} overspending`}
-              </p>
-            </>
+            <p className="text-2xl font-bold text-red-600">Too Fast</p>
           ) : budgetHealth.overspending > 0 ? (
-            <>
-              <p className="mt-2 text-2xl font-bold text-amber-600">Speeding Up</p>
-              <p className="text-sm text-muted-foreground">
-                {budgetHealth.overspending} {budgetHealth.overspending === 1 ? 'budget' : 'budgets'} overspending
-              </p>
-            </>
+            <p className="text-2xl font-bold text-amber-600">Speeding Up</p>
           ) : (
-            <>
-              <p className="mt-2 text-2xl font-bold text-green-600">On Track</p>
-              <p className="text-sm text-muted-foreground">
-                {budgetHealth.watch > 0
-                  ? `${budgetHealth.onTrack} on pace, ${budgetHealth.watch} to watch`
-                  : `All ${budgetHealth.total} budgets on pace`}
-              </p>
-            </>
+            <p className="text-2xl font-bold text-green-600">On Track</p>
           )}
+          {/* Footer */}
+          <div className="mt-3 border-t pt-3">
+            <p className="text-xs text-muted-foreground">
+              {budgetHealth.status === 'no-budget'
+                ? 'No budgets set'
+                : budgetHealth.overBudget > 0
+                  ? `${budgetHealth.overBudget} exceeded${budgetHealth.overspending > 0 ? `, ${budgetHealth.overspending} overspending` : ''}`
+                  : budgetHealth.overspending > 0
+                    ? `${budgetHealth.overspending} overspending`
+                    : budgetHealth.watch > 0
+                      ? `${budgetHealth.onTrack} on pace, ${budgetHealth.watch} to watch`
+                      : `All ${budgetHealth.total} on pace`}
+            </p>
+          </div>
         </Link>
 
         <Link
           to="/analyse?tab=savings"
-          className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
+          className="flex min-h-[180px] flex-col rounded-lg border p-5 transition-colors hover:bg-muted/50"
         >
+          {/* Header */}
           <div>
             <div className="flex items-center gap-2 font-medium">
               <PiggyBank className="h-4 w-4 text-muted-foreground" />
               Total Savings
             </div>
-            <p className="text-xs text-muted-foreground">Total across all goals</p>
+            <p className="mt-1 text-xs text-muted-foreground">Total across all goals</p>
           </div>
-          <p className="mt-2 text-2xl font-bold text-blue-600">{formatCents(totalSavings)}</p>
+          {/* Spacer */}
+          <div className="flex-1" />
+          {/* Value */}
+          <p className="text-2xl font-bold text-blue-600">{formatCents(totalSavings)}</p>
+          {/* Footer */}
+          <div className="mt-3 border-t pt-3">
+            <p className="text-xs text-muted-foreground">Cumulative contributions</p>
+          </div>
         </Link>
       </div>
 
