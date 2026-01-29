@@ -902,7 +902,7 @@ export function BudgetPage() {
             <div>
               <h3 className="font-semibold">Budget Allocation</h3>
               <p className="mb-3 text-sm text-muted-foreground">
-                How your budget is distributed across spending and savings.
+                How your budget is distributed across spending{showSavingsInChart ? ' and savings' : ''}.
               </p>
             </div>
             <label className="flex items-center gap-2 text-sm">
@@ -910,7 +910,7 @@ export function BudgetPage() {
                 checked={showSavingsInChart}
                 onCheckedChange={setShowSavingsInChart}
               />
-              <span className="text-muted-foreground">Show savings</span>
+              <span className="text-muted-foreground">Include savings</span>
             </label>
           </div>
           <SpendingBreakdownChart
