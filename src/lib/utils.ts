@@ -448,3 +448,45 @@ export function formatCompactDate(isoDate: string, includeYear = false): string 
   }
   return date.toLocaleDateString('en-AU', options);
 }
+
+/**
+ * Calculate compound interest
+ * @param principalCents Starting amount in cents
+ * @param annualRate Annual interest rate as percentage (e.g., 4.5 for 4.5%)
+ * @param compoundingFrequency How often interest compounds
+ * @param years Number of years
+ * @returns Final amount in cents
+ */
+export function calculateCompoundInterest(
+  principalCents: number,
+  annualRate: number,
+  compoundingFrequency: 'daily' | 'monthly' | 'yearly',
+  years: number,
+): number {
+  if (annualRate <= 0 || years <= 0) return principalCents;
+
+  const rate = annualRate / 100; // Convert percentage to decimal
+  const n = compoundingFrequency === 'daily' ? 365 : compoundingFrequency === 'monthly' ? 12 : 1;
+
+  // A = P(1 + r/n)^(nt)
+  const finalAmount = principalCents * Math.pow(1 + rate / n, n * years);
+  return Math.round(finalAmount);
+}
+
+/**
+ * Calculate interest earned over a period
+ * @param principalCents Starting amount in cents
+ * @param annualRate Annual interest rate as percentage
+ * @param compoundingFrequency How often interest compounds
+ * @param years Number of years
+ * @returns Interest earned in cents
+ */
+export function calculateInterestEarned(
+  principalCents: number,
+  annualRate: number,
+  compoundingFrequency: 'daily' | 'monthly' | 'yearly',
+  years: number,
+): number {
+  const finalAmount = calculateCompoundInterest(principalCents, annualRate, compoundingFrequency, years);
+  return finalAmount - principalCents;
+}
