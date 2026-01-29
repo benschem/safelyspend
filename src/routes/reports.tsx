@@ -8,8 +8,7 @@ import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useTransactions } from '@/hooks/use-transactions';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { TimelinePicker } from '@/components/timeline-picker';
-import { StickyDateBar } from '@/components/sticky-date-bar';
+import { TimelineRangePicker } from '@/components/timeline-range-picker';
 import {
   BudgetComparisonChart,
   CashFlowChart,
@@ -31,13 +30,15 @@ export function ReportsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const {
     mode,
-    zoomLevel,
+    amount,
+    unit,
     startDate,
     endDate,
     customStartDate,
     customEndDate,
     setMode,
-    setZoomLevel,
+    setAmount,
+    setUnit,
     setCustomDateRange,
   } = useViewState();
 
@@ -115,38 +116,37 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Sticky date bar - renders via portal to layout header slot */}
-      <StickyDateBar startDate={startDate} endDate={endDate} />
-
-      {/* Header row: Title + Timeline controls */}
-      <div className="mb-20 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <ChartSpline className="h-7 w-7" />
-            Reports
-          </h1>
-          <p className="mt-1 text-muted-foreground">Analyse your financial patterns</p>
-        </div>
-        <TimelinePicker
-          mode={mode}
-          zoomLevel={zoomLevel}
-          startDate={startDate}
-          endDate={endDate}
-          customStartDate={customStartDate}
-          customEndDate={customEndDate}
-          onModeChange={setMode}
-          onZoomLevelChange={setZoomLevel}
-          onCustomDateChange={setCustomDateRange}
-        />
+      {/* Page header */}
+      <div>
+        <h1 className="flex items-center gap-3 text-3xl font-bold">
+          <ChartSpline className="h-7 w-7" />
+          Reports
+        </h1>
+        <p className="mt-1 text-muted-foreground">Analyse your financial patterns</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <div className="flex items-center justify-between">
-          <TabsList>
-            <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
-            <TabsTrigger value="spending">Spending</TabsTrigger>
-            <TabsTrigger value="savings">Savings</TabsTrigger>
-          </TabsList>
+        <TabsList>
+          <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
+          <TabsTrigger value="spending">Spending</TabsTrigger>
+          <TabsTrigger value="savings">Savings</TabsTrigger>
+        </TabsList>
+
+        {/* Context bar: Date range + Scenario */}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <TimelineRangePicker
+            mode={mode}
+            amount={amount}
+            unit={unit}
+            startDate={startDate}
+            endDate={endDate}
+            customStartDate={customStartDate}
+            customEndDate={customEndDate}
+            onModeChange={setMode}
+            onAmountChange={setAmount}
+            onUnitChange={setUnit}
+            onCustomDateChange={setCustomDateRange}
+          />
           <ScenarioSelector />
         </div>
 
