@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router';
+import { Link, useOutletContext } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,16 +7,47 @@ import { Badge } from '@/components/ui/badge';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus, Pencil, Trash2, Check, X, Archive, ArchiveRestore, Settings2, Tags } from 'lucide-react';
 import { useCategories } from '@/hooks/use-categories';
+import { useTransactions } from '@/hooks/use-transactions';
+import { useForecasts } from '@/hooks/use-forecasts';
 import { CategoryDialog } from '@/components/dialogs/category-dialog';
 import type { Category } from '@/lib/types';
 
+interface OutletContext {
+  activeScenarioId: string | null;
+}
+
 export function CategoriesIndexPage() {
+  const { activeScenarioId } = useOutletContext<OutletContext>();
   const { categories, updateCategory, deleteCategory } = useCategories();
+  const { allTransactions } = useTransactions();
+  const { rules: forecastRules } = useForecasts(activeScenarioId);
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Compute transaction counts per category
+  const transactionCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const t of allTransactions) {
+      if (t.categoryId) {
+        counts[t.categoryId] = (counts[t.categoryId] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }, [allTransactions]);
+
+  // Compute forecast rule counts per category
+  const forecastCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const r of forecastRules) {
+      if (r.categoryId) {
+        counts[r.categoryId] = (counts[r.categoryId] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }, [forecastRules]);
 
   // Sort categories: active first, then archived
   const sortedCategories = useMemo(
@@ -96,6 +127,42 @@ export function CategoriesIndexPage() {
           ),
       },
       {
+        id: 'transactions',
+        header: 'Transactions',
+        cell: ({ row }) => {
+          const count = transactionCounts[row.original.id] ?? 0;
+          if (count === 0) {
+            return <span className="text-muted-foreground">—</span>;
+          }
+          return (
+            <Link
+              to={`/transactions?category=${row.original.id}`}
+              className="hover:underline"
+            >
+              {count}
+            </Link>
+          );
+        },
+      },
+      {
+        id: 'forecasts',
+        header: 'Forecasts',
+        cell: ({ row }) => {
+          const count = forecastCounts[row.original.id] ?? 0;
+          if (count === 0) {
+            return <span className="text-muted-foreground">—</span>;
+          }
+          return (
+            <Link
+              to={`/forecasts?category=${row.original.id}`}
+              className="hover:underline"
+            >
+              {count}
+            </Link>
+          );
+        },
+      },
+      {
         id: 'actions',
         cell: ({ row }) => {
           const category = row.original;
@@ -137,7 +204,7 @@ export function CategoriesIndexPage() {
         },
       },
     ],
-    [editingId, editName, deletingId, updateCategory],
+    [editingId, editName, deletingId, updateCategory, transactionCounts, forecastCounts],
   );
 
   return (
