@@ -835,13 +835,13 @@ export function BudgetPage() {
       {activeCategories.length === 0 ? (
         <div className="mt-8 space-y-4">
           <Alert variant="info">
-            Budgets help you set spending limits for each category.
-            Create categories first, then come back here to set up your budget.
+            Budgets help you set spending limits for each category. Create categories to set up your budget.
           </Alert>
           <div className="rounded-lg border border-dashed p-8 text-center">
             <p className="text-muted-foreground">No categories found.</p>
-            <Button asChild className="mt-4">
-              <Link to="/categories">Add your first category</Link>
+            <Button className="mt-4" onClick={() => setAddDialogOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Add Category
             </Button>
           </div>
         </div>
