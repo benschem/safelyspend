@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +21,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Pencil, Trash2, Check, X, Download, AlertTriangle, Receipt } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Download, AlertTriangle, Receipt, RotateCcw } from 'lucide-react';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
 import { useCategoryRules } from '@/hooks/use-category-rules';
@@ -29,21 +29,23 @@ import { CategorySelect } from '@/components/category-select';
 import { DateRangeFilter } from '@/components/date-range-filter';
 import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { UpImportDialog } from '@/components/up-import-dialog';
-import { formatCents, formatDate, parseCentsFromInput } from '@/lib/utils';
+import { formatCents, formatDate, parseCentsFromInput, today as getToday } from '@/lib/utils';
 import type { Transaction, TransactionType } from '@/lib/types';
 
 type FilterType = 'all' | 'income' | 'expense' | 'savings' | 'adjustment';
 type CategoryFilter = 'all' | 'uncategorized' | string;
 
+// Default: no start date, end at today (past transactions)
+const getDefaultStartDate = () => '';
+const getDefaultEndDate = () => getToday();
+
 export function TransactionsIndexPage() {
-  const [searchParams] = useSearchParams();
+  // Date filter state - defaults to past transactions (up to today)
+  const [filterStartDate, setFilterStartDate] = useState(getDefaultStartDate);
+  const [filterEndDate, setFilterEndDate] = useState(getDefaultEndDate);
 
-  // Date filter state - empty strings mean no filter
-  const [filterStartDate, setFilterStartDate] = useState('');
-  const [filterEndDate, setFilterEndDate] = useState('');
-
-  // Has filter if either date is set (supports partial ranges)
-  const hasDateFilter = filterStartDate !== '' || filterEndDate !== '';
+  // Has non-default filter
+  const hasDateFilter = filterStartDate !== getDefaultStartDate() || filterEndDate !== getDefaultEndDate();
 
   // Pass dates to hook (supports partial ranges: from-only, to-only, or both)
   const queryStartDate = filterStartDate || undefined;
@@ -57,11 +59,7 @@ export function TransactionsIndexPage() {
   const { rules: categoryRules } = useCategoryRules();
 
   const [filterType, setFilterType] = useState<FilterType>('all');
-  // Initialize category filter from URL param if present
-  const [filterCategory, setFilterCategory] = useState<CategoryFilter>(() => {
-    const categoryParam = searchParams.get('category');
-    return categoryParam ?? 'all';
-  });
+  const [filterCategory, setFilterCategory] = useState<CategoryFilter>('all');
 
   // Add dialog state
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -92,9 +90,9 @@ export function TransactionsIndexPage() {
   const [editAmount, setEditAmount] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const clearDateFilter = useCallback(() => {
-    setFilterStartDate('');
-    setFilterEndDate('');
+  const resetFilters = useCallback(() => {
+    setFilterStartDate(getDefaultStartDate());
+    setFilterEndDate(getDefaultEndDate());
   }, []);
 
   const getCategoryName = useCallback(
@@ -407,6 +405,7 @@ export function TransactionsIndexPage() {
           data={filteredTransactions}
           searchKey="description"
           searchPlaceholder="Search transactions..."
+          initialSorting={[{ id: 'date', desc: true }]}
           filterSlot={
             <>
               <DateRangeFilter
@@ -414,7 +413,7 @@ export function TransactionsIndexPage() {
                 endDate={filterEndDate}
                 onStartDateChange={setFilterStartDate}
                 onEndDateChange={setFilterEndDate}
-                onClear={clearDateFilter}
+                onClear={resetFilters}
                 hasFilter={hasDateFilter}
               />
               <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
@@ -445,6 +444,11 @@ export function TransactionsIndexPage() {
                     ))}
                 </SelectContent>
               </Select>
+              {hasDateFilter && (
+                <Button variant="ghost" size="sm" onClick={resetFilters} title="Reset to defaults">
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              )}
             </>
           }
         />

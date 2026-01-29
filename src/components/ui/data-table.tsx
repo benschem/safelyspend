@@ -33,6 +33,7 @@ interface DataTableProps<TData, TValue> {
   footer?: ReactNode;
   filterSlot?: ReactNode;
   emptyMessage?: string;
+  initialSorting?: SortingState;
 }
 
 export function DataTable<TData, TValue>({
@@ -45,8 +46,9 @@ export function DataTable<TData, TValue>({
   footer,
   filterSlot,
   emptyMessage = 'No results.',
+  initialSorting = [],
 }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>(initialSorting);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const table = useReactTable({

@@ -12,23 +12,27 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Repeat, Settings2, Pencil, Telescope } from 'lucide-react';
+import { Plus, Repeat, Settings2, Pencil, Telescope, RotateCcw } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
+
+type FilterType = 'all' | 'income' | 'expense' | 'savings';
+type CategoryFilter = 'all' | string;
 import { DateRangeFilter } from '@/components/date-range-filter';
 import { ForecastEventDialog } from '@/components/dialogs/forecast-event-dialog';
 import { ForecastRuleDialog } from '@/components/dialogs/forecast-rule-dialog';
-import { formatCents, formatDate } from '@/lib/utils';
+import { formatCents, formatDate, today as getToday } from '@/lib/utils';
 import type { ExpandedForecast } from '@/lib/types';
 
 interface OutletContext {
   activeScenarioId: string | null;
 }
 
-type FilterType = 'all' | 'income' | 'expense' | 'savings';
-type CategoryFilter = 'all' | string;
+// Default: from today onwards, no end date
+const getDefaultStartDate = () => getToday();
+const getDefaultEndDate = () => '';
 
 export function ForecastIndexPage() {
   const [searchParams] = useSearchParams();
@@ -36,16 +40,16 @@ export function ForecastIndexPage() {
   const { activeScenario } = useScenarios();
   const { categories, activeCategories } = useCategories();
 
-  // Date filter - empty by default (shows all)
-  const [filterStartDate, setFilterStartDate] = useState('');
-  const [filterEndDate, setFilterEndDate] = useState('');
+  // Date filter - defaults to today onwards
+  const [filterStartDate, setFilterStartDate] = useState(getDefaultStartDate);
+  const [filterEndDate, setFilterEndDate] = useState(getDefaultEndDate);
 
-  // Has filter if either date is set
-  const hasDateFilter = filterStartDate !== '' || filterEndDate !== '';
+  // Has non-default filter
+  const hasDateFilter = filterStartDate !== getDefaultStartDate() || filterEndDate !== getDefaultEndDate();
 
-  const clearDateFilter = useCallback(() => {
-    setFilterStartDate('');
-    setFilterEndDate('');
+  const resetFilters = useCallback(() => {
+    setFilterStartDate(getDefaultStartDate());
+    setFilterEndDate(getDefaultEndDate());
   }, []);
 
   // Use wide defaults for unset dates (partial filter support)
@@ -259,6 +263,7 @@ export function ForecastIndexPage() {
           data={filteredForecasts}
           searchKey="description"
           searchPlaceholder="Search forecasts..."
+          initialSorting={[{ id: 'date', desc: false }]}
           filterSlot={
             <>
               <DateRangeFilter
@@ -266,7 +271,7 @@ export function ForecastIndexPage() {
                 endDate={filterEndDate}
                 onStartDateChange={setFilterStartDate}
                 onEndDateChange={setFilterEndDate}
-                onClear={clearDateFilter}
+                onClear={resetFilters}
                 hasFilter={hasDateFilter}
               />
               <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
@@ -296,6 +301,11 @@ export function ForecastIndexPage() {
                 </SelectContent>
               </Select>
               <ScenarioSelector hideLabel />
+              {hasDateFilter && (
+                <Button variant="ghost" size="sm" onClick={resetFilters} title="Reset to defaults">
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              )}
             </>
           }
         />
