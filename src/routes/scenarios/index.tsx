@@ -265,7 +265,7 @@ export function ScenariosIndexPage() {
       </div>
 
       <Alert variant="info">
-        Switching scenarios changes your budget and forecasts. Your transactions and categories stay the same.
+        Switching scenarios changes your budget and forecasts. Your past transactions and categories stay the same.
       </Alert>
 
       {scenarios.length === 0 ? (
