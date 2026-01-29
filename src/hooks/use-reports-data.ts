@@ -32,6 +32,7 @@ export interface MonthlyNetFlow {
   income: { actual: number; forecast: number };
   expenses: { actual: number; forecast: number };
   savings: { actual: number; forecast: number };
+  interest: number; // Interest earned (included in total saved, not savings line)
   net: { actual: number; forecast: number };
 }
 
@@ -106,6 +107,17 @@ export function useReportsData(
   const { savingsGoals } = useSavingsGoals();
   const { categories, activeCategories } = useCategories();
   const { incomeForecasts, expenseForecasts, savingsForecasts } = useForecasts(scenarioId, startDate, endDate);
+
+  // Separate savings forecasts into contributions and interest
+  // Interest is shown as "actual" (earned money) not forecast in charts
+  const savingsContributions = useMemo(
+    () => savingsForecasts.filter((f) => f.sourceType !== 'interest'),
+    [savingsForecasts],
+  );
+  const interestForecasts = useMemo(
+    () => savingsForecasts.filter((f) => f.sourceType === 'interest'),
+    [savingsForecasts],
+  );
 
   // Get category lookup map
   const categoryMap = useMemo(() => {
@@ -313,7 +325,7 @@ export function useReportsData(
         .filter((t) => t.date >= monthStart && t.date <= monthEnd)
         .reduce((sum, t) => sum + t.amountCents, 0);
 
-      // Forecasted (only future dates)
+      // Forecasted contributions (only future dates, excluding interest)
       const incomeForecast = incomeForecasts
         .filter((f) => f.date >= monthStart && f.date <= monthEnd && f.date > today)
         .reduce((sum, f) => sum + f.amountCents, 0);
@@ -322,8 +334,14 @@ export function useReportsData(
         .filter((f) => f.date >= monthStart && f.date <= monthEnd && f.date > today)
         .reduce((sum, f) => sum + f.amountCents, 0);
 
-      const savingsForecast = savingsForecasts
+      // Savings forecast = contributions only (not interest)
+      const savingsForecast = savingsContributions
         .filter((f) => f.date >= monthStart && f.date <= monthEnd && f.date > today)
+        .reduce((sum, f) => sum + f.amountCents, 0);
+
+      // Interest for this month (included in total saved, but not savings line)
+      const interest = interestForecasts
+        .filter((f) => f.date >= monthStart && f.date <= monthEnd)
         .reduce((sum, f) => sum + f.amountCents, 0);
 
       const netActual = incomeActual - expensesActual - savingsActual;
@@ -334,12 +352,13 @@ export function useReportsData(
         income: { actual: incomeActual, forecast: incomeForecast },
         expenses: { actual: expensesActual, forecast: expensesForecast },
         savings: { actual: savingsActual, forecast: savingsForecast },
+        interest,
         net: { actual: netActual, forecast: netForecast },
       });
     }
 
     return result;
-  }, [startDate, endDate, incomeTransactions, expenseTransactions, savingsTransactions, incomeForecasts, expenseForecasts, savingsForecasts]);
+  }, [startDate, endDate, incomeTransactions, expenseTransactions, savingsTransactions, incomeForecasts, expenseForecasts, savingsContributions, interestForecasts]);
 
   // Savings goal progress (uses all-time savings, not just date range)
   const { allTransactions } = useTransactions();
@@ -368,6 +387,7 @@ export function useReportsData(
   }, [savingsGoals, allTransactions]);
 
   // Monthly savings contributions over time (actual + forecast)
+  // Interest is treated as "actual" since it's earned money on existing balances
   const monthlySavings = useMemo((): MonthlySavingsItem[] => {
     const months = getMonthsBetween(startDate, endDate);
     const today = new Date().toISOString().slice(0, 10);
@@ -382,12 +402,19 @@ export function useReportsData(
       const monthEnd = `${month}-${String(lastDay).padStart(2, '0')}`;
 
       // Actual savings from transactions
-      const actual = savingsTransactions
+      const transactionActual = savingsTransactions
         .filter((t) => t.date >= monthStart && t.date <= monthEnd)
         .reduce((sum, t) => sum + t.amountCents, 0);
 
-      // Forecasted savings (only future dates)
-      const forecast = savingsForecasts
+      // Interest earned (treated as actual - it's earned money on existing balance)
+      const interest = interestForecasts
+        .filter((f) => f.date >= monthStart && f.date <= monthEnd)
+        .reduce((sum, f) => sum + f.amountCents, 0);
+
+      const actual = transactionActual + interest;
+
+      // Forecasted contributions only (only future dates, excluding interest)
+      const forecast = savingsContributions
         .filter((f) => f.date >= monthStart && f.date <= monthEnd && f.date > today)
         .reduce((sum, f) => sum + f.amountCents, 0);
 
@@ -404,16 +431,17 @@ export function useReportsData(
     }
 
     return result;
-  }, [startDate, endDate, savingsTransactions, savingsForecasts]);
+  }, [startDate, endDate, savingsTransactions, savingsContributions, interestForecasts]);
 
-  // Per-goal monthly savings
+  // Per-goal monthly savings (interest treated as actual)
   const savingsByGoal = useMemo((): GoalMonthlySavings[] => {
     const months = getMonthsBetween(startDate, endDate);
     const today = new Date().toISOString().slice(0, 10);
 
     return savingsGoals.map((goal) => {
       const goalTransactions = savingsTransactions.filter((t) => t.savingsGoalId === goal.id);
-      const goalForecasts = savingsForecasts.filter((f) => f.savingsGoalId === goal.id);
+      const goalContributions = savingsContributions.filter((f) => f.savingsGoalId === goal.id);
+      const goalInterest = interestForecasts.filter((f) => f.savingsGoalId === goal.id);
 
       let cumulativeActual = 0;
       let cumulativeForecast = 0;
@@ -424,11 +452,19 @@ export function useReportsData(
         const lastDay = new Date(year!, m!, 0).getDate();
         const monthEnd = `${month}-${String(lastDay).padStart(2, '0')}`;
 
-        const actual = goalTransactions
+        // Transactions + interest = actual
+        const transactionActual = goalTransactions
           .filter((t) => t.date >= monthStart && t.date <= monthEnd)
           .reduce((sum, t) => sum + t.amountCents, 0);
 
-        const forecast = goalForecasts
+        const interest = goalInterest
+          .filter((f) => f.date >= monthStart && f.date <= monthEnd)
+          .reduce((sum, f) => sum + f.amountCents, 0);
+
+        const actual = transactionActual + interest;
+
+        // Contributions only = forecast
+        const forecast = goalContributions
           .filter((f) => f.date >= monthStart && f.date <= monthEnd && f.date > today)
           .reduce((sum, f) => sum + f.amountCents, 0);
 
@@ -451,7 +487,7 @@ export function useReportsData(
         monthlySavings: monthlySavingsData,
       };
     });
-  }, [startDate, endDate, savingsGoals, savingsTransactions, savingsForecasts]);
+  }, [startDate, endDate, savingsGoals, savingsTransactions, savingsContributions, interestForecasts]);
 
   // Get unique categories used in monthly spending for legend
   const usedCategories = useMemo(() => {

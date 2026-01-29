@@ -17,6 +17,7 @@ interface MonthlyNetFlow {
   income: { actual: number; forecast: number };
   expenses: { actual: number; forecast: number };
   savings: { actual: number; forecast: number };
+  interest: number; // Interest earned (included in total saved, not savings line)
   net: { actual: number; forecast: number };
 }
 
@@ -177,7 +178,8 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
     let balanceStarted = false;
 
     return monthlyNetFlow.map((m) => {
-      cumulativeSavings += m.savings.actual + m.savings.forecast;
+      // Cumulative savings includes contributions + interest
+      cumulativeSavings += m.savings.actual + m.savings.forecast + m.interest;
       const netTotal = m.net.actual + m.net.forecast;
 
       // Start tracking balance from the anchor month (or from start if no balanceStartMonth)
@@ -197,6 +199,7 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
         month: m.month,
         incomeTotal: m.income.actual + m.income.forecast,
         expensesTotal: m.expenses.actual + m.expenses.forecast,
+        // Savings line = contributions only (not interest)
         savingsTotal: m.savings.actual + m.savings.forecast,
         incomeActual: m.income.actual,
         expenseActual: m.expenses.actual,
@@ -206,6 +209,7 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
         savingsForecast: m.savings.forecast,
         netActual: m.net.actual,
         netForecast: m.net.forecast,
+        // Total saved includes interest
         cumulativeSavings,
         balance: runningBalance,
       };
