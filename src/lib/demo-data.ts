@@ -68,6 +68,8 @@ export function generateDemoData(): BudgetData {
 
   // Generate all IDs upfront
   const scenarioId = generateId();
+  const scenarioPayRiseId = generateId();
+  const scenarioAggressiveSavingsId = generateId();
 
   // ==========================================================================
   // CATEGORIES - Organised like a real Aussie budget
@@ -116,6 +118,24 @@ export function generateDemoData(): BudgetData {
       name: 'Main Budget',
       description: 'My everyday budget',
       isDefault: true,
+    },
+    {
+      id: scenarioPayRiseId,
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      name: 'Pay Rise',
+      description: 'What if I get a 15% raise?',
+      isDefault: false,
+    },
+    {
+      id: scenarioAggressiveSavingsId,
+      userId: USER_ID,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      name: 'Aggressive Savings',
+      description: 'Cut spending, maximise house deposit',
+      isDefault: false,
     },
   ];
 
@@ -245,6 +265,81 @@ export function generateDemoData(): BudgetData {
     createdAt: timestamp,
     updatedAt: timestamp,
     scenarioId,
+    ...r,
+  }));
+
+  // ==========================================================================
+  // BUDGET RULES - Pay Rise Scenario (same budgets as main)
+  // ==========================================================================
+  const budgetRulesPayRise = [
+    // Same budgets as main - the difference is in income forecast
+    { categoryId: catRent, amountCents: 92500, cadence: 'fortnightly' as const },
+    { categoryId: catGroceries, amountCents: 30000, cadence: 'fortnightly' as const },
+    { categoryId: catPetrol, amountCents: 12000, cadence: 'fortnightly' as const },
+    { categoryId: catDiningOut, amountCents: 15000, cadence: 'fortnightly' as const },
+    { categoryId: catTakeaway, amountCents: 8000, cadence: 'fortnightly' as const },
+    { categoryId: catCoffee, amountCents: 3500, cadence: 'weekly' as const },
+    { categoryId: catPublicTransport, amountCents: 5000, cadence: 'weekly' as const },
+    { categoryId: catEntertainment, amountCents: 5000, cadence: 'weekly' as const },
+    { categoryId: catInternet, amountCents: 8900, cadence: 'monthly' as const },
+    { categoryId: catPhone, amountCents: 6500, cadence: 'monthly' as const },
+    { categoryId: catSubscriptions, amountCents: 7500, cadence: 'monthly' as const },
+    { categoryId: catShopping, amountCents: 20000, cadence: 'monthly' as const },
+    { categoryId: catPersonalCare, amountCents: 8000, cadence: 'monthly' as const },
+    { categoryId: catHealthcare, amountCents: 10000, cadence: 'monthly' as const },
+    { categoryId: catPet, amountCents: 15000, cadence: 'monthly' as const },
+    { categoryId: catElectricity, amountCents: 45000, cadence: 'quarterly' as const },
+    { categoryId: catGas, amountCents: 20000, cadence: 'quarterly' as const },
+    { categoryId: catWater, amountCents: 25000, cadence: 'quarterly' as const },
+    { categoryId: catCarMaintenance, amountCents: 40000, cadence: 'quarterly' as const },
+    { categoryId: catCarInsurance, amountCents: 120000, cadence: 'yearly' as const },
+    { categoryId: catHomeInsurance, amountCents: 150000, cadence: 'yearly' as const },
+    { categoryId: catHealthInsurance, amountCents: 180000, cadence: 'yearly' as const },
+  ].map((r) => ({
+    id: generateId(),
+    userId: USER_ID,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    scenarioId: scenarioPayRiseId,
+    ...r,
+  }));
+
+  // ==========================================================================
+  // BUDGET RULES - Aggressive Savings (reduced discretionary spending)
+  // ==========================================================================
+  const budgetRulesAggressiveSavings = [
+    // Essential spending - same as main
+    { categoryId: catRent, amountCents: 92500, cadence: 'fortnightly' as const },
+    { categoryId: catGroceries, amountCents: 25000, cadence: 'fortnightly' as const }, // Reduced from $300
+    { categoryId: catPetrol, amountCents: 10000, cadence: 'fortnightly' as const }, // Reduced
+    // Discretionary - heavily reduced
+    { categoryId: catDiningOut, amountCents: 5000, cadence: 'fortnightly' as const }, // Reduced from $150
+    { categoryId: catTakeaway, amountCents: 3000, cadence: 'fortnightly' as const }, // Reduced from $80
+    { categoryId: catCoffee, amountCents: 1500, cadence: 'weekly' as const }, // Reduced - make at home more
+    { categoryId: catPublicTransport, amountCents: 5000, cadence: 'weekly' as const },
+    { categoryId: catEntertainment, amountCents: 2500, cadence: 'weekly' as const }, // Reduced from $50
+    // Monthly - reduced discretionary
+    { categoryId: catInternet, amountCents: 8900, cadence: 'monthly' as const },
+    { categoryId: catPhone, amountCents: 6500, cadence: 'monthly' as const },
+    { categoryId: catSubscriptions, amountCents: 4000, cadence: 'monthly' as const }, // Cut some subscriptions
+    { categoryId: catShopping, amountCents: 10000, cadence: 'monthly' as const }, // Reduced from $200
+    { categoryId: catPersonalCare, amountCents: 5000, cadence: 'monthly' as const }, // Reduced
+    { categoryId: catHealthcare, amountCents: 10000, cadence: 'monthly' as const },
+    { categoryId: catPet, amountCents: 15000, cadence: 'monthly' as const },
+    // Utilities - same
+    { categoryId: catElectricity, amountCents: 45000, cadence: 'quarterly' as const },
+    { categoryId: catGas, amountCents: 20000, cadence: 'quarterly' as const },
+    { categoryId: catWater, amountCents: 25000, cadence: 'quarterly' as const },
+    { categoryId: catCarMaintenance, amountCents: 40000, cadence: 'quarterly' as const },
+    { categoryId: catCarInsurance, amountCents: 120000, cadence: 'yearly' as const },
+    { categoryId: catHomeInsurance, amountCents: 150000, cadence: 'yearly' as const },
+    { categoryId: catHealthInsurance, amountCents: 180000, cadence: 'yearly' as const },
+  ].map((r) => ({
+    id: generateId(),
+    userId: USER_ID,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    scenarioId: scenarioAggressiveSavingsId,
     ...r,
   }));
 
@@ -479,6 +574,100 @@ export function generateDemoData(): BudgetData {
     createdAt: timestamp,
     updatedAt: timestamp,
     scenarioId,
+    ...r,
+  }));
+
+  // ==========================================================================
+  // FORECAST RULES - Pay Rise Scenario (15% higher salary, extra goes to savings)
+  // ==========================================================================
+  const forecastRulesPayRise = [
+    // Income - 15% higher salary ($3,393 vs $2,950)
+    {
+      type: 'income' as const,
+      amountCents: 339250, // $3,392.50 net fortnightly (~$88k gross)
+      cadence: 'fortnightly' as const,
+      dayOfWeek: 4,
+      description: 'Salary - PAYG (after raise)',
+      categoryId: null,
+      savingsGoalId: null,
+    },
+    // Same expenses as main scenario
+    { type: 'expense' as const, amountCents: 92500, cadence: 'fortnightly' as const, dayOfWeek: 1, description: 'Rent', categoryId: catRent, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 45000, cadence: 'quarterly' as const, dayOfMonth: 15, monthOfQuarter: 1, description: 'AGL Electricity', categoryId: catElectricity, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 20000, cadence: 'quarterly' as const, dayOfMonth: 20, monthOfQuarter: 1, description: 'Origin Gas', categoryId: catGas, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 25000, cadence: 'quarterly' as const, dayOfMonth: 10, monthOfQuarter: 2, description: 'Sydney Water', categoryId: catWater, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 8900, cadence: 'monthly' as const, dayOfMonth: 5, description: 'Aussie Broadband', categoryId: catInternet, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 6500, cadence: 'monthly' as const, dayOfMonth: 12, description: 'Telstra Mobile', categoryId: catPhone, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 15000, cadence: 'monthly' as const, dayOfMonth: 1, description: 'Medibank Private', categoryId: catHealthInsurance, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 15000, cadence: 'weekly' as const, dayOfWeek: 6, description: 'Weekly groceries', categoryId: catGroceries, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 5000, cadence: 'weekly' as const, dayOfWeek: 1, description: 'Opal top-up', categoryId: catPublicTransport, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 12000, cadence: 'fortnightly' as const, dayOfWeek: 0, description: 'Petrol', categoryId: catPetrol, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 2299, cadence: 'monthly' as const, dayOfMonth: 8, description: 'Netflix', categoryId: catSubscriptions, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 1299, cadence: 'monthly' as const, dayOfMonth: 15, description: 'Spotify', categoryId: catSubscriptions, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 699, cadence: 'monthly' as const, dayOfMonth: 22, description: 'iCloud Storage', categoryId: catSubscriptions, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 1799, cadence: 'monthly' as const, dayOfMonth: 3, description: 'Stan', categoryId: catSubscriptions, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 8000, cadence: 'monthly' as const, dayOfMonth: 1, description: 'Pet Circle - Dog food', categoryId: catPet, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 10000, cadence: 'monthly' as const, dayOfMonth: 28, description: 'NRMA Car Insurance', categoryId: catCarInsurance, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 12500, cadence: 'monthly' as const, dayOfMonth: 28, description: 'RACV Contents Insurance', categoryId: catHomeInsurance, savingsGoalId: null },
+    // Enhanced savings - extra income goes to house deposit
+    { type: 'savings' as const, amountCents: 20000, cadence: 'fortnightly' as const, dayOfWeek: 5, description: 'Emergency fund', categoryId: null, savingsGoalId: goalEmergency },
+    { type: 'savings' as const, amountCents: 15000, cadence: 'fortnightly' as const, dayOfWeek: 5, description: 'Bali trip fund', categoryId: null, savingsGoalId: goalHoliday },
+    { type: 'savings' as const, amountCents: 45000, cadence: 'fortnightly' as const, dayOfWeek: 5, description: 'House deposit (boosted)', categoryId: null, savingsGoalId: goalHouseDeposit }, // $450 vs $200
+    { type: 'savings' as const, amountCents: 10000, cadence: 'fortnightly' as const, dayOfWeek: 5, description: 'New car fund', categoryId: null, savingsGoalId: goalNewCar },
+    { type: 'savings' as const, amountCents: 5000, cadence: 'fortnightly' as const, dayOfWeek: 5, description: 'Christmas fund', categoryId: null, savingsGoalId: goalChristmas },
+  ].map((r) => ({
+    id: generateId(),
+    userId: USER_ID,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    scenarioId: scenarioPayRiseId,
+    ...r,
+  }));
+
+  // ==========================================================================
+  // FORECAST RULES - Aggressive Savings (cut expenses, max savings)
+  // ==========================================================================
+  const forecastRulesAggressiveSavings = [
+    // Same income
+    {
+      type: 'income' as const,
+      amountCents: 295000,
+      cadence: 'fortnightly' as const,
+      dayOfWeek: 4,
+      description: 'Salary - PAYG',
+      categoryId: null,
+      savingsGoalId: null,
+    },
+    // Essential expenses only
+    { type: 'expense' as const, amountCents: 92500, cadence: 'fortnightly' as const, dayOfWeek: 1, description: 'Rent', categoryId: catRent, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 45000, cadence: 'quarterly' as const, dayOfMonth: 15, monthOfQuarter: 1, description: 'AGL Electricity', categoryId: catElectricity, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 20000, cadence: 'quarterly' as const, dayOfMonth: 20, monthOfQuarter: 1, description: 'Origin Gas', categoryId: catGas, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 25000, cadence: 'quarterly' as const, dayOfMonth: 10, monthOfQuarter: 2, description: 'Sydney Water', categoryId: catWater, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 8900, cadence: 'monthly' as const, dayOfMonth: 5, description: 'Aussie Broadband', categoryId: catInternet, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 6500, cadence: 'monthly' as const, dayOfMonth: 12, description: 'Telstra Mobile', categoryId: catPhone, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 15000, cadence: 'monthly' as const, dayOfMonth: 1, description: 'Medibank Private', categoryId: catHealthInsurance, savingsGoalId: null },
+    // Reduced groceries
+    { type: 'expense' as const, amountCents: 12500, cadence: 'weekly' as const, dayOfWeek: 6, description: 'Weekly groceries (budget)', categoryId: catGroceries, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 5000, cadence: 'weekly' as const, dayOfWeek: 1, description: 'Opal top-up', categoryId: catPublicTransport, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 10000, cadence: 'fortnightly' as const, dayOfWeek: 0, description: 'Petrol (less driving)', categoryId: catPetrol, savingsGoalId: null },
+    // Cut to essential subscriptions only
+    { type: 'expense' as const, amountCents: 1299, cadence: 'monthly' as const, dayOfMonth: 15, description: 'Spotify', categoryId: catSubscriptions, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 699, cadence: 'monthly' as const, dayOfMonth: 22, description: 'iCloud Storage', categoryId: catSubscriptions, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 8000, cadence: 'monthly' as const, dayOfMonth: 1, description: 'Pet Circle - Dog food', categoryId: catPet, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 10000, cadence: 'monthly' as const, dayOfMonth: 28, description: 'NRMA Car Insurance', categoryId: catCarInsurance, savingsGoalId: null },
+    { type: 'expense' as const, amountCents: 12500, cadence: 'monthly' as const, dayOfMonth: 28, description: 'RACV Contents Insurance', categoryId: catHomeInsurance, savingsGoalId: null },
+    // Aggressive savings - focus on house deposit
+    { type: 'savings' as const, amountCents: 15000, cadence: 'fortnightly' as const, dayOfWeek: 5, description: 'Emergency fund', categoryId: null, savingsGoalId: goalEmergency },
+    { type: 'savings' as const, amountCents: 5000, cadence: 'fortnightly' as const, dayOfWeek: 5, description: 'Bali trip (reduced)', categoryId: null, savingsGoalId: goalHoliday },
+    { type: 'savings' as const, amountCents: 50000, cadence: 'fortnightly' as const, dayOfWeek: 5, description: 'House deposit (max)', categoryId: null, savingsGoalId: goalHouseDeposit }, // $500 vs $200
+    { type: 'savings' as const, amountCents: 5000, cadence: 'fortnightly' as const, dayOfWeek: 5, description: 'New car fund (reduced)', categoryId: null, savingsGoalId: goalNewCar },
+    { type: 'savings' as const, amountCents: 5000, cadence: 'fortnightly' as const, dayOfWeek: 5, description: 'Christmas fund', categoryId: null, savingsGoalId: goalChristmas },
+  ].map((r) => ({
+    id: generateId(),
+    userId: USER_ID,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    scenarioId: scenarioAggressiveSavingsId,
     ...r,
   }));
 
@@ -1380,8 +1569,8 @@ export function generateDemoData(): BudgetData {
   return {
     scenarios,
     categories,
-    budgetRules,
-    forecastRules,
+    budgetRules: [...budgetRules, ...budgetRulesPayRise, ...budgetRulesAggressiveSavings],
+    forecastRules: [...forecastRules, ...forecastRulesPayRise, ...forecastRulesAggressiveSavings],
     forecastEvents,
     transactions,
     savingsGoals,
