@@ -1,4 +1,4 @@
-import { Outlet, Navigate } from 'react-router';
+import { Outlet, Navigate, useLocation } from 'react-router';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
 import { DemoBanner } from '@/components/demo-banner';
@@ -7,6 +7,7 @@ import { useScenarios } from '@/hooks/use-scenarios';
 import { useAppConfig } from '@/hooks/use-app-config';
 
 export function RootLayout() {
+  const location = useLocation();
   const { isInitialized, isDemo, isLoading: configLoading } = useAppConfig();
   const { activeScenarioId, isLoading: scenariosLoading } = useScenarios();
 
@@ -16,7 +17,8 @@ export function RootLayout() {
   }
 
   if (!isInitialized) {
-    return <Navigate to="/landing" replace />;
+    // Preserve query params when redirecting to landing
+    return <Navigate to={`/landing${location.search}`} replace />;
   }
 
   // Show nothing while loading scenarios after initialisation

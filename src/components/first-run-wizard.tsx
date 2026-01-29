@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useForm } from '@tanstack/react-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,11 +16,15 @@ type WizardStep = 'choose' | 'setup';
 
 export function FirstRunWizard() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { markInitialized } = useAppConfig();
   const { addAnchor } = useBalanceAnchors();
   const { scenarios, addScenario, setActiveScenarioId } = useScenarios();
 
-  const [step, setStep] = useState<WizardStep>('choose');
+  // Start at setup step if ?setup=1 is in URL
+  const [step, setStep] = useState<WizardStep>(() =>
+    searchParams.get('setup') ? 'setup' : 'choose'
+  );
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const todayDate = today();
@@ -74,7 +78,7 @@ export function FirstRunWizard() {
         });
 
         await markInitialized(false);
-        navigate('/overview');
+        navigate('/');
       } catch (error) {
         console.error('Setup failed:', error);
         setSubmitError('Setup failed. Please try again.');
@@ -85,15 +89,11 @@ export function FirstRunWizard() {
   const handleStartDemo = async () => {
     await loadDemoDataToStorage();
     // Force reload to pick up the new data
-    window.location.href = '/overview';
-  };
-
-  const handleStartFresh = () => {
-    setStep('setup');
+    window.location.href = '/';
   };
 
   if (step === 'choose') {
-    return <LandingPage onGetStarted={handleStartFresh} onViewDemo={handleStartDemo} />;
+    return <LandingPage onViewDemo={handleStartDemo} />;
   }
 
   return (
