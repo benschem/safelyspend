@@ -200,6 +200,27 @@ export function BudgetPage() {
       (t) => t.type === 'expense' && t.date >= thisMonthStart && t.date <= today
     );
 
+    // Build budget lookup (converted to monthly amounts)
+    const budgetByCategory = new Map<string, number>();
+    for (const rule of budgetRules) {
+      let monthlyBudget = rule.amountCents;
+      switch (rule.cadence) {
+        case 'weekly':
+          monthlyBudget = rule.amountCents * 4.33;
+          break;
+        case 'fortnightly':
+          monthlyBudget = rule.amountCents * 2.17;
+          break;
+        case 'quarterly':
+          monthlyBudget = rule.amountCents / 3;
+          break;
+        case 'yearly':
+          monthlyBudget = rule.amountCents / 12;
+          break;
+      }
+      budgetByCategory.set(rule.categoryId, Math.round(monthlyBudget));
+    }
+
     const byCategory: Record<string, number> = {};
     let uncategorized = 0;
     let total = 0;
@@ -214,16 +235,21 @@ export function BudgetPage() {
     }
 
     const categorySpending = activeCategories
-      .map((c) => ({ id: c.id, name: c.name, amount: byCategory[c.id] ?? 0 }))
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        amount: byCategory[c.id] ?? 0,
+        budget: budgetByCategory.get(c.id) ?? 0,
+      }))
       .filter((c) => c.amount > 0)
       .sort((a, b) => b.amount - a.amount);
 
     if (uncategorized > 0) {
-      categorySpending.push({ id: 'uncategorized', name: 'Uncategorised', amount: uncategorized });
+      categorySpending.push({ id: 'uncategorized', name: 'Uncategorised', amount: uncategorized, budget: 0 });
     }
 
     return { categorySpending, total };
-  }, [allTransactions, activeCategories, thisMonthStart, today]);
+  }, [allTransactions, activeCategories, budgetRules, thisMonthStart, today]);
 
   // Build color map for spending chart
   const colorMap = useMemo(() => {
@@ -490,19 +516,41 @@ export function BudgetPage() {
         ) : (
           <div className="mt-6 space-y-3">
             {thisMonthSpending.categorySpending.map((item) => {
-              const percentage = thisMonthSpending.total > 0 ? (item.amount / thisMonthSpending.total) * 100 : 0;
+              const color = colorMap[item.id] ?? CHART_COLORS.uncategorized;
+              const hasBudget = item.budget > 0;
+              // Percentage of budget spent (capped at 100% for display)
+              const spentPercent = hasBudget ? Math.min((item.amount / item.budget) * 100, 100) : 100;
+              const isOverBudget = hasBudget && item.amount > item.budget;
+
               return (
                 <div key={item.id} className="space-y-1">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium">{item.name}</span>
-                    <span className="font-mono text-muted-foreground">{formatCents(item.amount)}</span>
+                    <span className="font-mono text-muted-foreground">
+                      {formatCents(item.amount)}
+                      {hasBudget && (
+                        <span className="text-xs"> / {formatCents(item.budget)}</span>
+                      )}
+                    </span>
                   </div>
                   <div className="relative h-3 rounded-full bg-muted">
+                    {/* Light bar: budget amount (full width if budgeted) */}
+                    {hasBudget && (
+                      <div
+                        className="absolute h-3 rounded-full"
+                        style={{
+                          width: '100%',
+                          backgroundColor: color,
+                          opacity: 0.25,
+                        }}
+                      />
+                    )}
+                    {/* Dark bar: actual spending relative to budget */}
                     <div
-                      className="absolute h-3 rounded-full"
+                      className={`absolute h-3 rounded-full ${isOverBudget ? 'ring-2 ring-red-500 ring-offset-1' : ''}`}
                       style={{
-                        width: `${percentage}%`,
-                        backgroundColor: colorMap[item.id] ?? CHART_COLORS.uncategorized,
+                        width: `${spentPercent}%`,
+                        backgroundColor: color,
                       }}
                     />
                   </div>
