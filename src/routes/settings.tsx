@@ -237,7 +237,7 @@ export function SettingsPage() {
   };
 
   return (
-    <div>
+    <div className="mx-auto max-w-6xl">
       <div className="mb-8">
         <h1 className="flex items-center gap-3 text-3xl font-bold">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-500/10">
