@@ -1,5 +1,6 @@
 export { SpendingBreakdownChart } from './spending-breakdown-chart';
 export { BurnRateChart } from './burn-rate-chart';
+export { SpendingCoverageChart } from './spending-coverage-chart';
 export { CategorySpendingChart } from './category-spending-chart';
 export { BudgetComparisonChart } from './budget-comparison-chart';
 export { CashFlowChart } from './cash-flow-chart';

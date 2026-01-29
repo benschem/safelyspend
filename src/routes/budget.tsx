@@ -804,7 +804,10 @@ export function BudgetPage() {
       {/* Summary Stats */}
       {summary.trackedCount > 0 && (
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="flex min-h-[180px] flex-col rounded-lg border p-5">
+          <Link
+            to="/analyse?tab=spending"
+            className="flex min-h-[180px] flex-col rounded-lg border p-5 transition-colors hover:bg-muted/50"
+          >
             {/* Header */}
             <div>
               <div className="flex items-center gap-2 font-medium">
@@ -825,7 +828,7 @@ export function BudgetPage() {
                 {summary.totalForecasted > 0 ? `Incl. ${formatCents(summary.totalForecasted)} forecast` : `vs ${formatCents(summary.totalBudget)} total budget`}
               </p>
             </div>
-          </div>
+          </Link>
 
           <Link
             to="/analyse?tab=pace"
@@ -863,7 +866,10 @@ export function BudgetPage() {
             </div>
           </Link>
 
-          <div className="flex min-h-[180px] flex-col rounded-lg border p-5">
+          <Link
+            to="/analyse?tab=coverage"
+            className="flex min-h-[180px] flex-col rounded-lg border p-5 transition-colors hover:bg-muted/50"
+          >
             {/* Header */}
             <div>
               <div className="flex items-center gap-2 font-medium">
@@ -888,7 +894,7 @@ export function BudgetPage() {
                   : 'All spending has a budget'}
               </p>
             </div>
-          </div>
+          </Link>
 
           <Link
             to="/analyse?tab=savings"

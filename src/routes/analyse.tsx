@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useOutletContext, useSearchParams } from 'react-router';
-import { ChartSpline, Wallet, CircleDollarSign, PiggyBank, CircleGauge } from 'lucide-react';
+import { ChartSpline, Wallet, CircleDollarSign, PiggyBank, CircleGauge, PieChart } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useReportsData } from '@/hooks/use-reports-data';
 import { useViewState } from '@/hooks/use-view-state';
@@ -25,14 +25,16 @@ import {
   SavingsOverTimeChart,
   SavingsGoalProgressCard,
   BurnRateChart,
+  SpendingCoverageChart,
 } from '@/components/charts';
+import { useCategories } from '@/hooks/use-categories';
 import { ScenarioSelector } from '@/components/scenario-selector';
 
 interface OutletContext {
   activeScenarioId: string | null;
 }
 
-const VALID_TABS = ['cashflow', 'spending', 'pace', 'savings'] as const;
+const VALID_TABS = ['cashflow', 'spending', 'pace', 'coverage', 'savings'] as const;
 type TabValue = (typeof VALID_TABS)[number];
 const STORAGE_KEY = 'budget:reportsTab';
 const SAVINGS_VIEW_KEY = 'budget:savingsChartView';
@@ -116,6 +118,7 @@ export function AnalysePage() {
   const { getActiveAnchor, anchors } = useBalanceAnchors();
   const { allTransactions } = useTransactions();
   const { budgetRules } = useBudgetRules(activeScenarioId);
+  const { activeCategories } = useCategories();
 
   const balanceInfo = useMemo(() => {
     // Get anchor that applies at the start of the report period
@@ -257,6 +260,56 @@ export function AnalysePage() {
     };
   }, [allTransactions, budgetRules, burnRateCadence]);
 
+  // Spending coverage data - spending by category with budget status
+  const spendingCoverageData = useMemo(() => {
+    // Get expense transactions in the current view period
+    const expenses = allTransactions.filter(
+      (t) => t.type === 'expense' && t.date >= startDate && t.date <= endDate,
+    );
+
+    // Build a set of category IDs that have budgets
+    const budgetedCategoryIds = new Set(budgetRules.map((r) => r.categoryId));
+
+    // Sum spending by category
+    const spendingByCategory: Record<string, number> = {};
+    let uncategorizedSpending = 0;
+
+    for (const expense of expenses) {
+      if (expense.categoryId) {
+        spendingByCategory[expense.categoryId] = (spendingByCategory[expense.categoryId] ?? 0) + expense.amountCents;
+      } else {
+        uncategorizedSpending += expense.amountCents;
+      }
+    }
+
+    // Build the data array
+    const categorySpending: Array<{
+      categoryId: string | null;
+      categoryName: string;
+      amount: number;
+      hasBudget: boolean;
+    }> = activeCategories
+      .filter((cat) => (spendingByCategory[cat.id] ?? 0) > 0)
+      .map((cat) => ({
+        categoryId: cat.id,
+        categoryName: cat.name,
+        amount: spendingByCategory[cat.id] ?? 0,
+        hasBudget: budgetedCategoryIds.has(cat.id),
+      }));
+
+    // Add uncategorized if any
+    if (uncategorizedSpending > 0) {
+      categorySpending.push({
+        categoryId: null,
+        categoryName: 'Uncategorised',
+        amount: uncategorizedSpending,
+        hasBudget: false,
+      });
+    }
+
+    return categorySpending;
+  }, [allTransactions, budgetRules, activeCategories, startDate, endDate]);
+
   return (
     <div className="space-y-6">
       {/* Page header */}
@@ -273,6 +326,7 @@ export function AnalysePage() {
           <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
           <TabsTrigger value="spending">Spending</TabsTrigger>
           <TabsTrigger value="pace">Pace</TabsTrigger>
+          <TabsTrigger value="coverage">Coverage</TabsTrigger>
           <TabsTrigger value="savings">Savings</TabsTrigger>
         </TabsList>
 
@@ -351,6 +405,24 @@ export function AnalysePage() {
                 periodEnd={burnRateData.periodEnd}
                 periodLabel={burnRateData.periodLabel}
               />
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Coverage Tab - Budget coverage of spending */}
+        <TabsContent value="coverage" className="mt-6">
+          <div className="rounded-lg border p-6">
+            <div>
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
+                <PieChart className="h-5 w-5" />
+                Budget Coverage
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                How much of your spending is covered by budgets?
+              </p>
+            </div>
+            <div className="mt-6">
+              <SpendingCoverageChart categorySpending={spendingCoverageData} />
             </div>
           </div>
         </TabsContent>
