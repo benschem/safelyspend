@@ -199,7 +199,7 @@ export function SnapshotPage() {
 
   if (!activeScenarioId || !activeScenario) {
     return (
-      <div>
+      <div className="mx-auto max-w-6xl">
         <div className="mb-8">
           <h1 className="flex items-center gap-3 text-3xl font-bold">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
@@ -220,7 +220,7 @@ export function SnapshotPage() {
   }
 
   return (
-    <div>
+    <div className="mx-auto max-w-6xl">
       {/* Header */}
       <div className="mb-8">
         <h1 className="flex items-center gap-3 text-3xl font-bold">

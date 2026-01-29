@@ -210,7 +210,7 @@ export function InsightsPage() {
   }, [getActiveAnchor, anchors, allTransactions, startDate, endDate]);
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       {/* Page header */}
       <div>
         <h1 className="flex items-center gap-3 text-3xl font-bold">

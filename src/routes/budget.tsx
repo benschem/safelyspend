@@ -412,7 +412,7 @@ export function BudgetPage() {
 
   if (!activeScenarioId || !activeScenario) {
     return (
-      <div className="space-y-6">
+      <div className="mx-auto max-w-6xl space-y-6">
         {/* Header */}
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
@@ -515,7 +515,7 @@ export function BudgetPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       {/* Page Header */}
       <div>
         <h1 className="flex items-center gap-3 text-3xl font-bold">

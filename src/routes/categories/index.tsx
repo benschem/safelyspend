@@ -209,8 +209,8 @@ export function CategoriesIndexPage() {
   );
 
   return (
-    <div>
-      <div className="mb-8 flex items-center justify-between">
+    <div className="mx-auto max-w-6xl">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
@@ -235,7 +235,7 @@ export function CategoriesIndexPage() {
       </div>
 
       {categories.length === 0 ? (
-        <div className="mt-4 space-y-4">
+        <div className="space-y-4">
           <Alert variant="info">
             Create categories like groceries, transport, or entertainment to see where your money goes.
           </Alert>
@@ -247,7 +247,7 @@ export function CategoriesIndexPage() {
           </div>
         </div>
       ) : (
-        <div className="mt-4">
+        <div className="mt-6">
           <DataTable
             columns={columns}
             data={sortedCategories}

@@ -236,15 +236,27 @@ export function RecurringIndexPage() {
 
   if (!activeScenarioId || !activeScenario) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <h2 className="text-lg font-semibold">No scenario selected</h2>
-        <p className="text-muted-foreground">Select a scenario to manage recurring forecasts.</p>
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-6">
+          <Button variant="ghost" size="sm" className="-ml-2" asChild>
+            <Link to="/forecasts">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Forecasts
+            </Link>
+          </Button>
+        </div>
+        <div className="rounded-lg border border-dashed p-8 text-center">
+          <p className="text-muted-foreground">Select a scenario to manage recurring forecasts.</p>
+          <Button asChild className="mt-4">
+            <Link to="/scenarios">Manage Scenarios</Link>
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="mx-auto max-w-6xl">
       <div className="mb-6">
         <Button variant="ghost" size="sm" className="-ml-2" asChild>
           <Link to="/forecasts">
@@ -254,7 +266,7 @@ export function RecurringIndexPage() {
         </Button>
       </div>
 
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
@@ -266,7 +278,7 @@ export function RecurringIndexPage() {
             Recurring income, expense, and savings patterns for {activeScenario.name}.
           </p>
         </div>
-        <Button className="w-full sm:w-auto" onClick={() => setDialogOpen(true)}>
+        <Button onClick={() => setDialogOpen(true)}>
           <Plus className="h-4 w-4" />
           Add Recurring
         </Button>
