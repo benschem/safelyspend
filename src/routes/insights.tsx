@@ -37,7 +37,7 @@ type TabValue = (typeof VALID_TABS)[number];
 const STORAGE_KEY = 'budget:reportsTab';
 const SAVINGS_VIEW_KEY = 'budget:savingsChartView';
 
-export function AnalysePage() {
+export function InsightsPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const [searchParams, setSearchParams] = useSearchParams();
   const {
@@ -265,9 +265,9 @@ export function AnalysePage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
               <ChartSpline className="h-5 w-5 text-slate-500" />
             </div>
-          Analyse
+          Insights
         </h1>
-        <p className="mt-1 text-muted-foreground">Analyse your financial patterns</p>
+        <p className="mt-1 text-muted-foreground">Understand your financial patterns</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">

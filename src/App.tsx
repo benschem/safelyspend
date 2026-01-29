@@ -18,7 +18,7 @@ import { TransactionDetailPage } from '@/routes/transactions/detail';
 import { CategoriesIndexPage } from '@/routes/categories/index';
 import { CategoryImportRulesPage } from '@/routes/categories/import-rules';
 import { SavingsIndexPage } from '@/routes/savings/index';
-import { AnalysePage } from '@/routes/analyse';
+import { InsightsPage } from '@/routes/insights';
 import { ScenariosIndexPage } from '@/routes/scenarios/index';
 import { SpendingLimitsPage } from '@/routes/spending-limits/index';
 import { SettingsPage } from '@/routes/settings';
@@ -63,8 +63,8 @@ const router = createBrowserRouter([
       // Savings (track)
       { path: 'savings', element: <SavingsIndexPage /> },
 
-      // Analyse (track)
-      { path: 'analyse', element: <AnalysePage /> },
+      // Insights (track)
+      { path: 'insights', element: <InsightsPage /> },
 
       // Scenarios (plan)
       { path: 'scenarios', element: <ScenariosIndexPage /> },

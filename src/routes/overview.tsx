@@ -223,7 +223,7 @@ export function SnapshotPage() {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Cash */}
           <Link
-            to="/analyse?tab=cashflow"
+            to="/insights?tab=cashflow"
             className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50"
           >
             <div className="flex items-center justify-between">

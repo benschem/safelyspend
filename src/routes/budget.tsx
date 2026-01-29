@@ -440,7 +440,7 @@ export function BudgetPage() {
 
         {/* Spending Speed */}
         <Link
-          to="/analyse?tab=pace"
+          to="/insights?tab=pace"
           className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50"
         >
           <div className="flex items-center justify-between">
