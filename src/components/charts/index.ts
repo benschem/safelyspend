@@ -4,5 +4,6 @@ export { BudgetComparisonChart } from './budget-comparison-chart';
 export { CashFlowChart } from './cash-flow-chart';
 export { SavingsOverTimeChart } from './savings-over-time-chart';
 export { SavingsGoalChart } from './savings-goal-chart';
+export { SavingsGoalProgressCard } from './savings-goal-progress-card';
 export { SavingsDonutChart } from './savings-donut-chart';
 export { BudgetDonutChart } from './budget-donut-chart';

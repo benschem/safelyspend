@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useOutletContext, useSearchParams } from 'react-router';
-import { ChartSpline } from 'lucide-react';
+import { ChartSpline, Wallet, CircleDollarSign, PiggyBank } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useReportsData } from '@/hooks/use-reports-data';
 import { useViewState } from '@/hooks/use-view-state';
@@ -9,12 +9,19 @@ import { useTransactions } from '@/hooks/use-transactions';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 import { formatCompactDate } from '@/lib/utils';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { TimelineRangePicker } from '@/components/timeline-range-picker';
 import {
   BudgetComparisonChart,
   CashFlowChart,
   SavingsOverTimeChart,
-  SavingsGoalChart,
+  SavingsGoalProgressCard,
 } from '@/components/charts';
 import { ScenarioSelector } from '@/components/scenario-selector';
 
@@ -25,6 +32,7 @@ interface OutletContext {
 const VALID_TABS = ['cashflow', 'spending', 'savings'] as const;
 type TabValue = (typeof VALID_TABS)[number];
 const STORAGE_KEY = 'budget:reportsTab';
+const SAVINGS_VIEW_KEY = 'budget:savingsChartView';
 
 export function AnalysePage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
@@ -57,16 +65,26 @@ export function AnalysePage() {
     if (urlTab && VALID_TABS.includes(urlTab)) {
       setActiveTab(urlTab);
       localStorage.setItem(STORAGE_KEY, urlTab);
-      // Clear URL param after applying
-      setSearchParams({}, { replace: true });
     }
-  }, [urlTab, setSearchParams]);
+  }, [urlTab]);
 
   const handleTabChange = (value: string) => {
     const tab = value as TabValue;
     setActiveTab(tab);
     localStorage.setItem(STORAGE_KEY, tab);
+    setSearchParams({ tab }, { replace: true });
   };
+
+  // Savings chart view state: 'total' or a specific goal ID
+  const [savingsView, setSavingsView] = useState<string>(() => {
+    return localStorage.getItem(SAVINGS_VIEW_KEY) ?? 'total';
+  });
+
+  const handleSavingsViewChange = (value: string) => {
+    setSavingsView(value);
+    localStorage.setItem(SAVINGS_VIEW_KEY, value);
+  };
+
   const {
     monthlyBudgetComparison,
     budgetCategories,
@@ -74,6 +92,7 @@ export function AnalysePage() {
     monthlySavings,
     savingsByGoal,
   } = useReportsData(activeScenarioId, startDate, endDate);
+
 
   // Build a shared colour map so categories have consistent colours across all charts
   const allCategoryIds = useMemo(() => {
@@ -85,11 +104,10 @@ export function AnalysePage() {
     [allCategoryIds],
   );
 
-  // Determine if viewing past, future, or mixed period
+  // Determine if viewing past or future period
   const today = new Date().toISOString().slice(0, 10);
   const isPastOnly = endDate <= today;
   const isFutureOnly = startDate > today;
-  const isMixed = !isPastOnly && !isFutureOnly;
 
   // Calculate starting balance for cash flow chart
   const { getActiveAnchor, anchors } = useBalanceAnchors();
@@ -195,9 +213,12 @@ export function AnalysePage() {
         <TabsContent value="spending" className="mt-6">
           <div className="rounded-lg border p-6">
             <div>
-              <h2 className="text-lg font-semibold">Spending by Category</h2>
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
+                <CircleDollarSign className="h-5 w-5" />
+                Spending
+              </h2>
               <p className="text-sm text-muted-foreground">
-                Spending compared to budgeted amounts
+                By category compared to budgeted amounts
               </p>
             </div>
             <div className="mt-6">
@@ -226,7 +247,10 @@ export function AnalysePage() {
             )}
             <div className="rounded-lg border p-6">
               <div>
-                <h2 className="text-lg font-semibold">Cash Flow</h2>
+                <h2 className="flex items-center gap-2 text-lg font-semibold">
+                  <Wallet className="h-5 w-5" />
+                  Cash Flow
+                </h2>
                 <p className="text-sm text-muted-foreground">
                   {isPastOnly
                     ? 'Past income, expenses, and savings'
@@ -234,11 +258,6 @@ export function AnalysePage() {
                       ? 'Forecasted monthly income, expenses, and savings'
                       : 'Income, expenses and savings'}
                 </p>
-                {isMixed && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Past data shows what happened. Future data shows what&apos;s planned.
-                  </p>
-                )}
               </div>
               <div className="mt-6">
                 <CashFlowChart
@@ -254,17 +273,50 @@ export function AnalysePage() {
         {/* Savings Tab - Goal progress */}
         <TabsContent value="savings" className="mt-6">
           <div className="rounded-lg border p-6">
-            <div>
-              <h2 className="text-lg font-semibold">Savings</h2>
-              <p className="text-sm text-muted-foreground">
-                {isPastOnly
-                  ? 'Cumulative savings contributions'
-                  : 'Cumulative savings — solid line is actual, dashed line includes projections'}
-              </p>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="flex items-center gap-2 text-lg font-semibold">
+                  <PiggyBank className="h-5 w-5" />
+                  {savingsView === 'total'
+                    ? 'Total Savings'
+                    : savingsByGoal.find((g) => g.goalId === savingsView)?.goalName ?? 'Savings'}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {isPastOnly
+                    ? 'Cumulative savings contributions'
+                    : 'Solid line is actual, dashed line is forecasted'}
+                </p>
+              </div>
+              {savingsByGoal.length > 0 && (
+                <Select value={savingsView} onValueChange={handleSavingsViewChange}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="total">Total Savings</SelectItem>
+                    {savingsByGoal.map((goal) => (
+                      <SelectItem key={goal.goalId} value={goal.goalId}>
+                        {goal.goalName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             <div className="mt-6">
-              <SavingsOverTimeChart monthlySavings={monthlySavings} />
+              {savingsView === 'total' ? (
+                <SavingsOverTimeChart monthlySavings={monthlySavings} />
+              ) : (
+                <SavingsOverTimeChart
+                  monthlySavings={
+                    savingsByGoal.find((g) => g.goalId === savingsView)?.monthlySavings ?? []
+                  }
+                  deadline={savingsByGoal.find((g) => g.goalId === savingsView)?.deadline}
+                  targetAmount={savingsByGoal.find((g) => g.goalId === savingsView)?.targetAmount}
+                  startingBalance={savingsByGoal.find((g) => g.goalId === savingsView)?.startingBalance}
+                />
+              )}
             </div>
 
             {savingsByGoal.length > 0 && (
@@ -275,10 +327,13 @@ export function AnalysePage() {
                 </p>
                 <div className="grid gap-4 md:grid-cols-2">
                   {savingsByGoal.map((goal) => (
-                    <SavingsGoalChart
+                    <SavingsGoalProgressCard
                       key={goal.goalId}
                       goalName={goal.goalName}
                       targetAmount={goal.targetAmount}
+                      currentBalance={goal.currentBalance}
+                      deadline={goal.deadline}
+                      annualInterestRate={goal.annualInterestRate}
                       monthlySavings={goal.monthlySavings}
                     />
                   ))}

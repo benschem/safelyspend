@@ -57,6 +57,10 @@ export interface GoalMonthlySavings {
   goalId: string;
   goalName: string;
   targetAmount: number;
+  currentBalance: number; // All-time saved amount
+  startingBalance: number; // Balance at start of date range (for chart calculations)
+  deadline: string | undefined;
+  annualInterestRate: number | undefined;
   monthlySavings: MonthlySavingsItem[];
 }
 
@@ -438,10 +442,24 @@ export function useReportsData(
     const months = getMonthsBetween(startDate, endDate);
     const today = new Date().toISOString().slice(0, 10);
 
+    // Calculate all-time balance per goal
+    const allSavings = allTransactions.filter((t) => t.type === 'savings');
+
     return savingsGoals.map((goal) => {
       const goalTransactions = savingsTransactions.filter((t) => t.savingsGoalId === goal.id);
       const goalContributions = savingsContributions.filter((f) => f.savingsGoalId === goal.id);
       const goalInterest = interestForecasts.filter((f) => f.savingsGoalId === goal.id);
+
+      // All-time saved amount for this goal
+      const currentBalance = allSavings
+        .filter((t) => t.savingsGoalId === goal.id)
+        .reduce((sum, t) => sum + t.amountCents, 0);
+
+      // Transactions within the date range for this goal
+      const transactionsInRange = goalTransactions.reduce((sum, t) => sum + t.amountCents, 0);
+
+      // Balance at start of the date range (what was saved before the range)
+      const startingBalance = currentBalance - transactionsInRange;
 
       let cumulativeActual = 0;
       let cumulativeForecast = 0;
@@ -484,10 +502,14 @@ export function useReportsData(
         goalId: goal.id,
         goalName: goal.name,
         targetAmount: goal.targetAmountCents,
+        currentBalance,
+        startingBalance,
+        deadline: goal.deadline,
+        annualInterestRate: goal.annualInterestRate,
         monthlySavings: monthlySavingsData,
       };
     });
-  }, [startDate, endDate, savingsGoals, savingsTransactions, savingsContributions, interestForecasts]);
+  }, [startDate, endDate, savingsGoals, savingsTransactions, savingsContributions, interestForecasts, allTransactions]);
 
   // Get unique categories used in monthly spending for legend
   const usedCategories = useMemo(() => {
