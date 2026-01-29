@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Switch } from '@/components/ui/switch';
-import { Pencil, Check, X, Trash2, Plus, Target, AlertTriangle, CircleGauge, PiggyBank } from 'lucide-react';
+import { Pencil, Check, X, Trash2, Plus, Target, AlertTriangle, CircleGauge, PiggyBank, Calendar, TrendingUp, Receipt, CircleAlert } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
@@ -193,7 +193,7 @@ export function BudgetPage() {
   const { activeScenario } = useScenarios();
   const { activeCategories, addCategory } = useCategories();
   const { allTransactions, savingsTransactions } = useTransactions();
-  const { getRuleForCategory, setBudgetForCategory, deleteBudgetRule } =
+  const { budgetRules, getRuleForCategory, setBudgetForCategory, deleteBudgetRule } =
     useBudgetRules(activeScenarioId);
 
   // Get forecasts for each cadence's remaining period
@@ -224,6 +224,91 @@ export function BudgetPage() {
   }, []);
 
   const { expenseForecasts, savingsForecasts } = useForecasts(activeScenarioId, tomorrow, maxEndDate);
+
+  // Get monthly forecasts for cash flow display
+  const today = new Date().toISOString().slice(0, 10);
+  const thisMonthStart = today.slice(0, 7) + '-01';
+  const thisMonthEndDate = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10);
+  const { expandedForecasts: monthForecasts } = useForecasts(activeScenarioId, thisMonthStart, thisMonthEndDate);
+
+  // Monthly cash flow calculation
+  const monthlyCashFlow = useMemo(() => {
+    const now = new Date();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const dayOfMonth = now.getDate();
+
+    // Get category IDs that have budgets
+    const budgetedCategoryIds = new Set(budgetRules.map((r) => r.categoryId));
+
+    // Expected income for full month
+    const expectedIncome = monthForecasts
+      .filter((f) => f.type === 'income')
+      .reduce((sum, f) => sum + f.amountCents, 0);
+
+    // Expected savings for full month
+    const expectedSavings = monthForecasts
+      .filter((f) => f.type === 'savings')
+      .reduce((sum, f) => sum + f.amountCents, 0);
+
+    // Total budget for month (sum of all budget rules, converted to monthly)
+    const totalBudget = budgetRules.reduce((sum, r) => {
+      switch (r.cadence) {
+        case 'weekly':
+          return sum + r.amountCents * 4.33;
+        case 'fortnightly':
+          return sum + r.amountCents * 2.17;
+        case 'monthly':
+          return sum + r.amountCents;
+        case 'quarterly':
+          return sum + r.amountCents / 3;
+        case 'yearly':
+          return sum + r.amountCents / 12;
+        default:
+          return sum + r.amountCents;
+      }
+    }, 0);
+
+    // Actual income received so far
+    const actualIncome = allTransactions
+      .filter((t) => t.type === 'income' && t.date >= thisMonthStart && t.date <= today)
+      .reduce((sum, t) => sum + t.amountCents, 0);
+
+    // Actual savings so far
+    const actualSavings = allTransactions
+      .filter((t) => t.type === 'savings' && t.date >= thisMonthStart && t.date <= today)
+      .reduce((sum, t) => sum + t.amountCents, 0);
+
+    // Actual expenses - split by budgeted vs unbudgeted
+    const expenseTransactionsThisMonth = allTransactions.filter(
+      (t) => t.type === 'expense' && t.date >= thisMonthStart && t.date <= today
+    );
+
+    const actualBudgetedExpenses = expenseTransactionsThisMonth
+      .filter((t) => t.categoryId && budgetedCategoryIds.has(t.categoryId))
+      .reduce((sum, t) => sum + t.amountCents, 0);
+
+    const actualUnbudgetedExpenses = expenseTransactionsThisMonth
+      .filter((t) => !t.categoryId || !budgetedCategoryIds.has(t.categoryId))
+      .reduce((sum, t) => sum + t.amountCents, 0);
+
+    // Unallocated = Income - Budget - Savings
+    const unallocated = Math.round(expectedIncome - totalBudget - expectedSavings);
+
+    // Net = Income - Savings - All Expenses
+    const actualNet = actualIncome - actualSavings - actualBudgetedExpenses - actualUnbudgetedExpenses;
+
+    return {
+      dayOfMonth,
+      daysInMonth,
+      income: { expected: Math.round(expectedIncome), actual: actualIncome },
+      budgeted: { expected: Math.round(totalBudget), actual: actualBudgetedExpenses },
+      unbudgeted: { unallocated: Math.max(0, unallocated), actual: actualUnbudgetedExpenses },
+      savings: { expected: Math.round(expectedSavings), actual: actualSavings },
+      net: actualNet,
+    };
+  }, [monthForecasts, budgetRules, allTransactions, thisMonthStart, today]);
+
+  const monthName = new Date().toLocaleDateString('en-AU', { month: 'long' });
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState('');
@@ -801,128 +886,196 @@ export function BudgetPage() {
         </div>
       </div>
 
-      {/* Summary Stats */}
+      {/* Summary: Monthly Cash Flow + Stats Cards */}
       {summary.trackedCount > 0 && (
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          {/* Monthly Cash Flow - Left Side */}
           <Link
-            to="/analyse?tab=spending"
-            className="flex min-h-[180px] flex-col rounded-lg border p-5 transition-colors hover:bg-muted/50"
+            to="/analyse?tab=cashflow"
+            className="block rounded-lg border p-8 transition-colors hover:bg-muted/50"
           >
-            {/* Header */}
-            <div>
-              <div className="flex items-center gap-2 font-medium">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-lg font-semibold">
+                  <Calendar className="h-5 w-5 text-muted-foreground" />
+                  {monthName}
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Day {monthlyCashFlow.dayOfMonth} of {monthlyCashFlow.daysInMonth}
+                </p>
+              </div>
+              <div className="text-right">
+                <span className={`text-2xl font-bold font-mono ${monthlyCashFlow.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {monthlyCashFlow.net >= 0 ? '+' : ''}{formatCents(monthlyCashFlow.net)}
+                </span>
+                <p className="text-sm text-muted-foreground">net so far</p>
+              </div>
+            </div>
+
+            {(() => {
+              const ref = Math.max(monthlyCashFlow.income.expected, monthlyCashFlow.income.actual, 1);
+              const pct = (val: number) => `${Math.min((val / ref) * 100, 100)}%`;
+              return (
+                <div className="mt-6 space-y-4">
+                  {/* Income bar */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <TrendingUp className="h-4 w-4" />
+                        Income
+                      </span>
+                      <span className="font-mono">
+                        <span className="text-green-600">{formatCents(monthlyCashFlow.income.actual)}</span>
+                        <span className="text-muted-foreground"> / {formatCents(monthlyCashFlow.income.expected)}</span>
+                      </span>
+                    </div>
+                    <div className="relative h-3 rounded-full bg-muted">
+                      <div className="absolute h-3 rounded-full bg-green-500" style={{ width: pct(monthlyCashFlow.income.actual) }} />
+                    </div>
+                  </div>
+
+                  {/* Budgeted expenses bar */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <Receipt className="h-4 w-4" />
+                        Budgeted
+                      </span>
+                      <span className="font-mono">
+                        <span className="text-red-600">{formatCents(monthlyCashFlow.budgeted.actual)}</span>
+                        <span className="text-muted-foreground"> / {formatCents(monthlyCashFlow.budgeted.expected)}</span>
+                      </span>
+                    </div>
+                    <div className="relative h-3 rounded-full bg-muted">
+                      <div className="absolute h-3 rounded-full bg-red-200" style={{ width: pct(monthlyCashFlow.budgeted.expected) }} />
+                      <div className="absolute h-3 rounded-full bg-red-500" style={{ width: pct(monthlyCashFlow.budgeted.actual) }} />
+                    </div>
+                  </div>
+
+                  {/* Unallocated bar */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <CircleAlert className="h-4 w-4" />
+                        Unallocated
+                      </span>
+                      <span className="font-mono">
+                        <span className="text-amber-600">{formatCents(monthlyCashFlow.unbudgeted.actual)}</span>
+                        <span className="text-muted-foreground"> / {formatCents(monthlyCashFlow.unbudgeted.unallocated)}</span>
+                      </span>
+                    </div>
+                    <div className="relative h-3 rounded-full bg-muted">
+                      <div className="absolute h-3 rounded-full bg-amber-200" style={{ width: pct(monthlyCashFlow.unbudgeted.unallocated) }} />
+                      <div className="absolute h-3 rounded-full bg-amber-500" style={{ width: pct(monthlyCashFlow.unbudgeted.actual) }} />
+                    </div>
+                  </div>
+
+                  {/* Savings bar */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <PiggyBank className="h-4 w-4" />
+                        Savings
+                      </span>
+                      <span className="font-mono">
+                        <span className="text-blue-600">{formatCents(monthlyCashFlow.savings.actual)}</span>
+                        <span className="text-muted-foreground"> / {formatCents(monthlyCashFlow.savings.expected)}</span>
+                      </span>
+                    </div>
+                    <div className="relative h-3 rounded-full bg-muted">
+                      <div className="absolute h-3 rounded-full bg-blue-200" style={{ width: pct(monthlyCashFlow.savings.expected) }} />
+                      <div className="absolute h-3 rounded-full bg-blue-500" style={{ width: pct(monthlyCashFlow.savings.actual) }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </Link>
+
+          {/* Stats Cards - Right Side 2x2 Grid */}
+          <div className="grid gap-4 grid-cols-2">
+            <Link
+              to="/analyse?tab=spending"
+              className="flex flex-col rounded-lg border p-4 transition-colors hover:bg-muted/50"
+            >
+              <div className="flex items-center gap-2 text-sm font-medium">
                 <Target className="h-4 w-4 text-muted-foreground" />
                 Projected Spending
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">Will you stay within budget?</p>
-            </div>
-            {/* Spacer */}
-            <div className="flex-1" />
-            {/* Value */}
-            <p className={`text-2xl font-bold ${summary.totalProjectedRemaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatCents(Math.abs(summary.totalProjectedRemaining))} {summary.totalProjectedRemaining >= 0 ? 'under' : 'over'}
-            </p>
-            {/* Footer */}
-            <div className="mt-3 border-t pt-3">
-              <p className="text-xs text-muted-foreground">
-                {summary.totalForecasted > 0 ? `Incl. ${formatCents(summary.totalForecasted)} forecast` : `vs ${formatCents(summary.totalBudget)} total budget`}
+              <div className="flex-1" />
+              <p className={`mt-3 text-xl font-bold ${summary.totalProjectedRemaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {formatCents(Math.abs(summary.totalProjectedRemaining))} {summary.totalProjectedRemaining >= 0 ? 'under' : 'over'}
               </p>
-            </div>
-          </Link>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {summary.totalForecasted > 0 ? `Incl. ${formatCents(summary.totalForecasted)} forecast` : `vs ${formatCents(summary.totalBudget)} budget`}
+              </p>
+            </Link>
 
-          <Link
-            to="/analyse?tab=pace"
-            className="flex min-h-[180px] flex-col rounded-lg border p-5 transition-colors hover:bg-muted/50"
-          >
-            {/* Header */}
-            <div>
-              <div className="flex items-center gap-2 font-medium">
+            <Link
+              to="/analyse?tab=pace"
+              className="flex flex-col rounded-lg border p-4 transition-colors hover:bg-muted/50"
+            >
+              <div className="flex items-center gap-2 text-sm font-medium">
                 <CircleGauge className="h-4 w-4 text-muted-foreground" />
                 Spending Speed
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">Are you burning budget too fast?</p>
-            </div>
-            {/* Spacer */}
-            <div className="flex-1" />
-            {/* Value */}
-            {summary.overCount > 0 ? (
-              <p className="text-2xl font-bold text-red-600">Too Fast</p>
-            ) : summary.overspendingCount > 0 ? (
-              <p className="text-2xl font-bold text-amber-600">Speeding Up</p>
-            ) : (
-              <p className="text-2xl font-bold text-green-600">On Track</p>
-            )}
-            {/* Footer */}
-            <div className="mt-3 border-t pt-3">
-              <p className="text-xs text-muted-foreground">
+              <div className="flex-1" />
+              {summary.overCount > 0 ? (
+                <p className="mt-3 text-xl font-bold text-red-600">Too Fast</p>
+              ) : summary.overspendingCount > 0 ? (
+                <p className="mt-3 text-xl font-bold text-amber-600">Speeding Up</p>
+              ) : (
+                <p className="mt-3 text-xl font-bold text-green-600">On Track</p>
+              )}
+              <p className="mt-1 text-xs text-muted-foreground">
                 {summary.overCount > 0
-                  ? `${summary.overCount} exceeded${summary.overspendingCount > 0 ? `, ${summary.overspendingCount} overspending` : ''}`
+                  ? `${summary.overCount} exceeded`
                   : summary.overspendingCount > 0
                     ? `${summary.overspendingCount} overspending`
-                    : summary.watchCount > 0
-                      ? `${summary.goodCount} on pace, ${summary.watchCount} to watch`
-                      : `All ${summary.trackedCount} on pace`}
+                    : `${summary.goodCount} on pace`}
               </p>
-            </div>
-          </Link>
+            </Link>
 
-          <Link
-            to="/analyse?tab=spending"
-            className="flex min-h-[180px] flex-col rounded-lg border p-5 transition-colors hover:bg-muted/50"
-          >
-            {/* Header */}
-            <div>
-              <div className="flex items-center gap-2 font-medium">
+            <Link
+              to="/analyse?tab=spending"
+              className="flex flex-col rounded-lg border p-4 transition-colors hover:bg-muted/50"
+            >
+              <div className="flex items-center gap-2 text-sm font-medium">
                 <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                Unbudgeted Spending
+                Unbudgeted
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">Spending without a budget</p>
-            </div>
-            {/* Spacer */}
-            <div className="flex-1" />
-            {/* Value */}
-            {summary.untrackedSpent > 0 ? (
-              <p className="text-2xl font-bold text-amber-600">{formatCents(summary.untrackedSpent)}</p>
-            ) : (
-              <p className="text-2xl font-bold text-green-600">All tracked</p>
-            )}
-            {/* Footer */}
-            <div className="mt-3 border-t pt-3">
-              <p className="text-xs text-muted-foreground">
+              <div className="flex-1" />
+              {summary.untrackedSpent > 0 ? (
+                <p className="mt-3 text-xl font-bold text-amber-600">{formatCents(summary.untrackedSpent)}</p>
+              ) : (
+                <p className="mt-3 text-xl font-bold text-green-600">All tracked</p>
+              )}
+              <p className="mt-1 text-xs text-muted-foreground">
                 {summary.untrackedSpent > 0
-                  ? `${summary.untrackedCount} ${summary.untrackedCount === 1 ? 'category' : 'categories'} without budgets`
+                  ? `${summary.untrackedCount} without budgets`
                   : 'All spending has a budget'}
               </p>
-            </div>
-          </Link>
+            </Link>
 
-          <Link
-            to="/analyse?tab=savings"
-            className="flex min-h-[180px] flex-col rounded-lg border p-5 transition-colors hover:bg-muted/50"
-          >
-            {/* Header */}
-            <div>
-              <div className="flex items-center gap-2 font-medium">
+            <Link
+              to="/analyse?tab=savings"
+              className="flex flex-col rounded-lg border p-4 transition-colors hover:bg-muted/50"
+            >
+              <div className="flex items-center gap-2 text-sm font-medium">
                 <PiggyBank className="h-4 w-4 text-muted-foreground" />
                 Projected Savings
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">Forecasted additions to savings</p>
-            </div>
-            {/* Spacer */}
-            <div className="flex-1" />
-            {/* Value */}
-            <p className="text-2xl font-bold text-blue-600">
-              +{formatCents(summary.totalSavingsForecasted + summary.totalInterestEarned)}
-            </p>
-            {/* Footer */}
-            <div className="mt-3 border-t pt-3">
-              <p className="text-xs text-muted-foreground">
+              <div className="flex-1" />
+              <p className="mt-3 text-xl font-bold text-blue-600">
+                +{formatCents(summary.totalSavingsForecasted + summary.totalInterestEarned)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
                 {summary.totalInterestEarned > 0
                   ? `Incl. ${formatCents(summary.totalInterestEarned)} interest`
-                  : 'From forecasted contributions'}
+                  : 'Forecasted contributions'}
               </p>
-            </div>
-          </Link>
+            </Link>
+          </div>
         </div>
       )}
 

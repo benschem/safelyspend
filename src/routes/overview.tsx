@@ -9,12 +9,12 @@ import {
   PiggyBank,
   Eye,
   Landmark,
-  Wallet,
   Receipt,
   CircleAlert,
   CreditCard,
   BarChart3,
   Scale,
+  Calendar,
 } from 'lucide-react';
 import { CHART_COLORS, buildCategoryColorMap } from '@/lib/chart-colors';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -173,104 +173,8 @@ export function OverviewPage() {
       .slice(0, 10); // Show max 10 items
   }, [expandedForecasts, today]);
 
-  // Format month name
+  // Format month name for spending chart
   const monthName = new Date(today).toLocaleDateString('en-AU', { month: 'long' });
-
-  // === Monthly Cash Flow Progress ===
-  const monthlyCashFlow = useMemo(() => {
-    const now = new Date();
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const dayOfMonth = now.getDate();
-    const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
-
-    // Get forecasts for the FULL month (not just 14 days)
-    // We need to expand forecasts for the entire current month
-    const monthForecasts = expandedForecasts.filter(
-      (f) => f.date >= thisMonthStart && f.date <= thisMonthEnd
-    );
-
-    // Expected income for full month
-    const expectedIncome = monthForecasts
-      .filter((f) => f.type === 'income')
-      .reduce((sum, f) => sum + f.amountCents, 0);
-
-    // Expected savings for full month
-    const expectedSavings = monthForecasts
-      .filter((f) => f.type === 'savings')
-      .reduce((sum, f) => sum + f.amountCents, 0);
-
-    // Total budget for month (sum of all budget rules, converted to monthly)
-    const totalBudget = budgetRules.reduce((sum, r) => {
-      switch (r.cadence) {
-        case 'weekly':
-          return sum + r.amountCents * 4.33;
-        case 'fortnightly':
-          return sum + r.amountCents * 2.17;
-        case 'monthly':
-          return sum + r.amountCents;
-        case 'quarterly':
-          return sum + r.amountCents / 3;
-        case 'yearly':
-          return sum + r.amountCents / 12;
-        default:
-          return sum + r.amountCents;
-      }
-    }, 0);
-
-    // Get category IDs that have budgets
-    const budgetedCategoryIds = new Set(budgetRules.map((r) => r.categoryId));
-
-    // Actual income received so far
-    const actualIncome = allTransactions
-      .filter((t) => t.type === 'income' && t.date >= thisMonthStart && t.date <= today)
-      .reduce((sum, t) => sum + t.amountCents, 0);
-
-    // Actual savings so far
-    const actualSavings = allTransactions
-      .filter((t) => t.type === 'savings' && t.date >= thisMonthStart && t.date <= today)
-      .reduce((sum, t) => sum + t.amountCents, 0);
-
-    // Actual expenses - split by budgeted vs unbudgeted
-    const expenseTransactionsThisMonth = allTransactions.filter(
-      (t) => t.type === 'expense' && t.date >= thisMonthStart && t.date <= today
-    );
-
-    const actualBudgetedExpenses = expenseTransactionsThisMonth
-      .filter((t) => t.categoryId && budgetedCategoryIds.has(t.categoryId))
-      .reduce((sum, t) => sum + t.amountCents, 0);
-
-    const actualUnbudgetedExpenses = expenseTransactionsThisMonth
-      .filter((t) => !t.categoryId || !budgetedCategoryIds.has(t.categoryId))
-      .reduce((sum, t) => sum + t.amountCents, 0);
-
-    // Unallocated = Income - Budget - Savings (money available for unbudgeted spending or cash buffer)
-    const unallocated = Math.round(expectedIncome - totalBudget - expectedSavings);
-
-    // Net = Income - Savings - All Expenses
-    const actualNet = actualIncome - actualSavings - actualBudgetedExpenses - actualUnbudgetedExpenses;
-
-    return {
-      dayOfMonth,
-      daysInMonth,
-      income: {
-        expected: Math.round(expectedIncome),
-        actual: actualIncome,
-      },
-      budgeted: {
-        expected: Math.round(totalBudget),
-        actual: actualBudgetedExpenses,
-      },
-      unbudgeted: {
-        unallocated: Math.max(0, unallocated), // Available for unbudgeted or cash buffer
-        actual: actualUnbudgetedExpenses,
-      },
-      savings: {
-        expected: Math.round(expectedSavings),
-        actual: actualSavings,
-      },
-      net: actualNet,
-    };
-  }, [expandedForecasts, budgetRules, allTransactions, thisMonthStart, today]);
 
   // === This Year Cash Flow Progress ===
   const yearlyCashFlow = useMemo(() => {
@@ -405,7 +309,7 @@ export function OverviewPage() {
         </Alert>
       )}
 
-      {/* Net Worth Cards */}
+      {/* Your Year + Net Worth */}
       {(() => {
         // Dummy data for Debt and Investments (to be implemented later)
         const totalDebt = 2500000; // $25,000 placeholder
@@ -413,296 +317,195 @@ export function OverviewPage() {
         const netWorth = (currentBalance ?? 0) + totalSavings + totalInvestments - totalDebt;
 
         return (
-          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-            {/* Cash */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* This Year Cash Flow - Left Side */}
             <Link
               to="/analyse?tab=cashflow"
-              className="flex flex-col rounded-lg border p-4 transition-colors hover:bg-muted/50"
+              className="block rounded-lg border p-8 transition-colors hover:bg-muted/50"
             >
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <Landmark className="h-4 w-4" />
-                Cash
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-lg font-semibold">
+                    <Calendar className="h-5 w-5 text-muted-foreground" />
+                    Your {currentYear}
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">Full year forecast</p>
+                </div>
+                <div className="text-right">
+                  <span className={`text-2xl font-bold font-mono ${yearlyCashFlow.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {yearlyCashFlow.net >= 0 ? '+' : ''}{formatCents(yearlyCashFlow.net)}
+                  </span>
+                  <p className="text-sm text-muted-foreground">net forecast</p>
+                </div>
               </div>
-              <div className="mt-2">
-                {currentBalance !== null ? (
-                  <p className="text-2xl font-bold">{formatCents(currentBalance)}</p>
-                ) : (
-                  <p className="text-2xl font-bold text-muted-foreground">—</p>
-                )}
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {currentBalance !== null ? 'Bank balance' : 'Not set'}
-              </p>
+
+              {(() => {
+                const ref = Math.max(yearlyCashFlow.income.expected, yearlyCashFlow.income.actual, 1);
+                const pct = (val: number) => `${Math.min((val / ref) * 100, 100)}%`;
+                return (
+                  <div className="mt-6 space-y-4">
+                    {/* Income bar */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2 text-muted-foreground">
+                          <TrendingUp className="h-4 w-4" />
+                          Income
+                        </span>
+                        <span className="font-mono">
+                          <span className="text-green-600">{formatCents(yearlyCashFlow.income.actual)}</span>
+                          <span className="text-muted-foreground"> / {formatCents(yearlyCashFlow.income.expected)}</span>
+                        </span>
+                      </div>
+                      <div className="relative h-3 rounded-full bg-muted">
+                        <div className="absolute h-3 rounded-full bg-green-500" style={{ width: pct(yearlyCashFlow.income.actual) }} />
+                      </div>
+                    </div>
+
+                    {/* Budgeted expenses bar */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2 text-muted-foreground">
+                          <Receipt className="h-4 w-4" />
+                          Budgeted
+                        </span>
+                        <span className="font-mono">
+                          <span className="text-red-600">{formatCents(yearlyCashFlow.budgeted.actual)}</span>
+                          <span className="text-muted-foreground"> / {formatCents(yearlyCashFlow.budgeted.expected)}</span>
+                        </span>
+                      </div>
+                      <div className="relative h-3 rounded-full bg-muted">
+                        <div className="absolute h-3 rounded-full bg-red-200" style={{ width: pct(yearlyCashFlow.budgeted.expected) }} />
+                        <div className="absolute h-3 rounded-full bg-red-500" style={{ width: pct(yearlyCashFlow.budgeted.actual) }} />
+                      </div>
+                    </div>
+
+                    {/* Unallocated bar */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2 text-muted-foreground">
+                          <CircleAlert className="h-4 w-4" />
+                          Unallocated
+                        </span>
+                        <span className="font-mono">
+                          <span className="text-amber-600">{formatCents(yearlyCashFlow.unbudgeted.actual)}</span>
+                          <span className="text-muted-foreground"> / {formatCents(yearlyCashFlow.unbudgeted.unallocated)}</span>
+                        </span>
+                      </div>
+                      <div className="relative h-3 rounded-full bg-muted">
+                        <div className="absolute h-3 rounded-full bg-amber-200" style={{ width: pct(yearlyCashFlow.unbudgeted.unallocated) }} />
+                        <div className="absolute h-3 rounded-full bg-amber-500" style={{ width: pct(yearlyCashFlow.unbudgeted.actual) }} />
+                      </div>
+                    </div>
+
+                    {/* Savings bar */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2 text-muted-foreground">
+                          <PiggyBank className="h-4 w-4" />
+                          Savings
+                        </span>
+                        <span className="font-mono">
+                          <span className="text-blue-600">{formatCents(yearlyCashFlow.savings.actual)}</span>
+                          <span className="text-muted-foreground"> / {formatCents(yearlyCashFlow.savings.expected)}</span>
+                        </span>
+                      </div>
+                      <div className="relative h-3 rounded-full bg-muted">
+                        <div className="absolute h-3 rounded-full bg-blue-200" style={{ width: pct(yearlyCashFlow.savings.expected) }} />
+                        <div className="absolute h-3 rounded-full bg-blue-500" style={{ width: pct(yearlyCashFlow.savings.actual) }} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </Link>
 
-            {/* Savings */}
-            <Link
-              to="/savings"
-              className="flex flex-col rounded-lg border p-4 transition-colors hover:bg-muted/50"
-            >
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <PiggyBank className="h-4 w-4" />
-                Savings
-              </div>
-              <div className="mt-2">
-                <p className="text-2xl font-bold text-blue-600">{formatCents(totalSavings)}</p>
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {emergencyFund && emergencyFundBalance !== null
-                  ? `${formatCents(emergencyFundBalance)} emergency`
-                  : 'Across all goals'}
-              </p>
-            </Link>
+            {/* Net Worth Cards - Right Side */}
+            <div className="space-y-4">
+              {/* Top row: Cash + Savings */}
+              <div className="grid gap-4 grid-cols-2">
+                <Link
+                  to="/analyse?tab=cashflow"
+                  className="flex flex-col rounded-lg border p-4 transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <Landmark className="h-4 w-4" />
+                    Cash
+                  </div>
+                  <div className="mt-2">
+                    {currentBalance !== null ? (
+                      <p className="text-xl font-bold">{formatCents(currentBalance)}</p>
+                    ) : (
+                      <p className="text-xl font-bold text-muted-foreground">—</p>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {currentBalance !== null ? 'Bank balance' : 'Not set'}
+                  </p>
+                </Link>
 
-            {/* Debt */}
-            <div className="flex flex-col rounded-lg border p-4 opacity-60">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <CreditCard className="h-4 w-4" />
-                Debt
+                <Link
+                  to="/savings"
+                  className="flex flex-col rounded-lg border p-4 transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <PiggyBank className="h-4 w-4" />
+                    Savings
+                  </div>
+                  <div className="mt-2">
+                    <p className="text-xl font-bold text-blue-600">{formatCents(totalSavings)}</p>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {emergencyFund && emergencyFundBalance !== null
+                      ? `${formatCents(emergencyFundBalance)} emergency`
+                      : 'Across all goals'}
+                  </p>
+                </Link>
               </div>
-              <div className="mt-2">
-                <p className="text-2xl font-bold text-red-600">-{formatCents(totalDebt)}</p>
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">Coming soon</p>
-            </div>
 
-            {/* Investments */}
-            <div className="flex flex-col rounded-lg border p-4 opacity-60">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <BarChart3 className="h-4 w-4" />
-                Investments
-              </div>
-              <div className="mt-2">
-                <p className="text-2xl font-bold text-green-600">{formatCents(totalInvestments)}</p>
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">Coming soon</p>
-            </div>
+              {/* Middle row: Debt + Investments */}
+              <div className="grid gap-4 grid-cols-2">
+                <div className="flex flex-col rounded-lg border p-4 opacity-60">
+                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <CreditCard className="h-4 w-4" />
+                    Debt
+                  </div>
+                  <div className="mt-2">
+                    <p className="text-xl font-bold text-red-600">-{formatCents(totalDebt)}</p>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">Coming soon</p>
+                </div>
 
-            {/* Net Worth */}
-            <div className="flex flex-col rounded-lg border p-4 bg-muted/30">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <Scale className="h-4 w-4" />
-                Net Worth
+                <div className="flex flex-col rounded-lg border p-4 opacity-60">
+                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <BarChart3 className="h-4 w-4" />
+                    Investments
+                  </div>
+                  <div className="mt-2">
+                    <p className="text-xl font-bold text-green-600">{formatCents(totalInvestments)}</p>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">Coming soon</p>
+                </div>
               </div>
-              <div className="mt-2">
-                <p className={`text-2xl font-bold ${netWorth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {netWorth >= 0 ? '' : '-'}{formatCents(Math.abs(netWorth))}
+
+              {/* Bottom row: Net Worth (full width) */}
+              <div className="flex flex-col rounded-lg border p-4 bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <Scale className="h-4 w-4" />
+                    Net Worth
+                  </div>
+                  <p className={`text-xl font-bold ${netWorth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {netWorth >= 0 ? '' : '-'}{formatCents(Math.abs(netWorth))}
+                  </p>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Assets minus liabilities
                 </p>
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Assets minus liabilities
-              </p>
             </div>
           </div>
         );
       })()}
-
-      {/* Cash Flow Cards */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* This Month */}
-        <Link
-          to="/analyse?tab=cashflow"
-          className="block rounded-lg border p-5 transition-colors hover:bg-muted/50"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2 font-medium">
-                <Wallet className="h-4 w-4 text-muted-foreground" />
-                {monthName}
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Day {monthlyCashFlow.dayOfMonth} of {monthlyCashFlow.daysInMonth}
-              </p>
-            </div>
-            <div className="text-right">
-              <span className={`text-lg font-bold font-mono ${monthlyCashFlow.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {monthlyCashFlow.net >= 0 ? '+' : ''}{formatCents(monthlyCashFlow.net)}
-              </span>
-              <p className="text-xs text-muted-foreground">net so far</p>
-            </div>
-          </div>
-
-          {(() => {
-            const ref = Math.max(monthlyCashFlow.income.expected, monthlyCashFlow.income.actual, 1);
-            const pct = (val: number) => `${Math.min((val / ref) * 100, 100)}%`;
-            return (
-              <div className="mt-4 space-y-3">
-                {/* Income bar */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1.5 text-muted-foreground">
-                      <TrendingUp className="h-3.5 w-3.5" />
-                      Income
-                    </span>
-                    <span className="font-mono">
-                      <span className="text-green-600">{formatCents(monthlyCashFlow.income.actual)}</span>
-                      <span className="text-muted-foreground"> / {formatCents(monthlyCashFlow.income.expected)}</span>
-                    </span>
-                  </div>
-                  <div className="relative h-2 rounded-full bg-muted">
-                    <div className="absolute h-2 rounded-full bg-green-500" style={{ width: pct(monthlyCashFlow.income.actual) }} />
-                  </div>
-                </div>
-
-                {/* Budgeted expenses bar */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1.5 text-muted-foreground">
-                      <Receipt className="h-3.5 w-3.5" />
-                      Budgeted
-                    </span>
-                    <span className="font-mono">
-                      <span className="text-red-600">{formatCents(monthlyCashFlow.budgeted.actual)}</span>
-                      <span className="text-muted-foreground"> / {formatCents(monthlyCashFlow.budgeted.expected)}</span>
-                    </span>
-                  </div>
-                  <div className="relative h-2 rounded-full bg-muted">
-                    <div className="absolute h-2 rounded-full bg-red-200" style={{ width: pct(monthlyCashFlow.budgeted.expected) }} />
-                    <div className="absolute h-2 rounded-full bg-red-500" style={{ width: pct(monthlyCashFlow.budgeted.actual) }} />
-                  </div>
-                </div>
-
-                {/* Unallocated bar */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1.5 text-muted-foreground">
-                      <CircleAlert className="h-3.5 w-3.5" />
-                      Unallocated
-                    </span>
-                    <span className="font-mono">
-                      <span className="text-amber-600">{formatCents(monthlyCashFlow.unbudgeted.actual)}</span>
-                      <span className="text-muted-foreground"> / {formatCents(monthlyCashFlow.unbudgeted.unallocated)}</span>
-                    </span>
-                  </div>
-                  <div className="relative h-2 rounded-full bg-muted">
-                    <div className="absolute h-2 rounded-full bg-amber-200" style={{ width: pct(monthlyCashFlow.unbudgeted.unallocated) }} />
-                    <div className="absolute h-2 rounded-full bg-amber-500" style={{ width: pct(monthlyCashFlow.unbudgeted.actual) }} />
-                  </div>
-                </div>
-
-                {/* Savings bar */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1.5 text-muted-foreground">
-                      <PiggyBank className="h-3.5 w-3.5" />
-                      Savings
-                    </span>
-                    <span className="font-mono">
-                      <span className="text-blue-600">{formatCents(monthlyCashFlow.savings.actual)}</span>
-                      <span className="text-muted-foreground"> / {formatCents(monthlyCashFlow.savings.expected)}</span>
-                    </span>
-                  </div>
-                  <div className="relative h-2 rounded-full bg-muted">
-                    <div className="absolute h-2 rounded-full bg-blue-200" style={{ width: pct(monthlyCashFlow.savings.expected) }} />
-                    <div className="absolute h-2 rounded-full bg-blue-500" style={{ width: pct(monthlyCashFlow.savings.actual) }} />
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-        </Link>
-
-        {/* This Year */}
-        <Link
-          to="/analyse?tab=cashflow"
-          className="block rounded-lg border p-5 transition-colors hover:bg-muted/50"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2 font-medium">
-                <Wallet className="h-4 w-4 text-muted-foreground" />
-                {currentYear}
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">Full year</p>
-            </div>
-            <div className="text-right">
-              <span className={`text-lg font-bold font-mono ${yearlyCashFlow.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {yearlyCashFlow.net >= 0 ? '+' : ''}{formatCents(yearlyCashFlow.net)}
-              </span>
-              <p className="text-xs text-muted-foreground">net forecast</p>
-            </div>
-          </div>
-
-          {(() => {
-            const ref = Math.max(yearlyCashFlow.income.expected, yearlyCashFlow.income.actual, 1);
-            const pct = (val: number) => `${Math.min((val / ref) * 100, 100)}%`;
-            return (
-              <div className="mt-4 space-y-3">
-                {/* Income bar */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1.5 text-muted-foreground">
-                      <TrendingUp className="h-3.5 w-3.5" />
-                      Income
-                    </span>
-                    <span className="font-mono">
-                      <span className="text-green-600">{formatCents(yearlyCashFlow.income.actual)}</span>
-                      <span className="text-muted-foreground"> / {formatCents(yearlyCashFlow.income.expected)}</span>
-                    </span>
-                  </div>
-                  <div className="relative h-2 rounded-full bg-muted">
-                    <div className="absolute h-2 rounded-full bg-green-500" style={{ width: pct(yearlyCashFlow.income.actual) }} />
-                  </div>
-                </div>
-
-                {/* Budgeted expenses bar */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1.5 text-muted-foreground">
-                      <Receipt className="h-3.5 w-3.5" />
-                      Budgeted
-                    </span>
-                    <span className="font-mono">
-                      <span className="text-red-600">{formatCents(yearlyCashFlow.budgeted.actual)}</span>
-                      <span className="text-muted-foreground"> / {formatCents(yearlyCashFlow.budgeted.expected)}</span>
-                    </span>
-                  </div>
-                  <div className="relative h-2 rounded-full bg-muted">
-                    <div className="absolute h-2 rounded-full bg-red-200" style={{ width: pct(yearlyCashFlow.budgeted.expected) }} />
-                    <div className="absolute h-2 rounded-full bg-red-500" style={{ width: pct(yearlyCashFlow.budgeted.actual) }} />
-                  </div>
-                </div>
-
-                {/* Unallocated bar */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1.5 text-muted-foreground">
-                      <CircleAlert className="h-3.5 w-3.5" />
-                      Unallocated
-                    </span>
-                    <span className="font-mono">
-                      <span className="text-amber-600">{formatCents(yearlyCashFlow.unbudgeted.actual)}</span>
-                      <span className="text-muted-foreground"> / {formatCents(yearlyCashFlow.unbudgeted.unallocated)}</span>
-                    </span>
-                  </div>
-                  <div className="relative h-2 rounded-full bg-muted">
-                    <div className="absolute h-2 rounded-full bg-amber-200" style={{ width: pct(yearlyCashFlow.unbudgeted.unallocated) }} />
-                    <div className="absolute h-2 rounded-full bg-amber-500" style={{ width: pct(yearlyCashFlow.unbudgeted.actual) }} />
-                  </div>
-                </div>
-
-                {/* Savings bar */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1.5 text-muted-foreground">
-                      <PiggyBank className="h-3.5 w-3.5" />
-                      Savings
-                    </span>
-                    <span className="font-mono">
-                      <span className="text-blue-600">{formatCents(yearlyCashFlow.savings.actual)}</span>
-                      <span className="text-muted-foreground"> / {formatCents(yearlyCashFlow.savings.expected)}</span>
-                    </span>
-                  </div>
-                  <div className="relative h-2 rounded-full bg-muted">
-                    <div className="absolute h-2 rounded-full bg-blue-200" style={{ width: pct(yearlyCashFlow.savings.expected) }} />
-                    <div className="absolute h-2 rounded-full bg-blue-500" style={{ width: pct(yearlyCashFlow.savings.actual) }} />
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-        </Link>
-      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* This Month's Spending - Pie Chart */}
