@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Switch } from '@/components/ui/switch';
-import { Pencil, Check, X, Trash2, Plus, Target, AlertTriangle, CheckCircle2, XCircle, PiggyBank } from 'lucide-react';
+import { Pencil, Check, X, Trash2, Plus, Target, AlertTriangle, CircleGauge, PiggyBank } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
@@ -803,117 +803,113 @@ export function BudgetPage() {
 
       {/* Summary Stats */}
       {summary.trackedCount > 0 && (
-        <div className="mt-6 grid gap-3 grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border bg-card p-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              {summary.totalProjectedRemaining >= 0 ? (
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-              ) : (
-                <AlertTriangle className="h-4 w-4 text-red-600" />
-              )}
-              Projected Spending
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="flex min-h-[180px] flex-col rounded-lg border p-5">
+            {/* Header */}
+            <div>
+              <div className="flex items-center gap-2 font-medium">
+                <Target className="h-4 w-4 text-muted-foreground" />
+                Projected Spending
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">Will you stay within budget?</p>
             </div>
-            <div className="mt-1 flex items-center justify-between">
-              <p className={`text-xl font-bold ${summary.totalProjectedRemaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatCents(Math.abs(summary.totalProjectedRemaining))} {summary.totalProjectedRemaining >= 0 ? 'under' : 'over'}
-              </p>
-              {summary.totalBudget > 0 && (
-                <span className={`text-sm font-medium ${summary.totalProjectedRemaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {summary.totalProjectedRemaining >= 0 ? '▼' : '▲'} {Math.round(Math.abs(summary.totalProjectedRemaining) / summary.totalBudget * 100)}%
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {summary.totalForecasted > 0 ? `incl. ${formatCents(summary.totalForecasted)} forecast` : 'vs total budget'}
+            {/* Spacer */}
+            <div className="flex-1" />
+            {/* Value */}
+            <p className={`text-2xl font-bold ${summary.totalProjectedRemaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCents(Math.abs(summary.totalProjectedRemaining))} {summary.totalProjectedRemaining >= 0 ? 'under' : 'over'}
             </p>
+            {/* Footer */}
+            <div className="mt-3 border-t pt-3">
+              <p className="text-xs text-muted-foreground">
+                {summary.totalForecasted > 0 ? `Incl. ${formatCents(summary.totalForecasted)} forecast` : `vs ${formatCents(summary.totalBudget)} total budget`}
+              </p>
+            </div>
           </div>
 
-          <div className="rounded-lg border bg-card p-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              {summary.overCount > 0 ? (
-                <XCircle className="h-4 w-4 text-red-600" />
-              ) : summary.overspendingCount > 0 ? (
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-              )}
-              Spending Speed
+          <div className="flex min-h-[180px] flex-col rounded-lg border p-5">
+            {/* Header */}
+            <div>
+              <div className="flex items-center gap-2 font-medium">
+                <CircleGauge className="h-4 w-4 text-muted-foreground" />
+                Spending Speed
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">Are you burning budget too fast?</p>
             </div>
+            {/* Spacer */}
+            <div className="flex-1" />
+            {/* Value */}
             {summary.overCount > 0 ? (
-              <>
-                <p className="mt-1 text-xl font-bold text-red-600">Too Fast</p>
-                <p className="text-xs text-muted-foreground">
-                  {summary.overCount} {summary.overCount === 1 ? 'budget' : 'budgets'} exceeded
-                  {summary.overspendingCount > 0 && `, ${summary.overspendingCount} overspending`}
-                </p>
-              </>
+              <p className="text-2xl font-bold text-red-600">Too Fast</p>
             ) : summary.overspendingCount > 0 ? (
-              <>
-                <p className="mt-1 text-xl font-bold text-amber-600">Speeding Up</p>
-                <p className="text-xs text-muted-foreground">
-                  {summary.overspendingCount} {summary.overspendingCount === 1 ? 'budget' : 'budgets'} overspending
-                </p>
-              </>
+              <p className="text-2xl font-bold text-amber-600">Speeding Up</p>
             ) : (
-              <>
-                <p className="mt-1 text-xl font-bold text-green-600">On Track</p>
-                <p className="text-xs text-muted-foreground">
-                  {summary.watchCount > 0
-                    ? `${summary.goodCount} on pace, ${summary.watchCount} to watch`
-                    : `All ${summary.trackedCount} budgets on pace`}
-                </p>
-              </>
+              <p className="text-2xl font-bold text-green-600">On Track</p>
             )}
-          </div>
-
-          <div className="rounded-lg border bg-card p-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              {summary.untrackedSpent > 0 ? (
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-              )}
-              Unbudgeted Spending
-            </div>
-            {summary.untrackedSpent > 0 ? (
-              <>
-                <p className="mt-1 text-xl font-bold text-amber-600">
-                  {formatCents(summary.untrackedSpent)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {summary.untrackedCount} {summary.untrackedCount === 1 ? 'category' : 'categories'} without budgets
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="mt-1 text-xl font-bold text-green-600">All tracked</p>
-                <p className="text-xs text-muted-foreground">
-                  All spending has a budget
-                </p>
-              </>
-            )}
-          </div>
-
-          <div className="rounded-lg border bg-card p-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <PiggyBank className="h-4 w-4 text-blue-600" />
-              Projected Savings
-            </div>
-            <div className="mt-1 flex items-center justify-between">
-              <p className="text-xl font-bold text-blue-600">
-                +{formatCents(summary.totalSavingsForecasted + summary.totalInterestEarned)}
+            {/* Footer */}
+            <div className="mt-3 border-t pt-3">
+              <p className="text-xs text-muted-foreground">
+                {summary.overCount > 0
+                  ? `${summary.overCount} exceeded${summary.overspendingCount > 0 ? `, ${summary.overspendingCount} overspending` : ''}`
+                  : summary.overspendingCount > 0
+                    ? `${summary.overspendingCount} overspending`
+                    : summary.watchCount > 0
+                      ? `${summary.goodCount} on pace, ${summary.watchCount} to watch`
+                      : `All ${summary.trackedCount} on pace`}
               </p>
-              {summary.totalSavingsActual > 0 && (
-                <span className="text-sm font-medium text-blue-600">
-                  ▲ {Math.round((summary.totalSavingsForecasted + summary.totalInterestEarned) / summary.totalSavingsActual * 100)}%
-                </span>
-              )}
             </div>
-            <p className="text-xs text-muted-foreground">
-              {summary.totalInterestEarned > 0
-                ? `Forecast + ${formatCents(summary.totalInterestEarned)} interest`
-                : 'Forecast'}
+          </div>
+
+          <div className="flex min-h-[180px] flex-col rounded-lg border p-5">
+            {/* Header */}
+            <div>
+              <div className="flex items-center gap-2 font-medium">
+                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                Unbudgeted Spending
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">Spending without a budget</p>
+            </div>
+            {/* Spacer */}
+            <div className="flex-1" />
+            {/* Value */}
+            {summary.untrackedSpent > 0 ? (
+              <p className="text-2xl font-bold text-amber-600">{formatCents(summary.untrackedSpent)}</p>
+            ) : (
+              <p className="text-2xl font-bold text-green-600">All tracked</p>
+            )}
+            {/* Footer */}
+            <div className="mt-3 border-t pt-3">
+              <p className="text-xs text-muted-foreground">
+                {summary.untrackedSpent > 0
+                  ? `${summary.untrackedCount} ${summary.untrackedCount === 1 ? 'category' : 'categories'} without budgets`
+                  : 'All spending has a budget'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex min-h-[180px] flex-col rounded-lg border p-5">
+            {/* Header */}
+            <div>
+              <div className="flex items-center gap-2 font-medium">
+                <PiggyBank className="h-4 w-4 text-muted-foreground" />
+                Projected Savings
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">Forecasted additions to savings</p>
+            </div>
+            {/* Spacer */}
+            <div className="flex-1" />
+            {/* Value */}
+            <p className="text-2xl font-bold text-blue-600">
+              +{formatCents(summary.totalSavingsForecasted + summary.totalInterestEarned)}
             </p>
+            {/* Footer */}
+            <div className="mt-3 border-t pt-3">
+              <p className="text-xs text-muted-foreground">
+                {summary.totalInterestEarned > 0
+                  ? `Incl. ${formatCents(summary.totalInterestEarned)} interest`
+                  : 'From forecasted contributions'}
+              </p>
+            </div>
           </div>
         </div>
       )}
