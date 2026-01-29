@@ -135,6 +135,7 @@ function convertToBudgetData(generated: GeneratedData): BudgetData {
       };
       if (g.deadline) goal.deadline = g.deadline;
       if (g.annualInterestRate) goal.annualInterestRate = g.annualInterestRate;
+      if (g.isEmergencyFund) goal.isEmergencyFund = g.isEmergencyFund;
       return goal;
     }),
 
