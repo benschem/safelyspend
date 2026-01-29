@@ -253,56 +253,9 @@ export function ForecastIndexPage() {
             </div>
           </div>
         </div>
-      ) : filteredForecasts.length === 0 ? (
-        <div className="mt-6">
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            <DateRangeFilter
-              startDate={filterStartDate}
-              endDate={filterEndDate}
-              onStartDateChange={setFilterStartDate}
-              onEndDateChange={setFilterEndDate}
-              onClear={clearDateFilter}
-              hasFilter={hasDateFilter}
-            />
-            <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
-              <SelectTrigger className="w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="income">Income</SelectItem>
-                <SelectItem value="expense">Expense</SelectItem>
-                <SelectItem value="savings">Savings</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterCategory} onValueChange={setFilterCategory}>
-              <SelectTrigger className="w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {activeCategories
-                  .sort((a, b) => a.name.localeCompare(b.name))
-                  .map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-            <ScenarioSelector hideLabel />
-          </div>
-          <div className="rounded-lg border border-dashed p-8 text-center">
-            <p className="text-muted-foreground">
-              No forecasts found in the selected date range.
-            </p>
-            <Button variant="outline" className="mt-4" onClick={clearDateFilter}>
-              Clear date filter
-            </Button>
-          </div>
-        </div>
       ) : (
         <DataTable
+          emptyMessage="No forecasts found matching your filters."
           columns={columns}
           data={filteredForecasts}
           searchKey="description"
