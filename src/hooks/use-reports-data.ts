@@ -410,7 +410,7 @@ export function useReportsData(
         .filter((t) => t.date >= monthStart && t.date <= monthEnd)
         .reduce((sum, t) => sum + t.amountCents, 0);
 
-      // Interest earned (treated as actual - it's earned money on existing balance)
+      // Interest earned (always treated as actual - it's earned money on existing balance)
       const interest = interestForecasts
         .filter((f) => f.date >= monthStart && f.date <= monthEnd)
         .reduce((sum, f) => sum + f.amountCents, 0);
@@ -475,13 +475,14 @@ export function useReportsData(
           .filter((t) => t.date >= monthStart && t.date <= monthEnd)
           .reduce((sum, t) => sum + t.amountCents, 0);
 
+        // Interest earned (always treated as actual - it's earned money on existing balance)
         const interest = goalInterest
           .filter((f) => f.date >= monthStart && f.date <= monthEnd)
           .reduce((sum, f) => sum + f.amountCents, 0);
 
         const actual = transactionActual + interest;
 
-        // Contributions only = forecast
+        // Contributions only = forecast (future dates, excluding interest)
         const forecast = goalContributions
           .filter((f) => f.date >= monthStart && f.date <= monthEnd && f.date > today)
           .reduce((sum, f) => sum + f.amountCents, 0);

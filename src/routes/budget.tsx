@@ -70,7 +70,7 @@ export function BudgetPage() {
   // For current period, use today; for past use period end; for future use period start (no actuals)
   const effectiveDate = isCurrentPeriod ? today : (isFuturePeriod ? periodStart : periodEnd);
 
-  const { expandedForecasts: periodForecasts } = useForecasts(activeScenarioId, periodStart, periodEnd);
+  const { expandedForecasts: periodForecasts, savingsForecasts } = useForecasts(activeScenarioId, periodStart, periodEnd);
 
   const shortMonthName = selectedMonth.toLocaleDateString('en-AU', { month: 'long' });
   const periodLabel = viewMode === 'year' ? String(selectedYear) : `${shortMonthName} ${selectedYear}`;
@@ -124,9 +124,8 @@ export function BudgetPage() {
       .filter((f) => f.type === 'income')
       .reduce((sum, f) => sum + f.amountCents, 0);
 
-    // Expected savings for full period
-    const expectedSavings = periodForecasts
-      .filter((f) => f.type === 'savings')
+    // Expected savings for full period (use savingsForecasts which includes interest)
+    const expectedSavings = savingsForecasts
       .reduce((sum, f) => sum + f.amountCents, 0);
 
     // Expected expenses for full period
@@ -228,7 +227,7 @@ export function BudgetPage() {
         forecasted: forecastedNet,
       },
     };
-  }, [periodForecasts, budgetRules, allTransactions, periodStart, effectiveDate, selectedYear, selectedMonthIndex, isCurrentPeriod, isFuturePeriod, viewMode]);
+  }, [periodForecasts, savingsForecasts, budgetRules, allTransactions, periodStart, effectiveDate, selectedYear, selectedMonthIndex, isCurrentPeriod, isFuturePeriod, viewMode]);
 
   // Summary stats for the cards
   const summary = useMemo(() => {

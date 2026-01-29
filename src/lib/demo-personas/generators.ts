@@ -31,9 +31,12 @@ function applyVariance(amount: number, variance: number, random: () => number): 
   return Math.round(amount * factor);
 }
 
-// Format date as YYYY-MM-DD
+// Format date as YYYY-MM-DD (using local timezone, not UTC)
 function formatDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 // Add days to a date
@@ -433,11 +436,48 @@ function generateSavingsTransactions(
   random: () => number,
   transactions: GeneratedTransaction[],
 ): void {
-  for (const goalConfig of config.savingsGoals) {
-    if (!goalConfig.monthlyContributionCents) continue;
+  // Calculate financial stress level (affects savings consistency)
+  const monthlyIncome = estimateMonthlyIncome(config);
+  const monthlyExpenses = estimateMonthlyExpenses(config);
+  const stressRatio = monthlyExpenses / monthlyIncome; // Higher = more stressed
 
+  for (const goalConfig of config.savingsGoals) {
     const goalId = savingsGoalMap.get(goalConfig.name);
     if (!goalId) continue;
+
+    // Add starting balance transaction if specified
+    if (goalConfig.startingBalanceCents && goalConfig.startingBalanceCents > 0) {
+      transactions.push({
+        id: generateId(),
+        date: formatDate(startDate),
+        description: `Opening balance - ${goalConfig.name}`,
+        type: 'savings',
+        amountCents: goalConfig.startingBalanceCents,
+        categoryId: null,
+        savingsGoalId: goalId,
+      });
+    }
+
+    if (!goalConfig.monthlyContributionCents) continue;
+
+    // Determine savings behavior based on goal type and financial situation
+    const isEmergencyFund = goalConfig.isEmergencyFund ?? false;
+    const hasDeadline = !!goalConfig.deadline;
+
+    // Skip probability: financially stressed people skip more often
+    // Emergency funds get skipped more than deadline goals
+    let skipProbability = 0;
+    if (stressRatio > 0.9) {
+      skipProbability = isEmergencyFund ? 0.4 : hasDeadline ? 0.15 : 0.25;
+    } else if (stressRatio > 0.8) {
+      skipProbability = isEmergencyFund ? 0.15 : hasDeadline ? 0.05 : 0.1;
+    }
+
+    // Extra contribution probability (tax return, bonus, etc.)
+    const extraProbability = stressRatio < 0.7 ? 0.08 : stressRatio < 0.85 ? 0.04 : 0.02;
+
+    // Variance in regular contribution amount
+    const contributionVariance = stressRatio > 0.85 ? 0.2 : 0.1;
 
     // Generate monthly contributions
     let currentDate = new Date(startDate);
@@ -448,16 +488,45 @@ function generateSavingsTransactions(
       if (contributeDate.getDay() === 6) contributeDate.setDate(3);
 
       if (contributeDate >= startDate && contributeDate <= endDate) {
-        const amount = applyVariance(goalConfig.monthlyContributionCents, 0.05, random);
-        transactions.push({
-          id: generateId(),
-          date: formatDate(contributeDate),
-          description: `Transfer to ${goalConfig.name}`,
-          type: 'savings',
-          amountCents: amount,
-          categoryId: null,
-          savingsGoalId: goalId,
-        });
+        // Check if skipping this month
+        const shouldSkip = random() < skipProbability;
+
+        if (!shouldSkip) {
+          // Regular contribution with variance
+          const amount = applyVariance(goalConfig.monthlyContributionCents, contributionVariance, random);
+          transactions.push({
+            id: generateId(),
+            date: formatDate(contributeDate),
+            description: `Transfer to ${goalConfig.name}`,
+            type: 'savings',
+            amountCents: amount,
+            categoryId: null,
+            savingsGoalId: goalId,
+          });
+
+          // Occasional extra contribution (mid-month)
+          if (random() < extraProbability) {
+            const extraDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 15);
+            if (extraDate <= endDate) {
+              const extraDescriptions = [
+                `Extra savings - ${goalConfig.name}`,
+                `Bonus to ${goalConfig.name}`,
+                `Top up - ${goalConfig.name}`,
+              ];
+              // Extra is 50-150% of regular contribution
+              const extraAmount = Math.round(goalConfig.monthlyContributionCents * (0.5 + random()));
+              transactions.push({
+                id: generateId(),
+                date: formatDate(extraDate),
+                description: randomItem(extraDescriptions, random),
+                type: 'savings',
+                amountCents: extraAmount,
+                categoryId: null,
+                savingsGoalId: goalId,
+              });
+            }
+          }
+        }
       }
 
       currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
