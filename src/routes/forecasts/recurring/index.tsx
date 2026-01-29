@@ -1,9 +1,16 @@
 import { useState, useMemo } from 'react';
-import { useOutletContext, Link } from 'react-router';
+import { useOutletContext, Link, useSearchParams } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus, ArrowLeft, Pencil, RefreshCw } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -28,22 +35,44 @@ const CADENCE_LABELS: Record<string, string> = {
   yearly: 'Yearly',
 };
 
+type CategoryFilter = 'all' | string;
+
 export function RecurringIndexPage() {
+  const [searchParams] = useSearchParams();
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
   const { rules } = useForecasts(activeScenarioId);
-  const { categories } = useCategories();
+  const { categories, activeCategories } = useCategories();
   const { savingsGoals } = useSavingsGoals();
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Initialize category filter from URL param if present
+  const [filterCategory, setFilterCategory] = useState<CategoryFilter>(() => {
+    const categoryParam = searchParams.get('category');
+    return categoryParam ?? 'all';
+  });
 
   const getCategoryName = (id: string | null) =>
     id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-';
   const getSavingsGoalName = (id: string | null) =>
     id ? (savingsGoals.find((g) => g.id === id)?.name ?? 'Unknown') : '-';
 
-  const incomeRules = useMemo(() => rules.filter((r) => r.type === 'income'), [rules]);
-  const expenseRules = useMemo(() => rules.filter((r) => r.type === 'expense'), [rules]);
-  const savingsRules = useMemo(() => rules.filter((r) => r.type === 'savings'), [rules]);
+  // Filter rules by category if specified (only affects expense rules which have categories)
+  const filteredRules = useMemo(() => {
+    if (filterCategory === 'all') return rules;
+    return rules.filter((r) => r.categoryId === filterCategory || r.type !== 'expense');
+  }, [rules, filterCategory]);
+
+  const incomeRules = useMemo(() => filteredRules.filter((r) => r.type === 'income'), [filteredRules]);
+  const expenseRules = useMemo(() => {
+    const expenses = filteredRules.filter((r) => r.type === 'expense');
+    // If filtering by category, only show matching expenses
+    if (filterCategory !== 'all') {
+      return expenses.filter((r) => r.categoryId === filterCategory);
+    }
+    return expenses;
+  }, [filteredRules, filterCategory]);
+  const savingsRules = useMemo(() => filteredRules.filter((r) => r.type === 'savings'), [filteredRules]);
 
   const incomeColumns: ColumnDef<ForecastRule>[] = useMemo(
     () => [
@@ -244,7 +273,8 @@ export function RecurringIndexPage() {
         </div>
       ) : (
         <Tabs defaultValue={defaultTab} className="mt-6 w-full">
-          <TabsList>
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <TabsList>
             <TabsTrigger value="income">
               Income {incomeRules.length > 0 && `(${incomeRules.length})`}
             </TabsTrigger>
@@ -255,6 +285,22 @@ export function RecurringIndexPage() {
               Savings {savingsRules.length > 0 && `(${savingsRules.length})`}
             </TabsTrigger>
           </TabsList>
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger className="w-44">
+                <SelectValue placeholder="Filter by category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {activeCategories
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           <TabsContent value="income">
             {incomeRules.length === 0 ? (

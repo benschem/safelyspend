@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useOutletContext, Link } from 'react-router';
+import { useOutletContext, Link, useSearchParams } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,11 +28,13 @@ interface OutletContext {
 }
 
 type FilterType = 'all' | 'income' | 'expense' | 'savings';
+type CategoryFilter = 'all' | string;
 
 export function ForecastIndexPage() {
+  const [searchParams] = useSearchParams();
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
-  const { categories } = useCategories();
+  const { categories, activeCategories } = useCategories();
 
   // Default to today through end of financial year for forecasts
   const financialYear = getCurrentFinancialYear();
@@ -51,6 +53,11 @@ export function ForecastIndexPage() {
   const { expandedForecasts } = useForecasts(activeScenarioId, filterStartDate, filterEndDate);
 
   const [filterType, setFilterType] = useState<FilterType>('all');
+  // Initialize category filter from URL param if present
+  const [filterCategory, setFilterCategory] = useState<CategoryFilter>(() => {
+    const categoryParam = searchParams.get('category');
+    return categoryParam ?? 'all';
+  });
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
 
@@ -58,8 +65,12 @@ export function ForecastIndexPage() {
     id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-';
 
   const filteredForecasts = useMemo(
-    () => expandedForecasts.filter((f) => filterType === 'all' || f.type === filterType),
-    [expandedForecasts, filterType],
+    () => expandedForecasts.filter((f) => {
+      if (filterType !== 'all' && f.type !== filterType) return false;
+      if (filterCategory !== 'all' && f.categoryId !== filterCategory) return false;
+      return true;
+    }),
+    [expandedForecasts, filterType, filterCategory],
   );
 
   const columns: ColumnDef<ExpandedForecast>[] = useMemo(
@@ -262,6 +273,21 @@ export function ForecastIndexPage() {
                   <SelectItem value="income">Income</SelectItem>
                   <SelectItem value="expense">Expense</SelectItem>
                   <SelectItem value="savings">Savings</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterCategory} onValueChange={setFilterCategory}>
+                <SelectTrigger className="w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {activeCategories
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <ScenarioSelector hideLabel />
