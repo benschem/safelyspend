@@ -217,6 +217,6 @@ export interface ExpandedForecast {
   description: string;
   categoryId: string | null;
   savingsGoalId: string | null;
-  sourceType: 'rule' | 'event';
+  sourceType: 'rule' | 'event' | 'interest';
   sourceId: string;
 }

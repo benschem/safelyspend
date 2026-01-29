@@ -20,9 +20,8 @@ import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
-import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { CategoryBudgetDialog } from '@/components/dialogs/category-budget-dialog';
-import { formatCents, parseCentsFromInput, formatISODate, calculateInterestEarned } from '@/lib/utils';
+import { formatCents, parseCentsFromInput, formatISODate } from '@/lib/utils';
 import type { Cadence, BudgetRule } from '@/lib/types';
 import { SpendingBreakdownChart } from '@/components/charts/spending-breakdown-chart';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
@@ -194,7 +193,6 @@ export function BudgetPage() {
   const { activeScenario } = useScenarios();
   const { activeCategories } = useCategories();
   const { allTransactions, savingsTransactions } = useTransactions();
-  const { savingsGoals } = useSavingsGoals();
   const { getRuleForCategory, setBudgetForCategory, deleteBudgetRule } =
     useBudgetRules(activeScenarioId);
 
@@ -384,32 +382,15 @@ export function BudgetPage() {
     const untrackedCount = untracked.length;
     // Sum spending on untracked categories (use monthly as reference period)
     const untrackedSpent = untracked.reduce((sum, r) => sum + r.spent, 0);
-    // Sum forecasted savings
-    const totalSavingsForecasted = savingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
+
+    // Sum forecasted savings (savingsForecasts now includes interest with sourceType: 'interest')
+    const baseForecasts = savingsForecasts.filter((f) => f.sourceType !== 'interest');
+    const interestForecasts = savingsForecasts.filter((f) => f.sourceType === 'interest');
+    const totalSavingsForecasted = baseForecasts.reduce((sum, f) => sum + f.amountCents, 0);
+    const totalInterestEarned = interestForecasts.reduce((sum, f) => sum + f.amountCents, 0);
+
     // Sum existing savings from transactions
     const totalSavingsActual = savingsTransactions.reduce((sum, t) => sum + t.amountCents, 0);
-
-    // Calculate savings per goal for interest calculation
-    const savingsPerGoal: Record<string, number> = {};
-    savingsTransactions.forEach((t) => {
-      if (t.savingsGoalId) {
-        savingsPerGoal[t.savingsGoalId] = (savingsPerGoal[t.savingsGoalId] ?? 0) + t.amountCents;
-      }
-    });
-
-    // Calculate annual interest earned on current balances
-    const totalInterestEarned = savingsGoals.reduce((sum, goal) => {
-      if (!goal.annualInterestRate) return sum;
-      const currentBalance = savingsPerGoal[goal.id] ?? 0;
-      const interest = calculateInterestEarned(
-        currentBalance,
-        goal.annualInterestRate,
-        goal.compoundingFrequency ?? 'monthly',
-        1, // 1 year projection
-      );
-      return sum + interest;
-    }, 0);
-
     const totalSavingsProjected = totalSavingsActual + totalSavingsForecasted + totalInterestEarned;
 
     return {
@@ -430,7 +411,7 @@ export function BudgetPage() {
       untrackedSpent,
       trackedCount: tracked.length,
     };
-  }, [allRows, savingsForecasts, savingsTransactions, savingsGoals]);
+  }, [allRows, savingsForecasts, savingsTransactions]);
 
   // Build color map for charts (include savings)
   const categoryColorMap = useMemo(() => {

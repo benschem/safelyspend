@@ -6,6 +6,8 @@ import type {
   ForecastEvent,
   ExpandedForecast,
   CreateEntity,
+  SavingsGoal,
+  Transaction,
 } from '@/lib/types';
 import { generateId, now, getLastDayOfMonth, formatISODate } from '@/lib/utils';
 
@@ -179,13 +181,127 @@ function expandRule(
 }
 
 /**
+ * Generate interest forecasts for savings goals with interest rates
+ * Uses monthly compounding and generates one entry per month per goal
+ */
+function generateInterestForecasts(
+  savingsGoals: SavingsGoal[],
+  savingsTransactions: Transaction[],
+  savingsForecasts: ExpandedForecast[],
+  rangeStart: string,
+  rangeEnd: string,
+): ExpandedForecast[] {
+  const results: ExpandedForecast[] = [];
+
+  // Filter goals with interest rates
+  const goalsWithInterest = savingsGoals.filter((g) => g.annualInterestRate && g.annualInterestRate > 0);
+  if (goalsWithInterest.length === 0) return results;
+
+  // Calculate current balance per goal (from transactions up to rangeStart)
+  const currentBalances: Record<string, number> = {};
+  for (const t of savingsTransactions) {
+    if (t.savingsGoalId && t.date < rangeStart) {
+      currentBalances[t.savingsGoalId] = (currentBalances[t.savingsGoalId] ?? 0) + t.amountCents;
+    }
+  }
+
+  // Group forecasts by goal and month
+  const forecastsByGoalAndMonth: Record<string, Record<string, number>> = {};
+  for (const f of savingsForecasts) {
+    if (!f.savingsGoalId) continue;
+    const goalId = f.savingsGoalId;
+    const monthKey = f.date.slice(0, 7); // YYYY-MM
+    if (!forecastsByGoalAndMonth[goalId]) {
+      forecastsByGoalAndMonth[goalId] = {};
+    }
+    const goalForecasts = forecastsByGoalAndMonth[goalId]!;
+    goalForecasts[monthKey] = (goalForecasts[monthKey] ?? 0) + f.amountCents;
+  }
+
+  // Generate monthly interest for each goal
+  for (const goal of goalsWithInterest) {
+    const rate = goal.annualInterestRate! / 100; // Convert percentage to decimal
+    const monthlyRate = goal.compoundingFrequency === 'yearly'
+      ? 0 // Yearly compounding - only apply at year end
+      : goal.compoundingFrequency === 'daily'
+        ? Math.pow(1 + rate / 365, 30) - 1 // Approximate daily compounding per month
+        : rate / 12; // Monthly compounding
+
+    let balance = currentBalances[goal.id] ?? 0;
+
+    // Iterate month by month
+    const start = new Date(rangeStart);
+    const end = new Date(rangeEnd);
+    let year = start.getFullYear();
+    let month = start.getMonth();
+
+    while (true) {
+      const lastDay = getLastDayOfMonth(year, month);
+      const monthEndDate = new Date(year, month, lastDay);
+
+      if (monthEndDate > end) break;
+
+      const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+
+      // Add contributions for this month to balance first
+      const contributions = forecastsByGoalAndMonth[goal.id]?.[monthKey] ?? 0;
+      balance += contributions;
+
+      // Calculate interest on end-of-month balance
+      let interestAmount = 0;
+      if (goal.compoundingFrequency === 'yearly') {
+        // Only apply interest in December (or goal's deadline month if set)
+        if (month === 11) {
+          interestAmount = Math.round(balance * rate);
+        }
+      } else {
+        interestAmount = Math.round(balance * monthlyRate);
+      }
+
+      if (interestAmount > 0) {
+        results.push({
+          type: 'savings',
+          date: formatISODate(monthEndDate),
+          amountCents: interestAmount,
+          description: `Interest (${goal.name})`,
+          categoryId: null,
+          savingsGoalId: goal.id,
+          sourceType: 'interest',
+          sourceId: goal.id,
+        });
+
+        // Add interest to balance for compounding
+        balance += interestAmount;
+      }
+
+      // Move to next month
+      month++;
+      if (month > 11) {
+        month = 0;
+        year++;
+      }
+    }
+  }
+
+  return results;
+}
+
+/**
  * Hook for managing forecast rules and events
  */
 export function useForecasts(scenarioId: string | null, startDate?: string, endDate?: string) {
   const allRules = useLiveQuery(() => db.forecastRules.toArray(), []) ?? [];
   const allEvents = useLiveQuery(() => db.forecastEvents.toArray(), []) ?? [];
+  const savingsGoals = useLiveQuery(() => db.savingsGoals.toArray(), []) ?? [];
+  const allTransactions = useLiveQuery(() => db.transactions.toArray(), []) ?? [];
 
   const isLoading = allRules === undefined || allEvents === undefined;
+
+  // Filter savings transactions
+  const savingsTransactions = useMemo(
+    () => allTransactions.filter((t) => t.type === 'savings'),
+    [allTransactions],
+  );
 
   // Filter rules to current scenario
   const rules = useMemo(
@@ -245,10 +361,30 @@ export function useForecasts(scenarioId: string | null, startDate?: string, endD
     () => expandedForecasts.filter((f) => f.type === 'expense'),
     [expandedForecasts],
   );
-  const savingsForecasts = useMemo(
+
+  // Get base savings forecasts (without interest)
+  const baseSavingsForecasts = useMemo(
     () => expandedForecasts.filter((f) => f.type === 'savings'),
     [expandedForecasts],
   );
+
+  // Generate interest forecasts and combine with base savings
+  const savingsForecasts = useMemo(() => {
+    if (!startDate || !endDate) return baseSavingsForecasts;
+
+    const interestForecasts = generateInterestForecasts(
+      savingsGoals,
+      savingsTransactions,
+      baseSavingsForecasts,
+      startDate,
+      endDate,
+    );
+
+    // Combine and sort
+    const combined = [...baseSavingsForecasts, ...interestForecasts];
+    combined.sort((a, b) => a.date.localeCompare(b.date));
+    return combined;
+  }, [baseSavingsForecasts, savingsGoals, savingsTransactions, startDate, endDate]);
 
   // CRUD for rules
   const addRule = useCallback(async (data: CreateEntity<ForecastRule>) => {
