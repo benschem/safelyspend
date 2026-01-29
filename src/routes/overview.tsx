@@ -423,7 +423,7 @@ export function OverviewPage() {
             </>
           ) : budgetHealth.overBudget > 0 ? (
             <>
-              <p className="mt-1 text-2xl font-bold text-red-600">Over Budget</p>
+              <p className="mt-1 text-2xl font-bold text-red-600">Too Fast</p>
               <p className="text-sm text-muted-foreground">
                 {budgetHealth.overBudget} {budgetHealth.overBudget === 1 ? 'budget' : 'budgets'} exceeded
                 {budgetHealth.overspending > 0 && `, ${budgetHealth.overspending} overspending`}
@@ -431,7 +431,7 @@ export function OverviewPage() {
             </>
           ) : budgetHealth.overspending > 0 ? (
             <>
-              <p className="mt-1 text-2xl font-bold text-amber-600">Slipping</p>
+              <p className="mt-1 text-2xl font-bold text-amber-600">Speeding Up</p>
               <p className="text-sm text-muted-foreground">
                 {budgetHealth.overspending} {budgetHealth.overspending === 1 ? 'budget' : 'budgets'} overspending
               </p>

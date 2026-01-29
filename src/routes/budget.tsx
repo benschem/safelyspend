@@ -394,6 +394,7 @@ export function BudgetPage() {
       totalProjected,
       totalBudget,
       totalProjectedRemaining,
+      totalSavingsActual,
       totalSavingsForecasted,
       totalSavingsProjected,
       overCount,
@@ -806,9 +807,16 @@ export function BudgetPage() {
               )}
               Projected Spending
             </div>
-            <p className={`mt-1 text-xl font-bold ${summary.totalProjectedRemaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatCents(Math.abs(summary.totalProjectedRemaining))} {summary.totalProjectedRemaining >= 0 ? 'under' : 'over'}
-            </p>
+            <div className="mt-1 flex items-center justify-between">
+              <p className={`text-xl font-bold ${summary.totalProjectedRemaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {formatCents(Math.abs(summary.totalProjectedRemaining))} {summary.totalProjectedRemaining >= 0 ? 'under' : 'over'}
+              </p>
+              {summary.totalBudget > 0 && (
+                <span className={`text-sm font-medium ${summary.totalProjectedRemaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {summary.totalProjectedRemaining >= 0 ? '▼' : '▲'} {Math.round(Math.abs(summary.totalProjectedRemaining) / summary.totalBudget * 100)}%
+                </span>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">
               {summary.totalForecasted > 0 ? `incl. ${formatCents(summary.totalForecasted)} forecast` : 'vs total budget'}
             </p>
@@ -827,7 +835,7 @@ export function BudgetPage() {
             </div>
             {summary.overCount > 0 ? (
               <>
-                <p className="mt-1 text-xl font-bold text-red-600">Over Budget</p>
+                <p className="mt-1 text-xl font-bold text-red-600">Too Fast</p>
                 <p className="text-xs text-muted-foreground">
                   {summary.overCount} {summary.overCount === 1 ? 'budget' : 'budgets'} exceeded
                   {summary.overspendingCount > 0 && `, ${summary.overspendingCount} overspending`}
@@ -835,7 +843,7 @@ export function BudgetPage() {
               </>
             ) : summary.overspendingCount > 0 ? (
               <>
-                <p className="mt-1 text-xl font-bold text-amber-600">Slipping</p>
+                <p className="mt-1 text-xl font-bold text-amber-600">Speeding Up</p>
                 <p className="text-xs text-muted-foreground">
                   {summary.overspendingCount} {summary.overspendingCount === 1 ? 'budget' : 'budgets'} overspending
                 </p>
@@ -885,12 +893,17 @@ export function BudgetPage() {
               <PiggyBank className="h-4 w-4 text-blue-600" />
               Projected Savings
             </div>
-            <p className="mt-1 text-xl font-bold text-blue-600">
-              +{formatCents(summary.totalSavingsForecasted)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Forecast total of {formatCents(summary.totalSavingsProjected)}
-            </p>
+            <div className="mt-1 flex items-center justify-between">
+              <p className="text-xl font-bold text-blue-600">
+                +{formatCents(summary.totalSavingsForecasted)}
+              </p>
+              {summary.totalSavingsActual > 0 && (
+                <span className="text-sm font-medium text-blue-600">
+                  ▲ {Math.round(summary.totalSavingsForecasted / summary.totalSavingsActual * 100)}%
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">Forecast</p>
           </div>
         </div>
       )}
