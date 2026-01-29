@@ -11,8 +11,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useSavingsGoals } from '@/hooks/use-savings-goals';
-import { useTransactions } from '@/hooks/use-transactions';
 import {
   Select,
   SelectContent,
@@ -21,17 +19,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { today, parseCentsFromInput } from '@/lib/utils';
-import type { SavingsGoal, CompoundingFrequency } from '@/lib/types';
+import type { SavingsGoal, CompoundingFrequency, CreateEntity, Transaction } from '@/lib/types';
 
 interface SavingsGoalDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   goal?: SavingsGoal | null;
+  addSavingsGoal: (data: CreateEntity<SavingsGoal>) => Promise<SavingsGoal>;
+  updateSavingsGoal: (id: string, updates: Partial<Omit<SavingsGoal, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
+  addTransaction: (data: CreateEntity<Transaction>) => Promise<Transaction>;
 }
 
-export function SavingsGoalDialog({ open, onOpenChange, goal }: SavingsGoalDialogProps) {
-  const { addSavingsGoal, updateSavingsGoal } = useSavingsGoals();
-  const { addTransaction } = useTransactions();
+export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, updateSavingsGoal, addTransaction }: SavingsGoalDialogProps) {
   const isEditing = !!goal;
 
   // Form state

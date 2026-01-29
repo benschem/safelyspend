@@ -25,8 +25,8 @@ interface SavingsGoalRow extends SavingsGoal {
 
 export function SavingsIndexPage() {
   const { startDate, endDate } = useOutletContext<OutletContext>();
-  const { savingsGoals, updateSavingsGoal, deleteSavingsGoal } = useSavingsGoals();
-  const { savingsTransactions } = useTransactions(startDate, endDate);
+  const { savingsGoals, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal } = useSavingsGoals();
+  const { savingsTransactions, addTransaction } = useTransactions(startDate, endDate);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // Inline editing state
@@ -339,7 +339,14 @@ export function SavingsIndexPage() {
         </div>
       )}
 
-      <SavingsGoalDialog open={dialogOpen} onOpenChange={setDialogOpen} goal={null} />
+      <SavingsGoalDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        goal={null}
+        addSavingsGoal={addSavingsGoal}
+        updateSavingsGoal={updateSavingsGoal}
+        addTransaction={addTransaction}
+      />
     </div>
   );
 }
