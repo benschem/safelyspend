@@ -191,7 +191,7 @@ function getStatusTextColor(status: 'over' | 'overspending' | 'watch' | 'good' |
 export function BudgetPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
-  const { activeCategories } = useCategories();
+  const { activeCategories, addCategory } = useCategories();
   const { allTransactions, savingsTransactions } = useTransactions();
   const { getRuleForCategory, setBudgetForCategory, deleteBudgetRule } =
     useBudgetRules(activeScenarioId);
@@ -984,6 +984,8 @@ export function BudgetPage() {
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
         scenarioId={activeScenarioId}
+        addCategory={addCategory}
+        setBudgetForCategory={setBudgetForCategory}
       />
     </div>
   );

@@ -16,23 +16,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useCategories } from '@/hooks/use-categories';
-import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { parseCentsFromInput } from '@/lib/utils';
-import type { Cadence } from '@/lib/types';
+import type { Cadence, Category, CreateEntity } from '@/lib/types';
 
 interface CategoryBudgetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   scenarioId: string | null;
+  addCategory: (data: CreateEntity<Category>) => Promise<Category>;
+  setBudgetForCategory: (
+    categoryId: string,
+    amountCents: number,
+    cadence: Cadence,
+    dayOfWeek?: number,
+    dayOfMonth?: number,
+    monthOfQuarter?: number
+  ) => Promise<void>;
 }
 
 const DAY_OF_WEEK_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_OF_QUARTER_LABELS = ['1st month', '2nd month', '3rd month'];
 
-export function CategoryBudgetDialog({ open, onOpenChange, scenarioId }: CategoryBudgetDialogProps) {
-  const { addCategory } = useCategories();
-  const { setBudgetForCategory } = useBudgetRules(scenarioId);
+export function CategoryBudgetDialog({ open, onOpenChange, scenarioId, addCategory, setBudgetForCategory }: CategoryBudgetDialogProps) {
 
   // Form state
   const [name, setName] = useState('');
