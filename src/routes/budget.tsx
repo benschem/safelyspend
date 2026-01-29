@@ -46,7 +46,8 @@ export function BudgetPage() {
   const [calendarOpen, setCalendarOpen] = useState(false);
 
   // Calculate date range for selected period
-  const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const selectedYear = selectedMonth.getFullYear();
   const selectedMonthIndex = selectedMonth.getMonth();
 
@@ -54,9 +55,11 @@ export function BudgetPage() {
   const periodStart = viewMode === 'year'
     ? `${selectedYear}-01-01`
     : `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-01`;
+  // Get last day of month without timezone conversion
+  const lastDayOfMonth = new Date(selectedYear, selectedMonthIndex + 1, 0).getDate();
   const periodEnd = viewMode === 'year'
     ? `${selectedYear}-12-31`
-    : new Date(selectedYear, selectedMonthIndex + 1, 0).toISOString().slice(0, 10);
+    : `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-${String(lastDayOfMonth).padStart(2, '0')}`;
 
   // Check if viewing current, past, or future period
   const isCurrentPeriod = viewMode === 'year'
