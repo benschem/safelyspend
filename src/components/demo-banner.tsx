@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import {
@@ -57,31 +57,44 @@ export function DemoBanner() {
         hideIcon
         className="items-center rounded-none border-x-0 border-t-0 py-2"
         action={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setDialogOpen(true)}
-            className="border-yellow-600 bg-transparent hover:bg-yellow-200 dark:border-yellow-500 dark:hover:bg-yellow-900"
-          >
-            Start your own budget
-          </Button>
+          <>
+            {/* Full button on larger screens */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDialogOpen(true)}
+              className="hidden border-yellow-600 bg-transparent hover:bg-yellow-200 dark:border-yellow-500 dark:hover:bg-yellow-900 sm:inline-flex"
+            >
+              Start your own budget
+            </Button>
+            {/* Icon button on mobile */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDialogOpen(true)}
+              className="h-7 w-7 border-yellow-600 bg-transparent p-0 hover:bg-yellow-200 dark:border-yellow-500 dark:hover:bg-yellow-900 sm:hidden"
+              title="Start your own budget"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </>
         }
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleReset}
-            className="h-7 w-7 p-0 hover:bg-yellow-200 dark:hover:bg-yellow-900"
+            className="h-7 w-7 shrink-0 p-0 hover:bg-yellow-200 dark:hover:bg-yellow-900"
             title="Back to landing page"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <span className="font-medium">Exploring demo data:</span>
+          <span className="hidden font-medium sm:inline">Demo:</span>
           <Select value={currentPersonaId} onValueChange={handlePersonaChange} disabled={isLoading}>
-            <SelectTrigger className="h-7 w-auto gap-2 border-yellow-600/50 bg-transparent text-sm hover:bg-yellow-200 dark:border-yellow-500/50 dark:hover:bg-yellow-900">
+            <SelectTrigger className="h-7 w-auto gap-1 border-yellow-600/50 bg-transparent text-sm hover:bg-yellow-200 dark:border-yellow-500/50 dark:hover:bg-yellow-900 sm:gap-2">
               <SelectValue>
-                {isLoading ? 'Loading...' : currentPersona?.name ?? 'Select persona'}
+                {isLoading ? 'Loading...' : currentPersona?.name ?? 'Select'}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
