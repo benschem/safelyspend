@@ -4,6 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Alert } from '@/components/ui/alert';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus, Pencil, Trash2, Check, X, Archive, ArchiveRestore, Settings2, Tags } from 'lucide-react';
 import { useCategories } from '@/hooks/use-categories';
@@ -232,11 +233,16 @@ export function CategoriesIndexPage() {
       </div>
 
       {categories.length === 0 ? (
-        <div className="mt-4 rounded-lg border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">No categories yet.</p>
-          <Button onClick={() => setAddDialogOpen(true)} className="mt-4">
-            Add your first category
-          </Button>
+        <div className="mt-4 space-y-4">
+          <Alert variant="info">
+            Create categories like groceries, transport, or entertainment to see where your money goes.
+          </Alert>
+          <div className="rounded-lg border border-dashed p-8 text-center">
+            <p className="text-muted-foreground">No categories yet.</p>
+            <Button onClick={() => setAddDialogOpen(true)} className="mt-4">
+              Add your first category
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="mt-4">

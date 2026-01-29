@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -388,11 +389,16 @@ export function TransactionsIndexPage() {
       </div>
 
       {!hasAnyTransactions ? (
-        <div className="rounded-lg border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">No transactions yet.</p>
-          <Button onClick={() => setAddDialogOpen(true)} className="mt-4">
-            Add a transaction
-          </Button>
+        <div className="space-y-4">
+          <Alert variant="info">
+            Record transactions here to track your spending against your budget and see your real financial position.
+          </Alert>
+          <div className="rounded-lg border border-dashed p-8 text-center">
+            <p className="text-muted-foreground">No transactions yet.</p>
+            <Button onClick={() => setAddDialogOpen(true)} className="mt-4">
+              Add a transaction
+            </Button>
+          </div>
         </div>
       ) : (
         <DataTable

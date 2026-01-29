@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Alert } from '@/components/ui/alert';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus, Pencil, Trash2, Check, X, PiggyBank } from 'lucide-react';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
@@ -284,11 +285,16 @@ export function SavingsIndexPage() {
       </div>
 
       {savingsGoals.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">No savings goals yet.</p>
-          <Button className="mt-4" onClick={() => setDialogOpen(true)}>
-            Create your first goal
-          </Button>
+        <div className="space-y-4">
+          <Alert variant="info">
+            Set goals for emergencies, holidays, or big purchases and watch your savings grow.
+          </Alert>
+          <div className="rounded-lg border border-dashed p-8 text-center">
+            <p className="text-muted-foreground">No savings goals yet.</p>
+            <Button className="mt-4" onClick={() => setDialogOpen(true)}>
+              Create your first goal
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="mt-6">

@@ -238,8 +238,7 @@ export function ForecastIndexPage() {
       {!hasAnyForecasts ? (
         <div className="mt-6 space-y-4">
           <Alert variant="info">
-            Forecasts predict your future cash flow based on recurring income and expenses.
-            Add your salary, rent, subscriptions, and other regular payments to see what&apos;s coming.
+            Add your salary, rent, subscriptions, and other regular income and expenses to predict future cash flow.
           </Alert>
           <div className="rounded-lg border border-dashed p-8 text-center">
             <p className="text-muted-foreground">No forecasts yet.</p>
