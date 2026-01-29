@@ -382,7 +382,7 @@ export function calculateTimelineDateRange(
         startDate: addDuration(todayDate, -amount, unit),
         endDate: formatISODate(todayDate),
       };
-    case 'around-present':
+    case 'around-present': {
       // Today is always exactly centered - equal periods on each side
       // For even numbers, this shows one extra period to maintain centering
       const half = Math.floor(amount / 2);
@@ -390,13 +390,14 @@ export function calculateTimelineDateRange(
         startDate: addDuration(todayDate, -half, unit),
         endDate: addDuration(todayDate, half, unit),
       };
+    }
     case 'future':
       // Start is today, end is amount*unit after
       return {
         startDate: formatISODate(todayDate),
         endDate: addDuration(todayDate, amount, unit),
       };
-    case 'custom':
+    case 'custom': {
       // Use stored custom dates, fallback to around-present if not set
       if (customStartDate && customEndDate) {
         return { startDate: customStartDate, endDate: customEndDate };
@@ -407,6 +408,7 @@ export function calculateTimelineDateRange(
         startDate: addDuration(todayDate, -defaultHalf, unit),
         endDate: addDuration(todayDate, defaultHalf, unit),
       };
+    }
   }
 }
 
