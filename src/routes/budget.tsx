@@ -10,7 +10,6 @@ import {
   TrendingDown,
   Receipt,
   CircleAlert,
-  ArrowRight,
   Tags,
   ChevronLeft,
   ChevronRight,
@@ -411,9 +410,9 @@ export function BudgetPage() {
 
   if (!activeScenarioId || !activeScenario) {
     return (
-      <div>
+      <div className="space-y-6">
         {/* Header */}
-        <div className="mb-4">
+        <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
               <Target className="h-5 w-5 text-slate-500" />
@@ -423,8 +422,8 @@ export function BudgetPage() {
           <p className="mt-1 text-muted-foreground">Track your spending against your plan</p>
         </div>
 
-        {/* Month Picker Row */}
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+        {/* Controls Row */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" onClick={goToPrevious} className="h-8 w-8">
               <ChevronLeft className="h-4 w-4" />
@@ -439,7 +438,6 @@ export function BudgetPage() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-64 p-3" align="start">
-                {/* Year selector - clickable to select whole year */}
                 <div className="mb-3 flex items-center justify-between">
                   <Button
                     variant="ghost"
@@ -466,7 +464,6 @@ export function BudgetPage() {
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
-                {/* Month grid */}
                 <div className="grid grid-cols-3 gap-1">
                   {MONTHS.map((month, index) => {
                     const isSelected = viewMode === 'month' && pickerYear === selectedYear && index === selectedMonthIndex;
@@ -505,7 +502,7 @@ export function BudgetPage() {
           <ScenarioSelector />
         </div>
 
-        <div className="rounded-lg border border-dashed p-8 text-center">
+        <div className="rounded-xl border border-dashed p-8 text-center">
           <p className="text-muted-foreground">Select a scenario to track your budget.</p>
           <Button asChild className="mt-4">
             <Link to="/scenarios">Manage Scenarios</Link>
@@ -516,9 +513,9 @@ export function BudgetPage() {
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       {/* Page Header */}
-      <div className="mb-4">
+      <div>
         <h1 className="flex items-center gap-3 text-3xl font-bold">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
             <Target className="h-5 w-5 text-slate-500" />
@@ -528,8 +525,8 @@ export function BudgetPage() {
         <p className="mt-1 text-muted-foreground">Track your spending against your plan</p>
       </div>
 
-      {/* Month Picker Row */}
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+      {/* Controls Row */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" onClick={goToPrevious} className="h-8 w-8">
             <ChevronLeft className="h-4 w-4" />
@@ -616,7 +613,7 @@ export function BudgetPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="mb-8 grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {/* Income */}
         <div className="rounded-xl border bg-card p-5">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/10">
@@ -759,7 +756,7 @@ export function BudgetPage() {
       </div>
 
       {/* Net, Pace & Speed Row */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {/* Net Change */}
         <div className="rounded-xl border bg-card p-5">
           <div className="flex items-center gap-2">
@@ -789,18 +786,12 @@ export function BudgetPage() {
         </div>
 
         {/* Mini Pace Chart */}
-        <Link
-          to="/insights?tab=pace"
-          className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-500/10">
-                <CircleGauge className="h-4 w-4 text-slate-500" />
-              </div>
-              <p className="text-sm text-muted-foreground">Spending pace</p>
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-500/10">
+              <CircleGauge className="h-4 w-4 text-slate-500" />
             </div>
-            <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+            <p className="text-sm text-muted-foreground">Spending pace</p>
           </div>
           <div className="mt-2">
             <BurnRateChart
@@ -812,7 +803,7 @@ export function BudgetPage() {
               compact
             />
           </div>
-        </Link>
+        </div>
 
         {/* Spending Speed */}
         <div className="rounded-xl border bg-card p-5">
@@ -845,8 +836,8 @@ export function BudgetPage() {
         </div>
       </div>
 
-      {/* Spending by Category - Horizontal Bar Chart */}
-      <div className="mt-6 rounded-lg border p-6">
+      {/* Spending by Category */}
+      <div className="rounded-xl border bg-card p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Tags className="h-5 w-5 text-muted-foreground" />
@@ -910,7 +901,6 @@ export function BudgetPage() {
             })}
           </div>
         )}
-
       </div>
     </div>
   );
