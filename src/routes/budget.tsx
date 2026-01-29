@@ -345,75 +345,60 @@ export function BudgetPage() {
             <BarChart3 className="h-5 w-5 text-muted-foreground" />
             <h3 className="font-semibold">Monthly Progress</h3>
           </div>
-          <div className="space-y-5">
-            {/* Income bar */}
-            {(() => {
-              const expected = monthlyCashFlow.income.expected || 1;
-              const pct = Math.min((monthlyCashFlow.income.actual / expected) * 100, 100);
-              return (
+          {(() => {
+            const ref = Math.max(monthlyCashFlow.income.expected, monthlyCashFlow.income.actual, 1);
+            const pct = (val: number) => `${Math.min((val / ref) * 100, 100)}%`;
+            return (
+              <div className="space-y-5">
+                {/* Income bar */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-green-600" />
                     <span className="text-sm font-medium">Income</span>
                   </div>
-                  <div className="relative h-4 rounded-full bg-green-200">
-                    <div className="absolute h-4 rounded-full bg-green-500" style={{ width: `${pct}%` }} />
+                  <div className="relative h-4 rounded-full bg-muted">
+                    <div className="absolute h-4 rounded-full bg-green-500" style={{ width: pct(monthlyCashFlow.income.actual) }} />
                   </div>
                 </div>
-              );
-            })()}
 
-            {/* Budgeted expenses bar */}
-            {(() => {
-              const expected = monthlyCashFlow.budgeted.expected || 1;
-              const pct = Math.min((monthlyCashFlow.budgeted.actual / expected) * 100, 100);
-              return (
+                {/* Budgeted expenses bar */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Receipt className="h-4 w-4 text-red-600" />
                     <span className="text-sm font-medium">Budgeted Spending</span>
                   </div>
-                  <div className="relative h-4 rounded-full bg-red-200">
-                    <div className="absolute h-4 rounded-full bg-red-500" style={{ width: `${pct}%` }} />
+                  <div className="relative h-4 rounded-full bg-muted">
+                    <div className="absolute h-4 rounded-full bg-red-200" style={{ width: pct(monthlyCashFlow.budgeted.expected) }} />
+                    <div className="absolute h-4 rounded-full bg-red-500" style={{ width: pct(monthlyCashFlow.budgeted.actual) }} />
                   </div>
                 </div>
-              );
-            })()}
 
-            {/* Unallocated Spending bar */}
-            {(() => {
-              const available = monthlyCashFlow.unbudgeted.unallocated || 1;
-              const pct = Math.min((monthlyCashFlow.unbudgeted.actual / available) * 100, 100);
-              return (
+                {/* Unallocated Spending bar */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <CircleAlert className="h-4 w-4 text-amber-600" />
                     <span className="text-sm font-medium">Unallocated Spending</span>
                   </div>
-                  <div className="relative h-4 rounded-full bg-amber-200">
-                    <div className="absolute h-4 rounded-full bg-amber-500" style={{ width: `${pct}%` }} />
+                  <div className="relative h-4 rounded-full bg-muted">
+                    <div className="absolute h-4 rounded-full bg-amber-200" style={{ width: pct(monthlyCashFlow.unbudgeted.unallocated) }} />
+                    <div className="absolute h-4 rounded-full bg-amber-500" style={{ width: pct(monthlyCashFlow.unbudgeted.actual) }} />
                   </div>
                 </div>
-              );
-            })()}
 
-            {/* Savings bar */}
-            {(() => {
-              const expected = monthlyCashFlow.savings.expected || 1;
-              const pct = Math.min((monthlyCashFlow.savings.actual / expected) * 100, 100);
-              return (
+                {/* Savings bar */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <PiggyBank className="h-4 w-4 text-blue-600" />
                     <span className="text-sm font-medium">Savings</span>
                   </div>
-                  <div className="relative h-4 rounded-full bg-blue-200">
-                    <div className="absolute h-4 rounded-full bg-blue-500" style={{ width: `${pct}%` }} />
+                  <div className="relative h-4 rounded-full bg-muted">
+                    <div className="absolute h-4 rounded-full bg-blue-200" style={{ width: pct(monthlyCashFlow.savings.expected) }} />
+                    <div className="absolute h-4 rounded-full bg-blue-500" style={{ width: pct(monthlyCashFlow.savings.actual) }} />
                   </div>
                 </div>
-              );
-            })()}
-          </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Stats Cards - Right Side 2x2 Grid */}
