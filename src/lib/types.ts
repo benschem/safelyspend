@@ -159,7 +159,7 @@ export interface SavingsGoal extends BaseEntity {
 // -----------------------------------------------------------------------------
 
 export type TimelineMode = 'past' | 'around-present' | 'future' | 'custom';
-export type ZoomLevel = 'weeks' | 'months' | 'quarters' | 'years' | 'decade';
+export type TimelineUnit = 'months' | 'years';
 
 // -----------------------------------------------------------------------------
 // View State - UI state for date range selection (not persisted as entity)
@@ -167,7 +167,8 @@ export type ZoomLevel = 'weeks' | 'months' | 'quarters' | 'years' | 'decade';
 
 export interface ViewState {
   mode: TimelineMode;
-  zoomLevel: ZoomLevel;
+  amount: number;
+  unit: TimelineUnit;
   customStartDate?: string;
   customEndDate?: string;
 }

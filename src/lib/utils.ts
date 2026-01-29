@@ -337,78 +337,75 @@ export function getDateRangePreset(preset: DateRangePreset): {
 // Timeline Picker Helpers
 // -----------------------------------------------------------------------------
 
-import type { TimelineMode, ZoomLevel } from './types';
+import type { TimelineMode, TimelineUnit } from './types';
 
 /**
- * Number of days offset for each zoom level
+ * Bounds for timeline amount based on unit
  */
-const ZOOM_OFFSETS: Record<ZoomLevel, number> = {
-  weeks: 28, // ±4 weeks
-  months: 90, // ±3 months
-  quarters: 180, // ±6 months
-  years: 730, // ±2 years
-  decade: 1825, // ±5 years
+export const TIMELINE_UNIT_BOUNDS: Record<TimelineUnit, { min: number; max: number; default: number }> = {
+  months: { min: 3, max: 24, default: 6 },
+  years: { min: 1, max: 10, default: 2 },
 };
 
 /**
- * Human-readable labels for zoom levels
+ * Add a duration to a date based on unit and return formatted ISO date string
  */
-export const ZOOM_LEVEL_LABELS: Record<ZoomLevel, string> = {
-  weeks: '2 months',
-  months: '6 months',
-  quarters: '1 year',
-  years: '4 years',
-  decade: '10 years',
-};
-
-/**
- * Add days to a date and return formatted ISO date string
- */
-export function addDays(date: Date, days: number): string {
+function addDuration(date: Date, amount: number, unit: TimelineUnit): string {
   const result = new Date(date);
-  result.setDate(result.getDate() + days);
+  switch (unit) {
+    case 'months':
+      result.setMonth(result.getMonth() + amount);
+      break;
+    case 'years':
+      result.setFullYear(result.getFullYear() + amount);
+      break;
+  }
   return formatISODate(result);
 }
 
 /**
- * Calculate date range based on timeline mode and zoom level
+ * Calculate date range based on timeline mode, amount, and unit
  */
 export function calculateTimelineDateRange(
   mode: TimelineMode,
-  zoomLevel: ZoomLevel,
+  amount: number,
+  unit: TimelineUnit,
   customStartDate?: string,
   customEndDate?: string,
 ): { startDate: string; endDate: string } {
   const todayDate = new Date();
-  const offset = ZOOM_OFFSETS[zoomLevel];
 
   switch (mode) {
     case 'past':
-      // Now is end date, start is offset days before
+      // End is today, start is amount*unit before
       return {
-        startDate: addDays(todayDate, -offset * 2),
+        startDate: addDuration(todayDate, -amount, unit),
         endDate: formatISODate(todayDate),
       };
     case 'around-present':
-      // Now is centered
+      // Today is always exactly centered - equal periods on each side
+      // For even numbers, this shows one extra period to maintain centering
+      const half = Math.floor(amount / 2);
       return {
-        startDate: addDays(todayDate, -offset),
-        endDate: addDays(todayDate, offset),
+        startDate: addDuration(todayDate, -half, unit),
+        endDate: addDuration(todayDate, half, unit),
       };
     case 'future':
-      // Now is start date, end is offset days after
+      // Start is today, end is amount*unit after
       return {
         startDate: formatISODate(todayDate),
-        endDate: addDays(todayDate, offset * 2),
+        endDate: addDuration(todayDate, amount, unit),
       };
     case 'custom':
       // Use stored custom dates, fallback to around-present if not set
       if (customStartDate && customEndDate) {
         return { startDate: customStartDate, endDate: customEndDate };
       }
+      // Fallback uses same logic as around-present
+      const defaultHalf = Math.floor(amount / 2);
       return {
-        startDate: addDays(todayDate, -offset),
-        endDate: addDays(todayDate, offset),
+        startDate: addDuration(todayDate, -defaultHalf, unit),
+        endDate: addDuration(todayDate, defaultHalf, unit),
       };
   }
 }
