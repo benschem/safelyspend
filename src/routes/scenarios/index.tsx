@@ -3,7 +3,6 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus, Pencil, Trash2, Check, X, Star, Layers } from 'lucide-react';
 import { Alert } from '@/components/ui/alert';
@@ -133,12 +132,7 @@ export function ScenariosIndexPage() {
               />
             );
           }
-          return (
-            <div className="flex items-center gap-2">
-              <span className="font-medium">{scenario.name}</span>
-              {scenario.isDefault && <Badge variant="secondary">Default</Badge>}
-            </div>
-          );
+          return <span className="font-medium">{scenario.name}</span>;
         },
       },
       {
@@ -211,16 +205,15 @@ export function ScenariosIndexPage() {
 
           return (
             <div className="flex justify-end gap-1">
-              {!scenario.isDefault && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleSetDefault(scenario.id)}
-                  title="Set as default"
-                >
-                  <Star className="h-4 w-4" />
-                </Button>
-              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => !scenario.isDefault && handleSetDefault(scenario.id)}
+                title={scenario.isDefault ? 'Default scenario' : 'Set as default'}
+                className={scenario.isDefault ? 'cursor-default' : ''}
+              >
+                <Star className={`h-4 w-4 ${scenario.isDefault ? 'text-blue-600' : ''}`} />
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"

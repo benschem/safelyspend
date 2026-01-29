@@ -144,14 +144,7 @@ export function SavingsIndexPage() {
               />
             );
           }
-          return (
-            <span className="flex items-center gap-2 font-medium">
-              {goal.isEmergencyFund && (
-                <Ambulance className="h-4 w-4 text-muted-foreground" />
-              )}
-              {goal.name}
-            </span>
-          );
+          return <span className="font-medium">{goal.name}</span>;
         },
       },
       {
