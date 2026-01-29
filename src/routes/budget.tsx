@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Link, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
-import { CircleGauge, PiggyBank, Calendar, TrendingUp, Receipt, CircleAlert, ArrowRight, Tags } from 'lucide-react';
+import { CircleGauge, PiggyBank, Target, TrendingUp, Receipt, CircleAlert, ArrowRight, Tags } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
@@ -263,7 +263,7 @@ export function BudgetPage() {
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="flex items-center gap-3 text-3xl font-bold">
-              <Calendar className="h-7 w-7" />
+              <Target className="h-7 w-7" />
               {monthName}
             </h1>
             <p className="mt-1 text-muted-foreground">Day {new Date().getDate()} of {new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()}</p>
@@ -286,7 +286,7 @@ export function BudgetPage() {
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <Calendar className="h-7 w-7" />
+            <Target className="h-7 w-7" />
             {monthName}
           </h1>
           <p className="mt-1 text-muted-foreground">

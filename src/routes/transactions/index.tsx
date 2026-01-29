@@ -20,7 +20,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Pencil, Trash2, Check, X, Download, AlertTriangle, Receipt, RotateCcw, TrendingUp, TrendingDown, PiggyBank, RefreshCw } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Download, AlertTriangle, Receipt, RotateCcw, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight } from 'lucide-react';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
 import { useCategoryRules } from '@/hooks/use-category-rules';
@@ -262,7 +262,7 @@ export function TransactionsIndexPage() {
           if (type === 'adjustment') {
             return (
               <div className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-400">
-                <RefreshCw className="h-3 w-3" />
+                <ArrowLeftRight className="h-3 w-3" />
                 Adjustment
               </div>
             );
