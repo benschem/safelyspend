@@ -18,19 +18,19 @@ import {
 } from '@/components/ui/select';
 import { CategorySelect } from '@/components/category-select';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
-import { useForecasts } from '@/hooks/use-forecasts';
 import { today, parseCentsFromInput } from '@/lib/utils';
-import type { ForecastEvent, ForecastType } from '@/lib/types';
+import type { ForecastEvent, ForecastType, CreateEntity } from '@/lib/types';
 
 interface ForecastEventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   scenarioId: string | null;
   event?: ForecastEvent | null;
+  addEvent: (data: CreateEntity<ForecastEvent>) => Promise<ForecastEvent>;
+  updateEvent: (id: string, updates: Partial<Omit<ForecastEvent, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
 }
 
-export function ForecastEventDialog({ open, onOpenChange, scenarioId, event }: ForecastEventDialogProps) {
-  const { addEvent, updateEvent } = useForecasts(scenarioId);
+export function ForecastEventDialog({ open, onOpenChange, scenarioId, event, addEvent, updateEvent }: ForecastEventDialogProps) {
   const isEditing = !!event;
   const todayDate = today();
 

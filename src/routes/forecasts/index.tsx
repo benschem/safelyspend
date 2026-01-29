@@ -58,7 +58,7 @@ export function ForecastIndexPage() {
   const queryStartDate = filterStartDate || defaultStart;
   const queryEndDate = filterEndDate || defaultEnd;
 
-  const { expandedForecasts, rules, events } = useForecasts(activeScenarioId, queryStartDate, queryEndDate);
+  const { expandedForecasts, rules, events, addRule, updateRule, addEvent, updateEvent } = useForecasts(activeScenarioId, queryStartDate, queryEndDate);
 
   // Check if any forecasts exist at all (rules or events)
   const hasAnyForecasts = rules.length > 0 || events.length > 0;
@@ -316,6 +316,8 @@ export function ForecastIndexPage() {
         onOpenChange={setEventDialogOpen}
         scenarioId={activeScenarioId}
         event={null}
+        addEvent={addEvent}
+        updateEvent={updateEvent}
       />
 
       <ForecastRuleDialog
@@ -323,6 +325,8 @@ export function ForecastIndexPage() {
         onOpenChange={setRuleDialogOpen}
         scenarioId={activeScenarioId}
         rule={null}
+        addRule={addRule}
+        updateRule={updateRule}
       />
     </div>
   );

@@ -18,15 +18,16 @@ import {
 } from '@/components/ui/select';
 import { CategorySelect } from '@/components/category-select';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
-import { useForecasts } from '@/hooks/use-forecasts';
 import { parseCentsFromInput } from '@/lib/utils';
-import type { ForecastRule, ForecastType, Cadence } from '@/lib/types';
+import type { ForecastRule, ForecastType, Cadence, CreateEntity } from '@/lib/types';
 
 interface ForecastRuleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   scenarioId: string | null;
   rule?: ForecastRule | null;
+  addRule: (data: CreateEntity<ForecastRule>) => Promise<ForecastRule>;
+  updateRule: (id: string, updates: Partial<Omit<ForecastRule, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
 }
 
 const MONTH_NAMES = [
@@ -36,8 +37,7 @@ const MONTH_NAMES = [
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule }: ForecastRuleDialogProps) {
-  const { addRule, updateRule } = useForecasts(scenarioId);
+export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRule, updateRule }: ForecastRuleDialogProps) {
   const isEditing = !!rule;
 
   // Form state

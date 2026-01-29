@@ -41,7 +41,7 @@ export function RecurringIndexPage() {
   const [searchParams] = useSearchParams();
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
-  const { rules } = useForecasts(activeScenarioId);
+  const { rules, addRule, updateRule } = useForecasts(activeScenarioId);
   const { categories, activeCategories } = useCategories();
   const { savingsGoals } = useSavingsGoals();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -366,6 +366,8 @@ export function RecurringIndexPage() {
         onOpenChange={setDialogOpen}
         scenarioId={activeScenarioId}
         rule={null}
+        addRule={addRule}
+        updateRule={updateRule}
       />
     </div>
   );
