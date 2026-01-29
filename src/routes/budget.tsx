@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Link, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
-import { Target, CircleGauge, PiggyBank, Calendar, TrendingUp, Receipt, CircleAlert, CreditCard, BarChart3, Landmark, Tags } from 'lucide-react';
+import { CircleGauge, PiggyBank, Calendar, TrendingUp, Receipt, CircleAlert, ArrowRight, Tags } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
@@ -296,202 +296,143 @@ export function BudgetPage() {
         <ScenarioSelector />
       </div>
 
-      {/* Summary Stats - Top Row */}
-      <div className="mb-6 grid gap-6 grid-cols-2 lg:grid-cols-4">
+      {/* Summary Cards */}
+      <div className="mb-8 grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Income */}
-        <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
-            <TrendingUp className="h-6 w-6 text-green-500" />
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/10">
+            <TrendingUp className="h-5 w-5 text-green-500" />
           </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Income</p>
-            <p className="text-2xl font-bold">
-              {formatCents(monthlyCashFlow.income.actual)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              of {formatCents(monthlyCashFlow.income.expected)} expected
-            </p>
+          <p className="mt-4 text-sm text-muted-foreground">Income</p>
+          <p className="mt-1 text-xl font-semibold">{formatCents(monthlyCashFlow.income.actual)}</p>
+          <div className="mt-3">
+            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+              <span>of {formatCents(monthlyCashFlow.income.expected)}</span>
+              <span>{monthlyCashFlow.income.expected > 0 ? Math.round((monthlyCashFlow.income.actual / monthlyCashFlow.income.expected) * 100) : 0}%</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-muted">
+              <div
+                className="h-1.5 rounded-full bg-green-500"
+                style={{ width: `${Math.min((monthlyCashFlow.income.actual / Math.max(monthlyCashFlow.income.expected, 1)) * 100, 100)}%` }}
+              />
+            </div>
           </div>
         </div>
 
         {/* Budgeted Spending */}
-        <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
-            <Receipt className="h-6 w-6 text-red-500" />
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
+            <Receipt className="h-5 w-5 text-red-500" />
           </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Budgeted Spending</p>
-            <p className="text-2xl font-bold">
-              {formatCents(monthlyCashFlow.budgeted.actual)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              of {formatCents(monthlyCashFlow.budgeted.expected)} limit
-            </p>
+          <p className="mt-4 text-sm text-muted-foreground">Budgeted</p>
+          <p className="mt-1 text-xl font-semibold">{formatCents(monthlyCashFlow.budgeted.actual)}</p>
+          <div className="mt-3">
+            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+              <span>of {formatCents(monthlyCashFlow.budgeted.expected)}</span>
+              <span>{monthlyCashFlow.budgeted.expected > 0 ? Math.round((monthlyCashFlow.budgeted.actual / monthlyCashFlow.budgeted.expected) * 100) : 0}%</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-red-500/20">
+              <div
+                className="h-1.5 rounded-full bg-red-500"
+                style={{ width: `${Math.min((monthlyCashFlow.budgeted.actual / Math.max(monthlyCashFlow.budgeted.expected, 1)) * 100, 100)}%` }}
+              />
+            </div>
           </div>
         </div>
 
         {/* Unallocated Spending */}
-        <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
-            <CircleAlert className="h-6 w-6 text-amber-500" />
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10">
+            <CircleAlert className="h-5 w-5 text-amber-500" />
           </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Unallocated Spending</p>
-            <p className="text-2xl font-bold">
-              {formatCents(monthlyCashFlow.unbudgeted.actual)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {formatCents(monthlyCashFlow.unbudgeted.unallocated)} available
-            </p>
+          <p className="mt-4 text-sm text-muted-foreground">Unallocated</p>
+          <p className="mt-1 text-xl font-semibold">{formatCents(monthlyCashFlow.unbudgeted.actual)}</p>
+          <div className="mt-3">
+            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+              <span>of {formatCents(monthlyCashFlow.unbudgeted.unallocated)}</span>
+              <span>{monthlyCashFlow.unbudgeted.unallocated > 0 ? Math.round((monthlyCashFlow.unbudgeted.actual / monthlyCashFlow.unbudgeted.unallocated) * 100) : 0}%</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-amber-500/20">
+              <div
+                className="h-1.5 rounded-full bg-amber-500"
+                style={{ width: `${Math.min((monthlyCashFlow.unbudgeted.actual / Math.max(monthlyCashFlow.unbudgeted.unallocated, 1)) * 100, 100)}%` }}
+              />
+            </div>
           </div>
         </div>
 
         {/* Savings */}
-        <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
-            <PiggyBank className="h-6 w-6 text-blue-500" />
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10">
+            <PiggyBank className="h-5 w-5 text-blue-500" />
           </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Savings</p>
-            <p className="text-2xl font-bold">
-              {formatCents(monthlyCashFlow.savings.actual)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              of {formatCents(monthlyCashFlow.savings.expected)} expected
-            </p>
+          <p className="mt-4 text-sm text-muted-foreground">Savings</p>
+          <p className="mt-1 text-xl font-semibold">{formatCents(monthlyCashFlow.savings.actual)}</p>
+          <div className="mt-3">
+            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+              <span>of {formatCents(monthlyCashFlow.savings.expected)}</span>
+              <span>{monthlyCashFlow.savings.expected > 0 ? Math.round((monthlyCashFlow.savings.actual / monthlyCashFlow.savings.expected) * 100) : 0}%</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-blue-500/20">
+              <div
+                className="h-1.5 rounded-full bg-blue-500"
+                style={{ width: `${Math.min((monthlyCashFlow.savings.actual / Math.max(monthlyCashFlow.savings.expected, 1)) * 100, 100)}%` }}
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content: Progress Bars + Stats Cards */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Monthly Progress Bars - Left Side */}
-        <div className="rounded-lg border p-6">
-          <div className="mb-6 flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-muted-foreground" />
-            <h3 className="font-semibold">Monthly Progress</h3>
-          </div>
-          {(() => {
-            const ref = Math.max(monthlyCashFlow.income.expected, monthlyCashFlow.income.actual, 1);
-            const pct = (val: number) => `${Math.min((val / ref) * 100, 100)}%`;
-            return (
-              <div className="space-y-5">
-                {/* Income bar */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-green-600" />
-                    <span className="text-sm font-medium">Income</span>
-                  </div>
-                  <div className="relative h-4 rounded-full bg-muted">
-                    <div className="absolute h-4 rounded-full bg-green-500" style={{ width: pct(monthlyCashFlow.income.actual) }} />
-                  </div>
-                </div>
-
-                {/* Budgeted expenses bar */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Receipt className="h-4 w-4 text-red-600" />
-                    <span className="text-sm font-medium">Budgeted Spending</span>
-                  </div>
-                  <div className="relative h-4 rounded-full bg-muted">
-                    <div className="absolute h-4 rounded-full bg-red-200" style={{ width: pct(monthlyCashFlow.budgeted.expected) }} />
-                    <div className="absolute h-4 rounded-full bg-red-500" style={{ width: pct(monthlyCashFlow.budgeted.actual) }} />
-                  </div>
-                </div>
-
-                {/* Unallocated Spending bar */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <CircleAlert className="h-4 w-4 text-amber-600" />
-                    <span className="text-sm font-medium">Unallocated Spending</span>
-                  </div>
-                  <div className="relative h-4 rounded-full bg-muted">
-                    <div className="absolute h-4 rounded-full bg-amber-200" style={{ width: pct(monthlyCashFlow.unbudgeted.unallocated) }} />
-                    <div className="absolute h-4 rounded-full bg-amber-500" style={{ width: pct(monthlyCashFlow.unbudgeted.actual) }} />
-                  </div>
-                </div>
-
-                {/* Savings bar */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <PiggyBank className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium">Savings</span>
-                  </div>
-                  <div className="relative h-4 rounded-full bg-muted">
-                    <div className="absolute h-4 rounded-full bg-blue-200" style={{ width: pct(monthlyCashFlow.savings.expected) }} />
-                    <div className="absolute h-4 rounded-full bg-blue-500" style={{ width: pct(monthlyCashFlow.savings.actual) }} />
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
+      {/* Net & Speed Row */}
+      <div className="mb-8 grid grid-cols-2 gap-4">
+        {/* Net Change */}
+        <div className="rounded-xl border bg-card p-5">
+          <p className="text-sm text-muted-foreground">Projected net change</p>
+          <p className={`mt-2 text-3xl font-bold ${monthlyCashFlow.net.projected >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {monthlyCashFlow.net.projected >= 0 ? '+' : ''}{formatCents(monthlyCashFlow.net.projected)}
+          </p>
+          {monthlyCashFlow.net.forecasted !== 0 && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Includes {formatCents(Math.abs(monthlyCashFlow.net.forecasted))} forecasted
+            </p>
+          )}
         </div>
 
-        {/* Stats Cards - Right Side 2x2 Grid */}
-        <div className="grid gap-4 grid-cols-2">
-          {/* Net for Month */}
-          <div className="flex flex-col rounded-lg border p-4">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Target className="h-4 w-4 text-muted-foreground" />
-              Net change
-            </div>
-            <div className="flex-1" />
-            <p className={`mt-3 text-xl font-bold ${monthlyCashFlow.net.projected >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {monthlyCashFlow.net.projected >= 0 ? '+' : ''}{formatCents(monthlyCashFlow.net.projected)}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {monthlyCashFlow.net.forecasted !== 0 && `Incl. ${formatCents(Math.abs(monthlyCashFlow.net.forecasted))} forecast`}
-            </p>
+        {/* Spending Speed */}
+        <Link
+          to="/analyse?tab=pace"
+          className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50"
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Spending speed</p>
+            <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
           </div>
-
-          {/* Spending Speed */}
-          <Link
-            to="/analyse?tab=pace"
-            className="flex flex-col rounded-lg border p-4 transition-colors hover:bg-muted/50"
-          >
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <CircleGauge className="h-4 w-4 text-muted-foreground" />
-              Spending Speed
-            </div>
-            <div className="flex-1" />
+          <div className="mt-2 flex items-baseline gap-3">
             {summary.overCount > 0 ? (
-              <p className="mt-3 text-xl font-bold text-red-600">Too Fast</p>
+              <>
+                <CircleGauge className="h-7 w-7 text-red-500" />
+                <span className="text-3xl font-bold text-red-600">Too Fast</span>
+              </>
             ) : summary.overspendingCount > 0 ? (
-              <p className="mt-3 text-xl font-bold text-amber-600">Speeding Up</p>
+              <>
+                <CircleGauge className="h-7 w-7 text-amber-500" />
+                <span className="text-3xl font-bold text-amber-600">Speeding Up</span>
+              </>
             ) : (
-              <p className="mt-3 text-xl font-bold text-green-600">On Track</p>
+              <>
+                <CircleGauge className="h-7 w-7 text-green-500" />
+                <span className="text-3xl font-bold text-green-600">On Track</span>
+              </>
             )}
-            <p className="mt-1 text-xs text-muted-foreground">
-              {summary.overCount > 0
-                ? `${summary.overCount} exceeded`
-                : summary.overspendingCount > 0
-                  ? `${summary.overspendingCount} overspending`
-                  : `${summary.goodCount} on pace`}
-            </p>
-          </Link>
-
-          {/* Placeholder - Coming Soon */}
-          <div className="flex flex-col rounded-lg border p-4 opacity-60">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <CreditCard className="h-4 w-4 text-muted-foreground" />
-              Debt Payments
-            </div>
-            <div className="flex-1" />
-            <p className="mt-3 text-xl font-bold text-muted-foreground">—</p>
-            <p className="mt-1 text-xs text-muted-foreground">Coming soon</p>
           </div>
-
-          {/* Investments - Coming Soon */}
-          <div className="flex flex-col rounded-lg border p-4 opacity-60">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Landmark className="h-4 w-4 text-muted-foreground" />
-              Investments
-            </div>
-            <div className="flex-1" />
-            <p className="mt-3 text-xl font-bold text-muted-foreground">—</p>
-            <p className="mt-1 text-xs text-muted-foreground">Coming soon</p>
-          </div>
-        </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {summary.overCount > 0
+              ? `${summary.overCount} of ${summary.trackedCount} budgets exceeded`
+              : summary.overspendingCount > 0
+                ? `${summary.overspendingCount} of ${summary.trackedCount} budgets overspending`
+                : `${summary.goodCount} of ${summary.trackedCount} budgets on pace`}
+          </p>
+        </Link>
       </div>
 
       {/* Monthly Spending by Category - Horizontal Bar Chart */}

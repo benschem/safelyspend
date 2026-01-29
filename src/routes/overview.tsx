@@ -10,7 +10,8 @@ import {
   Sprout,
   HandCoins,
   TrendingUp,
-  Receipt,
+  TrendingDown,
+  ArrowRight,
 } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useTransactions } from '@/hooks/use-transactions';
@@ -116,7 +117,7 @@ export function SnapshotPage() {
   // Calculate monthly averages from historical data
   const monthlyAverages = useMemo(() => {
     if (allTransactions.length === 0) {
-      return { income: 0, expenses: 0, savings: 0 };
+      return { income: 0, expenses: 0, savings: 0, net: 0 };
     }
 
     // Find date range of transactions
@@ -143,10 +144,15 @@ export function SnapshotPage() {
       .filter((t) => t.type === 'savings')
       .reduce((sum, t) => sum + t.amountCents, 0);
 
+    const income = Math.round(totalIncome / monthsDiff);
+    const expenses = Math.round(totalExpenses / monthsDiff);
+    const savings = Math.round(totalSavingsAmount / monthsDiff);
+
     return {
-      income: Math.round(totalIncome / monthsDiff),
-      expenses: Math.round(totalExpenses / monthsDiff),
-      savings: Math.round(totalSavingsAmount / monthsDiff),
+      income,
+      expenses,
+      savings,
+      net: income - expenses - savings,
     };
   }, [allTransactions]);
 
@@ -172,6 +178,7 @@ export function SnapshotPage() {
 
   return (
     <div>
+      {/* Header */}
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
@@ -183,137 +190,140 @@ export function SnapshotPage() {
         <ScenarioSelector />
       </div>
 
-      <div className="space-y-6">
-        {/* Balance warning banner */}
-        {hasNoAnchor && (
-          <Alert variant="warning">
-            <AlertTitle>No balance anchor set</AlertTitle>
-            <AlertDescription>
-              Set a starting balance in{' '}
-              <Link to="/settings" className="underline">
-                Settings
-              </Link>{' '}
-              to enable balance tracking.
-            </AlertDescription>
-          </Alert>
-        )}
+      {/* Balance warning banner */}
+      {hasNoAnchor && (
+        <Alert variant="warning" className="mb-8">
+          <AlertTitle>No balance anchor set</AlertTitle>
+          <AlertDescription>
+            Set a starting balance in{' '}
+            <Link to="/settings" className="underline">
+              Settings
+            </Link>{' '}
+            to enable balance tracking.
+          </AlertDescription>
+        </Alert>
+      )}
 
-        {/* Net Worth - Top Row */}
-        <div className="flex justify-center">
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-muted">
-              <HandCoins className="h-7 w-7 text-emerald-500" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Net Worth</p>
-              <p className={`text-3xl font-bold ${netWorth >= 0 ? '' : 'text-red-500'}`}>
-                {netWorth >= 0 ? '' : '-'}{formatCents(Math.abs(netWorth))}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                More than {getPercentile(netWorth, AU_NET_WORTH_PERCENTILES)}% of Australians
-              </p>
-            </div>
-          </div>
-        </div>
+      {/* Net Worth Hero */}
+      <div className="mb-10 text-center">
+        <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+          Net Worth
+        </p>
+        <p className={`mt-2 text-5xl font-bold tracking-tight ${netWorth >= 0 ? '' : 'text-red-500'}`}>
+          {netWorth >= 0 ? '' : '-'}{formatCents(Math.abs(netWorth))}
+        </p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          More than {getPercentile(netWorth, AU_NET_WORTH_PERCENTILES)}% of Australians
+        </p>
+      </div>
 
-        {/* Assets Row: Cash, Savings, Debt, Investments */}
-        <div className="grid gap-6 grid-cols-2 lg:grid-cols-4 max-w-4xl mx-auto">
+      {/* Assets & Liabilities */}
+      <div className="mb-10">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Cash */}
-          <Link to="/analyse?tab=cashflow" className="flex items-center gap-4 group">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
-              <Landmark className="h-6 w-6 text-sky-500" />
+          <Link
+            to="/analyse?tab=cashflow"
+            className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-500/10">
+                <Landmark className="h-5 w-5 text-sky-500" />
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">Cash</p>
-              {currentBalance !== null ? (
-                <p className="text-2xl font-bold">{formatCents(currentBalance)}</p>
-              ) : (
-                <p className="text-2xl font-bold text-muted-foreground">—</p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                {currentBalance !== null ? 'Bank balance' : 'Not set'}
-              </p>
-            </div>
+            <p className="mt-4 text-sm text-muted-foreground">Cash</p>
+            {currentBalance !== null ? (
+              <p className="mt-1 text-xl font-semibold">{formatCents(currentBalance)}</p>
+            ) : (
+              <p className="mt-1 text-xl font-semibold text-muted-foreground">—</p>
+            )}
           </Link>
 
           {/* Savings */}
-          <Link to="/savings" className="flex items-center gap-4 group">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
-              <PiggyBank className="h-6 w-6 text-blue-500" />
+          <Link
+            to="/savings"
+            className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10">
+                <PiggyBank className="h-5 w-5 text-blue-500" />
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">Savings</p>
-              <p className="text-2xl font-bold">{formatCents(totalSavings)}</p>
-              <p className="text-xs text-muted-foreground">
-                {emergencyFund && emergencyFundBalance !== null
-                  ? `${formatCents(emergencyFundBalance)} emergency`
-                  : 'Across all goals'}
+            <p className="mt-4 text-sm text-muted-foreground">Savings</p>
+            <p className="mt-1 text-xl font-semibold">{formatCents(totalSavings)}</p>
+            {emergencyFund && emergencyFundBalance !== null && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {formatCents(emergencyFundBalance)} emergency
               </p>
-            </div>
+            )}
           </Link>
 
           {/* Debt - Coming Soon */}
-          <div className="flex items-center gap-4 opacity-50">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
-              <CreditCard className="h-6 w-6 text-red-500" />
+          <div className="rounded-xl border bg-card p-5 opacity-50">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
+              <CreditCard className="h-5 w-5 text-red-500" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Debt</p>
-              <p className="text-2xl font-bold text-muted-foreground">—</p>
-              <p className="text-xs text-muted-foreground">Coming soon</p>
-            </div>
+            <p className="mt-4 text-sm text-muted-foreground">Debt</p>
+            <p className="mt-1 text-xl font-semibold text-muted-foreground">—</p>
+            <p className="mt-1 text-xs text-muted-foreground">Coming soon</p>
           </div>
 
           {/* Investments - Coming Soon */}
-          <div className="flex items-center gap-4 opacity-50">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
-              <Sprout className="h-6 w-6 text-purple-500" />
+          <div className="rounded-xl border bg-card p-5 opacity-50">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-500/10">
+              <Sprout className="h-5 w-5 text-purple-500" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Investments</p>
-              <p className="text-2xl font-bold text-muted-foreground">—</p>
-              <p className="text-xs text-muted-foreground">Coming soon</p>
+            <p className="mt-4 text-sm text-muted-foreground">Investments</p>
+            <p className="mt-1 text-xl font-semibold text-muted-foreground">—</p>
+            <p className="mt-1 text-xs text-muted-foreground">Coming soon</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Monthly Averages */}
+      <div className="rounded-xl border bg-card p-6">
+        <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+          Monthly Average
+        </h2>
+        <div className="mt-5 grid grid-cols-3 gap-6">
+          {/* Income */}
+          <div>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-green-500" />
+              <span className="text-sm text-muted-foreground">Income</span>
             </div>
+            <p className="mt-1 text-2xl font-semibold">{formatCents(monthlyAverages.income)}</p>
+          </div>
+
+          {/* Expenses */}
+          <div>
+            <div className="flex items-center gap-2">
+              <TrendingDown className="h-4 w-4 text-red-500" />
+              <span className="text-sm text-muted-foreground">Expenses</span>
+            </div>
+            <p className="mt-1 text-2xl font-semibold">{formatCents(monthlyAverages.expenses)}</p>
+          </div>
+
+          {/* Savings */}
+          <div>
+            <div className="flex items-center gap-2">
+              <PiggyBank className="h-4 w-4 text-blue-500" />
+              <span className="text-sm text-muted-foreground">Savings</span>
+            </div>
+            <p className="mt-1 text-2xl font-semibold">{formatCents(monthlyAverages.savings)}</p>
           </div>
         </div>
 
-        {/* Monthly Averages Row */}
-        <div className="grid gap-6 grid-cols-3 max-w-3xl mx-auto">
-          {/* Average Income */}
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
-              <TrendingUp className="h-6 w-6 text-green-500" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Income</p>
-              <p className="text-2xl font-bold">{formatCents(monthlyAverages.income)}</p>
-              <p className="text-xs text-muted-foreground">Average per month</p>
-            </div>
+        {/* Net monthly */}
+        <div className="mt-5 flex items-center justify-between border-t pt-5">
+          <div className="flex items-center gap-2">
+            <HandCoins className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Net per month</span>
           </div>
-
-          {/* Average Expenses */}
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
-              <Receipt className="h-6 w-6 text-red-500" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Expenses</p>
-              <p className="text-2xl font-bold">{formatCents(monthlyAverages.expenses)}</p>
-              <p className="text-xs text-muted-foreground">Average per month</p>
-            </div>
-          </div>
-
-          {/* Average Savings */}
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
-              <PiggyBank className="h-6 w-6 text-blue-500" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Savings</p>
-              <p className="text-2xl font-bold">{formatCents(monthlyAverages.savings)}</p>
-              <p className="text-xs text-muted-foreground">Average per month</p>
-            </div>
-          </div>
+          <p className={`text-lg font-semibold ${monthlyAverages.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {monthlyAverages.net >= 0 ? '+' : ''}{formatCents(monthlyAverages.net)}
+          </p>
         </div>
       </div>
     </div>
