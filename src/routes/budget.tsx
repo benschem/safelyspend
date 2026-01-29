@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
+import { Switch } from '@/components/ui/switch';
 import { Pencil, Check, X, Trash2, Plus, Target, AlertTriangle, CheckCircle2, XCircle, PiggyBank } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
@@ -229,6 +230,7 @@ export function BudgetPage() {
   const [editCadence, setEditCadence] = useState<Cadence>('monthly');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [showSavingsInChart, setShowSavingsInChart] = useState(true);
 
   // Calculate spending per category for their respective current periods
   const categorySpending = useMemo(() => {
@@ -422,18 +424,20 @@ export function BudgetPage() {
         amount: row.budgetAmount,
       }));
 
-    // Include forecasted savings as a segment
-    const totalSavingsForecasted = savingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
-    if (totalSavingsForecasted > 0) {
-      categorySegments.push({
-        id: 'savings',
-        name: 'Savings',
-        amount: totalSavingsForecasted,
-      });
+    // Optionally include forecasted savings as a segment
+    if (showSavingsInChart) {
+      const totalSavingsForecasted = savingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
+      if (totalSavingsForecasted > 0) {
+        categorySegments.push({
+          id: 'savings',
+          name: 'Savings',
+          amount: totalSavingsForecasted,
+        });
+      }
     }
 
     return categorySegments;
-  }, [allRows, savingsForecasts]);
+  }, [allRows, savingsForecasts, showSavingsInChart]);
 
   const budgetBreakdownTotal = useMemo(() => {
     return budgetBreakdownSegments.reduce((sum, s) => sum + s.amount, 0);
@@ -894,10 +898,21 @@ export function BudgetPage() {
       {/* Budget Allocation Chart */}
       {budgetBreakdownSegments.length > 0 && (
         <div className="mt-6 rounded-lg border bg-card p-4">
-          <h3 className="font-semibold">Budget Allocation</h3>
-          <p className="mb-3 text-sm text-muted-foreground">
-            How your budget is distributed across spending and savings.
-          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-semibold">Budget Allocation</h3>
+              <p className="mb-3 text-sm text-muted-foreground">
+                How your budget is distributed across spending and savings.
+              </p>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <Switch
+                checked={showSavingsInChart}
+                onCheckedChange={setShowSavingsInChart}
+              />
+              <span className="text-muted-foreground">Show savings</span>
+            </label>
+          </div>
           <SpendingBreakdownChart
             segments={budgetBreakdownSegments}
             total={budgetBreakdownTotal}
