@@ -21,6 +21,7 @@ import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
+import { ScenarioSelector } from '@/components/scenario-selector';
 import { formatCents, formatDate, formatISODate } from '@/lib/utils';
 import type { Cadence } from '@/lib/types';
 
@@ -329,12 +330,15 @@ export function OverviewPage() {
 
   return (
     <div className="space-y-6">
-      <div className="mb-20">
-        <h1 className="flex items-center gap-3 text-3xl font-bold">
-          <Eye className="h-7 w-7" />
-          Overview
-        </h1>
-        <p className="mt-1 text-muted-foreground">Your current financial position</p>
+      <div className="mb-20 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="flex items-center gap-3 text-3xl font-bold">
+            <Eye className="h-7 w-7" />
+            Overview
+          </h1>
+          <p className="mt-1 text-muted-foreground">Your current financial position</p>
+        </div>
+        <ScenarioSelector />
       </div>
 
       {/* Balance warning banner */}
