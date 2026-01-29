@@ -306,16 +306,25 @@ export function BudgetPage() {
           <p className="mt-4 text-sm text-muted-foreground">Income</p>
           <p className="mt-1 text-xl font-semibold">{formatCents(monthlyCashFlow.income.actual)}</p>
           <div className="mt-3">
-            <div className="flex justify-between text-xs text-muted-foreground mb-1">
-              <span>of {formatCents(monthlyCashFlow.income.expected)} forecast</span>
-              <span>{monthlyCashFlow.income.expected > 0 ? Math.round((monthlyCashFlow.income.actual / monthlyCashFlow.income.expected) * 100) : 0}%</span>
-            </div>
-            <div className="h-1.5 rounded-full bg-green-500/20">
-              <div
-                className="h-1.5 rounded-full bg-green-500"
-                style={{ width: `${Math.min((monthlyCashFlow.income.actual / Math.max(monthlyCashFlow.income.expected, 1)) * 100, 100)}%` }}
-              />
-            </div>
+            {(() => {
+              const pct = monthlyCashFlow.income.expected > 0
+                ? Math.round((monthlyCashFlow.income.actual / monthlyCashFlow.income.expected) * 100)
+                : 0;
+              return (
+                <>
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                    <span>of {formatCents(monthlyCashFlow.income.expected)} forecast</span>
+                    <span>{pct}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-green-500/20">
+                    <div
+                      className="h-1.5 rounded-full bg-green-500"
+                      style={{ width: `${Math.min(pct, 100)}%` }}
+                    />
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
 
@@ -327,16 +336,25 @@ export function BudgetPage() {
           <p className="mt-4 text-sm text-muted-foreground">Budgeted</p>
           <p className="mt-1 text-xl font-semibold">{formatCents(monthlyCashFlow.budgeted.actual)}</p>
           <div className="mt-3">
-            <div className="flex justify-between text-xs text-muted-foreground mb-1">
-              <span>of {formatCents(monthlyCashFlow.budgeted.expected)}</span>
-              <span>{monthlyCashFlow.budgeted.expected > 0 ? Math.round((monthlyCashFlow.budgeted.actual / monthlyCashFlow.budgeted.expected) * 100) : 0}%</span>
-            </div>
-            <div className="h-1.5 rounded-full bg-red-500/20">
-              <div
-                className="h-1.5 rounded-full bg-red-500"
-                style={{ width: `${Math.min((monthlyCashFlow.budgeted.actual / Math.max(monthlyCashFlow.budgeted.expected, 1)) * 100, 100)}%` }}
-              />
-            </div>
+            {(() => {
+              const pct = monthlyCashFlow.budgeted.expected > 0
+                ? Math.round((monthlyCashFlow.budgeted.actual / monthlyCashFlow.budgeted.expected) * 100)
+                : 0;
+              return (
+                <>
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                    <span>of {formatCents(monthlyCashFlow.budgeted.expected)} limit</span>
+                    <span>{pct}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-red-500/20">
+                    <div
+                      className="h-1.5 rounded-full bg-red-500"
+                      style={{ width: `${Math.min(pct, 100)}%` }}
+                    />
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
 
@@ -348,16 +366,25 @@ export function BudgetPage() {
           <p className="mt-4 text-sm text-muted-foreground">Unallocated</p>
           <p className="mt-1 text-xl font-semibold">{formatCents(monthlyCashFlow.unbudgeted.actual)}</p>
           <div className="mt-3">
-            <div className="flex justify-between text-xs text-muted-foreground mb-1">
-              <span>of {formatCents(monthlyCashFlow.unbudgeted.unallocated)}</span>
-              <span>{monthlyCashFlow.unbudgeted.unallocated > 0 ? Math.round((monthlyCashFlow.unbudgeted.actual / monthlyCashFlow.unbudgeted.unallocated) * 100) : 0}%</span>
-            </div>
-            <div className="h-1.5 rounded-full bg-amber-500/20">
-              <div
-                className="h-1.5 rounded-full bg-amber-500"
-                style={{ width: `${Math.min((monthlyCashFlow.unbudgeted.actual / Math.max(monthlyCashFlow.unbudgeted.unallocated, 1)) * 100, 100)}%` }}
-              />
-            </div>
+            {(() => {
+              const pct = monthlyCashFlow.unbudgeted.unallocated > 0
+                ? Math.round((monthlyCashFlow.unbudgeted.actual / monthlyCashFlow.unbudgeted.unallocated) * 100)
+                : 0;
+              return (
+                <>
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                    <span>of {formatCents(monthlyCashFlow.unbudgeted.unallocated)} available</span>
+                    <span>{pct}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-amber-500/20">
+                    <div
+                      className="h-1.5 rounded-full bg-amber-500"
+                      style={{ width: `${Math.min(pct, 100)}%` }}
+                    />
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
 
@@ -369,16 +396,25 @@ export function BudgetPage() {
           <p className="mt-4 text-sm text-muted-foreground">Savings</p>
           <p className="mt-1 text-xl font-semibold">{formatCents(monthlyCashFlow.savings.actual)}</p>
           <div className="mt-3">
-            <div className="flex justify-between text-xs text-muted-foreground mb-1">
-              <span>of {formatCents(monthlyCashFlow.savings.expected)}</span>
-              <span>{monthlyCashFlow.savings.expected > 0 ? Math.round((monthlyCashFlow.savings.actual / monthlyCashFlow.savings.expected) * 100) : 0}%</span>
-            </div>
-            <div className="h-1.5 rounded-full bg-blue-500/20">
-              <div
-                className="h-1.5 rounded-full bg-blue-500"
-                style={{ width: `${Math.min((monthlyCashFlow.savings.actual / Math.max(monthlyCashFlow.savings.expected, 1)) * 100, 100)}%` }}
-              />
-            </div>
+            {(() => {
+              const pct = monthlyCashFlow.savings.expected > 0
+                ? Math.round((monthlyCashFlow.savings.actual / monthlyCashFlow.savings.expected) * 100)
+                : 0;
+              return (
+                <>
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                    <span>of {formatCents(monthlyCashFlow.savings.expected)} forecast</span>
+                    <span>{pct}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-blue-500/20">
+                    <div
+                      className="h-1.5 rounded-full bg-blue-500"
+                      style={{ width: `${Math.min(pct, 100)}%` }}
+                    />
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       </div>
