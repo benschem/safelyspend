@@ -10,9 +10,7 @@ import {
   Eye,
   Landmark,
   Wallet,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
+  CircleGauge,
 } from 'lucide-react';
 import { CHART_COLORS, buildCategoryColorMap } from '@/lib/chart-colors';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -487,15 +485,7 @@ export function OverviewPage() {
         >
           <div>
             <div className="flex items-center gap-2 font-medium">
-              {budgetHealth.status === 'no-budget' ? (
-                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-              ) : budgetHealth.overBudget > 0 ? (
-                <XCircle className="h-4 w-4 text-red-600" />
-              ) : budgetHealth.overspending > 0 ? (
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-              )}
+              <CircleGauge className="h-4 w-4 text-muted-foreground" />
               Spending Rate
             </div>
             <p className="text-xs text-muted-foreground">Are you burning budget too fast?</p>
