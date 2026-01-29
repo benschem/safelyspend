@@ -17,7 +17,6 @@ import { useScenarios } from '@/hooks/use-scenarios';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
-import { ScenarioSelector } from '@/components/scenario-selector';
 import { formatCents } from '@/lib/utils';
 
 // Australian net worth percentiles (approximate, ABS data)
@@ -179,15 +178,12 @@ export function SnapshotPage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <Camera className="h-7 w-7" />
-            Snapshot
-          </h1>
-          <p className="mt-1 text-muted-foreground">Your financial position right now</p>
-        </div>
-        <ScenarioSelector />
+      <div className="mb-8">
+        <h1 className="flex items-center gap-3 text-3xl font-bold">
+          <Camera className="h-7 w-7" />
+          Snapshot
+        </h1>
+        <p className="mt-1 text-muted-foreground">Your financial position right now</p>
       </div>
 
       {/* Balance warning banner */}

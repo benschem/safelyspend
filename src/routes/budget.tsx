@@ -307,10 +307,10 @@ export function BudgetPage() {
           <p className="mt-1 text-xl font-semibold">{formatCents(monthlyCashFlow.income.actual)}</p>
           <div className="mt-3">
             <div className="flex justify-between text-xs text-muted-foreground mb-1">
-              <span>of {formatCents(monthlyCashFlow.income.expected)}</span>
+              <span>of {formatCents(monthlyCashFlow.income.expected)} forecast</span>
               <span>{monthlyCashFlow.income.expected > 0 ? Math.round((monthlyCashFlow.income.actual / monthlyCashFlow.income.expected) * 100) : 0}%</span>
             </div>
-            <div className="h-1.5 rounded-full bg-muted">
+            <div className="h-1.5 rounded-full bg-green-500/20">
               <div
                 className="h-1.5 rounded-full bg-green-500"
                 style={{ width: `${Math.min((monthlyCashFlow.income.actual / Math.max(monthlyCashFlow.income.expected, 1)) * 100, 100)}%` }}
