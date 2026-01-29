@@ -210,7 +210,7 @@ export function CategoriesIndexPage() {
 
   return (
     <div>
-      <div className="mb-20 flex items-center justify-between">
+      <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
             <Tags className="h-7 w-7" />

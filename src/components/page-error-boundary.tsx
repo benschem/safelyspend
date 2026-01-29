@@ -49,9 +49,9 @@ export class PageErrorBoundary extends Component<Props, State> {
               Reload page
             </Button>
             <Button asChild onClick={() => this.setState({ hasError: false, error: null })}>
-              <Link to="/overview">
+              <Link to="/">
                 <Home className="h-4 w-4" />
-                Go to overview
+                Go home
               </Link>
             </Button>
           </div>

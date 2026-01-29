@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router';
 import {
-  Eye,
+  Camera,
   Telescope,
   Receipt,
   Target,
@@ -71,8 +71,8 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       <NavSection>
-        <NavItem to="/overview" icon={<Eye className="h-4 w-4" />} onClick={onNavigate}>
-          Overview
+        <NavItem to="/snapshot" icon={<Camera className="h-4 w-4" />} onClick={onNavigate}>
+          Snapshot
         </NavItem>
         <NavItem to="/budget" icon={<Target className="h-4 w-4" />} onClick={onNavigate}>
           Budget

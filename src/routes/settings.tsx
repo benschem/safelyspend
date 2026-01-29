@@ -238,7 +238,7 @@ export function SettingsPage() {
 
   return (
     <div className="max-w-2xl">
-      <div className="mb-20">
+      <div className="mb-8">
         <h1 className="flex items-center gap-3 text-3xl font-bold">
           <Settings className="h-7 w-7" />
           Settings

@@ -1,88 +1,101 @@
 import { useMemo } from 'react';
 import { Link, useOutletContext } from 'react-router';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import {
-  TrendingUp,
-  TrendingDown,
+  Camera,
   PiggyBank,
-  Eye,
   Landmark,
-  Receipt,
-  CircleAlert,
   CreditCard,
-  BarChart3,
-  Scale,
-  Calendar,
+  Sprout,
+  HandCoins,
+  TrendingUp,
 } from 'lucide-react';
-import { CHART_COLORS, buildCategoryColorMap } from '@/lib/chart-colors';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
-import { useCategories } from '@/hooks/use-categories';
-import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { ScenarioSelector } from '@/components/scenario-selector';
-import { formatCents, formatDate } from '@/lib/utils';
+import { formatCents } from '@/lib/utils';
+
+// Australian net worth percentiles (approximate, ABS data)
+// Values in cents
+const AU_NET_WORTH_PERCENTILES = [
+  { percentile: 0, value: -10000000 },   // -$100k (negative net worth)
+  { percentile: 10, value: 5000000 },    // $50k
+  { percentile: 20, value: 15000000 },   // $150k
+  { percentile: 30, value: 28000000 },   // $280k
+  { percentile: 40, value: 43000000 },   // $430k
+  { percentile: 50, value: 58000000 },   // $580k (median)
+  { percentile: 60, value: 78000000 },   // $780k
+  { percentile: 70, value: 105000000 },  // $1.05M
+  { percentile: 80, value: 140000000 },  // $1.4M
+  { percentile: 90, value: 220000000 },  // $2.2M
+  { percentile: 99, value: 500000000 },  // $5M
+  { percentile: 100, value: 1000000000 }, // $10M+
+];
+
+// Australian fortnightly income percentiles (approximate, ABS data)
+// Values in cents (fortnightly gross income)
+const AU_INCOME_PERCENTILES = [
+  { percentile: 0, value: 0 },           // $0
+  { percentile: 10, value: 80000 },      // $800/fn
+  { percentile: 20, value: 140000 },     // $1,400/fn
+  { percentile: 30, value: 190000 },     // $1,900/fn
+  { percentile: 40, value: 240000 },     // $2,400/fn
+  { percentile: 50, value: 300000 },     // $3,000/fn (median)
+  { percentile: 60, value: 360000 },     // $3,600/fn
+  { percentile: 70, value: 440000 },     // $4,400/fn
+  { percentile: 80, value: 560000 },     // $5,600/fn
+  { percentile: 90, value: 760000 },     // $7,600/fn
+  { percentile: 99, value: 1500000 },    // $15,000/fn
+  { percentile: 100, value: 3000000 },   // $30,000+/fn
+];
+
+function getPercentile(value: number, percentiles: typeof AU_NET_WORTH_PERCENTILES): number {
+  for (let i = 0; i < percentiles.length - 1; i++) {
+    const lower = percentiles[i]!;
+    const upper = percentiles[i + 1]!;
+
+    if (value >= lower.value && value < upper.value) {
+      const range = upper.value - lower.value;
+      const position = value - lower.value;
+      const percentileRange = upper.percentile - lower.percentile;
+      return Math.round(lower.percentile + (position / range) * percentileRange);
+    }
+  }
+
+  if (value < percentiles[0]!.value) return 0;
+  return 99;
+}
 
 interface OutletContext {
   activeScenarioId: string | null;
 }
 
-interface PieTooltipProps {
-  active?: boolean;
-  payload?: Array<{
-    name: string;
-    value: number;
-    payload: { id: string; name: string; amount: number };
-  }>;
-}
-
-function PieTooltip({ active, payload }: PieTooltipProps) {
-  if (!active || !payload || payload.length === 0) return null;
-
-  const item = payload[0]!;
-  return (
-    <div className="rounded-lg border bg-background p-2 shadow-md">
-      <p className="font-medium">{item.name}</p>
-      <p className="font-mono text-sm">{formatCents(item.value)}</p>
-    </div>
-  );
-}
-
-export function OverviewPage() {
+export function SnapshotPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
-  const { activeCategories } = useCategories();
   const { getActiveAnchor } = useBalanceAnchors();
 
   // Fixed date ranges - no user selection
   const today = new Date().toISOString().slice(0, 10);
 
-  // This month's date range (needed before budget rules hook)
-  const thisMonthStart = today.slice(0, 7) + '-01';
-  const thisMonthEnd = today;
+  // Calculate current fortnight date range
+  const now = new Date();
+  const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
+  const fortnightNumber = Math.floor(dayOfYear / 14);
+  const fortnightStart = new Date(now.getFullYear(), 0, 1 + fortnightNumber * 14);
+  const fortnightEnd = new Date(fortnightStart.getTime() + 13 * 86400000);
+  const fnStartStr = fortnightStart.toISOString().slice(0, 10);
+  const fnEndStr = fortnightEnd.toISOString().slice(0, 10);
 
-  // Get budget rules (without date range to get raw rules)
-  const { budgetRules } = useBudgetRules(activeScenarioId);
+  // Get all transactions for savings calculation
+  const { allTransactions } = useTransactions();
 
-  // Upcoming forecasts: next 14 days
-  const fourteenDaysFromNow = new Date();
-  fourteenDaysFromNow.setDate(fourteenDaysFromNow.getDate() + 14);
-  const upcomingEnd = fourteenDaysFromNow.toISOString().slice(0, 10);
-
-  // Current year date range
-  const currentYear = new Date().getFullYear();
-  const yearStart = `${currentYear}-01-01`;
-  const yearEnd = `${currentYear}-12-31`;
-
-  // Get transactions for this month (for spending summary)
-  const { allTransactions, expenseTransactions } = useTransactions(thisMonthStart, thisMonthEnd);
-
-  // Get transactions for the full year
-  const { allTransactions: yearTransactions } = useTransactions(yearStart, today);
+  // Get forecasts for current fortnight
+  const { expandedForecasts: fnForecasts } = useForecasts(activeScenarioId, fnStartStr, fnEndStr);
 
   // Calculate total savings (all time)
   const totalSavings = useMemo(() => {
@@ -100,12 +113,6 @@ export function OverviewPage() {
       .reduce((sum, t) => sum + t.amountCents, 0);
   }, [emergencyFund, allTransactions]);
 
-  // Get forecasts for upcoming period (14 days)
-  const { expandedForecasts } = useForecasts(activeScenarioId, today, upcomingEnd);
-
-  // Get forecasts for the full year
-  const { expandedForecasts: yearlyForecasts } = useForecasts(activeScenarioId, yearStart, yearEnd);
-
   // Get the active anchor for current balance calculation
   const activeAnchor = getActiveAnchor(today);
 
@@ -113,8 +120,6 @@ export function OverviewPage() {
   const currentBalance = useMemo(() => {
     if (!activeAnchor) return null;
 
-    // We need all transactions from anchor date to today for balance calc
-    // Filter allTransactions to those from anchor onwards
     const transactionsFromAnchor = allTransactions.filter(
       (t) => t.date >= activeAnchor.date && t.date <= today,
     );
@@ -132,145 +137,27 @@ export function OverviewPage() {
 
   const hasNoAnchor = !activeAnchor;
 
-  // Calculate this month's spending by category
-  const thisMonthSpending = useMemo(() => {
-    const byCategory: Record<string, number> = {};
-    let uncategorized = 0;
-    let total = 0;
+  // Dummy data for Debt and Investments (to be implemented later)
+  const totalDebt = 0;
+  const totalInvestments = 0;
+  const netWorth = (currentBalance ?? 0) + totalSavings + totalInvestments - totalDebt;
 
-    for (const tx of expenseTransactions) {
-      total += tx.amountCents;
-      if (tx.categoryId) {
-        byCategory[tx.categoryId] = (byCategory[tx.categoryId] ?? 0) + tx.amountCents;
-      } else {
-        uncategorized += tx.amountCents;
-      }
-    }
-
-    const categorySpending = activeCategories
-      .map((c) => ({ id: c.id, name: c.name, amount: byCategory[c.id] ?? 0 }))
-      .filter((c) => c.amount > 0)
-      .sort((a, b) => b.amount - a.amount);
-
-    if (uncategorized > 0) {
-      categorySpending.push({ id: 'uncategorized', name: 'Uncategorised', amount: uncategorized });
-    }
-
-    return { categorySpending, total };
-  }, [expenseTransactions, activeCategories]);
-
-  // Build color map for pie chart
-  const colorMap = useMemo(() => {
-    const categoryIds = activeCategories.map((c) => c.id);
-    return buildCategoryColorMap(categoryIds);
-  }, [activeCategories]);
-
-  // Filter upcoming forecasts to only future dates and sort by date
-  const upcomingItems = useMemo(() => {
-    return expandedForecasts
-      .filter((f) => f.date > today)
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(0, 10); // Show max 10 items
-  }, [expandedForecasts, today]);
-
-  // Format month name for spending chart
-  const monthName = new Date(today).toLocaleDateString('en-AU', { month: 'long' });
-
-  // === This Year Cash Flow Progress ===
-  const yearlyCashFlow = useMemo(() => {
-    // Expected income for full year (from forecasts)
-    const expectedIncome = yearlyForecasts
+  // Calculate fortnightly income (from forecasts)
+  const fortnightlyIncome = useMemo(() => {
+    return fnForecasts
       .filter((f) => f.type === 'income')
       .reduce((sum, f) => sum + f.amountCents, 0);
-
-    // Expected savings for full year (from forecasts)
-    const expectedSavings = yearlyForecasts
-      .filter((f) => f.type === 'savings')
-      .reduce((sum, f) => sum + f.amountCents, 0);
-
-    // Total budget for full year (sum of all budget rules, annualized)
-    const totalBudget = budgetRules.reduce((sum, r) => {
-      switch (r.cadence) {
-        case 'weekly':
-          return sum + r.amountCents * 52;
-        case 'fortnightly':
-          return sum + r.amountCents * 26;
-        case 'monthly':
-          return sum + r.amountCents * 12;
-        case 'quarterly':
-          return sum + r.amountCents * 4;
-        case 'yearly':
-          return sum + r.amountCents;
-        default:
-          return sum + r.amountCents * 12;
-      }
-    }, 0);
-
-    // Get category IDs that have budgets
-    const budgetedCategoryIds = new Set(budgetRules.map((r) => r.categoryId));
-
-    // Actual income received so far this year
-    const actualIncome = yearTransactions
-      .filter((t) => t.type === 'income')
-      .reduce((sum, t) => sum + t.amountCents, 0);
-
-    // Actual savings so far this year
-    const actualSavings = yearTransactions
-      .filter((t) => t.type === 'savings')
-      .reduce((sum, t) => sum + t.amountCents, 0);
-
-    // Actual expenses - split by budgeted vs unbudgeted
-    const expenseTransactionsThisYear = yearTransactions.filter((t) => t.type === 'expense');
-
-    const actualBudgetedExpenses = expenseTransactionsThisYear
-      .filter((t) => t.categoryId && budgetedCategoryIds.has(t.categoryId))
-      .reduce((sum, t) => sum + t.amountCents, 0);
-
-    const actualUnbudgetedExpenses = expenseTransactionsThisYear
-      .filter((t) => !t.categoryId || !budgetedCategoryIds.has(t.categoryId))
-      .reduce((sum, t) => sum + t.amountCents, 0);
-
-    // Unallocated = Income - Budget - Savings (money available for unbudgeted spending or cash buffer)
-    const unallocated = Math.round(expectedIncome - totalBudget - expectedSavings);
-
-    return {
-      income: {
-        expected: Math.round(expectedIncome),
-        actual: actualIncome,
-      },
-      budgeted: {
-        expected: Math.round(totalBudget),
-        actual: actualBudgetedExpenses,
-      },
-      unbudgeted: {
-        unallocated: Math.max(0, unallocated), // Available for unbudgeted or cash buffer
-        actual: actualUnbudgetedExpenses,
-      },
-      savings: {
-        expected: Math.round(expectedSavings),
-        actual: actualSavings,
-      },
-      net: unallocated, // Net forecast = unallocated amount
-    };
-  }, [yearlyForecasts, budgetRules, yearTransactions]);
-
-  // Calculate upcoming net flow (income - expenses - savings)
-  const upcomingNetFlow = useMemo(() => {
-    return upcomingItems.reduce((sum, item) => {
-      if (item.type === 'income') return sum + item.amountCents;
-      return sum - item.amountCents;
-    }, 0);
-  }, [upcomingItems]);
+  }, [fnForecasts]);
 
   if (!activeScenarioId || !activeScenario) {
     return (
-      <div className="space-y-6">
-        <div className="mb-20">
+      <div>
+        <div className="mb-8">
           <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <Eye className="h-7 w-7" />
-            Overview
+            <Camera className="h-7 w-7" />
+            Snapshot
           </h1>
-          <p className="mt-1 text-muted-foreground">Your current financial position at a glance</p>
+          <p className="mt-1 text-muted-foreground">Your financial position right now</p>
         </div>
         <div className="rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground">No scenario selected.</p>
@@ -283,361 +170,123 @@ export function OverviewPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="mb-20 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <Eye className="h-7 w-7" />
-            Overview
+            <Camera className="h-7 w-7" />
+            Snapshot
           </h1>
-          <p className="mt-1 text-muted-foreground">Your current financial position at a glance</p>
+          <p className="mt-1 text-muted-foreground">Your financial position right now</p>
         </div>
         <ScenarioSelector />
       </div>
 
-      {/* Balance warning banner */}
-      {hasNoAnchor && (
-        <Alert variant="warning">
-          <AlertTitle>No balance anchor set</AlertTitle>
-          <AlertDescription>
-            Set a starting balance in{' '}
-            <Link to="/settings" className="underline">
-              Settings
-            </Link>{' '}
-            to enable balance tracking.
-          </AlertDescription>
-        </Alert>
-      )}
+      <div className="space-y-6">
+        {/* Balance warning banner */}
+        {hasNoAnchor && (
+          <Alert variant="warning">
+            <AlertTitle>No balance anchor set</AlertTitle>
+            <AlertDescription>
+              Set a starting balance in{' '}
+              <Link to="/settings" className="underline">
+                Settings
+              </Link>{' '}
+              to enable balance tracking.
+            </AlertDescription>
+          </Alert>
+        )}
 
-      {/* Your Year + Net Worth */}
-      {(() => {
-        // Dummy data for Debt and Investments (to be implemented later)
-        const totalDebt = 2500000; // $25,000 placeholder
-        const totalInvestments = 4500000; // $45,000 placeholder
-        const netWorth = (currentBalance ?? 0) + totalSavings + totalInvestments - totalDebt;
-
-        return (
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* This Year Cash Flow - Left Side */}
-            <Link
-              to="/analyse?tab=cashflow"
-              className="block rounded-lg border p-8 transition-colors hover:bg-muted/50"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2 text-lg font-semibold">
-                    <Calendar className="h-5 w-5 text-muted-foreground" />
-                    Your {currentYear}
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">Full year forecast</p>
-                </div>
-                <div className="text-right">
-                  <span className={`text-2xl font-bold font-mono ${yearlyCashFlow.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {yearlyCashFlow.net >= 0 ? '+' : ''}{formatCents(yearlyCashFlow.net)}
-                  </span>
-                  <p className="text-sm text-muted-foreground">net forecast</p>
-                </div>
-              </div>
-
-              {(() => {
-                const ref = Math.max(yearlyCashFlow.income.expected, yearlyCashFlow.income.actual, 1);
-                const pct = (val: number) => `${Math.min((val / ref) * 100, 100)}%`;
-                return (
-                  <div className="mt-6 space-y-4">
-                    {/* Income bar */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="flex items-center gap-2 text-muted-foreground">
-                          <TrendingUp className="h-4 w-4" />
-                          Income
-                        </span>
-                        <span className="font-mono">
-                          <span className="text-green-600">{formatCents(yearlyCashFlow.income.actual)}</span>
-                          <span className="text-muted-foreground"> / {formatCents(yearlyCashFlow.income.expected)}</span>
-                        </span>
-                      </div>
-                      <div className="relative h-3 rounded-full bg-muted">
-                        <div className="absolute h-3 rounded-full bg-green-500" style={{ width: pct(yearlyCashFlow.income.actual) }} />
-                      </div>
-                    </div>
-
-                    {/* Budgeted expenses bar */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="flex items-center gap-2 text-muted-foreground">
-                          <Receipt className="h-4 w-4" />
-                          Budgeted
-                        </span>
-                        <span className="font-mono">
-                          <span className="text-red-600">{formatCents(yearlyCashFlow.budgeted.actual)}</span>
-                          <span className="text-muted-foreground"> / {formatCents(yearlyCashFlow.budgeted.expected)}</span>
-                        </span>
-                      </div>
-                      <div className="relative h-3 rounded-full bg-muted">
-                        <div className="absolute h-3 rounded-full bg-red-200" style={{ width: pct(yearlyCashFlow.budgeted.expected) }} />
-                        <div className="absolute h-3 rounded-full bg-red-500" style={{ width: pct(yearlyCashFlow.budgeted.actual) }} />
-                      </div>
-                    </div>
-
-                    {/* Unallocated bar */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="flex items-center gap-2 text-muted-foreground">
-                          <CircleAlert className="h-4 w-4" />
-                          Unallocated
-                        </span>
-                        <span className="font-mono">
-                          <span className="text-amber-600">{formatCents(yearlyCashFlow.unbudgeted.actual)}</span>
-                          <span className="text-muted-foreground"> / {formatCents(yearlyCashFlow.unbudgeted.unallocated)}</span>
-                        </span>
-                      </div>
-                      <div className="relative h-3 rounded-full bg-muted">
-                        <div className="absolute h-3 rounded-full bg-amber-200" style={{ width: pct(yearlyCashFlow.unbudgeted.unallocated) }} />
-                        <div className="absolute h-3 rounded-full bg-amber-500" style={{ width: pct(yearlyCashFlow.unbudgeted.actual) }} />
-                      </div>
-                    </div>
-
-                    {/* Savings bar */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="flex items-center gap-2 text-muted-foreground">
-                          <PiggyBank className="h-4 w-4" />
-                          Savings
-                        </span>
-                        <span className="font-mono">
-                          <span className="text-blue-600">{formatCents(yearlyCashFlow.savings.actual)}</span>
-                          <span className="text-muted-foreground"> / {formatCents(yearlyCashFlow.savings.expected)}</span>
-                        </span>
-                      </div>
-                      <div className="relative h-3 rounded-full bg-muted">
-                        <div className="absolute h-3 rounded-full bg-blue-200" style={{ width: pct(yearlyCashFlow.savings.expected) }} />
-                        <div className="absolute h-3 rounded-full bg-blue-500" style={{ width: pct(yearlyCashFlow.savings.actual) }} />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </Link>
-
-            {/* Net Worth Cards - Right Side */}
-            <div className="space-y-4">
-              {/* Top row: Cash + Savings */}
-              <div className="grid gap-4 grid-cols-2">
-                <Link
-                  to="/analyse?tab=cashflow"
-                  className="flex flex-col rounded-lg border p-4 transition-colors hover:bg-muted/50"
-                >
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <Landmark className="h-4 w-4" />
-                    Cash
-                  </div>
-                  <div className="mt-2">
-                    {currentBalance !== null ? (
-                      <p className="text-xl font-bold">{formatCents(currentBalance)}</p>
-                    ) : (
-                      <p className="text-xl font-bold text-muted-foreground">—</p>
-                    )}
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {currentBalance !== null ? 'Bank balance' : 'Not set'}
-                  </p>
-                </Link>
-
-                <Link
-                  to="/savings"
-                  className="flex flex-col rounded-lg border p-4 transition-colors hover:bg-muted/50"
-                >
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <PiggyBank className="h-4 w-4" />
-                    Savings
-                  </div>
-                  <div className="mt-2">
-                    <p className="text-xl font-bold text-blue-600">{formatCents(totalSavings)}</p>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {emergencyFund && emergencyFundBalance !== null
-                      ? `${formatCents(emergencyFundBalance)} emergency`
-                      : 'Across all goals'}
-                  </p>
-                </Link>
-              </div>
-
-              {/* Middle row: Debt + Investments */}
-              <div className="grid gap-4 grid-cols-2">
-                <div className="flex flex-col rounded-lg border p-4 opacity-60">
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <CreditCard className="h-4 w-4" />
-                    Debt
-                  </div>
-                  <div className="mt-2">
-                    <p className="text-xl font-bold text-red-600">-{formatCents(totalDebt)}</p>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">Coming soon</p>
-                </div>
-
-                <div className="flex flex-col rounded-lg border p-4 opacity-60">
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <BarChart3 className="h-4 w-4" />
-                    Investments
-                  </div>
-                  <div className="mt-2">
-                    <p className="text-xl font-bold text-green-600">{formatCents(totalInvestments)}</p>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">Coming soon</p>
-                </div>
-              </div>
-
-              {/* Bottom row: Net Worth (full width) */}
-              <div className="flex flex-col rounded-lg border p-4 bg-muted/30">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <Scale className="h-4 w-4" />
-                    Net Worth
-                  </div>
-                  <p className={`text-xl font-bold ${netWorth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {netWorth >= 0 ? '' : '-'}{formatCents(Math.abs(netWorth))}
-                  </p>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Assets minus liabilities
-                </p>
-              </div>
+        {/* Stats Grid */}
+        <div className="grid gap-8 grid-cols-2 lg:grid-cols-3 max-w-4xl mx-auto">
+          {/* Net Worth */}
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
+              <HandCoins className="h-6 w-6 text-emerald-500" />
             </div>
-          </div>
-        );
-      })()}
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* This Month's Spending - Pie Chart */}
-        <div className="rounded-lg border p-4">
-          <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold">{monthName} Spending</h2>
-              <p className="text-sm text-muted-foreground">Breakdown by category</p>
-            </div>
-            <div className="text-right">
-              <p className="text-lg font-bold">{formatCents(thisMonthSpending.total)}</p>
+              <p className="text-sm text-muted-foreground">Net Worth</p>
+              <p className={`text-2xl font-bold ${netWorth >= 0 ? '' : 'text-red-500'}`}>
+                {netWorth >= 0 ? '' : '-'}{formatCents(Math.abs(netWorth))}
+              </p>
               <p className="text-xs text-muted-foreground">
-                {thisMonthSpending.categorySpending.length} {thisMonthSpending.categorySpending.length === 1 ? 'category' : 'categories'}
+                More than {getPercentile(netWorth, AU_NET_WORTH_PERCENTILES)}% of Australians
               </p>
             </div>
           </div>
 
-          {thisMonthSpending.categorySpending.length === 0 ? (
-            <div className="mt-6 flex h-64 items-center justify-center text-sm text-muted-foreground">
-              No expenses recorded this month.
+          {/* Income This Fortnight */}
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
+              <TrendingUp className="h-6 w-6 text-green-500" />
             </div>
-          ) : (
-            <>
-              <ResponsiveContainer width="100%" height={280} className="mt-4">
-                <PieChart>
-                  <Pie
-                    data={thisMonthSpending.categorySpending}
-                    dataKey="amount"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={70}
-                    outerRadius={110}
-                    paddingAngle={2}
-                  >
-                    {thisMonthSpending.categorySpending.map((item) => (
-                      <Cell
-                        key={item.id}
-                        fill={colorMap[item.id] ?? CHART_COLORS.uncategorized}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<PieTooltip />} />
-                </PieChart>
-              </ResponsiveContainer>
-
-              {/* Legend */}
-              <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1">
-                {thisMonthSpending.categorySpending.map((item) => (
-                  <div key={item.id} className="flex items-center gap-1.5 text-sm">
-                    <div
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: colorMap[item.id] ?? CHART_COLORS.uncategorized }}
-                    />
-                    <span>{item.name}</span>
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {formatCents(item.amount)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          <div className="mt-4">
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/transactions">View all transactions</Link>
-            </Button>
-          </div>
-        </div>
-
-        {/* Upcoming */}
-        <div className="rounded-lg border p-4">
-          <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold">Upcoming</h2>
-              <p className="text-sm text-muted-foreground">Next 14 days</p>
+              <p className="text-sm text-muted-foreground">Income This Fortnight</p>
+              <p className="text-2xl font-bold">
+                {formatCents(fortnightlyIncome)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                More than {getPercentile(fortnightlyIncome, AU_INCOME_PERCENTILES)}% of Australians
+              </p>
             </div>
-            {upcomingItems.length > 0 && (
-              <div className="text-right">
-                <p className={`text-lg font-bold ${upcomingNetFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {upcomingNetFlow >= 0 ? '+' : ''}{formatCents(upcomingNetFlow)}
-                </p>
-                <p className="text-xs text-muted-foreground">net flow</p>
-              </div>
-            )}
           </div>
 
-          {upcomingItems.length === 0 ? (
-            <div className="mt-6 text-center text-sm text-muted-foreground">
-              No forecasts in the next 14 days.
+          {/* Cash */}
+          <Link to="/analyse?tab=cashflow" className="flex items-center gap-4 group">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
+              <Landmark className="h-6 w-6 text-sky-500" />
             </div>
-          ) : (
-            <div className="mt-6 space-y-3">
-              {upcomingItems.map((item, index) => (
-                <div key={`${item.sourceId}-${item.date}-${index}`} className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-                    {item.type === 'income' ? (
-                      <TrendingUp className="h-4 w-4 text-green-600" />
-                    ) : item.type === 'savings' ? (
-                      <PiggyBank className="h-4 w-4 text-blue-600" />
-                    ) : (
-                      <TrendingDown className="h-4 w-4 text-red-600" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-medium">{item.description}</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(item.date)}</p>
-                  </div>
-                  <div className="text-right">
-                    <span
-                      className={`font-mono text-sm ${
-                        item.type === 'income'
-                          ? 'text-green-600'
-                          : item.type === 'savings'
-                            ? 'text-blue-600'
-                            : 'text-red-600'
-                      }`}
-                    >
-                      {item.type === 'income' ? '+' : '-'}
-                      {formatCents(item.amountCents)}
-                    </span>
-                  </div>
-                </div>
-              ))}
+            <div>
+              <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">Cash</p>
+              {currentBalance !== null ? (
+                <p className="text-2xl font-bold">{formatCents(currentBalance)}</p>
+              ) : (
+                <p className="text-2xl font-bold text-muted-foreground">—</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {currentBalance !== null ? 'Bank balance' : 'Not set'}
+              </p>
             </div>
-          )}
+          </Link>
 
-          <div className="mt-4">
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/forecasts">Manage forecasts</Link>
-            </Button>
+          {/* Savings */}
+          <Link to="/savings" className="flex items-center gap-4 group">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
+              <PiggyBank className="h-6 w-6 text-blue-500" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">Savings</p>
+              <p className="text-2xl font-bold">{formatCents(totalSavings)}</p>
+              <p className="text-xs text-muted-foreground">
+                {emergencyFund && emergencyFundBalance !== null
+                  ? `${formatCents(emergencyFundBalance)} emergency`
+                  : 'Across all goals'}
+              </p>
+            </div>
+          </Link>
+
+          {/* Debt - Coming Soon */}
+          <div className="flex items-center gap-4 opacity-50">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
+              <CreditCard className="h-6 w-6 text-red-500" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Debt</p>
+              <p className="text-2xl font-bold text-muted-foreground">—</p>
+              <p className="text-xs text-muted-foreground">Coming soon</p>
+            </div>
+          </div>
+
+          {/* Investments - Coming Soon */}
+          <div className="flex items-center gap-4 opacity-50">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
+              <Sprout className="h-6 w-6 text-purple-500" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Investments</p>
+              <p className="text-2xl font-bold text-muted-foreground">—</p>
+              <p className="text-xs text-muted-foreground">Coming soon</p>
+            </div>
           </div>
         </div>
       </div>

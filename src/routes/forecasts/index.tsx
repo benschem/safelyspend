@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Repeat, Settings2, Pencil, Telescope, RotateCcw } from 'lucide-react';
+import { Plus, Repeat, Settings2, Pencil, Telescope, RotateCcw, TrendingUp, TrendingDown, PiggyBank } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useForecasts } from '@/hooks/use-forecasts';
@@ -113,9 +113,28 @@ export function ForecastIndexPage() {
         header: 'Type',
         cell: ({ row }) => {
           const type = row.getValue('type') as string;
-          if (type === 'income') return <Badge variant="success">Income</Badge>;
-          if (type === 'savings') return <Badge variant="info">Savings</Badge>;
-          return <Badge variant="destructive">Expense</Badge>;
+          if (type === 'income') {
+            return (
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                <TrendingUp className="h-3 w-3" />
+                Income
+              </div>
+            );
+          }
+          if (type === 'savings') {
+            return (
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                <PiggyBank className="h-3 w-3" />
+                Savings
+              </div>
+            );
+          }
+          return (
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
+              <TrendingDown className="h-3 w-3" />
+              Expense
+            </div>
+          );
         },
       },
       {
@@ -188,7 +207,7 @@ export function ForecastIndexPage() {
   if (!activeScenarioId || !activeScenario) {
     return (
       <div>
-        <div className="mb-20">
+        <div className="mb-8">
           <h1 className="flex items-center gap-3 text-3xl font-bold">
             <Telescope className="h-7 w-7" />
             Forecasts
@@ -209,7 +228,7 @@ export function ForecastIndexPage() {
 
   return (
     <div>
-      <div className="mb-20 flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
             <Telescope className="h-7 w-7" />

@@ -33,9 +33,9 @@ export function ErrorBoundary() {
           Reload page
         </Button>
         <Button asChild>
-          <Link to="/overview">
+          <Link to="/">
             <Home className="h-4 w-4" />
-            Go to overview
+            Go home
           </Link>
         </Button>
       </div>

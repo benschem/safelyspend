@@ -2,7 +2,6 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Alert } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import {
@@ -21,7 +20,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Pencil, Trash2, Check, X, Download, AlertTriangle, Receipt, RotateCcw } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Download, AlertTriangle, Receipt, RotateCcw, TrendingUp, TrendingDown, PiggyBank, RefreshCw } from 'lucide-react';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
 import { useCategoryRules } from '@/hooks/use-category-rules';
@@ -244,10 +243,36 @@ export function TransactionsIndexPage() {
             );
           }
           const type = row.getValue('type') as string;
-          if (type === 'income') return <Badge variant="success">Income</Badge>;
-          if (type === 'savings') return <Badge variant="info">Savings</Badge>;
-          if (type === 'adjustment') return <Badge variant="secondary">Adjustment</Badge>;
-          return <Badge variant="destructive">Expense</Badge>;
+          if (type === 'income') {
+            return (
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                <TrendingUp className="h-3 w-3" />
+                Income
+              </div>
+            );
+          }
+          if (type === 'savings') {
+            return (
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                <PiggyBank className="h-3 w-3" />
+                Savings
+              </div>
+            );
+          }
+          if (type === 'adjustment') {
+            return (
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-400">
+                <RefreshCw className="h-3 w-3" />
+                Adjustment
+              </div>
+            );
+          }
+          return (
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
+              <TrendingDown className="h-3 w-3" />
+              Expense
+            </div>
+          );
         },
         filterFn: (row, id, value) => {
           if (value === 'all') return true;
@@ -366,7 +391,7 @@ export function TransactionsIndexPage() {
 
   return (
     <div>
-      <div className="mb-20 flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
             <Receipt className="h-7 w-7" />

@@ -4,7 +4,7 @@ import { FirstRunWizard } from '@/components/first-run-wizard';
 import { ErrorBoundary } from '@/components/error-boundary';
 
 // Route components
-import { OverviewPage } from '@/routes/overview';
+import { SnapshotPage } from '@/routes/overview';
 import { ForecastIndexPage } from '@/routes/forecasts/index';
 import { ForecastNewPage } from '@/routes/forecasts/new';
 import { ForecastDetailPage } from '@/routes/forecasts/detail';
@@ -31,11 +31,11 @@ const router = createBrowserRouter([
     element: <RootLayout />,
     errorElement: <ErrorBoundary />,
     children: [
-      // Redirect root to overview
-      { index: true, element: <Navigate to="/overview" replace /> },
+      // Redirect root to snapshot
+      { index: true, element: <Navigate to="/snapshot" replace /> },
 
-      // Overview
-      { path: 'overview', element: <OverviewPage /> },
+      // Snapshot (current position)
+      { path: 'snapshot', element: <SnapshotPage /> },
 
       // Forecasts (plan)
       { path: 'forecasts', element: <ForecastIndexPage /> },

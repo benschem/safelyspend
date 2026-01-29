@@ -672,7 +672,7 @@ export function SpendingLimitsPage() {
   if (!activeScenarioId || !activeScenario) {
     return (
       <div>
-        <div className="mb-20">
+        <div className="mb-8">
           <h1 className="flex items-center gap-3 text-3xl font-bold">
             <Target className="h-7 w-7" />
             Spending Limits
@@ -691,7 +691,7 @@ export function SpendingLimitsPage() {
 
   return (
     <div>
-      <div className="mb-20 flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
             <Target className="h-7 w-7" />
