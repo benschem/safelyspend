@@ -7,6 +7,7 @@ import { useViewState } from '@/hooks/use-view-state';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
+import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 import { formatCompactDate, formatISODate } from '@/lib/utils';
 import type { Cadence } from '@/lib/types';
@@ -78,7 +79,7 @@ export function InsightsPage() {
     setSearchParams({ tab }, { replace: true });
   };
 
-  // Savings chart view state: 'total' or a specific goal ID
+  // Savings chart view state: 'total', 'dedicated', or a specific goal ID
   const [savingsView, setSavingsView] = useState<string>(() => {
     return localStorage.getItem(SAVINGS_VIEW_KEY) ?? 'total';
   });
@@ -88,6 +89,9 @@ export function InsightsPage() {
     localStorage.setItem(SAVINGS_VIEW_KEY, value);
   };
 
+  // Get emergency fund info for dedicated savings calculation
+  const { emergencyFund } = useSavingsGoals();
+
   const {
     monthlyBudgetComparison,
     budgetCategories,
@@ -96,6 +100,40 @@ export function InsightsPage() {
     savingsByGoal,
   } = useReportsData(activeScenarioId, startDate, endDate);
 
+  // Validate savingsView - must be 'total', 'dedicated', or a valid goal ID
+  const validGoalIds = useMemo(() => savingsByGoal.map((g) => g.goalId), [savingsByGoal]);
+  const effectiveSavingsView = useMemo(() => {
+    if (savingsView === 'total' || savingsView === 'dedicated') return savingsView;
+    if (validGoalIds.includes(savingsView)) return savingsView;
+    return 'total'; // Default to total if invalid
+  }, [savingsView, validGoalIds]);
+
+  // Update localStorage if we had to correct an invalid value
+  useEffect(() => {
+    if (effectiveSavingsView !== savingsView) {
+      localStorage.setItem(SAVINGS_VIEW_KEY, effectiveSavingsView);
+    }
+  }, [effectiveSavingsView, savingsView]);
+
+  // Calculate dedicated savings (total minus emergency fund)
+  const dedicatedSavings = useMemo(() => {
+    if (!emergencyFund) return monthlySavings; // No emergency fund, dedicated = total
+
+    const emergencyGoalData = savingsByGoal.find((g) => g.goalId === emergencyFund.id);
+    if (!emergencyGoalData) return monthlySavings;
+
+    // Subtract emergency fund from total for each month
+    return monthlySavings.map((month, i) => {
+      const emergencyMonth = emergencyGoalData.monthlySavings[i];
+      return {
+        ...month,
+        actual: month.actual - (emergencyMonth?.actual ?? 0),
+        forecast: month.forecast - (emergencyMonth?.forecast ?? 0),
+        cumulativeActual: month.cumulativeActual - (emergencyMonth?.cumulativeActual ?? 0),
+        cumulativeForecast: month.cumulativeForecast - (emergencyMonth?.cumulativeForecast ?? 0),
+      };
+    });
+  }, [monthlySavings, savingsByGoal, emergencyFund]);
 
   // Build a shared colour map so categories have consistent colours across all charts
   const allCategoryIds = useMemo(() => {
@@ -403,9 +441,11 @@ export function InsightsPage() {
               <div>
                 <h2 className="flex items-center gap-2 text-lg font-semibold">
                   <PiggyBank className="h-5 w-5" />
-                  {savingsView === 'total'
+                  {effectiveSavingsView === 'total'
                     ? 'Total Savings'
-                    : savingsByGoal.find((g) => g.goalId === savingsView)?.goalName ?? 'Savings'}
+                    : effectiveSavingsView === 'dedicated'
+                      ? 'Dedicated Savings'
+                      : savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.goalName ?? 'Savings'}
                 </h2>
                 <p className="text-sm text-muted-foreground">
                   {isPastOnly
@@ -414,12 +454,15 @@ export function InsightsPage() {
                 </p>
               </div>
               {savingsByGoal.length > 0 && (
-                <Select value={savingsView} onValueChange={handleSavingsViewChange}>
+                <Select value={effectiveSavingsView} onValueChange={handleSavingsViewChange}>
                   <SelectTrigger className="w-[180px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="total">Total Savings</SelectItem>
+                    {emergencyFund && (
+                      <SelectItem value="dedicated">Dedicated Savings</SelectItem>
+                    )}
                     {savingsByGoal.map((goal) => (
                       <SelectItem key={goal.goalId} value={goal.goalId}>
                         {goal.goalName}
@@ -431,16 +474,18 @@ export function InsightsPage() {
             </div>
 
             <div className="mt-6">
-              {savingsView === 'total' ? (
+              {effectiveSavingsView === 'total' ? (
                 <SavingsOverTimeChart monthlySavings={monthlySavings} />
+              ) : effectiveSavingsView === 'dedicated' ? (
+                <SavingsOverTimeChart monthlySavings={dedicatedSavings} />
               ) : (
                 <SavingsOverTimeChart
                   monthlySavings={
-                    savingsByGoal.find((g) => g.goalId === savingsView)?.monthlySavings ?? []
+                    savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.monthlySavings ?? []
                   }
-                  deadline={savingsByGoal.find((g) => g.goalId === savingsView)?.deadline}
-                  targetAmount={savingsByGoal.find((g) => g.goalId === savingsView)?.targetAmount}
-                  startingBalance={savingsByGoal.find((g) => g.goalId === savingsView)?.startingBalance}
+                  deadline={savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.deadline}
+                  targetAmount={savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.targetAmount}
+                  startingBalance={savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.startingBalance}
                 />
               )}
             </div>
