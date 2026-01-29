@@ -10,7 +10,11 @@ import {
   Eye,
   Landmark,
   Wallet,
-  CircleGauge,
+  Receipt,
+  CircleAlert,
+  CreditCard,
+  BarChart3,
+  Scale,
 } from 'lucide-react';
 import { CHART_COLORS, buildCategoryColorMap } from '@/lib/chart-colors';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -21,76 +25,7 @@ import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { ScenarioSelector } from '@/components/scenario-selector';
-import { formatCents, formatDate, formatISODate } from '@/lib/utils';
-import type { Cadence } from '@/lib/types';
-
-/**
- * Get period progress info for a given cadence
- */
-function getPeriodProgress(cadence: Cadence): { daysElapsed: number; totalDays: number; progress: number } {
-  const range = getCurrentPeriodRange(cadence);
-  const start = new Date(range.start);
-  const end = new Date(range.end);
-  const now = new Date();
-
-  // Set to start of day for accurate day counting
-  now.setHours(0, 0, 0, 0);
-  start.setHours(0, 0, 0, 0);
-  end.setHours(0, 0, 0, 0);
-
-  const totalDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-  const daysElapsed = Math.round((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-  const progress = Math.min((daysElapsed / totalDays) * 100, 100);
-
-  return { daysElapsed, totalDays, progress };
-}
-
-/**
- * Get the current period date range for a given cadence
- */
-function getCurrentPeriodRange(cadence: Cadence): { start: string; end: string } {
-  const now = new Date();
-
-  switch (cadence) {
-    case 'weekly': {
-      // Monday to Sunday containing today
-      const day = now.getDay();
-      const diffToMonday = day === 0 ? -6 : 1 - day;
-      const monday = new Date(now);
-      monday.setDate(monday.getDate() + diffToMonday);
-      const sunday = new Date(monday);
-      sunday.setDate(sunday.getDate() + 6);
-      return { start: formatISODate(monday), end: formatISODate(sunday) };
-    }
-    case 'fortnightly': {
-      // Use a fixed epoch (Jan 1, 2024 was a Monday) to determine fortnight boundaries
-      const epoch = new Date('2024-01-01');
-      const diffDays = Math.floor((now.getTime() - epoch.getTime()) / (1000 * 60 * 60 * 24));
-      const fortnightNumber = Math.floor(diffDays / 14);
-      const fortnightStart = new Date(epoch);
-      fortnightStart.setDate(fortnightStart.getDate() + fortnightNumber * 14);
-      const fortnightEnd = new Date(fortnightStart);
-      fortnightEnd.setDate(fortnightEnd.getDate() + 13);
-      return { start: formatISODate(fortnightStart), end: formatISODate(fortnightEnd) };
-    }
-    case 'monthly': {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1);
-      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      return { start: formatISODate(start), end: formatISODate(end) };
-    }
-    case 'quarterly': {
-      const quarterStart = Math.floor(now.getMonth() / 3) * 3;
-      const start = new Date(now.getFullYear(), quarterStart, 1);
-      const end = new Date(now.getFullYear(), quarterStart + 3, 0);
-      return { start: formatISODate(start), end: formatISODate(end) };
-    }
-    case 'yearly': {
-      const start = new Date(now.getFullYear(), 0, 1);
-      const end = new Date(now.getFullYear(), 11, 31);
-      return { start: formatISODate(start), end: formatISODate(end) };
-    }
-  }
-}
+import { formatCents, formatDate } from '@/lib/utils';
 
 interface OutletContext {
   activeScenarioId: string | null;
@@ -138,8 +73,16 @@ export function OverviewPage() {
   fourteenDaysFromNow.setDate(fourteenDaysFromNow.getDate() + 14);
   const upcomingEnd = fourteenDaysFromNow.toISOString().slice(0, 10);
 
+  // Current year date range
+  const currentYear = new Date().getFullYear();
+  const yearStart = `${currentYear}-01-01`;
+  const yearEnd = `${currentYear}-12-31`;
+
   // Get transactions for this month (for spending summary)
   const { allTransactions, expenseTransactions } = useTransactions(thisMonthStart, thisMonthEnd);
+
+  // Get transactions for the full year
+  const { allTransactions: yearTransactions } = useTransactions(yearStart, today);
 
   // Calculate total savings (all time)
   const totalSavings = useMemo(() => {
@@ -157,8 +100,11 @@ export function OverviewPage() {
       .reduce((sum, t) => sum + t.amountCents, 0);
   }, [emergencyFund, allTransactions]);
 
-  // Get forecasts for upcoming period
+  // Get forecasts for upcoming period (14 days)
   const { expandedForecasts } = useForecasts(activeScenarioId, today, upcomingEnd);
+
+  // Get forecasts for the full year
+  const { expandedForecasts: yearlyForecasts } = useForecasts(activeScenarioId, yearStart, yearEnd);
 
   // Get the active anchor for current balance calculation
   const activeAnchor = getActiveAnchor(today);
@@ -219,61 +165,6 @@ export function OverviewPage() {
     return buildCategoryColorMap(categoryIds);
   }, [activeCategories]);
 
-  // Calculate budget health - same logic as budget page (respects per-category cadences + burn rate)
-  const budgetHealth = useMemo(() => {
-    if (!budgetRules || budgetRules.length === 0) {
-      return { status: 'no-budget' as const, onTrack: 0, overBudget: 0, overspending: 0, watch: 0, total: 0 };
-    }
-
-    let onTrack = 0;
-    let overBudget = 0;
-    let overspending = 0;
-    let watch = 0;
-
-    for (const rule of budgetRules) {
-      if (rule.amountCents === 0) continue;
-
-      // Calculate period range based on rule's cadence
-      const periodRange = getCurrentPeriodRange(rule.cadence);
-      const periodInfo = getPeriodProgress(rule.cadence);
-
-      // Sum expenses for this category in the period
-      const categoryExpenses = allTransactions.filter(
-        (t) =>
-          t.type === 'expense' &&
-          t.categoryId === rule.categoryId &&
-          t.date >= periodRange.start &&
-          t.date <= periodRange.end,
-      );
-      const spent = categoryExpenses.reduce((sum, t) => sum + t.amountCents, 0);
-      const spentPercent = (spent / rule.amountCents) * 100;
-
-      // Calculate burn rate (spending pace vs period progress)
-      const expectedSpend = rule.amountCents * (periodInfo.progress / 100);
-      const burnRate = expectedSpend > 0 ? (spent / expectedSpend) * 100 : (spent > 0 ? 200 : 0);
-
-      // Match budget page logic: use burn rate for status
-      if (spentPercent >= 100) {
-        overBudget++;
-      } else if (burnRate > 120) {
-        overspending++;
-      } else if (burnRate > 100) {
-        watch++;
-      } else {
-        onTrack++;
-      }
-    }
-
-    const total = onTrack + overBudget + overspending + watch;
-    const problemCount = overBudget + overspending;
-    // Only show bad if majority are problematic (over or overspending)
-    // Warning if any are overspending but most are fine
-    // Good if all on track or just watching
-    const status = problemCount > total / 2 ? 'bad' : (problemCount > 0 ? 'warning' : 'good');
-
-    return { status: status as 'good' | 'warning' | 'bad', onTrack, overBudget, overspending, watch, total };
-  }, [budgetRules, allTransactions]);
-
   // Filter upcoming forecasts to only future dates and sort by date
   const upcomingItems = useMemo(() => {
     return expandedForecasts
@@ -282,86 +173,182 @@ export function OverviewPage() {
       .slice(0, 10); // Show max 10 items
   }, [expandedForecasts, today]);
 
-  // Calculate safe to spend = min(remaining budget, projected balance after obligations)
-  const safeToSpend = useMemo(() => {
-    // If no budgets, can't calculate safe to spend
-    if (!budgetRules || budgetRules.length === 0) {
-      return { status: 'no-budget' as const };
-    }
+  // Format month name
+  const monthName = new Date(today).toLocaleDateString('en-AU', { month: 'long' });
 
-    // Calculate remaining budget across all budget rules
-    let totalBudgeted = 0;
-    let totalSpent = 0;
+  // === Monthly Cash Flow Progress ===
+  const monthlyCashFlow = useMemo(() => {
+    const now = new Date();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const dayOfMonth = now.getDate();
+    const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
 
-    for (const rule of budgetRules) {
-      if (rule.amountCents === 0) continue;
+    // Get forecasts for the FULL month (not just 14 days)
+    // We need to expand forecasts for the entire current month
+    const monthForecasts = expandedForecasts.filter(
+      (f) => f.date >= thisMonthStart && f.date <= thisMonthEnd
+    );
 
-      // Get period range for this rule's cadence
-      const periodRange = getCurrentPeriodRange(rule.cadence);
-
-      // Sum expenses for this category in the period
-      const categoryExpenses = allTransactions.filter(
-        (t) =>
-          t.type === 'expense' &&
-          t.categoryId === rule.categoryId &&
-          t.date >= periodRange.start &&
-          t.date <= periodRange.end,
-      );
-      const spent = categoryExpenses.reduce((sum, t) => sum + t.amountCents, 0);
-
-      totalBudgeted += rule.amountCents;
-      totalSpent += Math.min(spent, rule.amountCents); // Cap at budget to avoid negative remaining
-    }
-
-    const remainingBudget = totalBudgeted - totalSpent;
-
-    // Calculate projected balance after obligations (next 30 days)
-    // If no balance anchor, we can still show remaining budget but flag the cash check
-    if (currentBalance === null) {
-      return {
-        status: 'no-balance' as const,
-        totalBudgeted,
-        totalSpent,
-        remainingBudget,
-      };
-    }
-
-    // Get forecasts for next 30 days
-    const thirtyDaysFromNow = new Date();
-    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-    const horizonEnd = thirtyDaysFromNow.toISOString().slice(0, 10);
-
-    // Sum forecasted income, expenses, savings
-    const futureForecasts = expandedForecasts.filter((f) => f.date > today && f.date <= horizonEnd);
-    const forecastedIncome = futureForecasts
+    // Expected income for full month
+    const expectedIncome = monthForecasts
       .filter((f) => f.type === 'income')
       .reduce((sum, f) => sum + f.amountCents, 0);
-    const forecastedExpenses = futureForecasts
-      .filter((f) => f.type === 'expense')
-      .reduce((sum, f) => sum + f.amountCents, 0);
-    const forecastedSavings = futureForecasts
+
+    // Expected savings for full month
+    const expectedSavings = monthForecasts
       .filter((f) => f.type === 'savings')
       .reduce((sum, f) => sum + f.amountCents, 0);
 
-    const projectedBalance = currentBalance + forecastedIncome - forecastedExpenses - forecastedSavings;
+    // Total budget for month (sum of all budget rules, converted to monthly)
+    const totalBudget = budgetRules.reduce((sum, r) => {
+      switch (r.cadence) {
+        case 'weekly':
+          return sum + r.amountCents * 4.33;
+        case 'fortnightly':
+          return sum + r.amountCents * 2.17;
+        case 'monthly':
+          return sum + r.amountCents;
+        case 'quarterly':
+          return sum + r.amountCents / 3;
+        case 'yearly':
+          return sum + r.amountCents / 12;
+        default:
+          return sum + r.amountCents;
+      }
+    }, 0);
 
-    // Safe to spend = lesser of remaining budget and projected balance
-    const amount = Math.min(remainingBudget, projectedBalance);
-    const constrainedByBalance = projectedBalance < remainingBudget;
+    // Get category IDs that have budgets
+    const budgetedCategoryIds = new Set(budgetRules.map((r) => r.categoryId));
+
+    // Actual income received so far
+    const actualIncome = allTransactions
+      .filter((t) => t.type === 'income' && t.date >= thisMonthStart && t.date <= today)
+      .reduce((sum, t) => sum + t.amountCents, 0);
+
+    // Actual savings so far
+    const actualSavings = allTransactions
+      .filter((t) => t.type === 'savings' && t.date >= thisMonthStart && t.date <= today)
+      .reduce((sum, t) => sum + t.amountCents, 0);
+
+    // Actual expenses - split by budgeted vs unbudgeted
+    const expenseTransactionsThisMonth = allTransactions.filter(
+      (t) => t.type === 'expense' && t.date >= thisMonthStart && t.date <= today
+    );
+
+    const actualBudgetedExpenses = expenseTransactionsThisMonth
+      .filter((t) => t.categoryId && budgetedCategoryIds.has(t.categoryId))
+      .reduce((sum, t) => sum + t.amountCents, 0);
+
+    const actualUnbudgetedExpenses = expenseTransactionsThisMonth
+      .filter((t) => !t.categoryId || !budgetedCategoryIds.has(t.categoryId))
+      .reduce((sum, t) => sum + t.amountCents, 0);
+
+    // Unallocated = Income - Budget - Savings (money available for unbudgeted spending or cash buffer)
+    const unallocated = Math.round(expectedIncome - totalBudget - expectedSavings);
+
+    // Net = Income - Savings - All Expenses
+    const actualNet = actualIncome - actualSavings - actualBudgetedExpenses - actualUnbudgetedExpenses;
 
     return {
-      status: 'ok' as const,
-      amount,
-      totalBudgeted,
-      totalSpent,
-      remainingBudget,
-      projectedBalance,
-      constrainedByBalance,
+      dayOfMonth,
+      daysInMonth,
+      income: {
+        expected: Math.round(expectedIncome),
+        actual: actualIncome,
+      },
+      budgeted: {
+        expected: Math.round(totalBudget),
+        actual: actualBudgetedExpenses,
+      },
+      unbudgeted: {
+        unallocated: Math.max(0, unallocated), // Available for unbudgeted or cash buffer
+        actual: actualUnbudgetedExpenses,
+      },
+      savings: {
+        expected: Math.round(expectedSavings),
+        actual: actualSavings,
+      },
+      net: actualNet,
     };
-  }, [budgetRules, allTransactions, currentBalance, expandedForecasts, today]);
+  }, [expandedForecasts, budgetRules, allTransactions, thisMonthStart, today]);
 
-  // Format month name
-  const monthName = new Date(today).toLocaleDateString('en-AU', { month: 'long' });
+  // === This Year Cash Flow Progress ===
+  const yearlyCashFlow = useMemo(() => {
+    // Expected income for full year (from forecasts)
+    const expectedIncome = yearlyForecasts
+      .filter((f) => f.type === 'income')
+      .reduce((sum, f) => sum + f.amountCents, 0);
+
+    // Expected savings for full year (from forecasts)
+    const expectedSavings = yearlyForecasts
+      .filter((f) => f.type === 'savings')
+      .reduce((sum, f) => sum + f.amountCents, 0);
+
+    // Total budget for full year (sum of all budget rules, annualized)
+    const totalBudget = budgetRules.reduce((sum, r) => {
+      switch (r.cadence) {
+        case 'weekly':
+          return sum + r.amountCents * 52;
+        case 'fortnightly':
+          return sum + r.amountCents * 26;
+        case 'monthly':
+          return sum + r.amountCents * 12;
+        case 'quarterly':
+          return sum + r.amountCents * 4;
+        case 'yearly':
+          return sum + r.amountCents;
+        default:
+          return sum + r.amountCents * 12;
+      }
+    }, 0);
+
+    // Get category IDs that have budgets
+    const budgetedCategoryIds = new Set(budgetRules.map((r) => r.categoryId));
+
+    // Actual income received so far this year
+    const actualIncome = yearTransactions
+      .filter((t) => t.type === 'income')
+      .reduce((sum, t) => sum + t.amountCents, 0);
+
+    // Actual savings so far this year
+    const actualSavings = yearTransactions
+      .filter((t) => t.type === 'savings')
+      .reduce((sum, t) => sum + t.amountCents, 0);
+
+    // Actual expenses - split by budgeted vs unbudgeted
+    const expenseTransactionsThisYear = yearTransactions.filter((t) => t.type === 'expense');
+
+    const actualBudgetedExpenses = expenseTransactionsThisYear
+      .filter((t) => t.categoryId && budgetedCategoryIds.has(t.categoryId))
+      .reduce((sum, t) => sum + t.amountCents, 0);
+
+    const actualUnbudgetedExpenses = expenseTransactionsThisYear
+      .filter((t) => !t.categoryId || !budgetedCategoryIds.has(t.categoryId))
+      .reduce((sum, t) => sum + t.amountCents, 0);
+
+    // Unallocated = Income - Budget - Savings (money available for unbudgeted spending or cash buffer)
+    const unallocated = Math.round(expectedIncome - totalBudget - expectedSavings);
+
+    return {
+      income: {
+        expected: Math.round(expectedIncome),
+        actual: actualIncome,
+      },
+      budgeted: {
+        expected: Math.round(totalBudget),
+        actual: actualBudgetedExpenses,
+      },
+      unbudgeted: {
+        unallocated: Math.max(0, unallocated), // Available for unbudgeted or cash buffer
+        actual: actualUnbudgetedExpenses,
+      },
+      savings: {
+        expected: Math.round(expectedSavings),
+        actual: actualSavings,
+      },
+      net: unallocated, // Net forecast = unallocated amount
+    };
+  }, [yearlyForecasts, budgetRules, yearTransactions]);
 
   // Calculate upcoming net flow (income - expenses - savings)
   const upcomingNetFlow = useMemo(() => {
@@ -418,156 +405,302 @@ export function OverviewPage() {
         </Alert>
       )}
 
-      {/* Current Position Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Net Worth Cards */}
+      {(() => {
+        // Dummy data for Debt and Investments (to be implemented later)
+        const totalDebt = 2500000; // $25,000 placeholder
+        const totalInvestments = 4500000; // $45,000 placeholder
+        const netWorth = (currentBalance ?? 0) + totalSavings + totalInvestments - totalDebt;
+
+        return (
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+            {/* Cash */}
+            <Link
+              to="/analyse?tab=cashflow"
+              className="flex flex-col rounded-lg border p-4 transition-colors hover:bg-muted/50"
+            >
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Landmark className="h-4 w-4" />
+                Cash
+              </div>
+              <div className="mt-2">
+                {currentBalance !== null ? (
+                  <p className="text-2xl font-bold">{formatCents(currentBalance)}</p>
+                ) : (
+                  <p className="text-2xl font-bold text-muted-foreground">—</p>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {currentBalance !== null ? 'Bank balance' : 'Not set'}
+              </p>
+            </Link>
+
+            {/* Savings */}
+            <Link
+              to="/savings"
+              className="flex flex-col rounded-lg border p-4 transition-colors hover:bg-muted/50"
+            >
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <PiggyBank className="h-4 w-4" />
+                Savings
+              </div>
+              <div className="mt-2">
+                <p className="text-2xl font-bold text-blue-600">{formatCents(totalSavings)}</p>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {emergencyFund && emergencyFundBalance !== null
+                  ? `${formatCents(emergencyFundBalance)} emergency`
+                  : 'Across all goals'}
+              </p>
+            </Link>
+
+            {/* Debt */}
+            <div className="flex flex-col rounded-lg border p-4 opacity-60">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <CreditCard className="h-4 w-4" />
+                Debt
+              </div>
+              <div className="mt-2">
+                <p className="text-2xl font-bold text-red-600">-{formatCents(totalDebt)}</p>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">Coming soon</p>
+            </div>
+
+            {/* Investments */}
+            <div className="flex flex-col rounded-lg border p-4 opacity-60">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <BarChart3 className="h-4 w-4" />
+                Investments
+              </div>
+              <div className="mt-2">
+                <p className="text-2xl font-bold text-green-600">{formatCents(totalInvestments)}</p>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">Coming soon</p>
+            </div>
+
+            {/* Net Worth */}
+            <div className="flex flex-col rounded-lg border p-4 bg-muted/30">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Scale className="h-4 w-4" />
+                Net Worth
+              </div>
+              <div className="mt-2">
+                <p className={`text-2xl font-bold ${netWorth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {netWorth >= 0 ? '' : '-'}{formatCents(Math.abs(netWorth))}
+                </p>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Assets minus liabilities
+              </p>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Cash Flow Cards */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* This Month */}
         <Link
           to="/analyse?tab=cashflow"
-          className="flex min-h-[180px] flex-col rounded-lg border p-5 transition-colors hover:bg-muted/50"
+          className="block rounded-lg border p-5 transition-colors hover:bg-muted/50"
         >
-          {/* Header */}
-          <div>
-            <div className="flex items-center gap-2 font-medium">
-              <Landmark className="h-4 w-4 text-muted-foreground" />
-              Cash Position
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">Your actual money right now</p>
-          </div>
-          {/* Spacer */}
-          <div className="flex-1" />
-          {/* Value */}
-          {currentBalance !== null ? (
-            <p className="text-2xl font-bold">{formatCents(currentBalance)}</p>
-          ) : (
-            <p className="text-2xl font-bold text-muted-foreground">—</p>
-          )}
-          {/* Footer */}
-          <div className="mt-3 border-t pt-3">
-            <p className="text-xs text-muted-foreground">
-              {currentBalance !== null ? 'Balance as of today' : 'Set a balance anchor in Settings'}
-            </p>
-          </div>
-        </Link>
-
-        <Link
-          to="/budget"
-          className="flex min-h-[180px] flex-col rounded-lg border p-5 transition-colors hover:bg-muted/50"
-        >
-          {/* Header */}
-          <div>
-            <div className="flex items-center gap-2 font-medium">
-              <Wallet className="h-4 w-4 text-muted-foreground" />
-              Spendable
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">Budget restricted by incoming</p>
-          </div>
-          {/* Spacer */}
-          <div className="flex-1" />
-          {/* Value */}
-          {safeToSpend.status === 'no-budget' ? (
-            <p className="text-2xl font-bold text-muted-foreground">—</p>
-          ) : safeToSpend.status === 'no-balance' ? (
-            <p className="text-2xl font-bold text-green-600">
-              {formatCents(safeToSpend.remainingBudget)}
-            </p>
-          ) : safeToSpend.amount < 0 ? (
-            <p className="text-2xl font-bold text-red-600">$0</p>
-          ) : safeToSpend.constrainedByBalance ? (
-            <p className="text-2xl font-bold text-amber-600">
-              {formatCents(safeToSpend.amount)}
-            </p>
-          ) : (
-            <p className="text-2xl font-bold text-green-600">
-              {formatCents(safeToSpend.amount)}
-            </p>
-          )}
-          {/* Footer */}
-          <div className="mt-3 border-t pt-3">
-            <p className="text-xs text-muted-foreground">
-              {safeToSpend.status === 'no-budget'
-                ? 'Set up budgets first'
-                : safeToSpend.status === 'no-balance'
-                  ? 'Set balance to verify cash'
-                  : safeToSpend.amount < 0
-                    ? `${formatCents(safeToSpend.amount)} shortfall on budgeted`
-                    : safeToSpend.constrainedByBalance
-                      ? `${formatCents(safeToSpend.remainingBudget)} budgeted but cash is tight`
-                      : `Remaining from ${formatCents(safeToSpend.totalBudgeted)} budget`}
-            </p>
-          </div>
-        </Link>
-
-        <Link
-          to="/budget"
-          className="flex min-h-[180px] flex-col rounded-lg border p-5 transition-colors hover:bg-muted/50"
-        >
-          {/* Header */}
-          <div>
-            <div className="flex items-center gap-2 font-medium">
-              <CircleGauge className="h-4 w-4 text-muted-foreground" />
-              Spending Rate
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">Are you burning budget too fast?</p>
-          </div>
-          {/* Spacer */}
-          <div className="flex-1" />
-          {/* Value */}
-          {budgetHealth.status === 'no-budget' ? (
-            <p className="text-2xl font-bold text-muted-foreground">—</p>
-          ) : budgetHealth.overBudget > 0 ? (
-            <p className="text-2xl font-bold text-red-600">Too Fast</p>
-          ) : budgetHealth.overspending > 0 ? (
-            <p className="text-2xl font-bold text-amber-600">Speeding Up</p>
-          ) : (
-            <p className="text-2xl font-bold text-green-600">On Track</p>
-          )}
-          {/* Footer */}
-          <div className="mt-3 border-t pt-3">
-            <p className="text-xs text-muted-foreground">
-              {budgetHealth.status === 'no-budget'
-                ? 'No budgets set'
-                : budgetHealth.overBudget > 0
-                  ? `${budgetHealth.overBudget} exceeded${budgetHealth.overspending > 0 ? `, ${budgetHealth.overspending} overspending` : ''}`
-                  : budgetHealth.overspending > 0
-                    ? `${budgetHealth.overspending} overspending`
-                    : budgetHealth.watch > 0
-                      ? `${budgetHealth.onTrack} on pace, ${budgetHealth.watch} to watch`
-                      : `All ${budgetHealth.total} on pace`}
-            </p>
-          </div>
-        </Link>
-
-        <Link
-          to="/analyse?tab=savings"
-          className="flex min-h-[180px] flex-col rounded-lg border p-5 transition-colors hover:bg-muted/50"
-        >
-          {/* Header */}
-          <div>
-            <div className="flex items-center gap-2 font-medium">
-              <PiggyBank className="h-4 w-4 text-muted-foreground" />
-              Total Savings
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">Total across all goals</p>
-          </div>
-          {/* Spacer */}
-          <div className="flex-1" />
-          {/* Value */}
-          <p className="text-2xl font-bold text-blue-600">{formatCents(totalSavings)}</p>
-          {/* Footer */}
-          <div className="mt-3 border-t pt-3">
-            {emergencyFund && emergencyFundBalance !== null ? (
-              <p className="text-xs text-muted-foreground">
-                {formatCents(emergencyFundBalance)} emergency fund
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2 font-medium">
+                <Wallet className="h-4 w-4 text-muted-foreground" />
+                {monthName}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Day {monthlyCashFlow.dayOfMonth} of {monthlyCashFlow.daysInMonth}
               </p>
-            ) : (
-              <Link
-                to="/savings"
-                className="text-xs text-muted-foreground underline hover:text-foreground"
-                onClick={(e) => e.stopPropagation()}
-              >
-                No emergency fund
-              </Link>
-            )}
+            </div>
+            <div className="text-right">
+              <span className={`text-lg font-bold font-mono ${monthlyCashFlow.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {monthlyCashFlow.net >= 0 ? '+' : ''}{formatCents(monthlyCashFlow.net)}
+              </span>
+              <p className="text-xs text-muted-foreground">net so far</p>
+            </div>
           </div>
+
+          {(() => {
+            const ref = Math.max(monthlyCashFlow.income.expected, monthlyCashFlow.income.actual, 1);
+            const pct = (val: number) => `${Math.min((val / ref) * 100, 100)}%`;
+            return (
+              <div className="mt-4 space-y-3">
+                {/* Income bar */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                      Income
+                    </span>
+                    <span className="font-mono">
+                      <span className="text-green-600">{formatCents(monthlyCashFlow.income.actual)}</span>
+                      <span className="text-muted-foreground"> / {formatCents(monthlyCashFlow.income.expected)}</span>
+                    </span>
+                  </div>
+                  <div className="relative h-2 rounded-full bg-muted">
+                    <div className="absolute h-2 rounded-full bg-green-500" style={{ width: pct(monthlyCashFlow.income.actual) }} />
+                  </div>
+                </div>
+
+                {/* Budgeted expenses bar */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <Receipt className="h-3.5 w-3.5" />
+                      Budgeted
+                    </span>
+                    <span className="font-mono">
+                      <span className="text-red-600">{formatCents(monthlyCashFlow.budgeted.actual)}</span>
+                      <span className="text-muted-foreground"> / {formatCents(monthlyCashFlow.budgeted.expected)}</span>
+                    </span>
+                  </div>
+                  <div className="relative h-2 rounded-full bg-muted">
+                    <div className="absolute h-2 rounded-full bg-red-200" style={{ width: pct(monthlyCashFlow.budgeted.expected) }} />
+                    <div className="absolute h-2 rounded-full bg-red-500" style={{ width: pct(monthlyCashFlow.budgeted.actual) }} />
+                  </div>
+                </div>
+
+                {/* Unallocated bar */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <CircleAlert className="h-3.5 w-3.5" />
+                      Unallocated
+                    </span>
+                    <span className="font-mono">
+                      <span className="text-amber-600">{formatCents(monthlyCashFlow.unbudgeted.actual)}</span>
+                      <span className="text-muted-foreground"> / {formatCents(monthlyCashFlow.unbudgeted.unallocated)}</span>
+                    </span>
+                  </div>
+                  <div className="relative h-2 rounded-full bg-muted">
+                    <div className="absolute h-2 rounded-full bg-amber-200" style={{ width: pct(monthlyCashFlow.unbudgeted.unallocated) }} />
+                    <div className="absolute h-2 rounded-full bg-amber-500" style={{ width: pct(monthlyCashFlow.unbudgeted.actual) }} />
+                  </div>
+                </div>
+
+                {/* Savings bar */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <PiggyBank className="h-3.5 w-3.5" />
+                      Savings
+                    </span>
+                    <span className="font-mono">
+                      <span className="text-blue-600">{formatCents(monthlyCashFlow.savings.actual)}</span>
+                      <span className="text-muted-foreground"> / {formatCents(monthlyCashFlow.savings.expected)}</span>
+                    </span>
+                  </div>
+                  <div className="relative h-2 rounded-full bg-muted">
+                    <div className="absolute h-2 rounded-full bg-blue-200" style={{ width: pct(monthlyCashFlow.savings.expected) }} />
+                    <div className="absolute h-2 rounded-full bg-blue-500" style={{ width: pct(monthlyCashFlow.savings.actual) }} />
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </Link>
+
+        {/* This Year */}
+        <Link
+          to="/analyse?tab=cashflow"
+          className="block rounded-lg border p-5 transition-colors hover:bg-muted/50"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2 font-medium">
+                <Wallet className="h-4 w-4 text-muted-foreground" />
+                {currentYear}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">Full year</p>
+            </div>
+            <div className="text-right">
+              <span className={`text-lg font-bold font-mono ${yearlyCashFlow.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {yearlyCashFlow.net >= 0 ? '+' : ''}{formatCents(yearlyCashFlow.net)}
+              </span>
+              <p className="text-xs text-muted-foreground">net forecast</p>
+            </div>
+          </div>
+
+          {(() => {
+            const ref = Math.max(yearlyCashFlow.income.expected, yearlyCashFlow.income.actual, 1);
+            const pct = (val: number) => `${Math.min((val / ref) * 100, 100)}%`;
+            return (
+              <div className="mt-4 space-y-3">
+                {/* Income bar */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                      Income
+                    </span>
+                    <span className="font-mono">
+                      <span className="text-green-600">{formatCents(yearlyCashFlow.income.actual)}</span>
+                      <span className="text-muted-foreground"> / {formatCents(yearlyCashFlow.income.expected)}</span>
+                    </span>
+                  </div>
+                  <div className="relative h-2 rounded-full bg-muted">
+                    <div className="absolute h-2 rounded-full bg-green-500" style={{ width: pct(yearlyCashFlow.income.actual) }} />
+                  </div>
+                </div>
+
+                {/* Budgeted expenses bar */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <Receipt className="h-3.5 w-3.5" />
+                      Budgeted
+                    </span>
+                    <span className="font-mono">
+                      <span className="text-red-600">{formatCents(yearlyCashFlow.budgeted.actual)}</span>
+                      <span className="text-muted-foreground"> / {formatCents(yearlyCashFlow.budgeted.expected)}</span>
+                    </span>
+                  </div>
+                  <div className="relative h-2 rounded-full bg-muted">
+                    <div className="absolute h-2 rounded-full bg-red-200" style={{ width: pct(yearlyCashFlow.budgeted.expected) }} />
+                    <div className="absolute h-2 rounded-full bg-red-500" style={{ width: pct(yearlyCashFlow.budgeted.actual) }} />
+                  </div>
+                </div>
+
+                {/* Unallocated bar */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <CircleAlert className="h-3.5 w-3.5" />
+                      Unallocated
+                    </span>
+                    <span className="font-mono">
+                      <span className="text-amber-600">{formatCents(yearlyCashFlow.unbudgeted.actual)}</span>
+                      <span className="text-muted-foreground"> / {formatCents(yearlyCashFlow.unbudgeted.unallocated)}</span>
+                    </span>
+                  </div>
+                  <div className="relative h-2 rounded-full bg-muted">
+                    <div className="absolute h-2 rounded-full bg-amber-200" style={{ width: pct(yearlyCashFlow.unbudgeted.unallocated) }} />
+                    <div className="absolute h-2 rounded-full bg-amber-500" style={{ width: pct(yearlyCashFlow.unbudgeted.actual) }} />
+                  </div>
+                </div>
+
+                {/* Savings bar */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <PiggyBank className="h-3.5 w-3.5" />
+                      Savings
+                    </span>
+                    <span className="font-mono">
+                      <span className="text-blue-600">{formatCents(yearlyCashFlow.savings.actual)}</span>
+                      <span className="text-muted-foreground"> / {formatCents(yearlyCashFlow.savings.expected)}</span>
+                    </span>
+                  </div>
+                  <div className="relative h-2 rounded-full bg-muted">
+                    <div className="absolute h-2 rounded-full bg-blue-200" style={{ width: pct(yearlyCashFlow.savings.expected) }} />
+                    <div className="absolute h-2 rounded-full bg-blue-500" style={{ width: pct(yearlyCashFlow.savings.actual) }} />
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </Link>
       </div>
 
