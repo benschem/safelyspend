@@ -1,7 +1,20 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
-import { CircleGauge, PiggyBank, Target, TrendingUp, Receipt, CircleAlert, ArrowRight, Tags } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  CircleGauge,
+  PiggyBank,
+  Target,
+  TrendingUp,
+  TrendingDown,
+  Receipt,
+  CircleAlert,
+  ArrowRight,
+  Tags,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
@@ -9,7 +22,12 @@ import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
 import { buildCategoryColorMap, CHART_COLORS } from '@/lib/chart-colors';
-import { formatCents } from '@/lib/utils';
+import { cn, formatCents } from '@/lib/utils';
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
 
 interface OutletContext {
   activeScenarioId: string | null;
@@ -22,76 +40,143 @@ export function BudgetPage() {
   const { budgetRules } = useBudgetRules(activeScenarioId);
   const { activeCategories } = useCategories();
 
-  // Get monthly date range
+  // Selected period state - defaults to current month
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date());
+  const [viewMode, setViewMode] = useState<'month' | 'year'>('month');
+  const [calendarOpen, setCalendarOpen] = useState(false);
+
+  // Calculate date range for selected period
   const today = new Date().toISOString().slice(0, 10);
-  const thisMonthStart = today.slice(0, 7) + '-01';
-  const thisMonthEndDate = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10);
-  const { expandedForecasts: monthForecasts } = useForecasts(activeScenarioId, thisMonthStart, thisMonthEndDate);
+  const selectedYear = selectedMonth.getFullYear();
+  const selectedMonthIndex = selectedMonth.getMonth();
 
-  const monthName = new Date().toLocaleDateString('en-AU', { month: 'long' });
+  // Period start/end depends on view mode
+  const periodStart = viewMode === 'year'
+    ? `${selectedYear}-01-01`
+    : `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-01`;
+  const periodEnd = viewMode === 'year'
+    ? `${selectedYear}-12-31`
+    : new Date(selectedYear, selectedMonthIndex + 1, 0).toISOString().slice(0, 10);
 
-  // Monthly cash flow calculation
-  const monthlyCashFlow = useMemo(() => {
-    const now = new Date();
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const dayOfMonth = now.getDate();
+  // Check if viewing current, past, or future period
+  const isCurrentPeriod = viewMode === 'year'
+    ? today.slice(0, 4) === String(selectedYear)
+    : today.slice(0, 7) === periodStart.slice(0, 7);
+  const isFuturePeriod = periodStart > today;
+  const isPastPeriod = periodEnd < today;
+  // For current period, use today; for past use period end; for future use period start (no actuals)
+  const effectiveDate = isCurrentPeriod ? today : (isFuturePeriod ? periodStart : periodEnd);
+
+  const { expandedForecasts: periodForecasts } = useForecasts(activeScenarioId, periodStart, periodEnd);
+
+  const shortMonthName = selectedMonth.toLocaleDateString('en-AU', { month: 'long' });
+  const periodLabel = viewMode === 'year' ? String(selectedYear) : `${shortMonthName} ${selectedYear}`;
+  const [pickerYear, setPickerYear] = useState(selectedYear);
+
+  // Navigation handlers
+  const goToPrevious = () => {
+    if (viewMode === 'year') {
+      setSelectedMonth((prev) => new Date(prev.getFullYear() - 1, prev.getMonth(), 1));
+    } else {
+      setSelectedMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+    }
+  };
+
+  const goToNext = () => {
+    if (viewMode === 'year') {
+      setSelectedMonth((prev) => new Date(prev.getFullYear() + 1, prev.getMonth(), 1));
+    } else {
+      setSelectedMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+    }
+  };
+
+  const goToCurrent = () => {
+    setSelectedMonth(new Date());
+    setViewMode('month');
+  };
+
+  const selectYear = (year: number) => {
+    setSelectedMonth(new Date(year, 0, 1));
+    setViewMode('year');
+    setCalendarOpen(false);
+  };
+
+  // Period cash flow calculation (works for both month and year view)
+  const periodCashFlow = useMemo(() => {
+    const daysInPeriod = viewMode === 'year'
+      ? (selectedYear % 4 === 0 ? 366 : 365)
+      : new Date(selectedYear, selectedMonthIndex + 1, 0).getDate();
+    const effectiveDateObj = new Date(effectiveDate);
+    const dayOfPeriod = isCurrentPeriod
+      ? (viewMode === 'year'
+        ? Math.ceil((effectiveDateObj.getTime() - new Date(selectedYear, 0, 1).getTime()) / (1000 * 60 * 60 * 24)) + 1
+        : effectiveDateObj.getDate())
+      : daysInPeriod;
 
     // Get category IDs that have budgets
     const budgetedCategoryIds = new Set(budgetRules.map((r) => r.categoryId));
 
-    // Expected income for full month
-    const expectedIncome = monthForecasts
+    // Expected income for full period
+    const expectedIncome = periodForecasts
       .filter((f) => f.type === 'income')
       .reduce((sum, f) => sum + f.amountCents, 0);
 
-    // Expected savings for full month
-    const expectedSavings = monthForecasts
+    // Expected savings for full period
+    const expectedSavings = periodForecasts
       .filter((f) => f.type === 'savings')
       .reduce((sum, f) => sum + f.amountCents, 0);
 
-    // Expected expenses for full month
-    const expectedExpenses = monthForecasts
+    // Expected expenses for full period
+    const expectedExpenses = periodForecasts
       .filter((f) => f.type === 'expense')
       .reduce((sum, f) => sum + f.amountCents, 0);
 
-    // Total budget for month (sum of all budget rules, converted to monthly)
+    // Total budget for period (sum of all budget rules, converted to period)
+    const periodMultiplier = viewMode === 'year' ? 12 : 1;
     const totalBudget = budgetRules.reduce((sum, r) => {
+      let monthlyAmount: number;
       switch (r.cadence) {
         case 'weekly':
-          return sum + r.amountCents * 4.33;
+          monthlyAmount = r.amountCents * 4.33;
+          break;
         case 'fortnightly':
-          return sum + r.amountCents * 2.17;
+          monthlyAmount = r.amountCents * 2.17;
+          break;
         case 'monthly':
-          return sum + r.amountCents;
+          monthlyAmount = r.amountCents;
+          break;
         case 'quarterly':
-          return sum + r.amountCents / 3;
+          monthlyAmount = r.amountCents / 3;
+          break;
         case 'yearly':
-          return sum + r.amountCents / 12;
+          monthlyAmount = r.amountCents / 12;
+          break;
         default:
-          return sum + r.amountCents;
+          monthlyAmount = r.amountCents;
       }
+      return sum + monthlyAmount * periodMultiplier;
     }, 0);
 
-    // Actual income received so far
+    // Actual income received so far (or full period if past)
     const actualIncome = allTransactions
-      .filter((t) => t.type === 'income' && t.date >= thisMonthStart && t.date <= today)
+      .filter((t) => t.type === 'income' && t.date >= periodStart && t.date <= effectiveDate)
       .reduce((sum, t) => sum + t.amountCents, 0);
 
     // Actual savings so far
     const actualSavings = allTransactions
-      .filter((t) => t.type === 'savings' && t.date >= thisMonthStart && t.date <= today)
+      .filter((t) => t.type === 'savings' && t.date >= periodStart && t.date <= effectiveDate)
       .reduce((sum, t) => sum + t.amountCents, 0);
 
     // Actual expenses - split by budgeted vs unbudgeted
-    const expenseTransactionsThisMonth = allTransactions.filter(
-      (t) => t.type === 'expense' && t.date >= thisMonthStart && t.date <= today
+    const expenseTransactionsThisPeriod = allTransactions.filter(
+      (t) => t.type === 'expense' && t.date >= periodStart && t.date <= effectiveDate
     );
 
-    const actualBudgetedExpenses = expenseTransactionsThisMonth
+    const actualBudgetedExpenses = expenseTransactionsThisPeriod
       .filter((t) => t.categoryId && budgetedCategoryIds.has(t.categoryId))
       .reduce((sum, t) => sum + t.amountCents, 0);
 
-    const actualUnbudgetedExpenses = expenseTransactionsThisMonth
+    const actualUnbudgetedExpenses = expenseTransactionsThisPeriod
       .filter((t) => !t.categoryId || !budgetedCategoryIds.has(t.categoryId))
       .reduce((sum, t) => sum + t.amountCents, 0);
 
@@ -100,27 +185,36 @@ export function BudgetPage() {
     // Unallocated = Income - Budget - Savings
     const unallocated = Math.round(expectedIncome - totalBudget - expectedSavings);
 
-    // Net for month = Income - Expenses - Savings (actual so far)
+    // Net for period = Income - Expenses - Savings (actual so far)
     const actualNet = actualIncome - actualExpenses - actualSavings;
 
-    // Forecasted remaining income/expenses/savings for the rest of the month
-    const forecastedIncome = monthForecasts
-      .filter((f) => f.type === 'income' && f.date > today)
-      .reduce((sum, f) => sum + f.amountCents, 0);
-    const forecastedExpenses = monthForecasts
-      .filter((f) => f.type === 'expense' && f.date > today)
-      .reduce((sum, f) => sum + f.amountCents, 0);
-    const forecastedSavings = monthForecasts
-      .filter((f) => f.type === 'savings' && f.date > today)
-      .reduce((sum, f) => sum + f.amountCents, 0);
+    // Forecasted remaining income/expenses/savings for the rest of the period
+    // For current period: forecasts after today
+    // For future periods: all forecasts (no actuals exist yet)
+    // For past periods: no remaining forecasts
+    const forecastedIncome = isFuturePeriod
+      ? periodForecasts.filter((f) => f.type === 'income').reduce((sum, f) => sum + f.amountCents, 0)
+      : isCurrentPeriod
+        ? periodForecasts.filter((f) => f.type === 'income' && f.date > effectiveDate).reduce((sum, f) => sum + f.amountCents, 0)
+        : 0;
+    const forecastedExpenses = isFuturePeriod
+      ? periodForecasts.filter((f) => f.type === 'expense').reduce((sum, f) => sum + f.amountCents, 0)
+      : isCurrentPeriod
+        ? periodForecasts.filter((f) => f.type === 'expense' && f.date > effectiveDate).reduce((sum, f) => sum + f.amountCents, 0)
+        : 0;
+    const forecastedSavings = isFuturePeriod
+      ? periodForecasts.filter((f) => f.type === 'savings').reduce((sum, f) => sum + f.amountCents, 0)
+      : isCurrentPeriod
+        ? periodForecasts.filter((f) => f.type === 'savings' && f.date > effectiveDate).reduce((sum, f) => sum + f.amountCents, 0)
+        : 0;
 
-    // Projected net for full month
+    // Projected net for full period
     const projectedNet = actualNet + forecastedIncome - forecastedExpenses - forecastedSavings;
     const forecastedNet = forecastedIncome - forecastedExpenses - forecastedSavings;
 
     return {
-      dayOfMonth,
-      daysInMonth,
+      dayOfPeriod,
+      daysInPeriod,
       income: { expected: Math.round(expectedIncome), actual: actualIncome },
       budgeted: { expected: Math.round(totalBudget), actual: actualBudgetedExpenses },
       unbudgeted: { unallocated: Math.max(0, unallocated), actual: actualUnbudgetedExpenses },
@@ -131,22 +225,30 @@ export function BudgetPage() {
         forecasted: forecastedNet,
       },
     };
-  }, [monthForecasts, budgetRules, allTransactions, thisMonthStart, today]);
+  }, [periodForecasts, budgetRules, allTransactions, periodStart, effectiveDate, selectedYear, selectedMonthIndex, isCurrentPeriod, isFuturePeriod, viewMode]);
 
   // Summary stats for the cards
   const summary = useMemo(() => {
     // Calculate spending pace stats
-    const now = new Date();
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const dayOfMonth = now.getDate();
-    const periodProgress = dayOfMonth / daysInMonth;
+    const daysInPeriod = viewMode === 'year'
+      ? (selectedYear % 4 === 0 ? 366 : 365)
+      : new Date(selectedYear, selectedMonthIndex + 1, 0).getDate();
+    const effectiveDateObj = new Date(effectiveDate);
+    const dayOfPeriod = isCurrentPeriod
+      ? (viewMode === 'year'
+        ? Math.ceil((effectiveDateObj.getTime() - new Date(selectedYear, 0, 1).getTime()) / (1000 * 60 * 60 * 24)) + 1
+        : effectiveDateObj.getDate())
+      : daysInPeriod;
+    const periodProgress = dayOfPeriod / daysInPeriod;
 
     let overCount = 0;
     let overspendingCount = 0;
     let goodCount = 0;
 
+    const periodMultiplier = viewMode === 'year' ? 12 : 1;
+
     for (const rule of budgetRules) {
-      // Convert to monthly for comparison
+      // Convert to period budget
       let monthlyBudget = rule.amountCents;
       switch (rule.cadence) {
         case 'weekly':
@@ -162,13 +264,14 @@ export function BudgetPage() {
           monthlyBudget = rule.amountCents / 12;
           break;
       }
+      const periodBudget = monthlyBudget * periodMultiplier;
 
       const spent = allTransactions
-        .filter((t) => t.type === 'expense' && t.categoryId === rule.categoryId && t.date >= thisMonthStart && t.date <= today)
+        .filter((t) => t.type === 'expense' && t.categoryId === rule.categoryId && t.date >= periodStart && t.date <= effectiveDate)
         .reduce((sum, t) => sum + t.amountCents, 0);
 
-      const spentPercent = monthlyBudget > 0 ? spent / monthlyBudget : 0;
-      const expectedSpend = monthlyBudget * periodProgress;
+      const spentPercent = periodBudget > 0 ? spent / periodBudget : 0;
+      const expectedSpend = periodBudget * periodProgress;
       const burnRate = expectedSpend > 0 ? spent / expectedSpend : 0;
 
       if (spentPercent >= 1) {
@@ -181,7 +284,7 @@ export function BudgetPage() {
     }
 
     // Savings forecasted
-    const totalSavingsForecasted = monthForecasts
+    const totalSavingsForecasted = periodForecasts
       .filter((f) => f.type === 'savings')
       .reduce((sum, f) => sum + f.amountCents, 0);
 
@@ -192,15 +295,16 @@ export function BudgetPage() {
       trackedCount: budgetRules.length,
       totalSavingsForecasted,
     };
-  }, [budgetRules, allTransactions, monthForecasts, thisMonthStart, today]);
+  }, [budgetRules, allTransactions, periodForecasts, periodStart, effectiveDate, selectedYear, selectedMonthIndex, isCurrentPeriod, viewMode]);
 
-  // Calculate this month's spending by category for horizontal bar chart
-  const thisMonthSpending = useMemo(() => {
+  // Calculate selected period's spending by category for horizontal bar chart
+  const periodSpending = useMemo(() => {
     const expenseTransactions = allTransactions.filter(
-      (t) => t.type === 'expense' && t.date >= thisMonthStart && t.date <= today
+      (t) => t.type === 'expense' && t.date >= periodStart && t.date <= effectiveDate
     );
 
-    // Build budget lookup (converted to monthly amounts)
+    // Build budget lookup (converted to period amounts)
+    const periodMultiplier = viewMode === 'year' ? 12 : 1;
     const budgetByCategory = new Map<string, number>();
     for (const rule of budgetRules) {
       let monthlyBudget = rule.amountCents;
@@ -218,7 +322,7 @@ export function BudgetPage() {
           monthlyBudget = rule.amountCents / 12;
           break;
       }
-      budgetByCategory.set(rule.categoryId, Math.round(monthlyBudget));
+      budgetByCategory.set(rule.categoryId, Math.round(monthlyBudget * periodMultiplier));
     }
 
     const byCategory: Record<string, number> = {};
@@ -249,7 +353,7 @@ export function BudgetPage() {
     }
 
     return { categorySpending, total };
-  }, [allTransactions, activeCategories, budgetRules, thisMonthStart, today]);
+  }, [allTransactions, activeCategories, budgetRules, periodStart, effectiveDate, viewMode]);
 
   // Build color map for spending chart
   const colorMap = useMemo(() => {
@@ -260,18 +364,99 @@ export function BudgetPage() {
   if (!activeScenarioId || !activeScenario) {
     return (
       <div>
+        {/* Header */}
+        <div className="mb-4">
+          <h1 className="flex items-center gap-3 text-3xl font-bold">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
+              <Target className="h-5 w-5 text-slate-500" />
+            </div>
+            Budget
+          </h1>
+          <p className="mt-1 text-muted-foreground">Track your spending against your plan</p>
+        </div>
+
+        {/* Month Picker Row */}
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="flex items-center gap-3 text-3xl font-bold">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
-                <Target className="h-5 w-5 text-slate-500" />
-              </div>
-              {monthName}
-            </h1>
-            <p className="mt-1 text-muted-foreground">Day {new Date().getDate()} of {new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()}</p>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={goToPrevious} className="h-8 w-8">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Popover open={calendarOpen} onOpenChange={(open) => {
+              setCalendarOpen(open);
+              if (open) setPickerYear(selectedYear);
+            }}>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" className="text-lg font-semibold">
+                  {periodLabel}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-3" align="start">
+                {/* Year selector - clickable to select whole year */}
+                <div className="mb-3 flex items-center justify-between">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setPickerYear((y) => y - 1)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'year' && pickerYear === selectedYear ? 'default' : 'ghost'}
+                    size="sm"
+                    className="text-sm font-semibold"
+                    onClick={() => selectYear(pickerYear)}
+                  >
+                    {pickerYear}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setPickerYear((y) => y + 1)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+                {/* Month grid */}
+                <div className="grid grid-cols-3 gap-1">
+                  {MONTHS.map((month, index) => {
+                    const isSelected = viewMode === 'month' && pickerYear === selectedYear && index === selectedMonthIndex;
+                    const isCurrent = pickerYear === new Date().getFullYear() && index === new Date().getMonth();
+                    return (
+                      <Button
+                        key={month}
+                        variant={isSelected ? 'default' : 'ghost'}
+                        size="sm"
+                        className={cn(
+                          'h-8 text-xs',
+                          isCurrent && !isSelected && 'border border-primary'
+                        )}
+                        onClick={() => {
+                          setSelectedMonth(new Date(pickerYear, index, 1));
+                          setViewMode('month');
+                          setCalendarOpen(false);
+                        }}
+                      >
+                        {month.slice(0, 3)}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Button variant="ghost" size="icon" onClick={goToNext} className="h-8 w-8">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            {!isCurrentPeriod && (
+              <Button variant="ghost" size="sm" onClick={goToCurrent} className="ml-2 text-xs">
+                Today
+              </Button>
+            )}
           </div>
           <ScenarioSelector />
         </div>
+
         <div className="rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground">Select a scenario to track your budget.</p>
           <Button asChild className="mt-4">
@@ -284,18 +469,100 @@ export function BudgetPage() {
 
   return (
     <div>
-      {/* Page Header - Month name pulled out */}
+      {/* Page Header */}
+      <div className="mb-4">
+        <h1 className="flex items-center gap-3 text-3xl font-bold">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
+            <Target className="h-5 w-5 text-slate-500" />
+          </div>
+          Budget
+        </h1>
+        <p className="mt-1 text-muted-foreground">Track your spending against your plan</p>
+      </div>
+
+      {/* Month Picker Row */}
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
-              <Target className="h-5 w-5 text-slate-500" />
-            </div>
-            {monthName}
-          </h1>
-          <p className="mt-1 text-muted-foreground">
-            Day {monthlyCashFlow.dayOfMonth} of {monthlyCashFlow.daysInMonth}
-          </p>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={goToPrevious} className="h-8 w-8">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Popover open={calendarOpen} onOpenChange={(open) => {
+            setCalendarOpen(open);
+            if (open) setPickerYear(selectedYear);
+          }}>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" className="text-lg font-semibold">
+                {periodLabel}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-3" align="start">
+              {/* Year selector - clickable to select whole year */}
+              <div className="mb-3 flex items-center justify-between">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setPickerYear((y) => y - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'year' && pickerYear === selectedYear ? 'default' : 'ghost'}
+                  size="sm"
+                  className="text-sm font-semibold"
+                  onClick={() => selectYear(pickerYear)}
+                >
+                  {pickerYear}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setPickerYear((y) => y + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              {/* Month grid */}
+              <div className="grid grid-cols-3 gap-1">
+                {MONTHS.map((month, index) => {
+                  const isSelected = viewMode === 'month' && pickerYear === selectedYear && index === selectedMonthIndex;
+                  const isCurrent = pickerYear === new Date().getFullYear() && index === new Date().getMonth();
+                  return (
+                    <Button
+                      key={month}
+                      variant={isSelected ? 'default' : 'ghost'}
+                      size="sm"
+                      className={cn(
+                        'h-8 text-xs',
+                        isCurrent && !isSelected && 'border border-primary'
+                      )}
+                      onClick={() => {
+                        setSelectedMonth(new Date(pickerYear, index, 1));
+                        setViewMode('month');
+                        setCalendarOpen(false);
+                      }}
+                    >
+                      {month.slice(0, 3)}
+                    </Button>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
+          <Button variant="ghost" size="icon" onClick={goToNext} className="h-8 w-8">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          {!isCurrentPeriod && (
+            <Button variant="ghost" size="sm" onClick={goToCurrent} className="ml-2 text-xs">
+              Today
+            </Button>
+          )}
+          {isCurrentPeriod && viewMode === 'month' && (
+            <span className="ml-2 text-sm text-muted-foreground">
+              Day {periodCashFlow.dayOfPeriod} of {periodCashFlow.daysInPeriod}
+            </span>
+          )}
         </div>
         <ScenarioSelector />
       </div>
@@ -308,22 +575,27 @@ export function BudgetPage() {
             <TrendingUp className="h-5 w-5 text-green-500" />
           </div>
           <p className="mt-4 text-sm text-muted-foreground">Income</p>
-          <p className="mt-1 text-xl font-semibold">{formatCents(monthlyCashFlow.income.actual)}</p>
+          <p className="mt-1 text-xl font-semibold">{formatCents(periodCashFlow.income.actual)}</p>
           <div className="mt-3">
             {(() => {
-              const pct = monthlyCashFlow.income.expected > 0
-                ? Math.round((monthlyCashFlow.income.actual / monthlyCashFlow.income.expected) * 100)
+              const pct = periodCashFlow.income.expected > 0
+                ? Math.round((periodCashFlow.income.actual / periodCashFlow.income.expected) * 100)
                 : 0;
+              const markerPos = isPastPeriod ? 100 : isFuturePeriod ? 0 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
               return (
                 <>
-                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                    <span>of {formatCents(monthlyCashFlow.income.expected)} forecast</span>
+                  <div className="flex justify-between text-sm text-muted-foreground mb-1">
+                    <span>of {formatCents(periodCashFlow.income.expected)} forecast</span>
                     <span>{pct}%</span>
                   </div>
-                  <div className="h-1.5 rounded-full bg-green-500/20">
+                  <div className="relative h-1.5 rounded-full bg-green-500/20">
                     <div
                       className="h-1.5 rounded-full bg-green-500"
                       style={{ width: `${Math.min(pct, 100)}%` }}
+                    />
+                    <div
+                      className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
+                      style={{ left: `${Math.min(markerPos, 100)}%` }}
                     />
                   </div>
                 </>
@@ -338,22 +610,27 @@ export function BudgetPage() {
             <Receipt className="h-5 w-5 text-red-500" />
           </div>
           <p className="mt-4 text-sm text-muted-foreground">Budgeted</p>
-          <p className="mt-1 text-xl font-semibold">{formatCents(monthlyCashFlow.budgeted.actual)}</p>
+          <p className="mt-1 text-xl font-semibold">{formatCents(periodCashFlow.budgeted.actual)}</p>
           <div className="mt-3">
             {(() => {
-              const pct = monthlyCashFlow.budgeted.expected > 0
-                ? Math.round((monthlyCashFlow.budgeted.actual / monthlyCashFlow.budgeted.expected) * 100)
+              const pct = periodCashFlow.budgeted.expected > 0
+                ? Math.round((periodCashFlow.budgeted.actual / periodCashFlow.budgeted.expected) * 100)
                 : 0;
+              const markerPos = isPastPeriod ? 100 : isFuturePeriod ? 0 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
               return (
                 <>
-                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                    <span>of {formatCents(monthlyCashFlow.budgeted.expected)} limit</span>
+                  <div className="flex justify-between text-sm text-muted-foreground mb-1">
+                    <span>of {formatCents(periodCashFlow.budgeted.expected)} limit</span>
                     <span>{pct}%</span>
                   </div>
-                  <div className="h-1.5 rounded-full bg-red-500/20">
+                  <div className="relative h-1.5 rounded-full bg-red-500/20">
                     <div
                       className="h-1.5 rounded-full bg-red-500"
                       style={{ width: `${Math.min(pct, 100)}%` }}
+                    />
+                    <div
+                      className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
+                      style={{ left: `${Math.min(markerPos, 100)}%` }}
                     />
                   </div>
                 </>
@@ -368,22 +645,27 @@ export function BudgetPage() {
             <CircleAlert className="h-5 w-5 text-amber-500" />
           </div>
           <p className="mt-4 text-sm text-muted-foreground">Unallocated</p>
-          <p className="mt-1 text-xl font-semibold">{formatCents(monthlyCashFlow.unbudgeted.actual)}</p>
+          <p className="mt-1 text-xl font-semibold">{formatCents(periodCashFlow.unbudgeted.actual)}</p>
           <div className="mt-3">
             {(() => {
-              const pct = monthlyCashFlow.unbudgeted.unallocated > 0
-                ? Math.round((monthlyCashFlow.unbudgeted.actual / monthlyCashFlow.unbudgeted.unallocated) * 100)
+              const pct = periodCashFlow.unbudgeted.unallocated > 0
+                ? Math.round((periodCashFlow.unbudgeted.actual / periodCashFlow.unbudgeted.unallocated) * 100)
                 : 0;
+              const markerPos = isPastPeriod ? 100 : isFuturePeriod ? 0 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
               return (
                 <>
-                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                    <span>of {formatCents(monthlyCashFlow.unbudgeted.unallocated)} available</span>
+                  <div className="flex justify-between text-sm text-muted-foreground mb-1">
+                    <span>of {formatCents(periodCashFlow.unbudgeted.unallocated)} available</span>
                     <span>{pct}%</span>
                   </div>
-                  <div className="h-1.5 rounded-full bg-amber-500/20">
+                  <div className="relative h-1.5 rounded-full bg-amber-500/20">
                     <div
                       className="h-1.5 rounded-full bg-amber-500"
                       style={{ width: `${Math.min(pct, 100)}%` }}
+                    />
+                    <div
+                      className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
+                      style={{ left: `${Math.min(markerPos, 100)}%` }}
                     />
                   </div>
                 </>
@@ -398,22 +680,27 @@ export function BudgetPage() {
             <PiggyBank className="h-5 w-5 text-blue-500" />
           </div>
           <p className="mt-4 text-sm text-muted-foreground">Savings</p>
-          <p className="mt-1 text-xl font-semibold">{formatCents(monthlyCashFlow.savings.actual)}</p>
+          <p className="mt-1 text-xl font-semibold">{formatCents(periodCashFlow.savings.actual)}</p>
           <div className="mt-3">
             {(() => {
-              const pct = monthlyCashFlow.savings.expected > 0
-                ? Math.round((monthlyCashFlow.savings.actual / monthlyCashFlow.savings.expected) * 100)
+              const pct = periodCashFlow.savings.expected > 0
+                ? Math.round((periodCashFlow.savings.actual / periodCashFlow.savings.expected) * 100)
                 : 0;
+              const markerPos = isPastPeriod ? 100 : isFuturePeriod ? 0 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
               return (
                 <>
-                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                    <span>of {formatCents(monthlyCashFlow.savings.expected)} forecast</span>
+                  <div className="flex justify-between text-sm text-muted-foreground mb-1">
+                    <span>of {formatCents(periodCashFlow.savings.expected)} forecast</span>
                     <span>{pct}%</span>
                   </div>
-                  <div className="h-1.5 rounded-full bg-blue-500/20">
+                  <div className="relative h-1.5 rounded-full bg-blue-500/20">
                     <div
                       className="h-1.5 rounded-full bg-blue-500"
                       style={{ width: `${Math.min(pct, 100)}%` }}
+                    />
+                    <div
+                      className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
+                      style={{ left: `${Math.min(markerPos, 100)}%` }}
                     />
                   </div>
                 </>
@@ -427,15 +714,30 @@ export function BudgetPage() {
       <div className="mb-8 grid grid-cols-2 gap-4">
         {/* Net Change */}
         <div className="rounded-xl border bg-card p-5">
-          <p className="text-sm text-muted-foreground">Projected net change</p>
-          <p className={`mt-2 text-3xl font-bold ${monthlyCashFlow.net.projected >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {monthlyCashFlow.net.projected >= 0 ? '+' : ''}{formatCents(monthlyCashFlow.net.projected)}
+          <div className="flex items-center gap-2">
+            {periodCashFlow.net.projected >= 0 ? (
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/10">
+                <TrendingUp className="h-4 w-4 text-green-500" />
+              </div>
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10">
+                <TrendingDown className="h-4 w-4 text-red-500" />
+              </div>
+            )}
+            <p className="text-sm text-muted-foreground">Net change</p>
+          </div>
+          <p className={`mt-2 text-3xl font-bold ${periodCashFlow.net.projected >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {periodCashFlow.net.projected >= 0 ? '+' : ''}{formatCents(periodCashFlow.net.projected)}
           </p>
-          {monthlyCashFlow.net.forecasted !== 0 && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Includes {formatCents(Math.abs(monthlyCashFlow.net.forecasted))} forecasted
-            </p>
-          )}
+          <p className="mt-2 text-sm text-muted-foreground">
+            {isPastPeriod
+              ? 'Actual'
+              : isFuturePeriod
+                ? 'Projected'
+                : periodCashFlow.net.forecasted !== 0
+                  ? `Includes ${formatCents(Math.abs(periodCashFlow.net.forecasted))} forecast`
+                  : 'Actual to date'}
+          </p>
         </div>
 
         {/* Spending Speed */}
@@ -465,7 +767,7 @@ export function BudgetPage() {
               </>
             )}
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="mt-2 text-sm text-muted-foreground">
             {summary.overCount > 0
               ? `${summary.overCount} of ${summary.trackedCount} budgets exceeded`
               : summary.overspendingCount > 0
@@ -475,28 +777,28 @@ export function BudgetPage() {
         </Link>
       </div>
 
-      {/* Monthly Spending by Category - Horizontal Bar Chart */}
+      {/* Spending by Category - Horizontal Bar Chart */}
       <div className="mt-6 rounded-lg border p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Tags className="h-5 w-5 text-muted-foreground" />
-            <h3 className="font-semibold">Spending</h3>
+            <h3 className="font-semibold">{periodLabel} Spending</h3>
           </div>
           <div className="text-right">
-            <p className="text-lg font-bold">{formatCents(thisMonthSpending.total)}</p>
-            <p className="text-xs text-muted-foreground">
-              {thisMonthSpending.categorySpending.length} {thisMonthSpending.categorySpending.length === 1 ? 'category' : 'categories'}
+            <p className="text-lg font-bold">{formatCents(periodSpending.total)}</p>
+            <p className="text-sm text-muted-foreground">
+              {periodSpending.categorySpending.length} {periodSpending.categorySpending.length === 1 ? 'category' : 'categories'}
             </p>
           </div>
         </div>
 
-        {thisMonthSpending.categorySpending.length === 0 ? (
+        {periodSpending.categorySpending.length === 0 ? (
           <div className="mt-6 flex h-24 items-center justify-center text-sm text-muted-foreground">
-            No expenses recorded this month.
+            No expenses recorded {isCurrentPeriod ? (viewMode === 'year' ? 'this year' : 'this month') : `in ${periodLabel}`}.
           </div>
         ) : (
           <div className="mt-6 space-y-3">
-            {thisMonthSpending.categorySpending.map((item) => {
+            {periodSpending.categorySpending.map((item) => {
               const color = colorMap[item.id] ?? CHART_COLORS.uncategorized;
               const hasBudget = item.budget > 0;
               // Percentage of budget spent (capped at 100% for display)
@@ -510,7 +812,7 @@ export function BudgetPage() {
                     <span className="font-mono text-muted-foreground">
                       {formatCents(item.amount)}
                       {hasBudget && (
-                        <span className="text-xs"> / {formatCents(item.budget)}</span>
+                        <span className="text-sm"> / {formatCents(item.budget)}</span>
                       )}
                     </span>
                   </div>
