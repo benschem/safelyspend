@@ -69,11 +69,9 @@ export function SnapshotPage() {
   const [averagePeriod, setAveragePeriod] = useState<AveragePeriod>('monthly');
   const navigate = useNavigate();
 
-  // Handler to navigate to insights with dedicated savings view and 3-year timeframe
-  const goToDedicatedSavingsInsights = useCallback(() => {
-    // Set savings view to dedicated
-    localStorage.setItem('budget:savingsChartView', 'dedicated');
-    // Set view state to 3 years around present
+  // Helper to set up insights navigation with 3-year view
+  const goToSavingsInsights = useCallback((viewType: string) => {
+    localStorage.setItem('budget:savingsChartView', viewType);
     localStorage.setItem('budget:viewState', JSON.stringify({
       mode: 'around-present',
       amount: 3,
@@ -289,7 +287,7 @@ export function SnapshotPage() {
           {/* Dedicated Savings */}
           <button
             type="button"
-            onClick={goToDedicatedSavingsInsights}
+            onClick={() => goToSavingsInsights('dedicated')}
             className="group cursor-pointer rounded-xl border bg-card p-5 text-left transition-colors hover:bg-muted/50"
           >
             <div className="flex items-center justify-between">
@@ -307,9 +305,10 @@ export function SnapshotPage() {
           </button>
 
           {/* Emergency Fund */}
-          <Link
-            to="/savings"
-            className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50"
+          <button
+            type="button"
+            onClick={() => goToSavingsInsights(emergencyFund?.id ?? 'total')}
+            className="group cursor-pointer rounded-xl border bg-card p-5 text-left transition-colors hover:bg-muted/50"
           >
             <div className="flex items-center justify-between">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10">
@@ -323,7 +322,7 @@ export function SnapshotPage() {
             </p>
             <div className="mt-3 mb-2 h-px bg-border" />
             <p className="text-sm text-muted-foreground">For life's surprises</p>
-          </Link>
+          </button>
 
           {/* Super - Coming Soon */}
           <div className="rounded-xl border bg-card p-5 opacity-50">
