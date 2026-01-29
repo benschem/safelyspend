@@ -621,32 +621,30 @@ export function BudgetPage() {
           </div>
           <p className="mt-4 text-sm text-muted-foreground">Income</p>
           <p className="mt-1 text-xl font-semibold">{formatCents(periodCashFlow.income.actual)}</p>
-          <div className="mt-3">
-            {(() => {
-              const pct = periodCashFlow.income.expected > 0
-                ? Math.round((periodCashFlow.income.actual / periodCashFlow.income.expected) * 100)
-                : 0;
-              const markerPos = isPastPeriod ? 100 : isFuturePeriod ? 0 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
-              return (
-                <>
-                  <div className="flex justify-between text-sm text-muted-foreground mb-1">
-                    <span>of {formatCents(periodCashFlow.income.expected)} forecast</span>
-                    <span>{pct}%</span>
-                  </div>
-                  <div className="relative h-1.5 rounded-full bg-green-500/20">
-                    <div
-                      className="h-1.5 rounded-full bg-green-500"
-                      style={{ width: `${Math.min(pct, 100)}%` }}
-                    />
-                    <div
-                      className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
-                      style={{ left: `${Math.min(markerPos, 100)}%` }}
-                    />
-                  </div>
-                </>
-              );
-            })()}
-          </div>
+          <div className="mt-3 mb-3 h-px bg-border" />
+          {(() => {
+            const pct = periodCashFlow.income.expected > 0
+              ? Math.round((periodCashFlow.income.actual / periodCashFlow.income.expected) * 100)
+              : 0;
+            const markerPos = isPastPeriod ? 100 : isFuturePeriod ? 0 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
+            return (
+              <>
+                <div className="relative h-1.5 rounded-full bg-green-500/20">
+                  <div
+                    className="h-1.5 rounded-full bg-green-500"
+                    style={{ width: `${Math.min(pct, 100)}%` }}
+                  />
+                  <div
+                    className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
+                    style={{ left: `${Math.min(markerPos, 100)}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {pct}% of {formatCents(periodCashFlow.income.expected)} forecast
+                </p>
+              </>
+            );
+          })()}
         </div>
 
         {/* Budgeted Spending */}
@@ -656,32 +654,30 @@ export function BudgetPage() {
           </div>
           <p className="mt-4 text-sm text-muted-foreground">Budgeted</p>
           <p className="mt-1 text-xl font-semibold">{formatCents(periodCashFlow.budgeted.actual)}</p>
-          <div className="mt-3">
-            {(() => {
-              const pct = periodCashFlow.budgeted.expected > 0
-                ? Math.round((periodCashFlow.budgeted.actual / periodCashFlow.budgeted.expected) * 100)
-                : 0;
-              const markerPos = isPastPeriod ? 100 : isFuturePeriod ? 0 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
-              return (
-                <>
-                  <div className="flex justify-between text-sm text-muted-foreground mb-1">
-                    <span>of {formatCents(periodCashFlow.budgeted.expected)} limit</span>
-                    <span>{pct}%</span>
-                  </div>
-                  <div className="relative h-1.5 rounded-full bg-red-500/20">
-                    <div
-                      className="h-1.5 rounded-full bg-red-500"
-                      style={{ width: `${Math.min(pct, 100)}%` }}
-                    />
-                    <div
-                      className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
-                      style={{ left: `${Math.min(markerPos, 100)}%` }}
-                    />
-                  </div>
-                </>
-              );
-            })()}
-          </div>
+          <div className="mt-3 mb-3 h-px bg-border" />
+          {(() => {
+            const pct = periodCashFlow.budgeted.expected > 0
+              ? Math.round((periodCashFlow.budgeted.actual / periodCashFlow.budgeted.expected) * 100)
+              : 0;
+            const markerPos = isPastPeriod ? 100 : isFuturePeriod ? 0 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
+            return (
+              <>
+                <div className="relative h-1.5 rounded-full bg-red-500/20">
+                  <div
+                    className="h-1.5 rounded-full bg-red-500"
+                    style={{ width: `${Math.min(pct, 100)}%` }}
+                  />
+                  <div
+                    className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
+                    style={{ left: `${Math.min(markerPos, 100)}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {pct}% of {formatCents(periodCashFlow.budgeted.expected)} limit
+                </p>
+              </>
+            );
+          })()}
         </div>
 
         {/* Unallocated Spending */}
@@ -691,32 +687,30 @@ export function BudgetPage() {
           </div>
           <p className="mt-4 text-sm text-muted-foreground">Unallocated</p>
           <p className="mt-1 text-xl font-semibold">{formatCents(periodCashFlow.unbudgeted.actual)}</p>
-          <div className="mt-3">
-            {(() => {
-              const pct = periodCashFlow.unbudgeted.unallocated > 0
-                ? Math.round((periodCashFlow.unbudgeted.actual / periodCashFlow.unbudgeted.unallocated) * 100)
-                : 0;
-              const markerPos = isPastPeriod ? 100 : isFuturePeriod ? 0 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
-              return (
-                <>
-                  <div className="flex justify-between text-sm text-muted-foreground mb-1">
-                    <span>of {formatCents(periodCashFlow.unbudgeted.unallocated)} available</span>
-                    <span>{pct}%</span>
-                  </div>
-                  <div className="relative h-1.5 rounded-full bg-amber-500/20">
-                    <div
-                      className="h-1.5 rounded-full bg-amber-500"
-                      style={{ width: `${Math.min(pct, 100)}%` }}
-                    />
-                    <div
-                      className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
-                      style={{ left: `${Math.min(markerPos, 100)}%` }}
-                    />
-                  </div>
-                </>
-              );
-            })()}
-          </div>
+          <div className="mt-3 mb-3 h-px bg-border" />
+          {(() => {
+            const pct = periodCashFlow.unbudgeted.unallocated > 0
+              ? Math.round((periodCashFlow.unbudgeted.actual / periodCashFlow.unbudgeted.unallocated) * 100)
+              : 0;
+            const markerPos = isPastPeriod ? 100 : isFuturePeriod ? 0 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
+            return (
+              <>
+                <div className="relative h-1.5 rounded-full bg-amber-500/20">
+                  <div
+                    className="h-1.5 rounded-full bg-amber-500"
+                    style={{ width: `${Math.min(pct, 100)}%` }}
+                  />
+                  <div
+                    className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
+                    style={{ left: `${Math.min(markerPos, 100)}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {pct}% of {formatCents(periodCashFlow.unbudgeted.unallocated)} available
+                </p>
+              </>
+            );
+          })()}
         </div>
 
         {/* Savings */}
@@ -726,32 +720,30 @@ export function BudgetPage() {
           </div>
           <p className="mt-4 text-sm text-muted-foreground">Savings</p>
           <p className="mt-1 text-xl font-semibold">{formatCents(periodCashFlow.savings.actual)}</p>
-          <div className="mt-3">
-            {(() => {
-              const pct = periodCashFlow.savings.expected > 0
-                ? Math.round((periodCashFlow.savings.actual / periodCashFlow.savings.expected) * 100)
-                : 0;
-              const markerPos = isPastPeriod ? 100 : isFuturePeriod ? 0 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
-              return (
-                <>
-                  <div className="flex justify-between text-sm text-muted-foreground mb-1">
-                    <span>of {formatCents(periodCashFlow.savings.expected)} forecast</span>
-                    <span>{pct}%</span>
-                  </div>
-                  <div className="relative h-1.5 rounded-full bg-blue-500/20">
-                    <div
-                      className="h-1.5 rounded-full bg-blue-500"
-                      style={{ width: `${Math.min(pct, 100)}%` }}
-                    />
-                    <div
-                      className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
-                      style={{ left: `${Math.min(markerPos, 100)}%` }}
-                    />
-                  </div>
-                </>
-              );
-            })()}
-          </div>
+          <div className="mt-3 mb-3 h-px bg-border" />
+          {(() => {
+            const pct = periodCashFlow.savings.expected > 0
+              ? Math.round((periodCashFlow.savings.actual / periodCashFlow.savings.expected) * 100)
+              : 0;
+            const markerPos = isPastPeriod ? 100 : isFuturePeriod ? 0 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
+            return (
+              <>
+                <div className="relative h-1.5 rounded-full bg-blue-500/20">
+                  <div
+                    className="h-1.5 rounded-full bg-blue-500"
+                    style={{ width: `${Math.min(pct, 100)}%` }}
+                  />
+                  <div
+                    className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
+                    style={{ left: `${Math.min(markerPos, 100)}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {pct}% of {formatCents(periodCashFlow.savings.expected)} forecast
+                </p>
+              </>
+            );
+          })()}
         </div>
       </div>
 
