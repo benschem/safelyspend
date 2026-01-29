@@ -123,7 +123,7 @@ export function CategoryImportRulesPage() {
   };
 
   return (
-    <div className="max-w-2xl">
+    <div className="mx-auto max-w-6xl">
       <div className="mb-6">
         <Button variant="ghost" size="sm" className="-ml-2" asChild>
           <Link to="/categories">
@@ -133,13 +133,13 @@ export function CategoryImportRulesPage() {
         </Button>
       </div>
 
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
               <FileInput className="h-5 w-5 text-slate-500" />
             </div>
-            Category Import Rules
+            Import Rules
           </h1>
           <p className="mt-1 text-muted-foreground">
             Auto-categorise imported transactions based on description matching.
@@ -152,81 +152,88 @@ export function CategoryImportRulesPage() {
       </div>
 
       {rules.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">No category rules yet.</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Rules are applied automatically when you import transactions.
-          </p>
-          <Button className="mt-4" onClick={openAddRule}>
-            Create your first rule
-          </Button>
+        <div className="space-y-4">
+          <Alert variant="info">
+            Rules are applied automatically when you import transactions. The first matching rule wins.
+          </Alert>
+          <div className="rounded-lg border border-dashed p-8 text-center">
+            <p className="text-muted-foreground">No import rules yet.</p>
+            <Button className="mt-4" onClick={openAddRule}>
+              Create your first rule
+            </Button>
+          </div>
         </div>
       ) : (
-        <div className="mt-6 space-y-2">
-          {rules.map((rule) => (
-            <div
-              key={rule.id}
-              className={`flex items-center gap-3 rounded-lg border p-4 ${
-                !rule.enabled ? 'opacity-50' : ''
-              }`}
-            >
-              <GripVertical className="h-4 w-4 text-muted-foreground" />
+        <div className="mt-6">
+          <div className="rounded-xl border bg-card">
+            <div className="divide-y">
+              {rules.map((rule) => (
+                <div
+                  key={rule.id}
+                  className={`flex flex-col gap-3 p-4 sm:flex-row sm:items-center ${
+                    !rule.enabled ? 'opacity-50' : ''
+                  }`}
+                >
+                  <div className="hidden sm:block">
+                    <GripVertical className="h-4 w-4 text-muted-foreground" />
+                  </div>
 
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="font-medium">{rule.name}</p>
-                  {rule.transactionType && (
-                    <span className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                      {rule.transactionType}
-                    </span>
-                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium">{rule.name}</p>
+                      {rule.transactionType && (
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                          {rule.transactionType}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {rule.matchType === 'contains' && 'Contains'}
+                      {rule.matchType === 'startsWith' && 'Starts with'}
+                      {rule.matchType === 'equals' && 'Equals'}
+                      {' "'}
+                      <span className="font-mono">{rule.matchValue}</span>
+                      {'" → '}
+                      <span className="font-medium text-foreground">{getCategoryName(rule.categoryId)}</span>
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 sm:justify-end">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground sm:hidden">
+                        {rule.enabled ? 'Enabled' : 'Disabled'}
+                      </span>
+                      <Switch
+                        checked={rule.enabled}
+                        onCheckedChange={(enabled) => handleToggleEnabled(rule.id, enabled)}
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => openEditRule(rule)} title="Edit">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+
+                      <Button
+                        variant={deletingRuleId === rule.id ? 'destructive' : 'ghost'}
+                        size="sm"
+                        onClick={() => handleDeleteRule(rule.id)}
+                        onBlur={() => setTimeout(() => setDeletingRuleId(null), 200)}
+                        title={deletingRuleId === rule.id ? 'Click again to confirm' : 'Delete'}
+                      >
+                        {deletingRuleId === rule.id ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {rule.matchType === 'contains' && 'Contains'}
-                  {rule.matchType === 'startsWith' && 'Starts with'}
-                  {rule.matchType === 'equals' && 'Equals'}
-                  {' "'}
-                  {rule.matchValue}
-                  {'" → '}
-                  {getCategoryName(rule.categoryId)}
-                </p>
-              </div>
-
-              <Switch
-                checked={rule.enabled}
-                onCheckedChange={(enabled) => handleToggleEnabled(rule.id, enabled)}
-              />
-
-              <Button variant="ghost" size="sm" onClick={() => openEditRule(rule)} title="Edit">
-                <Pencil className="h-4 w-4" />
-              </Button>
-
-              {deletingRuleId === rule.id ? (
-                <>
-                  <Button variant="outline" size="sm" onClick={() => setDeletingRuleId(null)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleDeleteRule(rule.id)}
-                  >
-                    Confirm
-                  </Button>
-                </>
-              ) : (
-                <Button variant="ghost" size="sm" onClick={() => handleDeleteRule(rule.id)} title="Delete">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
+              ))}
             </div>
-          ))}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Rules are applied in order (top to bottom). The first matching rule wins.
+          </p>
         </div>
       )}
-
-      <p className="mt-4 text-xs text-muted-foreground">
-        Rules are applied in order (top to bottom). The first matching rule wins.
-      </p>
 
       {/* Add/Edit Rule Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
