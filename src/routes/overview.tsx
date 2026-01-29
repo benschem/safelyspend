@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Link, useOutletContext } from 'react-router';
+import { useMemo, useState, useCallback } from 'react';
+import { Link, useOutletContext, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import {
@@ -67,6 +67,21 @@ export function SnapshotPage() {
   const { activeScenario } = useScenarios();
   const { getActiveAnchor } = useBalanceAnchors();
   const [averagePeriod, setAveragePeriod] = useState<AveragePeriod>('monthly');
+  const navigate = useNavigate();
+
+  // Handler to navigate to insights with dedicated savings view and 3-year timeframe
+  const goToDedicatedSavingsInsights = useCallback(() => {
+    // Set savings view to dedicated
+    localStorage.setItem('budget:savingsChartView', 'dedicated');
+    // Set view state to 3 years around present
+    localStorage.setItem('budget:viewState', JSON.stringify({
+      mode: 'around-present',
+      amount: 3,
+      unit: 'years',
+      lastPresetMode: 'around-present',
+    }));
+    navigate('/insights?tab=savings');
+  }, [navigate]);
 
   // Fixed date ranges - no user selection
   const today = new Date().toISOString().slice(0, 10);
@@ -272,9 +287,10 @@ export function SnapshotPage() {
           </Link>
 
           {/* Dedicated Savings */}
-          <Link
-            to="/savings"
-            className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50"
+          <button
+            type="button"
+            onClick={goToDedicatedSavingsInsights}
+            className="group rounded-xl border bg-card p-5 text-left transition-colors hover:bg-muted/50"
           >
             <div className="flex items-center justify-between">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10">
@@ -288,7 +304,7 @@ export function SnapshotPage() {
             </p>
             <div className="mt-3 mb-2 h-px bg-border" />
             <p className="text-sm text-muted-foreground">For your future goals</p>
-          </Link>
+          </button>
 
           {/* Emergency Fund */}
           <Link
