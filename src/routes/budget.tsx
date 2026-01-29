@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Pencil, Check, X, Trash2, Plus, Target, CircleDollarSign, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Pencil, Check, X, Trash2, Plus, Target, CircleDollarSign, NotebookTabs, AlertTriangle, CircleGauge, CheckCircle2 } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
@@ -733,7 +733,7 @@ export function BudgetPage() {
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
             <Target className="h-7 w-7" />
-            Budgets
+            Budget
           </h1>
           <p className="mt-1 text-muted-foreground">Track spending against your targets</p>
         </div>
@@ -760,8 +760,8 @@ export function BudgetPage() {
 
           <div className="rounded-lg border bg-card p-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <TrendingUp className="h-4 w-4" />
-              Total Budget
+              <NotebookTabs className="h-4 w-4" />
+              Total Budgeted
             </div>
             <p className="mt-1 text-xl font-bold">{formatCents(summary.totalBudget)}</p>
             <p className="text-xs text-muted-foreground">{summary.trackedCount} categories tracked</p>
@@ -786,8 +786,8 @@ export function BudgetPage() {
 
           <div className="rounded-lg border bg-card p-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <CheckCircle2 className="h-4 w-4" />
-              Pace Check
+              <CircleGauge className="h-4 w-4" />
+              Spend per Category
             </div>
             <p className="mt-1 text-xl font-bold text-green-600">{summary.goodCount}/{summary.trackedCount} on track</p>
             <p className="text-xs text-muted-foreground">
