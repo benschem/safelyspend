@@ -20,6 +20,7 @@ import { CategoryImportRulesPage } from '@/routes/categories/import-rules';
 import { SavingsIndexPage } from '@/routes/savings/index';
 import { AnalysePage } from '@/routes/analyse';
 import { ScenariosIndexPage } from '@/routes/scenarios/index';
+import { SpendingLimitsPage } from '@/routes/spending-limits/index';
 import { SettingsPage } from '@/routes/settings';
 
 const router = createBrowserRouter([
@@ -44,7 +45,10 @@ const router = createBrowserRouter([
       { path: 'forecasts/recurring/new', element: <RecurringNewPage /> },
       { path: 'forecasts/recurring/:id', element: <RecurringDetailPage /> },
 
-      // Budget (plan)
+      // Spending Limits (plan)
+      { path: 'spending-limits', element: <SpendingLimitsPage /> },
+
+      // Budget (track)
       { path: 'budget', element: <BudgetPage /> },
 
       // Transactions (track)
