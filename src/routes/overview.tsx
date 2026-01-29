@@ -10,10 +10,10 @@ import {
   Sprout,
   HandCoins,
   TrendingUp,
+  Receipt,
 } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useTransactions } from '@/hooks/use-transactions';
-import { useForecasts } from '@/hooks/use-forecasts';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { ScenarioSelector } from '@/components/scenario-selector';
@@ -34,23 +34,6 @@ const AU_NET_WORTH_PERCENTILES = [
   { percentile: 90, value: 220000000 },  // $2.2M
   { percentile: 99, value: 500000000 },  // $5M
   { percentile: 100, value: 1000000000 }, // $10M+
-];
-
-// Australian fortnightly income percentiles (approximate, ABS data)
-// Values in cents (fortnightly gross income)
-const AU_INCOME_PERCENTILES = [
-  { percentile: 0, value: 0 },           // $0
-  { percentile: 10, value: 80000 },      // $800/fn
-  { percentile: 20, value: 140000 },     // $1,400/fn
-  { percentile: 30, value: 190000 },     // $1,900/fn
-  { percentile: 40, value: 240000 },     // $2,400/fn
-  { percentile: 50, value: 300000 },     // $3,000/fn (median)
-  { percentile: 60, value: 360000 },     // $3,600/fn
-  { percentile: 70, value: 440000 },     // $4,400/fn
-  { percentile: 80, value: 560000 },     // $5,600/fn
-  { percentile: 90, value: 760000 },     // $7,600/fn
-  { percentile: 99, value: 1500000 },    // $15,000/fn
-  { percentile: 100, value: 3000000 },   // $30,000+/fn
 ];
 
 function getPercentile(value: number, percentiles: typeof AU_NET_WORTH_PERCENTILES): number {
@@ -82,20 +65,8 @@ export function SnapshotPage() {
   // Fixed date ranges - no user selection
   const today = new Date().toISOString().slice(0, 10);
 
-  // Calculate current fortnight date range
-  const now = new Date();
-  const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
-  const fortnightNumber = Math.floor(dayOfYear / 14);
-  const fortnightStart = new Date(now.getFullYear(), 0, 1 + fortnightNumber * 14);
-  const fortnightEnd = new Date(fortnightStart.getTime() + 13 * 86400000);
-  const fnStartStr = fortnightStart.toISOString().slice(0, 10);
-  const fnEndStr = fortnightEnd.toISOString().slice(0, 10);
-
-  // Get all transactions for savings calculation
+  // Get all transactions for calculations
   const { allTransactions } = useTransactions();
-
-  // Get forecasts for current fortnight
-  const { expandedForecasts: fnForecasts } = useForecasts(activeScenarioId, fnStartStr, fnEndStr);
 
   // Calculate total savings (all time)
   const totalSavings = useMemo(() => {
@@ -142,12 +113,42 @@ export function SnapshotPage() {
   const totalInvestments = 0;
   const netWorth = (currentBalance ?? 0) + totalSavings + totalInvestments - totalDebt;
 
-  // Calculate fortnightly income (from forecasts)
-  const fortnightlyIncome = useMemo(() => {
-    return fnForecasts
-      .filter((f) => f.type === 'income')
-      .reduce((sum, f) => sum + f.amountCents, 0);
-  }, [fnForecasts]);
+  // Calculate monthly averages from historical data
+  const monthlyAverages = useMemo(() => {
+    if (allTransactions.length === 0) {
+      return { income: 0, expenses: 0, savings: 0 };
+    }
+
+    // Find date range of transactions
+    const dates = allTransactions.map((t) => t.date).sort();
+    const firstDate = new Date(dates[0]!);
+    const lastDate = new Date(dates[dates.length - 1]!);
+
+    // Calculate months between first and last transaction (minimum 1 month)
+    const monthsDiff = Math.max(
+      1,
+      (lastDate.getFullYear() - firstDate.getFullYear()) * 12 +
+        (lastDate.getMonth() - firstDate.getMonth()) + 1
+    );
+
+    const totalIncome = allTransactions
+      .filter((t) => t.type === 'income')
+      .reduce((sum, t) => sum + t.amountCents, 0);
+
+    const totalExpenses = allTransactions
+      .filter((t) => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amountCents, 0);
+
+    const totalSavingsAmount = allTransactions
+      .filter((t) => t.type === 'savings')
+      .reduce((sum, t) => sum + t.amountCents, 0);
+
+    return {
+      income: Math.round(totalIncome / monthsDiff),
+      expenses: Math.round(totalExpenses / monthsDiff),
+      savings: Math.round(totalSavingsAmount / monthsDiff),
+    };
+  }, [allTransactions]);
 
   if (!activeScenarioId || !activeScenario) {
     return (
@@ -197,16 +198,15 @@ export function SnapshotPage() {
           </Alert>
         )}
 
-        {/* Stats Grid */}
-        <div className="grid gap-8 grid-cols-2 lg:grid-cols-3 max-w-4xl mx-auto">
-          {/* Net Worth */}
+        {/* Net Worth - Top Row */}
+        <div className="flex justify-center">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
-              <HandCoins className="h-6 w-6 text-emerald-500" />
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-muted">
+              <HandCoins className="h-7 w-7 text-emerald-500" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Net Worth</p>
-              <p className={`text-2xl font-bold ${netWorth >= 0 ? '' : 'text-red-500'}`}>
+              <p className={`text-3xl font-bold ${netWorth >= 0 ? '' : 'text-red-500'}`}>
                 {netWorth >= 0 ? '' : '-'}{formatCents(Math.abs(netWorth))}
               </p>
               <p className="text-xs text-muted-foreground">
@@ -214,23 +214,10 @@ export function SnapshotPage() {
               </p>
             </div>
           </div>
+        </div>
 
-          {/* Income This Fortnight */}
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
-              <TrendingUp className="h-6 w-6 text-green-500" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Income This Fortnight</p>
-              <p className="text-2xl font-bold">
-                {formatCents(fortnightlyIncome)}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                More than {getPercentile(fortnightlyIncome, AU_INCOME_PERCENTILES)}% of Australians
-              </p>
-            </div>
-          </div>
-
+        {/* Assets Row: Cash, Savings, Debt, Investments */}
+        <div className="grid gap-6 grid-cols-2 lg:grid-cols-4 max-w-4xl mx-auto">
           {/* Cash */}
           <Link to="/analyse?tab=cashflow" className="flex items-center gap-4 group">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
@@ -286,6 +273,45 @@ export function SnapshotPage() {
               <p className="text-sm text-muted-foreground">Investments</p>
               <p className="text-2xl font-bold text-muted-foreground">—</p>
               <p className="text-xs text-muted-foreground">Coming soon</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Monthly Averages Row */}
+        <div className="grid gap-6 grid-cols-3 max-w-3xl mx-auto">
+          {/* Average Income */}
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
+              <TrendingUp className="h-6 w-6 text-green-500" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Income</p>
+              <p className="text-2xl font-bold">{formatCents(monthlyAverages.income)}</p>
+              <p className="text-xs text-muted-foreground">Average per month</p>
+            </div>
+          </div>
+
+          {/* Average Expenses */}
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
+              <Receipt className="h-6 w-6 text-red-500" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Expenses</p>
+              <p className="text-2xl font-bold">{formatCents(monthlyAverages.expenses)}</p>
+              <p className="text-xs text-muted-foreground">Average per month</p>
+            </div>
+          </div>
+
+          {/* Average Savings */}
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
+              <PiggyBank className="h-6 w-6 text-blue-500" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Savings</p>
+              <p className="text-2xl font-bold">{formatCents(monthlyAverages.savings)}</p>
+              <p className="text-xs text-muted-foreground">Average per month</p>
             </div>
           </div>
         </div>
