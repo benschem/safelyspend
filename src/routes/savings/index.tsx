@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Pencil, Trash2, Check, X, PiggyBank } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, PiggyBank, Ambulance } from 'lucide-react';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useTransactions } from '@/hooks/use-transactions';
 import { SavingsGoalDialog } from '@/components/dialogs/savings-goal-dialog';
@@ -105,6 +105,13 @@ export function SavingsIndexPage() {
     [deletingId, deleteSavingsGoal],
   );
 
+  const handleSetEmergencyFund = useCallback(
+    (id: string, isEmergencyFund: boolean) => {
+      updateSavingsGoal(id, { isEmergencyFund });
+    },
+    [updateSavingsGoal],
+  );
+
   // Close editors on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -137,7 +144,14 @@ export function SavingsIndexPage() {
               />
             );
           }
-          return <span className="font-medium">{goal.name}</span>;
+          return (
+            <span className="flex items-center gap-2 font-medium">
+              {goal.isEmergencyFund && (
+                <Ambulance className="h-4 w-4 text-muted-foreground" />
+              )}
+              {goal.name}
+            </span>
+          );
         },
       },
       {
@@ -262,6 +276,14 @@ export function SavingsIndexPage() {
               <Button
                 variant="ghost"
                 size="sm"
+                onClick={() => handleSetEmergencyFund(goal.id, !goal.isEmergencyFund)}
+                title={goal.isEmergencyFund ? 'Remove as emergency fund' : 'Set as emergency fund'}
+              >
+                <Ambulance className={`h-4 w-4 ${goal.isEmergencyFund ? 'text-blue-600' : ''}`} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => startEditing(goal)}
                 title="Edit"
               >
@@ -281,7 +303,7 @@ export function SavingsIndexPage() {
         },
       },
     ],
-    [editingId, editName, editTarget, editDeadline, deletingId, startEditing, cancelEditing, saveEditing, handleDelete],
+    [editingId, editName, editTarget, editDeadline, deletingId, startEditing, cancelEditing, saveEditing, handleDelete, handleSetEmergencyFund],
   );
 
   return (

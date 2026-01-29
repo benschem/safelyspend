@@ -156,6 +156,7 @@ export interface SavingsGoal extends BaseEntity {
   deadline?: string;
   annualInterestRate?: number; // Percentage, e.g., 4.5 for 4.5%
   compoundingFrequency?: CompoundingFrequency; // Defaults to 'monthly' if rate is set
+  isEmergencyFund?: boolean; // Only one goal can be marked as emergency fund
 }
 
 // -----------------------------------------------------------------------------

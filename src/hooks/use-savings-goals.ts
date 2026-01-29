@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import type { SavingsGoal, CreateEntity } from '@/lib/types';
@@ -15,7 +15,21 @@ export function useSavingsGoals() {
 
   const isLoading = savingsGoals === undefined;
 
+  // Get the current emergency fund goal (if any)
+  const emergencyFund = useMemo(
+    () => savingsGoals.find((goal) => goal.isEmergencyFund) ?? null,
+    [savingsGoals],
+  );
+
   const addSavingsGoal = useCallback(async (data: CreateEntity<SavingsGoal>) => {
+    // If this goal is being set as emergency fund, clear the flag from any existing one
+    if (data.isEmergencyFund) {
+      const existingEmergencyFund = await db.savingsGoals.filter((g) => g.isEmergencyFund === true).first();
+      if (existingEmergencyFund) {
+        await db.savingsGoals.update(existingEmergencyFund.id, { isEmergencyFund: false, updatedAt: now() });
+      }
+    }
+
     const timestamp = now();
     const newGoal: SavingsGoal = {
       id: generateId(),
@@ -30,6 +44,14 @@ export function useSavingsGoals() {
 
   const updateSavingsGoal = useCallback(
     async (id: string, updates: Partial<Omit<SavingsGoal, 'id' | 'userId' | 'createdAt'>>) => {
+      // If this goal is being set as emergency fund, clear the flag from any existing one
+      if (updates.isEmergencyFund) {
+        const existingEmergencyFund = await db.savingsGoals.filter((g) => g.isEmergencyFund === true && g.id !== id).first();
+        if (existingEmergencyFund) {
+          await db.savingsGoals.update(existingEmergencyFund.id, { isEmergencyFund: false, updatedAt: now() });
+        }
+      }
+
       await db.savingsGoals.update(id, { ...updates, updatedAt: now() });
     },
     [],
@@ -49,6 +71,7 @@ export function useSavingsGoals() {
   return {
     savingsGoals,
     isLoading,
+    emergencyFund,
     addSavingsGoal,
     updateSavingsGoal,
     deleteSavingsGoal,

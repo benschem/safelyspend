@@ -19,6 +19,7 @@ import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
+import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { formatCents, formatDate, formatISODate } from '@/lib/utils';
 import type { Cadence } from '@/lib/types';
@@ -146,6 +147,15 @@ export function OverviewPage() {
       .filter((t) => t.type === 'savings')
       .reduce((sum, t) => sum + t.amountCents, 0);
   }, [allTransactions]);
+
+  // Get emergency fund and calculate its balance
+  const { emergencyFund } = useSavingsGoals();
+  const emergencyFundBalance = useMemo(() => {
+    if (!emergencyFund) return null;
+    return allTransactions
+      .filter((t) => t.type === 'savings' && t.savingsGoalId === emergencyFund.id)
+      .reduce((sum, t) => sum + t.amountCents, 0);
+  }, [emergencyFund, allTransactions]);
 
   // Get forecasts for upcoming period
   const { expandedForecasts } = useForecasts(activeScenarioId, today, upcomingEnd);
@@ -448,7 +458,7 @@ export function OverviewPage() {
               <Wallet className="h-4 w-4 text-muted-foreground" />
               Spendable
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">Can your income cover your budget?</p>
+            <p className="mt-1 text-xs text-muted-foreground">Budget restricted by incoming</p>
           </div>
           {/* Spacer */}
           <div className="flex-1" />
@@ -544,7 +554,19 @@ export function OverviewPage() {
           <p className="text-2xl font-bold text-blue-600">{formatCents(totalSavings)}</p>
           {/* Footer */}
           <div className="mt-3 border-t pt-3">
-            <p className="text-xs text-muted-foreground">Cumulative contributions</p>
+            {emergencyFund && emergencyFundBalance !== null ? (
+              <p className="text-xs text-muted-foreground">
+                {formatCents(emergencyFundBalance)} emergency fund
+              </p>
+            ) : (
+              <Link
+                to="/savings"
+                className="text-xs text-muted-foreground underline hover:text-foreground"
+                onClick={(e) => e.stopPropagation()}
+              >
+                No emergency fund
+              </Link>
+            )}
           </div>
         </Link>
       </div>

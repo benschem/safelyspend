@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { Ambulance } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -39,6 +41,7 @@ export function SavingsGoalDialog({ open, onOpenChange, goal }: SavingsGoalDialo
   const [deadline, setDeadline] = useState('');
   const [interestRate, setInterestRate] = useState('');
   const [compoundingFrequency, setCompoundingFrequency] = useState<CompoundingFrequency>('monthly');
+  const [isEmergencyFund, setIsEmergencyFund] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -50,6 +53,7 @@ export function SavingsGoalDialog({ open, onOpenChange, goal }: SavingsGoalDialo
         setDeadline(goal.deadline ?? '');
         setInterestRate(goal.annualInterestRate?.toString() ?? '');
         setCompoundingFrequency(goal.compoundingFrequency ?? 'monthly');
+        setIsEmergencyFund(goal.isEmergencyFund ?? false);
       } else {
         setName('');
         setTargetAmount('');
@@ -57,6 +61,7 @@ export function SavingsGoalDialog({ open, onOpenChange, goal }: SavingsGoalDialo
         setDeadline('');
         setInterestRate('');
         setCompoundingFrequency('monthly');
+        setIsEmergencyFund(false);
       }
       setFormError(null);
     }
@@ -82,6 +87,7 @@ export function SavingsGoalDialog({ open, onOpenChange, goal }: SavingsGoalDialo
       const updates: Parameters<typeof updateSavingsGoal>[1] = {
         name: name.trim(),
         targetAmountCents,
+        isEmergencyFund,
         ...(deadline ? { deadline } : {}),
         ...(parsedInterestRate ? { annualInterestRate: parsedInterestRate, compoundingFrequency } : {}),
       };
@@ -90,6 +96,7 @@ export function SavingsGoalDialog({ open, onOpenChange, goal }: SavingsGoalDialo
       const newGoal = await addSavingsGoal({
         name: name.trim(),
         targetAmountCents,
+        isEmergencyFund,
         ...(deadline ? { deadline } : {}),
         ...(parsedInterestRate ? { annualInterestRate: parsedInterestRate, compoundingFrequency } : {}),
       });
@@ -181,6 +188,20 @@ export function SavingsGoalDialog({ open, onOpenChange, goal }: SavingsGoalDialo
               type="date"
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="flex items-center gap-2">
+              <Ambulance className="h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="emergency-fund" className="cursor-pointer select-none">
+                Emergency Fund
+              </Label>
+            </div>
+            <Switch
+              id="emergency-fund"
+              checked={isEmergencyFund}
+              onCheckedChange={setIsEmergencyFund}
             />
           </div>
 
