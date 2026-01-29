@@ -512,11 +512,6 @@ export function BudgetPage() {
           </div>
         )}
 
-        <div className="mt-4">
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/transactions">View all transactions</Link>
-          </Button>
-        </div>
       </div>
     </div>
   );
