@@ -433,7 +433,7 @@ export function BudgetPage() {
           <div className="flex flex-col rounded-lg border p-4">
             <div className="flex items-center gap-2 text-sm font-medium">
               <Target className="h-4 w-4 text-muted-foreground" />
-              Net for {monthName}
+              Net change
             </div>
             <div className="flex-1" />
             <p className={`mt-3 text-xl font-bold ${monthlyCashFlow.net.projected >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -499,7 +499,7 @@ export function BudgetPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Tags className="h-5 w-5 text-muted-foreground" />
-            <h3 className="font-semibold">{monthName} Spending</h3>
+            <h3 className="font-semibold">Spending</h3>
           </div>
           <div className="text-right">
             <p className="text-lg font-bold">{formatCents(thisMonthSpending.total)}</p>
