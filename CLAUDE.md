@@ -122,3 +122,16 @@ On first launch (when `budget:appConfig.isInitialized` is false), a wizard promp
 - `userId: 'local'` placeholder for future multi-user
 - Storage keys prefixed with `budget:`
 - Australian financial year default (July 1 - June 30)
+
+### Git Commit Messages
+
+Prefix all commits with `claude:` followed by a conventional commit type:
+
+```
+claude: feat: add new feature
+claude: fix: fix a bug
+claude: chore: maintenance task
+claude: refactor: code refactoring
+claude: docs: documentation changes
+claude: style: formatting changes
+```
