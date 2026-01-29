@@ -214,6 +214,19 @@ function generateInterestForecasts(
     }
   }
 
+  // Group actual transactions by goal and month (within range)
+  const transactionsByGoalAndMonth: Record<string, Record<string, number>> = {};
+  for (const t of savingsTransactions) {
+    if (!t.savingsGoalId || t.date < rangeStart || t.date > rangeEnd) continue;
+    const goalId = t.savingsGoalId;
+    const monthKey = t.date.slice(0, 7); // YYYY-MM
+    if (!transactionsByGoalAndMonth[goalId]) {
+      transactionsByGoalAndMonth[goalId] = {};
+    }
+    const goalTxns = transactionsByGoalAndMonth[goalId]!;
+    goalTxns[monthKey] = (goalTxns[monthKey] ?? 0) + t.amountCents;
+  }
+
   // Group forecasts by goal and month
   const forecastsByGoalAndMonth: Record<string, Record<string, number>> = {};
   for (const f of savingsForecasts) {
@@ -252,9 +265,13 @@ function generateInterestForecasts(
 
       const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
 
-      // Add contributions for this month to balance first
-      const contributions = forecastsByGoalAndMonth[goal.id]?.[monthKey] ?? 0;
-      balance += contributions;
+      // Add actual transactions for this month to balance first
+      const actualContributions = transactionsByGoalAndMonth[goal.id]?.[monthKey] ?? 0;
+      balance += actualContributions;
+
+      // Add forecast contributions for this month
+      const forecastContributions = forecastsByGoalAndMonth[goal.id]?.[monthKey] ?? 0;
+      balance += forecastContributions;
 
       // Calculate interest on end-of-month balance
       let interestAmount = 0;
