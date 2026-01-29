@@ -12,6 +12,7 @@ import {
   TrendingUp,
   TrendingDown,
   ArrowRight,
+  Building2,
 } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useTransactions } from '@/hooks/use-transactions';
@@ -215,7 +216,7 @@ export function SnapshotPage() {
 
       {/* Assets & Liabilities */}
       <div className="mb-10">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Cash */}
           <Link
             to="/analyse?tab=cashflow"
@@ -255,12 +256,12 @@ export function SnapshotPage() {
             )}
           </Link>
 
-          {/* Debt - Coming Soon */}
+          {/* Super - Coming Soon */}
           <div className="rounded-xl border bg-card p-5 opacity-50">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
-              <CreditCard className="h-5 w-5 text-red-500" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500/10">
+              <Building2 className="h-5 w-5 text-orange-500" />
             </div>
-            <p className="mt-4 text-sm text-muted-foreground">Debt</p>
+            <p className="mt-4 text-sm text-muted-foreground">Super</p>
             <p className="mt-1 text-xl font-semibold text-muted-foreground">—</p>
             <p className="mt-1 text-xs text-muted-foreground">Coming soon</p>
           </div>
@@ -271,6 +272,16 @@ export function SnapshotPage() {
               <Sprout className="h-5 w-5 text-purple-500" />
             </div>
             <p className="mt-4 text-sm text-muted-foreground">Investments</p>
+            <p className="mt-1 text-xl font-semibold text-muted-foreground">—</p>
+            <p className="mt-1 text-xs text-muted-foreground">Coming soon</p>
+          </div>
+
+          {/* Debt - Coming Soon */}
+          <div className="rounded-xl border bg-card p-5 opacity-50">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
+              <CreditCard className="h-5 w-5 text-red-500" />
+            </div>
+            <p className="mt-4 text-sm text-muted-foreground">Debt</p>
             <p className="mt-1 text-xl font-semibold text-muted-foreground">—</p>
             <p className="mt-1 text-xs text-muted-foreground">Coming soon</p>
           </div>
