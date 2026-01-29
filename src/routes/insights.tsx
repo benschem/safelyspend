@@ -6,11 +6,9 @@ import { useReportsData } from '@/hooks/use-reports-data';
 import { useViewState } from '@/hooks/use-view-state';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useTransactions } from '@/hooks/use-transactions';
-import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
-import { formatCompactDate, formatISODate } from '@/lib/utils';
-import type { Cadence } from '@/lib/types';
+import { formatCompactDate } from '@/lib/utils';
 import {
   Select,
   SelectContent,
@@ -25,7 +23,6 @@ import {
   CashFlowChart,
   SavingsOverTimeChart,
   SavingsGoalProgressCard,
-  BurnRateChart,
 } from '@/components/charts';
 import { ScenarioSelector } from '@/components/scenario-selector';
 
@@ -33,7 +30,7 @@ interface OutletContext {
   activeScenarioId: string | null;
 }
 
-const VALID_TABS = ['cashflow', 'spending', 'pace', 'savings'] as const;
+const VALID_TABS = ['cashflow', 'spending', 'savings'] as const;
 type TabValue = (typeof VALID_TABS)[number];
 const STORAGE_KEY = 'budget:reportsTab';
 const SAVINGS_VIEW_KEY = 'budget:savingsChartView';
@@ -152,7 +149,6 @@ export function InsightsPage() {
   // Calculate starting balance for cash flow chart
   const { getActiveAnchor, anchors } = useBalanceAnchors();
   const { allTransactions } = useTransactions();
-  const { budgetRules } = useBudgetRules(activeScenarioId);
 
   const balanceInfo = useMemo(() => {
     // Get anchor that applies at the start of the report period
@@ -213,87 +209,6 @@ export function InsightsPage() {
     };
   }, [getActiveAnchor, anchors, allTransactions, startDate, endDate]);
 
-  // Burn rate data - calculate current period based on cadence
-  const [burnRateCadence, setBurnRateCadence] = useState<Cadence>('monthly');
-
-  const burnRateData = useMemo(() => {
-    // Calculate period range for selected cadence
-    const now = new Date();
-    let periodStart: Date;
-    let periodEnd: Date;
-    let periodLabel: string;
-
-    switch (burnRateCadence) {
-      case 'weekly': {
-        const day = now.getDay();
-        const diffToMonday = day === 0 ? -6 : 1 - day;
-        periodStart = new Date(now);
-        periodStart.setDate(periodStart.getDate() + diffToMonday);
-        periodEnd = new Date(periodStart);
-        periodEnd.setDate(periodEnd.getDate() + 6);
-        periodLabel = 'This Week';
-        break;
-      }
-      case 'fortnightly': {
-        const epoch = new Date('2024-01-01');
-        const diffDays = Math.floor((now.getTime() - epoch.getTime()) / (1000 * 60 * 60 * 24));
-        const fortnightNumber = Math.floor(diffDays / 14);
-        periodStart = new Date(epoch);
-        periodStart.setDate(periodStart.getDate() + fortnightNumber * 14);
-        periodEnd = new Date(periodStart);
-        periodEnd.setDate(periodEnd.getDate() + 13);
-        periodLabel = 'This Fortnight';
-        break;
-      }
-      case 'monthly': {
-        periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        periodLabel = now.toLocaleDateString('en-AU', { month: 'long' });
-        break;
-      }
-      case 'quarterly': {
-        const quarterStart = Math.floor(now.getMonth() / 3) * 3;
-        periodStart = new Date(now.getFullYear(), quarterStart, 1);
-        periodEnd = new Date(now.getFullYear(), quarterStart + 3, 0);
-        const quarterNames = ['Q1', 'Q2', 'Q3', 'Q4'];
-        periodLabel = `${quarterNames[Math.floor(quarterStart / 3)]} ${now.getFullYear()}`;
-        break;
-      }
-      case 'yearly': {
-        periodStart = new Date(now.getFullYear(), 0, 1);
-        periodEnd = new Date(now.getFullYear(), 11, 31);
-        periodLabel = `${now.getFullYear()}`;
-        break;
-      }
-    }
-
-    const startStr = formatISODate(periodStart);
-    const endStr = formatISODate(periodEnd);
-
-    // Get daily expense spending within this period
-    const expenses = allTransactions.filter(
-      (t) => t.type === 'expense' && t.date >= startStr && t.date <= endStr,
-    );
-
-    const dailySpending = expenses.map((t) => ({
-      date: t.date,
-      amount: t.amountCents,
-    }));
-
-    // Calculate total budget for this cadence
-    const totalBudget = budgetRules
-      .filter((r) => r.cadence === burnRateCadence)
-      .reduce((sum, r) => sum + r.amountCents, 0);
-
-    return {
-      dailySpending,
-      totalBudget,
-      periodStart: startStr,
-      periodEnd: endStr,
-      periodLabel,
-    };
-  }, [allTransactions, budgetRules, burnRateCadence]);
-
   return (
     <div className="space-y-6">
       {/* Page header */}
@@ -314,7 +229,6 @@ export function InsightsPage() {
           {[
             { value: 'cashflow', label: 'Cash Flow' },
             { value: 'spending', label: 'Spending' },
-            { value: 'pace', label: 'Pace' },
             { value: 'savings', label: 'Savings' },
           ].map((tab) => (
             <button
@@ -322,7 +236,7 @@ export function InsightsPage() {
               type="button"
               onClick={() => handleTabChange(tab.value)}
               className={cn(
-                'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all',
+                'inline-flex cursor-pointer items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all',
                 activeTab === tab.value
                   ? 'bg-background text-foreground shadow-sm'
                   : 'hover:text-foreground'
@@ -359,32 +273,6 @@ export function InsightsPage() {
           budgetCategories={budgetCategories}
           colorMap={categoryColorMap}
         />
-      )}
-
-      {activeTab === 'pace' && (
-        <div className="space-y-4">
-          <div className="flex justify-end">
-            <Select value={burnRateCadence} onValueChange={(v) => setBurnRateCadence(v as Cadence)}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="fortnightly">Fortnightly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-                <SelectItem value="quarterly">Quarterly</SelectItem>
-                <SelectItem value="yearly">Yearly</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <BurnRateChart
-            dailySpending={burnRateData.dailySpending}
-            totalBudget={burnRateData.totalBudget}
-            periodStart={burnRateData.periodStart}
-            periodEnd={burnRateData.periodEnd}
-            periodLabel={burnRateData.periodLabel}
-          />
-        </div>
       )}
 
       {activeTab === 'cashflow' && (

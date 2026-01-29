@@ -295,7 +295,7 @@ export function RecurringIndexPage() {
                   type="button"
                   onClick={() => setActiveTab(tab.value)}
                   className={cn(
-                    'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all',
+                    'inline-flex cursor-pointer items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all',
                     effectiveTab === tab.value
                       ? 'bg-background text-foreground shadow-sm'
                       : 'hover:text-foreground'
