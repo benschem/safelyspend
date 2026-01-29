@@ -271,14 +271,9 @@ export function ScenariosIndexPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Alert variant="info">
-          Each scenario has separate <strong>Budgets</strong> and <strong>Forecasts</strong>.
-        </Alert>
-        <Alert variant="info">
-          Every scenario shares <strong>Transactions</strong>, <strong>Savings</strong> and <strong>Categories</strong>.
-        </Alert>
-      </div>
+      <Alert variant="info">
+        Switching scenarios changes your budget and forecasts. Your transactions and categories stay the same.
+      </Alert>
 
       {scenarios.length === 0 ? (
         <div className="mt-6 rounded-lg border border-dashed p-8 text-center">
