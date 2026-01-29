@@ -20,8 +20,9 @@ import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
+import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { CategoryBudgetDialog } from '@/components/dialogs/category-budget-dialog';
-import { formatCents, parseCentsFromInput, formatISODate } from '@/lib/utils';
+import { formatCents, parseCentsFromInput, formatISODate, calculateInterestEarned } from '@/lib/utils';
 import type { Cadence, BudgetRule } from '@/lib/types';
 import { SpendingBreakdownChart } from '@/components/charts/spending-breakdown-chart';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
@@ -193,6 +194,7 @@ export function BudgetPage() {
   const { activeScenario } = useScenarios();
   const { activeCategories } = useCategories();
   const { allTransactions, savingsTransactions } = useTransactions();
+  const { savingsGoals } = useSavingsGoals();
   const { getRuleForCategory, setBudgetForCategory, deleteBudgetRule } =
     useBudgetRules(activeScenarioId);
 
@@ -386,7 +388,29 @@ export function BudgetPage() {
     const totalSavingsForecasted = savingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
     // Sum existing savings from transactions
     const totalSavingsActual = savingsTransactions.reduce((sum, t) => sum + t.amountCents, 0);
-    const totalSavingsProjected = totalSavingsActual + totalSavingsForecasted;
+
+    // Calculate savings per goal for interest calculation
+    const savingsPerGoal: Record<string, number> = {};
+    savingsTransactions.forEach((t) => {
+      if (t.savingsGoalId) {
+        savingsPerGoal[t.savingsGoalId] = (savingsPerGoal[t.savingsGoalId] ?? 0) + t.amountCents;
+      }
+    });
+
+    // Calculate annual interest earned on current balances
+    const totalInterestEarned = savingsGoals.reduce((sum, goal) => {
+      if (!goal.annualInterestRate) return sum;
+      const currentBalance = savingsPerGoal[goal.id] ?? 0;
+      const interest = calculateInterestEarned(
+        currentBalance,
+        goal.annualInterestRate,
+        goal.compoundingFrequency ?? 'monthly',
+        1, // 1 year projection
+      );
+      return sum + interest;
+    }, 0);
+
+    const totalSavingsProjected = totalSavingsActual + totalSavingsForecasted + totalInterestEarned;
 
     return {
       totalSpent,
@@ -397,6 +421,7 @@ export function BudgetPage() {
       totalSavingsActual,
       totalSavingsForecasted,
       totalSavingsProjected,
+      totalInterestEarned,
       overCount,
       overspendingCount,
       watchCount,
@@ -405,7 +430,7 @@ export function BudgetPage() {
       untrackedSpent,
       trackedCount: tracked.length,
     };
-  }, [allRows, savingsForecasts, savingsTransactions]);
+  }, [allRows, savingsForecasts, savingsTransactions, savingsGoals]);
 
   // Build color map for charts (include savings)
   const categoryColorMap = useMemo(() => {
@@ -895,15 +920,19 @@ export function BudgetPage() {
             </div>
             <div className="mt-1 flex items-center justify-between">
               <p className="text-xl font-bold text-blue-600">
-                +{formatCents(summary.totalSavingsForecasted)}
+                +{formatCents(summary.totalSavingsForecasted + summary.totalInterestEarned)}
               </p>
               {summary.totalSavingsActual > 0 && (
                 <span className="text-sm font-medium text-blue-600">
-                  ▲ {Math.round(summary.totalSavingsForecasted / summary.totalSavingsActual * 100)}%
+                  ▲ {Math.round((summary.totalSavingsForecasted + summary.totalInterestEarned) / summary.totalSavingsActual * 100)}%
                 </span>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">Forecast</p>
+            <p className="text-xs text-muted-foreground">
+              {summary.totalInterestEarned > 0
+                ? `Forecast + ${formatCents(summary.totalInterestEarned)} interest`
+                : 'Forecast'}
+            </p>
           </div>
         </div>
       )}
