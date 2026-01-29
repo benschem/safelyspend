@@ -74,9 +74,9 @@ export function DataTable<TData, TValue>({
   return (
     <div className="space-y-4">
       {(searchKey || filterSlot) && (
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="space-y-3">
           {searchKey && (
-            <div className="relative w-64">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder={searchPlaceholder}
@@ -88,7 +88,11 @@ export function DataTable<TData, TValue>({
               />
             </div>
           )}
-          {filterSlot}
+          {filterSlot && (
+            <div className="flex flex-wrap items-center gap-3">
+              {filterSlot}
+            </div>
+          )}
         </div>
       )}
       <div className="rounded-md border overflow-x-auto">
