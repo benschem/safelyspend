@@ -3,7 +3,7 @@ import { useOutletContext, Link, useSearchParams } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 import {
   Select,
   SelectContent,
@@ -37,6 +37,8 @@ const CADENCE_LABELS: Record<string, string> = {
 
 type CategoryFilter = 'all' | string;
 
+type TabValue = 'income' | 'expenses' | 'savings';
+
 export function RecurringIndexPage() {
   const [searchParams] = useSearchParams();
   const { activeScenarioId } = useOutletContext<OutletContext>();
@@ -51,6 +53,9 @@ export function RecurringIndexPage() {
     const categoryParam = searchParams.get('category');
     return categoryParam ?? 'all';
   });
+
+  // Active tab state
+  const [activeTab, setActiveTab] = useState<TabValue | null>(null);
 
   const getCategoryName = (id: string | null) =>
     id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-';
@@ -225,6 +230,10 @@ export function RecurringIndexPage() {
     [savingsGoals],
   );
 
+  // Determine the effective tab (use state if set, otherwise default based on which has rules)
+  const defaultTab: TabValue = incomeRules.length > 0 ? 'income' : expenseRules.length > 0 ? 'expenses' : 'savings';
+  const effectiveTab = activeTab ?? defaultTab;
+
   if (!activeScenarioId || !activeScenario) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -233,9 +242,6 @@ export function RecurringIndexPage() {
       </div>
     );
   }
-
-  // Determine the default tab based on which has rules
-  const defaultTab = incomeRules.length > 0 ? 'income' : expenseRules.length > 0 ? 'expenses' : 'savings';
 
   return (
     <div>
@@ -248,7 +254,7 @@ export function RecurringIndexPage() {
         </Button>
       </div>
 
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
@@ -274,19 +280,32 @@ export function RecurringIndexPage() {
           </Button>
         </div>
       ) : (
-        <Tabs defaultValue={defaultTab} className="mt-6 w-full">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-            <TabsList>
-            <TabsTrigger value="income">
-              Income {incomeRules.length > 0 && `(${incomeRules.length})`}
-            </TabsTrigger>
-            <TabsTrigger value="expenses">
-              Expenses {expenseRules.length > 0 && `(${expenseRules.length})`}
-            </TabsTrigger>
-            <TabsTrigger value="savings">
-              Savings {savingsRules.length > 0 && `(${savingsRules.length})`}
-            </TabsTrigger>
-          </TabsList>
+        <div className="space-y-4">
+          {/* Controls row */}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {/* Segmented control */}
+            <div className="inline-flex h-9 items-center rounded-lg bg-muted p-1 text-muted-foreground">
+              {[
+                { value: 'income' as TabValue, label: 'Income', count: incomeRules.length },
+                { value: 'expenses' as TabValue, label: 'Expenses', count: expenseRules.length },
+                { value: 'savings' as TabValue, label: 'Savings', count: savingsRules.length },
+              ].map((tab) => (
+                <button
+                  key={tab.value}
+                  type="button"
+                  onClick={() => setActiveTab(tab.value)}
+                  className={cn(
+                    'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all',
+                    effectiveTab === tab.value
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'hover:text-foreground'
+                  )}
+                >
+                  {tab.label} {tab.count > 0 && `(${tab.count})`}
+                </button>
+              ))}
+            </div>
+
             <Select value={filterCategory} onValueChange={setFilterCategory}>
               <SelectTrigger className="w-44">
                 <SelectValue placeholder="Filter by category" />
@@ -304,8 +323,9 @@ export function RecurringIndexPage() {
             </Select>
           </div>
 
-          <TabsContent value="income">
-            {incomeRules.length === 0 ? (
+          {/* Content sections */}
+          {effectiveTab === 'income' && (
+            incomeRules.length === 0 ? (
               <div className="rounded-lg border border-dashed p-8 text-center">
                 <p className="text-muted-foreground">No recurring income yet.</p>
                 <Button className="mt-4" onClick={() => setDialogOpen(true)}>
@@ -320,11 +340,11 @@ export function RecurringIndexPage() {
                 searchPlaceholder="Search income..."
                 showPagination={false}
               />
-            )}
-          </TabsContent>
+            )
+          )}
 
-          <TabsContent value="expenses">
-            {expenseRules.length === 0 ? (
+          {effectiveTab === 'expenses' && (
+            expenseRules.length === 0 ? (
               <div className="rounded-lg border border-dashed p-8 text-center">
                 <p className="text-muted-foreground">No recurring expenses yet.</p>
                 <Button className="mt-4" onClick={() => setDialogOpen(true)}>
@@ -339,11 +359,11 @@ export function RecurringIndexPage() {
                 searchPlaceholder="Search expenses..."
                 showPagination={false}
               />
-            )}
-          </TabsContent>
+            )
+          )}
 
-          <TabsContent value="savings">
-            {savingsRules.length === 0 ? (
+          {effectiveTab === 'savings' && (
+            savingsRules.length === 0 ? (
               <div className="rounded-lg border border-dashed p-8 text-center">
                 <p className="text-muted-foreground">No recurring savings yet.</p>
                 <Button className="mt-4" onClick={() => setDialogOpen(true)}>
@@ -358,9 +378,9 @@ export function RecurringIndexPage() {
                 searchPlaceholder="Search savings..."
                 showPagination={false}
               />
-            )}
-          </TabsContent>
-        </Tabs>
+            )
+          )}
+        </div>
       )}
 
       <ForecastRuleDialog

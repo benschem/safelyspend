@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useOutletContext, useSearchParams } from 'react-router';
-import { ChartSpline, Wallet, CircleDollarSign, PiggyBank, CircleGauge } from 'lucide-react';
+import { ChartSpline } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useReportsData } from '@/hooks/use-reports-data';
 import { useViewState } from '@/hooks/use-view-state';
@@ -11,7 +11,6 @@ import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 import { formatCompactDate, formatISODate } from '@/lib/utils';
 import type { Cadence } from '@/lib/types';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -19,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { TimelineRangePicker } from '@/components/timeline-range-picker';
 import {
   BudgetComparisonChart,
@@ -145,10 +145,9 @@ export function InsightsPage() {
     [allCategoryIds],
   );
 
-  // Determine if viewing past or future period
+  // Determine if viewing past period
   const today = new Date().toISOString().slice(0, 10);
   const isPastOnly = endDate <= today;
-  const isFutureOnly = startDate > today;
 
   // Calculate starting balance for cash flow chart
   const { getActiveAnchor, anchors } = useBalanceAnchors();
@@ -301,23 +300,40 @@ export function InsightsPage() {
       <div>
         <h1 className="flex items-center gap-3 text-3xl font-bold">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
-              <ChartSpline className="h-5 w-5 text-slate-500" />
-            </div>
+            <ChartSpline className="h-5 w-5 text-slate-500" />
+          </div>
           Insights
         </h1>
         <p className="mt-1 text-muted-foreground">Understand your financial patterns</p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList>
-          <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
-          <TabsTrigger value="spending">Spending</TabsTrigger>
-          <TabsTrigger value="pace">Pace</TabsTrigger>
-          <TabsTrigger value="savings">Savings</TabsTrigger>
-        </TabsList>
+      {/* Controls row: Segment + Date range + Scenario */}
+      <div className="flex flex-wrap items-center gap-3">
+        {/* Segmented control */}
+        <div className="inline-flex h-9 items-center rounded-lg bg-muted p-1 text-muted-foreground">
+          {[
+            { value: 'cashflow', label: 'Cash Flow' },
+            { value: 'spending', label: 'Spending' },
+            { value: 'pace', label: 'Pace' },
+            { value: 'savings', label: 'Savings' },
+          ].map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => handleTabChange(tab.value)}
+              className={cn(
+                'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all',
+                activeTab === tab.value
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'hover:text-foreground'
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-        {/* Context bar: Date range + Scenario */}
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-1 flex-wrap items-center justify-end gap-3">
           <TimelineRangePicker
             mode={mode}
             amount={amount}
@@ -334,186 +350,130 @@ export function InsightsPage() {
           />
           <ScenarioSelector />
         </div>
+      </div>
 
-        {/* Spending Tab - Spending by category with budget comparison */}
-        <TabsContent value="spending" className="mt-6">
-          <div className="rounded-lg border p-6">
-            <div>
-              <h2 className="flex items-center gap-2 text-lg font-semibold">
-                <CircleDollarSign className="h-5 w-5" />
-                Spending
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                By category compared to budgeted amounts
-              </p>
-            </div>
-            <div className="mt-6">
-              <BudgetComparisonChart
-                monthlyBudgetComparison={monthlyBudgetComparison}
-                budgetCategories={budgetCategories}
-                colorMap={categoryColorMap}
-              />
-            </div>
+      {/* Content sections */}
+      {activeTab === 'spending' && (
+        <BudgetComparisonChart
+          monthlyBudgetComparison={monthlyBudgetComparison}
+          budgetCategories={budgetCategories}
+          colorMap={categoryColorMap}
+        />
+      )}
+
+      {activeTab === 'pace' && (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Select value={burnRateCadence} onValueChange={(v) => setBurnRateCadence(v as Cadence)}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="fortnightly">Fortnightly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="quarterly">Quarterly</SelectItem>
+                <SelectItem value="yearly">Yearly</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </TabsContent>
+          <BurnRateChart
+            dailySpending={burnRateData.dailySpending}
+            totalBudget={burnRateData.totalBudget}
+            periodStart={burnRateData.periodStart}
+            periodEnd={burnRateData.periodEnd}
+            periodLabel={burnRateData.periodLabel}
+          />
+        </div>
+      )}
 
-        {/* Pace Tab - Burn rate chart */}
-        <TabsContent value="pace" className="mt-6">
-          <div className="rounded-lg border p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="flex items-center gap-2 text-lg font-semibold">
-                  <CircleGauge className="h-5 w-5" />
-                  Spending Pace
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Are you spending at a sustainable rate through the period?
-                </p>
-              </div>
-              <Select value={burnRateCadence} onValueChange={(v) => setBurnRateCadence(v as Cadence)}>
-                <SelectTrigger className="w-[140px]">
+      {activeTab === 'cashflow' && (
+        <div className="space-y-4">
+          {balanceInfo.warning && (
+            <Alert variant="warning">
+              <AlertTitle>{balanceInfo.warning.title}</AlertTitle>
+              <AlertDescription>
+                <Link to="/settings" className="underline">
+                  {balanceInfo.warning.linkText}
+                </Link>{' '}
+                {balanceInfo.warning.linkSuffix}
+              </AlertDescription>
+            </Alert>
+          )}
+          <CashFlowChart
+            monthlyNetFlow={monthlyNetFlow}
+            startingBalance={balanceInfo.startingBalance}
+            balanceStartMonth={balanceInfo.balanceStartMonth}
+          />
+        </div>
+      )}
+
+      {activeTab === 'savings' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">
+              {isPastOnly
+                ? 'Cumulative savings contributions'
+                : 'Solid line is actual, dashed line is forecasted'}
+            </p>
+            {savingsByGoal.length > 0 && (
+              <Select value={effectiveSavingsView} onValueChange={handleSavingsViewChange}>
+                <SelectTrigger className="w-[180px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="fortnightly">Fortnightly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="quarterly">Quarterly</SelectItem>
-                  <SelectItem value="yearly">Yearly</SelectItem>
+                  <SelectItem value="total">Total Savings</SelectItem>
+                  {emergencyFund && (
+                    <SelectItem value="dedicated">Dedicated Savings</SelectItem>
+                  )}
+                  {savingsByGoal.map((goal) => (
+                    <SelectItem key={goal.goalId} value={goal.goalId}>
+                      {goal.goalName}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="mt-6">
-              <BurnRateChart
-                dailySpending={burnRateData.dailySpending}
-                totalBudget={burnRateData.totalBudget}
-                periodStart={burnRateData.periodStart}
-                periodEnd={burnRateData.periodEnd}
-                periodLabel={burnRateData.periodLabel}
-              />
-            </div>
-          </div>
-        </TabsContent>
-
-        {/* Cash Flow Tab - Income vs expenses over time */}
-        <TabsContent value="cashflow" className="mt-6">
-          <div className="space-y-4">
-            {balanceInfo.warning && (
-              <Alert variant="warning">
-                <AlertTitle>{balanceInfo.warning.title}</AlertTitle>
-                <AlertDescription>
-                  <Link to="/settings" className="underline">
-                    {balanceInfo.warning.linkText}
-                  </Link>{' '}
-                  {balanceInfo.warning.linkSuffix}
-                </AlertDescription>
-              </Alert>
-            )}
-            <div className="rounded-lg border p-6">
-              <div>
-                <h2 className="flex items-center gap-2 text-lg font-semibold">
-                  <Wallet className="h-5 w-5" />
-                  Cash Flow
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {isPastOnly
-                    ? 'Past income, expenses, and savings'
-                    : isFutureOnly
-                      ? 'Forecasted monthly income, expenses, and savings'
-                      : 'Income, expenses and savings'}
-                </p>
-              </div>
-              <div className="mt-6">
-                <CashFlowChart
-                  monthlyNetFlow={monthlyNetFlow}
-                  startingBalance={balanceInfo.startingBalance}
-                  balanceStartMonth={balanceInfo.balanceStartMonth}
-                />
-              </div>
-            </div>
-          </div>
-        </TabsContent>
-
-        {/* Savings Tab - Goal progress */}
-        <TabsContent value="savings" className="mt-6">
-          <div className="rounded-lg border p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="flex items-center gap-2 text-lg font-semibold">
-                  <PiggyBank className="h-5 w-5" />
-                  {effectiveSavingsView === 'total'
-                    ? 'Total Savings'
-                    : effectiveSavingsView === 'dedicated'
-                      ? 'Dedicated Savings'
-                      : savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.goalName ?? 'Savings'}
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {isPastOnly
-                    ? 'Cumulative savings contributions'
-                    : 'Solid line is actual, dashed line is forecasted'}
-                </p>
-              </div>
-              {savingsByGoal.length > 0 && (
-                <Select value={effectiveSavingsView} onValueChange={handleSavingsViewChange}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="total">Total Savings</SelectItem>
-                    {emergencyFund && (
-                      <SelectItem value="dedicated">Dedicated Savings</SelectItem>
-                    )}
-                    {savingsByGoal.map((goal) => (
-                      <SelectItem key={goal.goalId} value={goal.goalId}>
-                        {goal.goalName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            <div className="mt-6">
-              {effectiveSavingsView === 'total' ? (
-                <SavingsOverTimeChart monthlySavings={monthlySavings} />
-              ) : effectiveSavingsView === 'dedicated' ? (
-                <SavingsOverTimeChart monthlySavings={dedicatedSavings} />
-              ) : (
-                <SavingsOverTimeChart
-                  monthlySavings={
-                    savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.monthlySavings ?? []
-                  }
-                  deadline={savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.deadline}
-                  targetAmount={savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.targetAmount}
-                  startingBalance={savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.startingBalance}
-                />
-              )}
-            </div>
-
-            {savingsByGoal.length > 0 && (
-              <div className="mt-8 border-t pt-6">
-                <h3 className="text-base font-semibold">Progress by Goal</h3>
-                <p className="mb-4 text-sm text-muted-foreground">
-                  Track progress towards each savings goal
-                </p>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {savingsByGoal.map((goal) => (
-                    <SavingsGoalProgressCard
-                      key={goal.goalId}
-                      goalName={goal.goalName}
-                      targetAmount={goal.targetAmount}
-                      currentBalance={goal.currentBalance}
-                      deadline={goal.deadline}
-                      annualInterestRate={goal.annualInterestRate}
-                      monthlySavings={goal.monthlySavings}
-                    />
-                  ))}
-                </div>
-              </div>
             )}
           </div>
-        </TabsContent>
-      </Tabs>
+
+          {effectiveSavingsView === 'total' ? (
+            <SavingsOverTimeChart monthlySavings={monthlySavings} />
+          ) : effectiveSavingsView === 'dedicated' ? (
+            <SavingsOverTimeChart monthlySavings={dedicatedSavings} />
+          ) : (
+            <SavingsOverTimeChart
+              monthlySavings={
+                savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.monthlySavings ?? []
+              }
+              deadline={savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.deadline}
+              targetAmount={savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.targetAmount}
+              startingBalance={savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.startingBalance}
+            />
+          )}
+
+          {savingsByGoal.length > 0 && (
+            <div className="mt-4 border-t pt-6">
+              <h3 className="text-base font-semibold">Progress by Goal</h3>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Track progress towards each savings goal
+              </p>
+              <div className="grid gap-4 md:grid-cols-2">
+                {savingsByGoal.map((goal) => (
+                  <SavingsGoalProgressCard
+                    key={goal.goalId}
+                    goalName={goal.goalName}
+                    targetAmount={goal.targetAmount}
+                    currentBalance={goal.currentBalance}
+                    deadline={goal.deadline}
+                    annualInterestRate={goal.annualInterestRate}
+                    monthlySavings={goal.monthlySavings}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
