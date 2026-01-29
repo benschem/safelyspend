@@ -800,34 +800,62 @@ export function BudgetPage() {
         </div>
 
         {/* Spending Speed */}
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center gap-2">
-            {summary.overCount > 0 ? (
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10">
-                <CircleGauge className="h-4 w-4 text-red-500" />
+        {(() => {
+          // Calculate severity based on percentage of budgets affected
+          const overPercent = summary.trackedCount > 0 ? summary.overCount / summary.trackedCount : 0;
+          const isCritical = overPercent > 0.25; // More than 25% exceeded
+          const hasExceeded = summary.overCount > 0;
+          const hasOverspending = summary.overspendingCount > 0;
+
+          let label: string;
+          let description: string;
+          let iconBg: string;
+          let iconColor: string;
+          let textColor: string;
+
+          if (isCritical) {
+            label = 'Too Fast';
+            description = `${summary.overCount} of ${summary.trackedCount} budgets exceeded`;
+            iconBg = 'bg-red-500/10';
+            iconColor = 'text-red-500';
+            textColor = 'text-red-600';
+          } else if (hasExceeded) {
+            label = 'Over Budget';
+            description = `${summary.overCount} of ${summary.trackedCount} budgets exceeded`;
+            iconBg = 'bg-amber-500/10';
+            iconColor = 'text-amber-500';
+            textColor = 'text-amber-600';
+          } else if (hasOverspending) {
+            label = 'Speeding Up';
+            description = `${summary.overspendingCount} of ${summary.trackedCount} budgets overspending`;
+            iconBg = 'bg-amber-500/10';
+            iconColor = 'text-amber-500';
+            textColor = 'text-amber-600';
+          } else {
+            label = 'On Track';
+            description = `${summary.goodCount} of ${summary.trackedCount} budgets on pace`;
+            iconBg = 'bg-green-500/10';
+            iconColor = 'text-green-500';
+            textColor = 'text-green-600';
+          }
+
+          return (
+            <div className="rounded-xl border bg-card p-5">
+              <div className="flex items-center gap-2">
+                <div className={`flex h-8 w-8 items-center justify-center rounded-full ${iconBg}`}>
+                  <CircleGauge className={`h-4 w-4 ${iconColor}`} />
+                </div>
+                <p className="text-sm text-muted-foreground">Spending speed</p>
               </div>
-            ) : summary.overspendingCount > 0 ? (
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/10">
-                <CircleGauge className="h-4 w-4 text-amber-500" />
-              </div>
-            ) : (
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/10">
-                <CircleGauge className="h-4 w-4 text-green-500" />
-              </div>
-            )}
-            <p className="text-sm text-muted-foreground">Spending speed</p>
-          </div>
-          <p className={`mt-2 text-3xl font-bold ${summary.overCount > 0 ? 'text-red-600' : summary.overspendingCount > 0 ? 'text-amber-600' : 'text-green-600'}`}>
-            {summary.overCount > 0 ? 'Too Fast' : summary.overspendingCount > 0 ? 'Speeding Up' : 'On Track'}
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {summary.overCount > 0
-              ? `${summary.overCount} of ${summary.trackedCount} budgets exceeded`
-              : summary.overspendingCount > 0
-                ? `${summary.overspendingCount} of ${summary.trackedCount} budgets overspending`
-                : `${summary.goodCount} of ${summary.trackedCount} budgets on pace`}
-          </p>
-        </div>
+              <p className={`mt-2 text-3xl font-bold ${textColor}`}>
+                {label}
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {description}
+              </p>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Spending by Category */}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import {
@@ -67,6 +68,15 @@ export function DemoBanner() {
         }
       >
         <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleReset}
+            className="h-7 w-7 p-0 hover:bg-yellow-200 dark:hover:bg-yellow-900"
+            title="Back to landing page"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
           <span className="font-medium">Exploring demo data:</span>
           <Select value={currentPersonaId} onValueChange={handlePersonaChange} disabled={isLoading}>
             <SelectTrigger className="h-7 w-auto gap-2 border-yellow-600/50 bg-transparent text-sm hover:bg-yellow-200 dark:border-yellow-500/50 dark:hover:bg-yellow-900">
