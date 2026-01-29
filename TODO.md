@@ -14,8 +14,8 @@
 
 [X] Can we move or have another error boundary within the sidebar?
 
-[ ] Flashes need to be consistent everywhere and coloured for light and dark mode
-[ ] alerts need to be consistent
-[ ] same for notice/warn
+[X] Flashes need to be consistent everywhere and coloured for light and dark mode
+[X] alerts need to be consistent
+[X] same for notice/warn
 
 [ ] Add Plausible analytics

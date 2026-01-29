@@ -77,8 +77,8 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         <NavItem to="/budget" icon={<Target className="h-4 w-4" />} onClick={onNavigate}>
           Budget
         </NavItem>
-        <NavItem to="/reports" icon={<ChartSpline className="h-4 w-4" />} onClick={onNavigate}>
-          Reports
+        <NavItem to="/analyse" icon={<ChartSpline className="h-4 w-4" />} onClick={onNavigate}>
+          Analyse
         </NavItem>
       </NavSection>
 

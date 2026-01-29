@@ -26,7 +26,7 @@ const VALID_TABS = ['cashflow', 'spending', 'savings'] as const;
 type TabValue = (typeof VALID_TABS)[number];
 const STORAGE_KEY = 'budget:reportsTab';
 
-export function ReportsPage() {
+export function AnalysePage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const [searchParams, setSearchParams] = useSearchParams();
   const {
@@ -160,7 +160,7 @@ export function ReportsPage() {
       <div>
         <h1 className="flex items-center gap-3 text-3xl font-bold">
           <ChartSpline className="h-7 w-7" />
-          Reports
+          Analyse
         </h1>
         <p className="mt-1 text-muted-foreground">Analyse your financial patterns</p>
       </div>

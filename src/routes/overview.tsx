@@ -316,7 +316,7 @@ export function OverviewPage() {
             <Eye className="h-7 w-7" />
             Overview
           </h1>
-          <p className="mt-1 text-muted-foreground">Your current financial position</p>
+          <p className="mt-1 text-muted-foreground">Your current financial position at a glance</p>
         </div>
         <div className="rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground">No scenario selected.</p>
@@ -336,7 +336,7 @@ export function OverviewPage() {
             <Eye className="h-7 w-7" />
             Overview
           </h1>
-          <p className="mt-1 text-muted-foreground">Your current financial position</p>
+          <p className="mt-1 text-muted-foreground">Your current financial position at a glance</p>
         </div>
         <ScenarioSelector />
       </div>
@@ -358,7 +358,7 @@ export function OverviewPage() {
       {/* Current Position Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Link
-          to="/reports?tab=cashflow"
+          to="/analyse?tab=cashflow"
           className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
         >
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -449,7 +449,7 @@ export function OverviewPage() {
         </Link>
 
         <Link
-          to="/reports?tab=savings"
+          to="/analyse?tab=savings"
           className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
         >
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
