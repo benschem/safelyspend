@@ -833,7 +833,7 @@ export function BudgetPage() {
               <>
                 <p className="mt-1 text-xl font-bold text-green-600">All tracked</p>
                 <p className="text-xs text-muted-foreground">
-                  all spending has a budget
+                  All spending has a budget
                 </p>
               </>
             )}
