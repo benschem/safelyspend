@@ -189,7 +189,7 @@ export function BudgetPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
   const { activeCategories } = useCategories();
-  const { allTransactions } = useTransactions();
+  const { allTransactions, savingsTransactions } = useTransactions();
   const { getRuleForCategory, setBudgetForCategory, deleteBudgetRule } =
     useBudgetRules(activeScenarioId);
 
@@ -380,6 +380,9 @@ export function BudgetPage() {
     const untrackedSpent = untracked.reduce((sum, r) => sum + r.spent, 0);
     // Sum forecasted savings
     const totalSavingsForecasted = savingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
+    // Sum existing savings from transactions
+    const totalSavingsActual = savingsTransactions.reduce((sum, t) => sum + t.amountCents, 0);
+    const totalSavingsProjected = totalSavingsActual + totalSavingsForecasted;
 
     return {
       totalSpent,
@@ -388,6 +391,7 @@ export function BudgetPage() {
       totalBudget,
       totalProjectedRemaining,
       totalSavingsForecasted,
+      totalSavingsProjected,
       overCount,
       overspendingCount,
       watchCount,
@@ -396,7 +400,7 @@ export function BudgetPage() {
       untrackedSpent,
       trackedCount: tracked.length,
     };
-  }, [allRows, savingsForecasts]);
+  }, [allRows, savingsForecasts, savingsTransactions]);
 
   const startEditing = useCallback((categoryId: string) => {
     // Read fresh from rule to avoid stale row data
@@ -844,7 +848,7 @@ export function BudgetPage() {
               +{formatCents(summary.totalSavingsForecasted)}
             </p>
             <p className="text-xs text-muted-foreground">
-              forecast
+              Forecast total of {formatCents(summary.totalSavingsProjected)}
             </p>
           </div>
         </div>
