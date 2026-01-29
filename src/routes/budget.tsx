@@ -1,12 +1,14 @@
 import { useMemo } from 'react';
 import { Link, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
-import { Target, CircleGauge, PiggyBank, Calendar, TrendingUp, Receipt, CircleAlert, CreditCard, BarChart3, Landmark } from 'lucide-react';
+import { Target, CircleGauge, PiggyBank, Calendar, TrendingUp, Receipt, CircleAlert, CreditCard, BarChart3, Landmark, Tags } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
+import { useCategories } from '@/hooks/use-categories';
+import { buildCategoryColorMap, CHART_COLORS } from '@/lib/chart-colors';
 import { formatCents } from '@/lib/utils';
 
 interface OutletContext {
@@ -18,6 +20,7 @@ export function BudgetPage() {
   const { activeScenario } = useScenarios();
   const { allTransactions } = useTransactions();
   const { budgetRules } = useBudgetRules(activeScenarioId);
+  const { activeCategories } = useCategories();
 
   // Get monthly date range
   const today = new Date().toISOString().slice(0, 10);
@@ -191,10 +194,47 @@ export function BudgetPage() {
     };
   }, [budgetRules, allTransactions, monthForecasts, thisMonthStart, today]);
 
+  // Calculate this month's spending by category for horizontal bar chart
+  const thisMonthSpending = useMemo(() => {
+    const expenseTransactions = allTransactions.filter(
+      (t) => t.type === 'expense' && t.date >= thisMonthStart && t.date <= today
+    );
+
+    const byCategory: Record<string, number> = {};
+    let uncategorized = 0;
+    let total = 0;
+
+    for (const tx of expenseTransactions) {
+      total += tx.amountCents;
+      if (tx.categoryId) {
+        byCategory[tx.categoryId] = (byCategory[tx.categoryId] ?? 0) + tx.amountCents;
+      } else {
+        uncategorized += tx.amountCents;
+      }
+    }
+
+    const categorySpending = activeCategories
+      .map((c) => ({ id: c.id, name: c.name, amount: byCategory[c.id] ?? 0 }))
+      .filter((c) => c.amount > 0)
+      .sort((a, b) => b.amount - a.amount);
+
+    if (uncategorized > 0) {
+      categorySpending.push({ id: 'uncategorized', name: 'Uncategorised', amount: uncategorized });
+    }
+
+    return { categorySpending, total };
+  }, [allTransactions, activeCategories, thisMonthStart, today]);
+
+  // Build color map for spending chart
+  const colorMap = useMemo(() => {
+    const categoryIds = activeCategories.map((c) => c.id);
+    return buildCategoryColorMap(categoryIds);
+  }, [activeCategories]);
+
   if (!activeScenarioId || !activeScenario) {
     return (
       <div>
-        <div className="mb-20 flex flex-wrap items-center justify-between gap-4">
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="flex items-center gap-3 text-3xl font-bold">
               <Calendar className="h-7 w-7" />
@@ -230,62 +270,70 @@ export function BudgetPage() {
         <ScenarioSelector />
       </div>
 
-      {/* Summary Cards - Top Row */}
-      <div className="mb-6 grid gap-4 grid-cols-2 lg:grid-cols-4">
-        {/* Income Card */}
-        <div className="rounded-lg border p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <TrendingUp className="h-4 w-4" />
-            Income
+      {/* Summary Stats - Top Row */}
+      <div className="mb-6 grid gap-6 grid-cols-2 lg:grid-cols-4">
+        {/* Income */}
+        <div className="flex items-center gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
+            <TrendingUp className="h-6 w-6 text-green-500" />
           </div>
-          <p className="mt-2 text-2xl font-bold text-green-600">
-            {formatCents(monthlyCashFlow.income.actual)}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            of {formatCents(monthlyCashFlow.income.expected)} expected
-          </p>
+          <div>
+            <p className="text-sm text-muted-foreground">Income</p>
+            <p className="text-2xl font-bold">
+              {formatCents(monthlyCashFlow.income.actual)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              of {formatCents(monthlyCashFlow.income.expected)} expected
+            </p>
+          </div>
         </div>
 
-        {/* Budgeted Card */}
-        <div className="rounded-lg border p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Receipt className="h-4 w-4" />
-            Budgeted Spending
+        {/* Budgeted Spending */}
+        <div className="flex items-center gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
+            <Receipt className="h-6 w-6 text-red-500" />
           </div>
-          <p className="mt-2 text-2xl font-bold text-red-600">
-            {formatCents(monthlyCashFlow.budgeted.actual)}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            of {formatCents(monthlyCashFlow.budgeted.expected)} limit
-          </p>
+          <div>
+            <p className="text-sm text-muted-foreground">Budgeted Spending</p>
+            <p className="text-2xl font-bold">
+              {formatCents(monthlyCashFlow.budgeted.actual)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              of {formatCents(monthlyCashFlow.budgeted.expected)} limit
+            </p>
+          </div>
         </div>
 
-        {/* Unallocated Card */}
-        <div className="rounded-lg border p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <CircleAlert className="h-4 w-4" />
-            Unallocated
+        {/* Unallocated Spending */}
+        <div className="flex items-center gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
+            <CircleAlert className="h-6 w-6 text-amber-500" />
           </div>
-          <p className="mt-2 text-2xl font-bold text-amber-600">
-            {formatCents(monthlyCashFlow.unbudgeted.actual)}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {formatCents(monthlyCashFlow.unbudgeted.unallocated)} available
-          </p>
+          <div>
+            <p className="text-sm text-muted-foreground">Unallocated Spending</p>
+            <p className="text-2xl font-bold">
+              {formatCents(monthlyCashFlow.unbudgeted.actual)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {formatCents(monthlyCashFlow.unbudgeted.unallocated)} available
+            </p>
+          </div>
         </div>
 
-        {/* Savings Card */}
-        <div className="rounded-lg border p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <PiggyBank className="h-4 w-4" />
-            Savings
+        {/* Savings */}
+        <div className="flex items-center gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
+            <PiggyBank className="h-6 w-6 text-blue-500" />
           </div>
-          <p className="mt-2 text-2xl font-bold text-blue-600">
-            {formatCents(monthlyCashFlow.savings.actual)}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            of {formatCents(monthlyCashFlow.savings.expected)} expected
-          </p>
+          <div>
+            <p className="text-sm text-muted-foreground">Savings</p>
+            <p className="text-2xl font-bold">
+              {formatCents(monthlyCashFlow.savings.actual)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              of {formatCents(monthlyCashFlow.savings.expected)} expected
+            </p>
+          </div>
         </div>
       </div>
 
@@ -317,7 +365,7 @@ export function BudgetPage() {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Receipt className="h-4 w-4 text-red-600" />
-                    <span className="text-sm font-medium">Budgeted</span>
+                    <span className="text-sm font-medium">Budgeted Spending</span>
                   </div>
                   <div className="relative h-4 rounded-full bg-muted">
                     <div className="absolute h-4 rounded-full bg-red-200" style={{ width: pct(monthlyCashFlow.budgeted.expected) }} />
@@ -325,11 +373,11 @@ export function BudgetPage() {
                   </div>
                 </div>
 
-                {/* Unallocated bar */}
+                {/* Unallocated Spending bar */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <CircleAlert className="h-4 w-4 text-amber-600" />
-                    <span className="text-sm font-medium">Unallocated</span>
+                    <span className="text-sm font-medium">Unallocated Spending</span>
                   </div>
                   <div className="relative h-4 rounded-full bg-muted">
                     <div className="absolute h-4 rounded-full bg-amber-200" style={{ width: pct(monthlyCashFlow.unbudgeted.unallocated) }} />
@@ -417,6 +465,63 @@ export function BudgetPage() {
             <p className="mt-3 text-xl font-bold text-muted-foreground">—</p>
             <p className="mt-1 text-xs text-muted-foreground">Coming soon</p>
           </div>
+        </div>
+      </div>
+
+      {/* Monthly Spending by Category - Horizontal Bar Chart */}
+      <div className="mt-6 rounded-lg border p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Tags className="h-5 w-5 text-muted-foreground" />
+            <h3 className="font-semibold">{monthName} Spending</h3>
+          </div>
+          <div className="text-right">
+            <p className="text-lg font-bold">{formatCents(thisMonthSpending.total)}</p>
+            <p className="text-xs text-muted-foreground">
+              {thisMonthSpending.categorySpending.length} {thisMonthSpending.categorySpending.length === 1 ? 'category' : 'categories'}
+            </p>
+          </div>
+        </div>
+
+        {thisMonthSpending.categorySpending.length === 0 ? (
+          <div className="mt-6 flex h-24 items-center justify-center text-sm text-muted-foreground">
+            No expenses recorded this month.
+          </div>
+        ) : (
+          <div className="mt-6 space-y-3">
+            {thisMonthSpending.categorySpending.map((item) => {
+              const percentage = thisMonthSpending.total > 0 ? (item.amount / thisMonthSpending.total) * 100 : 0;
+              return (
+                <div key={item.id} className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: colorMap[item.id] ?? CHART_COLORS.uncategorized }}
+                      />
+                      <span className="font-medium">{item.name}</span>
+                    </div>
+                    <span className="font-mono text-muted-foreground">{formatCents(item.amount)}</span>
+                  </div>
+                  <div className="relative h-2 rounded-full bg-muted">
+                    <div
+                      className="absolute h-2 rounded-full"
+                      style={{
+                        width: `${percentage}%`,
+                        backgroundColor: colorMap[item.id] ?? CHART_COLORS.uncategorized,
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="mt-4">
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/transactions">View all transactions</Link>
+          </Button>
         </div>
       </div>
     </div>
