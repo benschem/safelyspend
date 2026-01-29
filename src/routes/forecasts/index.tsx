@@ -40,18 +40,19 @@ export function ForecastIndexPage() {
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
 
-  const hasDateFilter = filterStartDate !== '' && filterEndDate !== '';
+  // Has filter if either date is set
+  const hasDateFilter = filterStartDate !== '' || filterEndDate !== '';
 
   const clearDateFilter = useCallback(() => {
     setFilterStartDate('');
     setFilterEndDate('');
   }, []);
 
-  // When no date filter, use a wide range to show all forecasts
+  // Use wide defaults for unset dates (partial filter support)
   const defaultStart = '2020-01-01';
   const defaultEnd = '2099-12-31';
-  const queryStartDate = hasDateFilter ? filterStartDate : defaultStart;
-  const queryEndDate = hasDateFilter ? filterEndDate : defaultEnd;
+  const queryStartDate = filterStartDate || defaultStart;
+  const queryEndDate = filterEndDate || defaultEnd;
 
   const { expandedForecasts, rules, events } = useForecasts(activeScenarioId, queryStartDate, queryEndDate);
 
