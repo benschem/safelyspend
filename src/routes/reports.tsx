@@ -134,9 +134,9 @@ export function ReportsPage() {
         startingBalance: anchorInRange.balanceCents,
         balanceStartMonth: anchorMonth,
         warning: {
-          title: `Balance shown from ${formatCompactDate(anchorInRange.date, true)}`,
+          title: `Bank balance shown only from ${formatCompactDate(anchorInRange.date, true)}`,
           linkText: 'Set an earlier balance anchor',
-          linkSuffix: 'to see your balance from the start of this period.',
+          linkSuffix: 'to see your bank balance from the start of this period.',
         },
       };
     }

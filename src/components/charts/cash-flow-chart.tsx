@@ -40,7 +40,7 @@ interface ChartDataPoint {
   netActual: number;
   netForecast: number;
   cumulativeSavings: number;
-  balance: number | null; // Running balance at end of month
+  balance: number | null; // Running bank balance at end of month
 }
 
 interface TooltipPayload {
@@ -155,7 +155,7 @@ function CustomTooltip({
           )}
           {data.balance !== null && (
             <div className={`flex justify-between text-sm ${data.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              <span>Balance</span>
+              <span>Bank Balance</span>
               <span className="font-mono font-semibold">{formatCents(data.balance)}</span>
             </div>
           )}
@@ -262,12 +262,12 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
             />
           )}
 
-          {/* Balance area in background (green) */}
+          {/* Bank balance area in background (green) */}
           {hasBalance && (
             <Area
               type="monotone"
               dataKey="balance"
-              name="Balance"
+              name="Bank Balance"
               fill={CHART_COLORS.income}
               fillOpacity={0.12}
               stroke={CHART_COLORS.income}
@@ -343,7 +343,7 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
               className="h-3 w-3 rounded-sm"
               style={{ backgroundColor: CHART_COLORS.income, opacity: 0.25 }}
             />
-            <span>Balance</span>
+            <span>Bank Balance</span>
           </div>
         )}
       </div>
