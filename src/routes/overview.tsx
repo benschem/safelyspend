@@ -274,28 +274,83 @@ export function OverviewPage() {
       .slice(0, 10); // Show max 10 items
   }, [expandedForecasts, today]);
 
-  // Calculate safe to spend (balance minus committed expenses until next income)
+  // Calculate safe to spend = min(remaining budget, projected balance after obligations)
   const safeToSpend = useMemo(() => {
-    if (currentBalance === null) return null;
+    // If no budgets, can't calculate safe to spend
+    if (!budgetRules || budgetRules.length === 0) {
+      return { status: 'no-budget' as const };
+    }
 
-    // Find next income
-    const sortedFutureIncome = upcomingItems
+    // Calculate remaining budget across all budget rules
+    let totalBudgeted = 0;
+    let totalSpent = 0;
+
+    for (const rule of budgetRules) {
+      if (rule.amountCents === 0) continue;
+
+      // Get period range for this rule's cadence
+      const periodRange = getCurrentPeriodRange(rule.cadence);
+
+      // Sum expenses for this category in the period
+      const categoryExpenses = allTransactions.filter(
+        (t) =>
+          t.type === 'expense' &&
+          t.categoryId === rule.categoryId &&
+          t.date >= periodRange.start &&
+          t.date <= periodRange.end,
+      );
+      const spent = categoryExpenses.reduce((sum, t) => sum + t.amountCents, 0);
+
+      totalBudgeted += rule.amountCents;
+      totalSpent += Math.min(spent, rule.amountCents); // Cap at budget to avoid negative remaining
+    }
+
+    const remainingBudget = totalBudgeted - totalSpent;
+
+    // Calculate projected balance after obligations (next 30 days)
+    // If no balance anchor, we can still show remaining budget but flag the cash check
+    if (currentBalance === null) {
+      return {
+        status: 'no-balance' as const,
+        totalBudgeted,
+        totalSpent,
+        remainingBudget,
+      };
+    }
+
+    // Get forecasts for next 30 days
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+    const horizonEnd = thirtyDaysFromNow.toISOString().slice(0, 10);
+
+    // Sum forecasted income, expenses, savings
+    const futureForecasts = expandedForecasts.filter((f) => f.date > today && f.date <= horizonEnd);
+    const forecastedIncome = futureForecasts
       .filter((f) => f.type === 'income')
-      .sort((a, b) => a.date.localeCompare(b.date));
-
-    const nextIncomeDate = sortedFutureIncome[0]?.date ?? upcomingEnd;
-
-    // Sum expenses and savings until next income
-    const committed = upcomingItems
-      .filter((f) => f.date <= nextIncomeDate && (f.type === 'expense' || f.type === 'savings'))
+      .reduce((sum, f) => sum + f.amountCents, 0);
+    const forecastedExpenses = futureForecasts
+      .filter((f) => f.type === 'expense')
+      .reduce((sum, f) => sum + f.amountCents, 0);
+    const forecastedSavings = futureForecasts
+      .filter((f) => f.type === 'savings')
       .reduce((sum, f) => sum + f.amountCents, 0);
 
+    const projectedBalance = currentBalance + forecastedIncome - forecastedExpenses - forecastedSavings;
+
+    // Safe to spend = lesser of remaining budget and projected balance
+    const amount = Math.min(remainingBudget, projectedBalance);
+    const constrainedByBalance = projectedBalance < remainingBudget;
+
     return {
-      amount: currentBalance - committed,
-      untilDate: nextIncomeDate,
-      hasIncome: sortedFutureIncome.length > 0,
+      status: 'ok' as const,
+      amount,
+      totalBudgeted,
+      totalSpent,
+      remainingBudget,
+      projectedBalance,
+      constrainedByBalance,
     };
-  }, [currentBalance, upcomingItems, upcomingEnd]);
+  }, [budgetRules, allTransactions, currentBalance, expandedForecasts, today]);
 
   // Format month name
   const monthName = new Date(today).toLocaleDateString('en-AU', { month: 'long' });
@@ -381,21 +436,42 @@ export function OverviewPage() {
             <Wallet className="h-4 w-4" />
             Safe to Spend
           </div>
-          {safeToSpend !== null ? (
+          {safeToSpend.status === 'no-budget' ? (
             <>
-              <p className={`mt-1 text-2xl font-bold ${safeToSpend.amount < 0 ? 'text-red-600' : 'text-green-600'}`}>
+              <p className="mt-1 text-2xl font-bold text-muted-foreground">—</p>
+              <p className="text-sm text-muted-foreground">Set up budgets first</p>
+            </>
+          ) : safeToSpend.status === 'no-balance' ? (
+            <>
+              <p className="mt-1 text-2xl font-bold text-green-600">
+                {formatCents(safeToSpend.remainingBudget)}
+              </p>
+              <p className="text-sm text-muted-foreground">Set balance to verify cash</p>
+            </>
+          ) : safeToSpend.amount < 0 ? (
+            <>
+              <p className="mt-1 text-2xl font-bold text-red-600">$0</p>
+              <p className="text-sm text-muted-foreground">
+                {formatCents(safeToSpend.amount)} shortfall on budgeted
+              </p>
+            </>
+          ) : safeToSpend.constrainedByBalance ? (
+            <>
+              <p className="mt-1 text-2xl font-bold text-amber-600">
                 {formatCents(safeToSpend.amount)}
               </p>
               <p className="text-sm text-muted-foreground">
-                {safeToSpend.hasIncome
-                  ? `Until ${formatDate(safeToSpend.untilDate)}`
-                  : 'Next 14 days'}
+                {formatCents(safeToSpend.remainingBudget)} budgeted but cash is tight
               </p>
             </>
           ) : (
             <>
-              <p className="mt-1 text-2xl font-bold text-muted-foreground">—</p>
-              <p className="text-sm text-muted-foreground">Set balance anchor first</p>
+              <p className="mt-1 text-2xl font-bold text-green-600">
+                {formatCents(safeToSpend.amount)}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Remaining from {formatCents(safeToSpend.totalBudgeted)} budget
+              </p>
             </>
           )}
         </Link>
