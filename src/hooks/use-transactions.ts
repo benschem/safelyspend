@@ -9,15 +9,26 @@ const USER_ID = 'local';
 /**
  * Hook for managing transactions
  * Transactions are global facts - filtering is done by date range using indexed queries
+ * Supports partial date ranges (from-only or to-only)
  */
 export function useTransactions(startDate?: string, endDate?: string) {
-  // Use indexed date query for transactions in range
+  // Use indexed date query for transactions in range (supports partial ranges)
   const transactions = useLiveQuery(
     () => {
-      if (!startDate || !endDate) {
-        return db.transactions.toArray();
+      if (startDate && endDate) {
+        // Both dates: range query
+        return db.transactions.where('date').between(startDate, endDate, true, true).toArray();
       }
-      return db.transactions.where('date').between(startDate, endDate, true, true).toArray();
+      if (startDate) {
+        // From date only: all from this date onwards
+        return db.transactions.where('date').aboveOrEqual(startDate).toArray();
+      }
+      if (endDate) {
+        // To date only: all up to this date
+        return db.transactions.where('date').belowOrEqual(endDate).toArray();
+      }
+      // No dates: return all
+      return db.transactions.toArray();
     },
     [startDate, endDate],
   ) ?? [];
