@@ -11,16 +11,43 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { clearAllData } from '@/lib/demo-data';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { clearAllData, getAvailablePersonas, getDemoPersonaId, switchPersona } from '@/lib/demo-data';
 
 export function DemoBanner() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [currentPersonaId, setCurrentPersonaId] = useState(getDemoPersonaId);
+  const [isLoading, setIsLoading] = useState(false);
+  const personas = getAvailablePersonas();
 
   const handleReset = () => {
     clearAllData();
     // Redirect to root to restart the wizard
     window.location.href = '/';
   };
+
+  const handlePersonaChange = async (personaId: string) => {
+    if (personaId === currentPersonaId) return;
+
+    setIsLoading(true);
+    try {
+      await switchPersona(personaId);
+      setCurrentPersonaId(personaId);
+      // Reload the page to reflect new data
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to switch persona:', error);
+      setIsLoading(false);
+    }
+  };
+
+  const currentPersona = personas.find((p) => p.id === currentPersonaId);
 
   return (
     <>
@@ -39,7 +66,26 @@ export function DemoBanner() {
           </Button>
         }
       >
-        <span className="font-medium">You&apos;re exploring demo data</span>
+        <div className="flex items-center gap-3">
+          <span className="font-medium">Exploring demo data:</span>
+          <Select value={currentPersonaId} onValueChange={handlePersonaChange} disabled={isLoading}>
+            <SelectTrigger className="h-7 w-auto gap-2 border-yellow-600/50 bg-transparent text-sm hover:bg-yellow-200 dark:border-yellow-500/50 dark:hover:bg-yellow-900">
+              <SelectValue>
+                {isLoading ? 'Loading...' : currentPersona?.name ?? 'Select persona'}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {personas.map((persona) => (
+                <SelectItem key={persona.id} value={persona.id}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{persona.name}</span>
+                    <span className="text-xs text-muted-foreground">{persona.tagline}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </Alert>
 
       <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
