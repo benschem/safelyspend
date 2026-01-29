@@ -887,7 +887,10 @@ export function BudgetPage() {
             </div>
           </div>
 
-          <div className="flex min-h-[180px] flex-col rounded-lg border p-5">
+          <Link
+            to="/analyse?tab=savings"
+            className="flex min-h-[180px] flex-col rounded-lg border p-5 transition-colors hover:bg-muted/50"
+          >
             {/* Header */}
             <div>
               <div className="flex items-center gap-2 font-medium">
@@ -910,7 +913,7 @@ export function BudgetPage() {
                   : 'From forecasted contributions'}
               </p>
             </div>
-          </div>
+          </Link>
         </div>
       )}
 
