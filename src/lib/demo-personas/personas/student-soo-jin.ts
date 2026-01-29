@@ -182,14 +182,14 @@ export const studentSooJin: PersonaConfig = {
       targetAmountCents: 180000, // $1,800
       deadline: { monthsFromNow: 4 },
       startingBalanceCents: 90000, // Already saved $900
-      monthlyContributionCents: 25000, // $250/month
+      monthlyContributionCents: 35000, // $350/month - aggressive to hit deadline
     },
     {
       name: 'Emergency Buffer',
       targetAmountCents: 200000, // $2,000 small emergency fund
       isEmergencyFund: true,
       startingBalanceCents: 50000, // $500 saved
-      monthlyContributionCents: 10000, // $100/month
+      monthlyContributionCents: 15000, // $150/month - building the habit
     },
   ],
 
@@ -213,8 +213,8 @@ export const studentSooJin: PersonaConfig = {
         { category: 'Entertainment', amountCents: 6000 },
       ],
       savingsOverrides: [
-        { goalName: 'New Laptop', monthlyContributionCents: 50000 },
-        { goalName: 'Emergency Buffer', monthlyContributionCents: 25000 },
+        { goalName: 'New Laptop', monthlyContributionCents: 60000 },
+        { goalName: 'Emergency Buffer', monthlyContributionCents: 35000 },
       ],
     },
     {
