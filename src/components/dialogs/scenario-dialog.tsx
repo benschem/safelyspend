@@ -17,21 +17,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useScenarios } from '@/hooks/use-scenarios';
-import { useForecasts } from '@/hooks/use-forecasts';
-import { useBudgetRules } from '@/hooks/use-budget-rules';
-import type { Scenario } from '@/lib/types';
+import type { Scenario, CreateEntity } from '@/lib/types';
 
 interface ScenarioDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   scenario?: Scenario | null;
+  scenarios: Scenario[];
+  addScenario: (data: CreateEntity<Scenario>) => Promise<Scenario>;
+  updateScenario: (id: string, updates: Partial<Omit<Scenario, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
+  duplicateForecastsToScenario: (fromScenarioId: string, toScenarioId: string) => Promise<void>;
+  duplicateBudgetsToScenario: (fromScenarioId: string, toScenarioId: string) => Promise<void>;
 }
 
-export function ScenarioDialog({ open, onOpenChange, scenario }: ScenarioDialogProps) {
-  const { scenarios, addScenario, updateScenario } = useScenarios();
-  const { duplicateToScenario: duplicateForecastsToScenario } = useForecasts(null);
-  const { duplicateToScenario: duplicateBudgetsToScenario } = useBudgetRules(null);
+export function ScenarioDialog({ open, onOpenChange, scenario, scenarios, addScenario, updateScenario, duplicateForecastsToScenario, duplicateBudgetsToScenario }: ScenarioDialogProps) {
   const isEditing = !!scenario;
 
   // Form state

@@ -7,6 +7,8 @@ import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus, Pencil, Trash2, Check, X, Star, Layers } from 'lucide-react';
 import { Alert } from '@/components/ui/alert';
 import { useScenarios } from '@/hooks/use-scenarios';
+import { useForecasts } from '@/hooks/use-forecasts';
+import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { db } from '@/lib/db';
 import { ScenarioDialog } from '@/components/dialogs/scenario-dialog';
 import type { Scenario } from '@/lib/types';
@@ -17,7 +19,9 @@ interface ScenarioRow extends Scenario {
 }
 
 export function ScenariosIndexPage() {
-  const { scenarios, updateScenario, deleteScenario } = useScenarios();
+  const { scenarios, addScenario, updateScenario, deleteScenario } = useScenarios();
+  const { duplicateToScenario: duplicateForecastsToScenario } = useForecasts(null);
+  const { duplicateToScenario: duplicateBudgetsToScenario } = useBudgetRules(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // Get rule counts per scenario
@@ -287,7 +291,16 @@ export function ScenariosIndexPage() {
         </div>
       )}
 
-      <ScenarioDialog open={dialogOpen} onOpenChange={setDialogOpen} scenario={null} />
+      <ScenarioDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        scenario={null}
+        scenarios={scenarios}
+        addScenario={addScenario}
+        updateScenario={updateScenario}
+        duplicateForecastsToScenario={duplicateForecastsToScenario}
+        duplicateBudgetsToScenario={duplicateBudgetsToScenario}
+      />
     </div>
   );
 }
