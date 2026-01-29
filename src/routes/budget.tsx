@@ -867,7 +867,7 @@ export function BudgetPage() {
           </Link>
 
           <Link
-            to="/analyse?tab=coverage"
+            to="/analyse?tab=spending"
             className="flex min-h-[180px] flex-col rounded-lg border p-5 transition-colors hover:bg-muted/50"
           >
             {/* Header */}
