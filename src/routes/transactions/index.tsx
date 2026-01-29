@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback, useEffect } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +35,8 @@ type FilterType = 'all' | 'income' | 'expense' | 'savings' | 'adjustment';
 type CategoryFilter = 'all' | 'uncategorized' | string;
 
 export function TransactionsIndexPage() {
+  const [searchParams] = useSearchParams();
+
   // Date filter state - empty strings mean no filter
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
@@ -50,7 +52,11 @@ export function TransactionsIndexPage() {
   const { rules: categoryRules } = useCategoryRules();
 
   const [filterType, setFilterType] = useState<FilterType>('all');
-  const [filterCategory, setFilterCategory] = useState<CategoryFilter>('all');
+  // Initialize category filter from URL param if present
+  const [filterCategory, setFilterCategory] = useState<CategoryFilter>(() => {
+    const categoryParam = searchParams.get('category');
+    return categoryParam ?? 'all';
+  });
 
   // Add dialog state
   const [addDialogOpen, setAddDialogOpen] = useState(false);
