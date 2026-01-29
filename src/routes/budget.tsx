@@ -640,7 +640,7 @@ export function BudgetPage() {
                   />
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {pct}% of {formatCents(periodCashFlow.income.expected)} forecast
+                  {pct}% earned of {formatCents(periodCashFlow.income.expected)} forecast
                 </p>
               </>
             );
@@ -673,7 +673,7 @@ export function BudgetPage() {
                   />
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {pct}% of {formatCents(periodCashFlow.budgeted.expected)} limit
+                  {pct}% spent of {formatCents(periodCashFlow.budgeted.expected)} limit
                 </p>
               </>
             );
@@ -706,7 +706,7 @@ export function BudgetPage() {
                   />
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {pct}% of {formatCents(periodCashFlow.unbudgeted.unallocated)} available
+                  {pct}% spent of {formatCents(periodCashFlow.unbudgeted.unallocated)} available
                 </p>
               </>
             );
@@ -739,7 +739,7 @@ export function BudgetPage() {
                   />
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {pct}% of {formatCents(periodCashFlow.savings.expected)} forecast
+                  {pct}% saved of {formatCents(periodCashFlow.savings.expected)} planned
                 </p>
               </>
             );
