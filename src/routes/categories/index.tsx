@@ -19,7 +19,7 @@ interface OutletContext {
 
 export function CategoriesIndexPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
-  const { categories, updateCategory, deleteCategory } = useCategories();
+  const { categories, addCategory, updateCategory, deleteCategory } = useCategories();
   const { allTransactions } = useTransactions();
   const { rules: forecastRules } = useForecasts(activeScenarioId);
 
@@ -260,6 +260,8 @@ export function CategoriesIndexPage() {
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
         category={null}
+        addCategory={addCategory}
+        updateCategory={updateCategory}
       />
     </div>
   );

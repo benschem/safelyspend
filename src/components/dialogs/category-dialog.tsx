@@ -9,17 +9,17 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useCategories } from '@/hooks/use-categories';
-import type { Category } from '@/lib/types';
+import type { Category, CreateEntity } from '@/lib/types';
 
 interface CategoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   category?: Category | null;
+  addCategory: (data: CreateEntity<Category>) => Promise<Category>;
+  updateCategory: (id: string, updates: Partial<Omit<Category, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
 }
 
-export function CategoryDialog({ open, onOpenChange, category }: CategoryDialogProps) {
-  const { addCategory, updateCategory } = useCategories();
+export function CategoryDialog({ open, onOpenChange, category, addCategory, updateCategory }: CategoryDialogProps) {
   const isEditing = !!category;
 
   const [name, setName] = useState('');
