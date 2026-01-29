@@ -165,10 +165,13 @@ export type TimelineUnit = 'months' | 'years';
 // View State - UI state for date range selection (not persisted as entity)
 // -----------------------------------------------------------------------------
 
+export type PresetTimelineMode = 'past' | 'around-present' | 'future';
+
 export interface ViewState {
   mode: TimelineMode;
   amount: number;
   unit: TimelineUnit;
+  lastPresetMode?: PresetTimelineMode; // Remember last non-custom mode
   customStartDate?: string;
   customEndDate?: string;
 }

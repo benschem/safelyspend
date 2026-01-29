@@ -1,14 +1,16 @@
 import { useMemo, useCallback } from 'react';
 import { useLocalStorage } from './use-local-storage';
-import type { ViewState, TimelineMode, TimelineUnit } from '@/lib/types';
+import type { ViewState, TimelineMode, TimelineUnit, PresetTimelineMode } from '@/lib/types';
 import { calculateTimelineDateRange, TIMELINE_UNIT_BOUNDS } from '@/lib/utils';
 
 const STORAGE_KEY = 'budget:viewState';
+const DEFAULT_PRESET_MODE: PresetTimelineMode = 'around-present';
 
 const DEFAULT_STATE: ViewState = {
-  mode: 'around-present',
+  mode: DEFAULT_PRESET_MODE,
   amount: 6,
   unit: 'months',
+  lastPresetMode: DEFAULT_PRESET_MODE,
 };
 
 /**
@@ -38,14 +40,27 @@ export function useViewState() {
 
   const setMode = useCallback(
     (mode: TimelineMode) => {
-      setViewState((prev) => ({ ...prev, mode }));
+      setViewState((prev) => {
+        // Track last preset mode for restoring from custom
+        if (mode !== 'custom') {
+          return { ...prev, mode, lastPresetMode: mode as PresetTimelineMode };
+        }
+        return { ...prev, mode };
+      });
     },
     [setViewState],
   );
 
   const setAmount = useCallback(
     (amount: number) => {
-      setViewState((prev) => ({ ...prev, amount }));
+      setViewState((prev) => {
+        // If in custom mode, switch back to last preset mode
+        if (prev.mode === 'custom') {
+          const mode = prev.lastPresetMode ?? DEFAULT_PRESET_MODE;
+          return { ...prev, amount, mode };
+        }
+        return { ...prev, amount };
+      });
     },
     [setViewState],
   );
@@ -56,6 +71,11 @@ export function useViewState() {
       setViewState((prev) => {
         const bounds = TIMELINE_UNIT_BOUNDS[unit];
         const clampedAmount = Math.min(Math.max(prev.amount, bounds.min), bounds.max);
+        // If in custom mode, switch back to last preset mode
+        if (prev.mode === 'custom') {
+          const mode = prev.lastPresetMode ?? DEFAULT_PRESET_MODE;
+          return { ...prev, unit, amount: clampedAmount, mode };
+        }
         return { ...prev, unit, amount: clampedAmount };
       });
     },
@@ -91,6 +111,7 @@ export function useViewState() {
     mode: viewState.mode,
     amount: viewState.amount,
     unit: viewState.unit,
+    lastPresetMode: viewState.lastPresetMode ?? DEFAULT_PRESET_MODE,
     customStartDate: viewState.customStartDate,
     customEndDate: viewState.customEndDate,
 

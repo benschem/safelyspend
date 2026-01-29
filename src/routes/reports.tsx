@@ -33,6 +33,7 @@ export function ReportsPage() {
     mode,
     amount,
     unit,
+    lastPresetMode,
     startDate,
     endDate,
     customStartDate,
@@ -177,6 +178,7 @@ export function ReportsPage() {
             mode={mode}
             amount={amount}
             unit={unit}
+            lastPresetMode={lastPresetMode}
             startDate={startDate}
             endDate={endDate}
             customStartDate={customStartDate}

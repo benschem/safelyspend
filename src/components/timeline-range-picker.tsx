@@ -24,6 +24,7 @@ interface TimelineRangePickerProps {
   mode: TimelineMode;
   amount: number;
   unit: TimelineUnit;
+  lastPresetMode: 'past' | 'around-present' | 'future';
   startDate: string;
   endDate: string;
   customStartDate: string | undefined;
@@ -66,6 +67,7 @@ export function TimelineRangePicker({
   mode,
   amount,
   unit,
+  lastPresetMode,
   startDate,
   endDate,
   customStartDate,
@@ -78,8 +80,10 @@ export function TimelineRangePicker({
   const [open, setOpen] = useState(false);
   const [tempStartDate, setTempStartDate] = useState(customStartDate || startDate);
   const [tempEndDate, setTempEndDate] = useState(customEndDate || endDate);
+  const [customFocused, setCustomFocused] = useState(false);
 
   const isCustomMode = mode === 'custom';
+  const isCustomActive = isCustomMode || customFocused;
   const bounds = TIMELINE_UNIT_BOUNDS[unit];
 
   // Format description for button
@@ -87,35 +91,52 @@ export function TimelineRangePicker({
     ? `${formatCompactDate(startDate, true)} → ${formatCompactDate(endDate, true)}`
     : formatTimelineDescription(amount, unit, mode);
 
-  const handleModeClick = (newMode: TimelineMode) => {
-    if (newMode !== 'custom') {
-      onModeChange(newMode);
-    }
-  };
-
   const handleOpenChange = (newOpen: boolean) => {
     if (newOpen) {
       setTempStartDate(customStartDate || startDate);
       setTempEndDate(customEndDate || endDate);
+    } else {
+      setCustomFocused(false);
     }
     setOpen(newOpen);
   };
 
-  const handleApplyCustom = () => {
-    if (tempStartDate && tempEndDate && tempStartDate <= tempEndDate) {
-      onCustomDateChange(tempStartDate, tempEndDate);
+  const handleStartDateChange = (value: string) => {
+    setTempStartDate(value);
+    setCustomFocused(true);
+    // Apply immediately if valid
+    if (value && tempEndDate && value <= tempEndDate) {
+      onCustomDateChange(value, tempEndDate);
+    }
+  };
+
+  const handleEndDateChange = (value: string) => {
+    setTempEndDate(value);
+    setCustomFocused(true);
+    // Apply immediately if valid
+    if (tempStartDate && value && tempStartDate <= value) {
+      onCustomDateChange(tempStartDate, value);
     }
   };
 
   const handleAmountChange = (value: string) => {
     const num = parseInt(value, 10);
     if (!isNaN(num) && num >= bounds.min && num <= bounds.max) {
+      setCustomFocused(false);
       onAmountChange(num);
     }
   };
 
   const handleUnitChange = (newUnit: TimelineUnit) => {
+    setCustomFocused(false);
     onUnitChange(newUnit);
+  };
+
+  const handleModeClick = (newMode: TimelineMode) => {
+    if (newMode !== 'custom') {
+      setCustomFocused(false);
+      onModeChange(newMode);
+    }
   };
 
   // Generate amount options based on current unit bounds
@@ -142,78 +163,85 @@ export function TimelineRangePicker({
             </p>
           </div>
 
-          {/* Amount + Unit selector and Direction Toggle */}
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-3">
-            {/* Amount + Unit selector */}
-            <div className="space-y-2">
-              <Label className="text-xs">Show</Label>
-              <div className="flex items-center gap-2">
-                <Select
-                  value={amount.toString()}
-                  onValueChange={handleAmountChange}
-                  disabled={isCustomMode}
-                >
-                  <SelectTrigger className="w-20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60">
-                    {amountOptions.map((n) => (
-                      <SelectItem key={n} value={n.toString()}>
-                        {n}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={unit}
-                  onValueChange={(v) => handleUnitChange(v as TimelineUnit)}
-                  disabled={isCustomMode}
-                >
-                  <SelectTrigger className="w-28">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {UNITS.map((u) => (
-                      <SelectItem key={u.value} value={u.value}>
-                        {amount === 1 ? u.label : u.pluralLabel}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          {/* Preset Range */}
+          <div className={cn(
+            'space-y-2 rounded-lg border p-3 transition-colors',
+            !isCustomActive ? 'border-border bg-muted/50' : 'border-transparent',
+          )}>
+            <Label className="text-xs">Preset Range</Label>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-3">
+              {/* Amount + Unit selector */}
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Show</Label>
+                <div className="flex items-center gap-2">
+                  <Select value={amount.toString()} onValueChange={handleAmountChange}>
+                    <SelectTrigger className="w-20 cursor-pointer">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {amountOptions.map((n) => (
+                        <SelectItem key={n} value={n.toString()}>
+                          {n}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={unit}
+                    onValueChange={(v) => handleUnitChange(v as TimelineUnit)}
+                  >
+                    <SelectTrigger className="w-28 cursor-pointer">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {UNITS.map((u) => (
+                        <SelectItem key={u.value} value={u.value}>
+                          {amount === 1 ? u.label : u.pluralLabel}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
 
-            {/* Direction Toggle */}
-            <div className="space-y-2 sm:flex-1">
-              <Label className="text-xs sm:sr-only">Direction</Label>
-              <div className="inline-flex w-full rounded-md border border-input bg-background p-1">
-                {MODES.map((m) => {
-                  const Icon = m.icon;
-                  return (
-                    <button
-                      key={m.value}
-                      onClick={() => handleModeClick(m.value)}
-                      disabled={isCustomMode}
-                      className={cn(
-                        'flex flex-1 items-center justify-center gap-1.5 rounded-sm px-3 py-1.5 text-sm font-medium transition-colors',
-                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                        'disabled:pointer-events-none disabled:opacity-50',
-                        mode === m.value && !isCustomMode
-                          ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                      )}
-                    >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      {m.label}
-                    </button>
-                  );
-                })}
+              {/* Direction Toggle */}
+              <div className="space-y-1 sm:flex-1">
+                <Label className="text-xs text-muted-foreground">in the</Label>
+                <div className="inline-flex h-9 w-full rounded-md border border-input bg-background p-1 shadow-sm">
+                  {MODES.map((m) => {
+                    const Icon = m.icon;
+                    const isSelected = isCustomActive
+                      ? m.value === lastPresetMode
+                      : m.value === mode;
+                    return (
+                      <button
+                        key={m.value}
+                        onClick={() => handleModeClick(m.value)}
+                        className={cn(
+                          'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-sm px-3 text-sm font-medium transition-colors',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                          isSelected
+                            ? isCustomActive
+                              ? 'bg-primary/50 text-primary-foreground/70 shadow-sm'
+                              : 'bg-primary text-primary-foreground shadow-sm'
+                            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                        )}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        {m.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Custom Date Range */}
-          <div className="space-y-2 border-t pt-4">
+          <div className={cn(
+            'space-y-2 rounded-lg border p-3 transition-colors',
+            isCustomActive ? 'border-border bg-muted/50' : 'border-transparent',
+          )}>
             <Label className="text-xs">Custom Range</Label>
             <div className="grid grid-cols-2 gap-2">
               <div className="grid gap-1">
@@ -225,8 +253,9 @@ export function TimelineRangePicker({
                   type="date"
                   value={tempStartDate}
                   max={tempEndDate}
-                  onChange={(e) => setTempStartDate(e.target.value)}
-                  className="h-8"
+                  onChange={(e) => handleStartDateChange(e.target.value)}
+                  onFocus={() => setCustomFocused(true)}
+                  className="h-8 cursor-pointer"
                 />
               </div>
               <div className="grid gap-1">
@@ -238,20 +267,12 @@ export function TimelineRangePicker({
                   type="date"
                   value={tempEndDate}
                   min={tempStartDate}
-                  onChange={(e) => setTempEndDate(e.target.value)}
-                  className="h-8"
+                  onChange={(e) => handleEndDateChange(e.target.value)}
+                  onFocus={() => setCustomFocused(true)}
+                  className="h-8 cursor-pointer"
                 />
               </div>
             </div>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={handleApplyCustom}
-              disabled={!tempStartDate || !tempEndDate || tempStartDate > tempEndDate}
-              className="w-full"
-            >
-              Apply Custom Range
-            </Button>
           </div>
         </div>
       </PopoverContent>
