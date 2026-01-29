@@ -190,6 +190,8 @@ export function generateDemoData(): BudgetData {
       name: 'Emergency Fund',
       targetAmountCents: 1500000, // $15,000 (3 months expenses)
       deadline: monthsFromNow(18),
+      annualInterestRate: 4.5, // High-yield savings account
+      compoundingFrequency: 'monthly' as const,
     },
     {
       id: goalHoliday,
@@ -202,12 +204,16 @@ export function generateDemoData(): BudgetData {
       name: 'New Car Fund',
       targetAmountCents: 2500000, // $25,000
       deadline: monthsFromNow(36),
+      annualInterestRate: 4.5,
+      compoundingFrequency: 'monthly' as const,
     },
     {
       id: goalHouseDeposit,
       name: 'House Deposit',
       targetAmountCents: 10000000, // $100,000
       deadline: monthsFromNow(60),
+      annualInterestRate: 5.0, // Term deposit
+      compoundingFrequency: 'monthly' as const,
     },
     {
       id: goalChristmas,

@@ -161,6 +161,22 @@ export function SavingsIndexPage() {
         sortingFn: 'datetime',
       },
       {
+        accessorKey: 'annualInterestRate',
+        header: ({ column }) => (
+          <SortableHeader column={column} className="justify-end">
+            Interest
+          </SortableHeader>
+        ),
+        cell: ({ row }) => {
+          const rate = row.original.annualInterestRate;
+          return (
+            <div className="text-right text-muted-foreground">
+              {rate ? `${rate}%` : '-'}
+            </div>
+          );
+        },
+      },
+      {
         accessorKey: 'progress',
         header: ({ column }) => <SortableHeader column={column}>Progress</SortableHeader>,
         cell: ({ row }) => {

@@ -148,10 +148,14 @@ export interface CategoryRule extends BaseEntity {
 // Savings Goal - Global savings targets
 // -----------------------------------------------------------------------------
 
+export type CompoundingFrequency = 'daily' | 'monthly' | 'yearly';
+
 export interface SavingsGoal extends BaseEntity {
   name: string;
   targetAmountCents: number;
   deadline?: string;
+  annualInterestRate?: number; // Percentage, e.g., 4.5 for 4.5%
+  compoundingFrequency?: CompoundingFrequency; // Defaults to 'monthly' if rate is set
 }
 
 // -----------------------------------------------------------------------------

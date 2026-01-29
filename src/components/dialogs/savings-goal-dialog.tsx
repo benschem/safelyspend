@@ -11,8 +11,15 @@ import {
 } from '@/components/ui/dialog';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useTransactions } from '@/hooks/use-transactions';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { today, parseCentsFromInput } from '@/lib/utils';
-import type { SavingsGoal } from '@/lib/types';
+import type { SavingsGoal, CompoundingFrequency } from '@/lib/types';
 
 interface SavingsGoalDialogProps {
   open: boolean;
@@ -30,6 +37,8 @@ export function SavingsGoalDialog({ open, onOpenChange, goal }: SavingsGoalDialo
   const [targetAmount, setTargetAmount] = useState('');
   const [startingBalance, setStartingBalance] = useState('');
   const [deadline, setDeadline] = useState('');
+  const [interestRate, setInterestRate] = useState('');
+  const [compoundingFrequency, setCompoundingFrequency] = useState<CompoundingFrequency>('monthly');
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,11 +48,15 @@ export function SavingsGoalDialog({ open, onOpenChange, goal }: SavingsGoalDialo
         setTargetAmount((goal.targetAmountCents / 100).toFixed(2));
         setStartingBalance('');
         setDeadline(goal.deadline ?? '');
+        setInterestRate(goal.annualInterestRate?.toString() ?? '');
+        setCompoundingFrequency(goal.compoundingFrequency ?? 'monthly');
       } else {
         setName('');
         setTargetAmount('');
         setStartingBalance('');
         setDeadline('');
+        setInterestRate('');
+        setCompoundingFrequency('monthly');
       }
       setFormError(null);
     }
@@ -63,20 +76,22 @@ export function SavingsGoalDialog({ open, onOpenChange, goal }: SavingsGoalDialo
       return;
     }
 
+    const parsedInterestRate = interestRate ? parseFloat(interestRate) : null;
+
     if (isEditing && goal) {
       const updates: Parameters<typeof updateSavingsGoal>[1] = {
         name: name.trim(),
         targetAmountCents,
+        ...(deadline ? { deadline } : {}),
+        ...(parsedInterestRate ? { annualInterestRate: parsedInterestRate, compoundingFrequency } : {}),
       };
-      if (deadline) {
-        updates.deadline = deadline;
-      }
       await updateSavingsGoal(goal.id, updates);
     } else {
       const newGoal = await addSavingsGoal({
         name: name.trim(),
         targetAmountCents,
-        ...(deadline && { deadline }),
+        ...(deadline ? { deadline } : {}),
+        ...(parsedInterestRate ? { annualInterestRate: parsedInterestRate, compoundingFrequency } : {}),
       });
 
       // Create starting balance transaction if amount > 0
@@ -167,6 +182,47 @@ export function SavingsGoalDialog({ open, onOpenChange, goal }: SavingsGoalDialo
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="goal-interest" className="select-none">
+                Interest Rate
+                <span className="ml-1 font-normal text-muted-foreground">(opt.)</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  id="goal-interest"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  placeholder="e.g., 4.5"
+                  value={interestRate}
+                  onChange={(e) => setInterestRate(e.target.value)}
+                  className="pr-8"
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  %
+                </span>
+              </div>
+            </div>
+
+            {interestRate && (
+              <div className="space-y-2">
+                <Label htmlFor="goal-compounding" className="select-none">Compounding</Label>
+                <Select value={compoundingFrequency} onValueChange={(v) => setCompoundingFrequency(v as CompoundingFrequency)}>
+                  <SelectTrigger id="goal-compounding">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
