@@ -290,7 +290,7 @@ export function SnapshotPage() {
           <button
             type="button"
             onClick={goToDedicatedSavingsInsights}
-            className="group rounded-xl border bg-card p-5 text-left transition-colors hover:bg-muted/50"
+            className="group cursor-pointer rounded-xl border bg-card p-5 text-left transition-colors hover:bg-muted/50"
           >
             <div className="flex items-center justify-between">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10">
