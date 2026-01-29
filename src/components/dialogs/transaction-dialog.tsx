@@ -20,18 +20,18 @@ import {
 import { CategorySelect } from '@/components/category-select';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
 import { PaymentMethodSelect } from '@/components/payment-method-select';
-import { useTransactions } from '@/hooks/use-transactions';
 import { today, parseCentsFromInput } from '@/lib/utils';
-import type { Transaction, TransactionType } from '@/lib/types';
+import type { Transaction, TransactionType, CreateEntity } from '@/lib/types';
 
 interface TransactionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   transaction?: Transaction | null;
+  addTransaction: (data: CreateEntity<Transaction>) => Promise<Transaction>;
+  updateTransaction: (id: string, updates: Partial<Omit<Transaction, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
 }
 
-export function TransactionDialog({ open, onOpenChange, transaction }: TransactionDialogProps) {
-  const { addTransaction, updateTransaction } = useTransactions();
+export function TransactionDialog({ open, onOpenChange, transaction, addTransaction, updateTransaction }: TransactionDialogProps) {
   const isEditing = !!transaction;
   const todayDate = today();
 

@@ -51,7 +51,7 @@ export function TransactionsIndexPage() {
   const queryStartDate = filterStartDate || undefined;
   const queryEndDate = filterEndDate || undefined;
 
-  const { transactions, allTransactions, updateTransaction, deleteTransaction } = useTransactions(queryStartDate, queryEndDate);
+  const { transactions, allTransactions, addTransaction, updateTransaction, deleteTransaction } = useTransactions(queryStartDate, queryEndDate);
 
   // Check if any transactions exist at all
   const hasAnyTransactions = allTransactions.length > 0;
@@ -458,6 +458,8 @@ export function TransactionsIndexPage() {
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
         transaction={null}
+        addTransaction={addTransaction}
+        updateTransaction={updateTransaction}
       />
 
       <UpImportDialog open={upImportOpen} onOpenChange={setUpImportOpen} />
