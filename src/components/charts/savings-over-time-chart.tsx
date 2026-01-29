@@ -102,7 +102,6 @@ function CustomTooltip({
 export function SavingsOverTimeChart({ monthlySavings }: SavingsOverTimeChartProps) {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const hasCurrentMonth = monthlySavings.some((m) => m.month === currentMonth);
-  const hasFutureData = monthlySavings.some((m) => m.month > currentMonth);
 
   const hasSavings = monthlySavings.some((m) => m.actual > 0 || m.forecast > 0);
 
@@ -164,7 +163,7 @@ export function SavingsOverTimeChart({ monthlySavings }: SavingsOverTimeChartPro
               stroke="#6b7280"
               strokeWidth={2}
               label={{
-                value: hasFutureData ? 'Now' : '',
+                value: 'Now',
                 position: 'top',
                 fontSize: 11,
                 fill: '#6b7280',

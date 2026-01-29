@@ -244,7 +244,7 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance }: CashFlowChart
               stroke="#6b7280"
               strokeWidth={2}
               label={{
-                value: hasFutureData ? 'Now' : '',
+                value: 'Now',
                 position: 'top',
                 fontSize: 11,
                 fill: '#6b7280',
