@@ -416,48 +416,53 @@ export function OverviewPage() {
           to="/analyse?tab=cashflow"
           className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
         >
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Landmark className="h-4 w-4" />
-            Bank Balance
+          <div>
+            <div className="flex items-center gap-2 font-medium">
+              <Landmark className="h-4 w-4 text-muted-foreground" />
+              Cash Position
+            </div>
+            <p className="text-xs text-muted-foreground">Your actual money right now</p>
           </div>
           {currentBalance !== null ? (
-            <p className="mt-1 text-2xl font-bold">{formatCents(currentBalance)}</p>
+            <p className="mt-2 text-2xl font-bold">{formatCents(currentBalance)}</p>
           ) : (
-            <p className="mt-1 text-2xl font-bold text-muted-foreground">—</p>
+            <p className="mt-2 text-2xl font-bold text-muted-foreground">—</p>
           )}
-          <p className="text-sm text-muted-foreground">As of today</p>
         </Link>
 
         <Link
           to="/budget"
           className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
         >
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Wallet className="h-4 w-4" />
-            Safe to Spend
+          <div>
+            <div className="flex items-center gap-2 font-medium">
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+              Spendable
+            </div>
+            <p className="text-xs text-muted-foreground">Can your income cover your budget?</p>
           </div>
           {safeToSpend.status === 'no-budget' ? (
             <>
-              <p className="mt-1 text-2xl font-bold text-muted-foreground">—</p>
+              <p className="mt-2 text-2xl font-bold text-muted-foreground">—</p>
               <p className="text-sm text-muted-foreground">Set up budgets first</p>
             </>
           ) : safeToSpend.status === 'no-balance' ? (
             <>
-              <p className="mt-1 text-2xl font-bold text-green-600">
+              <p className="mt-2 text-2xl font-bold text-green-600">
                 {formatCents(safeToSpend.remainingBudget)}
               </p>
               <p className="text-sm text-muted-foreground">Set balance to verify cash</p>
             </>
           ) : safeToSpend.amount < 0 ? (
             <>
-              <p className="mt-1 text-2xl font-bold text-red-600">$0</p>
+              <p className="mt-2 text-2xl font-bold text-red-600">$0</p>
               <p className="text-sm text-muted-foreground">
                 {formatCents(safeToSpend.amount)} shortfall on budgeted
               </p>
             </>
           ) : safeToSpend.constrainedByBalance ? (
             <>
-              <p className="mt-1 text-2xl font-bold text-amber-600">
+              <p className="mt-2 text-2xl font-bold text-amber-600">
                 {formatCents(safeToSpend.amount)}
               </p>
               <p className="text-sm text-muted-foreground">
@@ -466,7 +471,7 @@ export function OverviewPage() {
             </>
           ) : (
             <>
-              <p className="mt-1 text-2xl font-bold text-green-600">
+              <p className="mt-2 text-2xl font-bold text-green-600">
                 {formatCents(safeToSpend.amount)}
               </p>
               <p className="text-sm text-muted-foreground">
@@ -480,26 +485,29 @@ export function OverviewPage() {
           to="/budget"
           className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
         >
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            {budgetHealth.status === 'no-budget' ? (
-              <CheckCircle2 className="h-4 w-4" />
-            ) : budgetHealth.overBudget > 0 ? (
-              <XCircle className="h-4 w-4 text-red-600" />
-            ) : budgetHealth.overspending > 0 ? (
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
-            ) : (
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-            )}
-            Spending Speed
+          <div>
+            <div className="flex items-center gap-2 font-medium">
+              {budgetHealth.status === 'no-budget' ? (
+                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+              ) : budgetHealth.overBudget > 0 ? (
+                <XCircle className="h-4 w-4 text-red-600" />
+              ) : budgetHealth.overspending > 0 ? (
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+              )}
+              Spending Rate
+            </div>
+            <p className="text-xs text-muted-foreground">Are you burning budget too fast?</p>
           </div>
           {budgetHealth.status === 'no-budget' ? (
             <>
-              <p className="mt-1 text-2xl font-bold text-muted-foreground">—</p>
+              <p className="mt-2 text-2xl font-bold text-muted-foreground">—</p>
               <p className="text-sm text-muted-foreground">No budgets set</p>
             </>
           ) : budgetHealth.overBudget > 0 ? (
             <>
-              <p className="mt-1 text-2xl font-bold text-red-600">Too Fast</p>
+              <p className="mt-2 text-2xl font-bold text-red-600">Too Fast</p>
               <p className="text-sm text-muted-foreground">
                 {budgetHealth.overBudget} {budgetHealth.overBudget === 1 ? 'budget' : 'budgets'} exceeded
                 {budgetHealth.overspending > 0 && `, ${budgetHealth.overspending} overspending`}
@@ -507,14 +515,14 @@ export function OverviewPage() {
             </>
           ) : budgetHealth.overspending > 0 ? (
             <>
-              <p className="mt-1 text-2xl font-bold text-amber-600">Speeding Up</p>
+              <p className="mt-2 text-2xl font-bold text-amber-600">Speeding Up</p>
               <p className="text-sm text-muted-foreground">
                 {budgetHealth.overspending} {budgetHealth.overspending === 1 ? 'budget' : 'budgets'} overspending
               </p>
             </>
           ) : (
             <>
-              <p className="mt-1 text-2xl font-bold text-green-600">On Track</p>
+              <p className="mt-2 text-2xl font-bold text-green-600">On Track</p>
               <p className="text-sm text-muted-foreground">
                 {budgetHealth.watch > 0
                   ? `${budgetHealth.onTrack} on pace, ${budgetHealth.watch} to watch`
@@ -528,12 +536,14 @@ export function OverviewPage() {
           to="/analyse?tab=savings"
           className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
         >
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <PiggyBank className="h-4 w-4" />
-            Total Savings
+          <div>
+            <div className="flex items-center gap-2 font-medium">
+              <PiggyBank className="h-4 w-4 text-muted-foreground" />
+              Total Savings
+            </div>
+            <p className="text-xs text-muted-foreground">Total across all goals</p>
           </div>
-          <p className="mt-1 text-2xl font-bold text-blue-600">{formatCents(totalSavings)}</p>
-          <p className="text-sm text-muted-foreground">As of today</p>
+          <p className="mt-2 text-2xl font-bold text-blue-600">{formatCents(totalSavings)}</p>
         </Link>
       </div>
 
