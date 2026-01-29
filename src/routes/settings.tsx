@@ -237,12 +237,12 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="max-w-2xl">
+    <div>
       <div className="mb-8">
         <h1 className="flex items-center gap-3 text-3xl font-bold">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-500/10">
-              <Settings className="h-5 w-5 text-gray-500" />
-            </div>
+            <Settings className="h-5 w-5 text-gray-500" />
+          </div>
           Settings
         </h1>
         <p className="mt-1 text-muted-foreground">Manage your data and preferences.</p>
@@ -251,150 +251,175 @@ export function SettingsPage() {
       {message && (
         <Alert
           variant={message.type === 'success' ? 'success' : 'destructive'}
-          className="mt-4"
+          className="mb-6"
         >
           {message.text}
         </Alert>
       )}
 
-      <Separator className="my-6" />
-
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold">Appearance</h2>
-
-        <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 className="font-medium">Theme</h3>
-            <p className="text-sm text-muted-foreground">Choose light, dark, or system theme.</p>
-          </div>
-          <ThemeToggle />
-        </div>
-      </section>
-
-      <Separator className="my-6" />
-
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold">Data Management</h2>
-
-        <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 className="font-medium">Export Data</h3>
-            <p className="text-sm text-muted-foreground">Download all your budget data as JSON.</p>
-          </div>
-          <Button variant="outline" onClick={handleExportClick} className="w-full sm:w-auto">
-            <Upload className="h-4 w-4" />
-            Export
-          </Button>
-        </div>
-
-        <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 className="font-medium">Import Data</h3>
-            <p className="text-sm text-muted-foreground">Restore from a JSON backup file.</p>
-          </div>
-          <Button variant="outline" onClick={handleImportClick} className="w-full sm:w-auto">
-            <Download className="h-4 w-4" />
-            Import
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            onChange={handleFileChange}
-            className="hidden"
-          />
-        </div>
-
-        <div className="flex flex-col gap-3 rounded-lg border border-destructive/50 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 className="font-medium text-destructive">Delete All Data</h3>
-            <p className="text-sm text-muted-foreground">Permanently delete all data and start fresh.</p>
-          </div>
-          <div className="flex gap-2">
-            {confirmingDelete && (
-              <Button variant="outline" onClick={() => setConfirmingDelete(false)}>
-                Cancel
-              </Button>
-            )}
-            <Button variant="destructive" onClick={handleDeleteAll}>
-              <Trash2 className="h-4 w-4" />
-              {confirmingDelete ? 'Confirm Delete' : 'Delete All'}
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      <Separator className="my-6" />
-
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">Balance Anchors</h2>
-            <p className="text-sm text-muted-foreground">
-              Set your known balance at specific dates. Used as the baseline for balance calculations.
+      <div className="space-y-8">
+        {/* Appearance Section */}
+        <section className="grid gap-4 lg:grid-cols-3 lg:gap-8">
+          <div className="lg:col-span-1">
+            <h2 className="text-lg font-semibold">Appearance</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Customize how the app looks.
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={openAddAnchor}>
-            <Plus className="h-4 w-4" />
-            Add
-          </Button>
-        </div>
-
-        {anchors.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-6 text-center">
-            <p className="text-muted-foreground">No balance anchors set.</p>
-            <Button variant="outline" className="mt-4" onClick={openAddAnchor}>
-              Add your first anchor
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {anchors.map((anchor) => (
-              <div
-                key={anchor.id}
-                className="flex items-center justify-between rounded-lg border p-4"
-              >
+          <div className="lg:col-span-2">
+            <div className="rounded-xl border bg-card">
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="font-medium">{formatDate(anchor.date)}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatCents(anchor.balanceCents)}
-                    {anchor.label && ` - ${anchor.label}`}
-                  </p>
+                  <h3 className="font-medium">Theme</h3>
+                  <p className="text-sm text-muted-foreground">Choose light, dark, or system theme.</p>
+                </div>
+                <ThemeToggle />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <Separator />
+
+        {/* Data Management Section */}
+        <section className="grid gap-4 lg:grid-cols-3 lg:gap-8">
+          <div className="lg:col-span-1">
+            <h2 className="text-lg font-semibold">Data Management</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Export, import, or delete your budget data.
+            </p>
+          </div>
+          <div className="space-y-3 lg:col-span-2">
+            <div className="rounded-xl border bg-card">
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="font-medium">Export Data</h3>
+                  <p className="text-sm text-muted-foreground">Download all your budget data as JSON.</p>
+                </div>
+                <Button variant="outline" onClick={handleExportClick} className="w-full sm:w-auto">
+                  <Upload className="h-4 w-4" />
+                  Export
+                </Button>
+              </div>
+              <Separator />
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="font-medium">Import Data</h3>
+                  <p className="text-sm text-muted-foreground">Restore from a JSON backup file.</p>
+                </div>
+                <Button variant="outline" onClick={handleImportClick} className="w-full sm:w-auto">
+                  <Download className="h-4 w-4" />
+                  Import
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-destructive/50 bg-card">
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="font-medium text-destructive">Delete All Data</h3>
+                  <p className="text-sm text-muted-foreground">Permanently delete all data and start fresh.</p>
                 </div>
                 <div className="flex gap-2">
-                  {deletingAnchorId === anchor.id && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setDeletingAnchorId(null)}
-                    >
+                  {confirmingDelete && (
+                    <Button variant="outline" onClick={() => setConfirmingDelete(false)}>
                       Cancel
                     </Button>
                   )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => openEditAnchor(anchor)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={deletingAnchorId === anchor.id ? 'destructive' : 'ghost'}
-                    size="sm"
-                    onClick={() => handleDeleteAnchor(anchor.id)}
-                  >
+                  <Button variant="destructive" onClick={handleDeleteAll} className="w-full sm:w-auto">
                     <Trash2 className="h-4 w-4" />
+                    {confirmingDelete ? 'Confirm Delete' : 'Delete All'}
                   </Button>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
-        )}
-        <p className="text-xs text-muted-foreground">
-          Transactions before the earliest anchor date won&apos;t affect balance calculations but will
-          still appear in spending reports.
-        </p>
-      </section>
+        </section>
+
+        <Separator />
+
+        {/* Balance Anchors Section */}
+        <section className="grid gap-4 lg:grid-cols-3 lg:gap-8">
+          <div className="lg:col-span-1">
+            <h2 className="text-lg font-semibold">Balance Anchors</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Set your known balance at specific dates. Used as the baseline for balance calculations.
+            </p>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Transactions before the earliest anchor date won't affect balance calculations but will
+              still appear in spending reports.
+            </p>
+          </div>
+          <div className="lg:col-span-2">
+            <div className="rounded-xl border bg-card">
+              <div className="flex items-center justify-between border-b p-4">
+                <h3 className="font-medium">Your Anchors</h3>
+                <Button variant="outline" size="sm" onClick={openAddAnchor}>
+                  <Plus className="h-4 w-4" />
+                  Add
+                </Button>
+              </div>
+              {anchors.length === 0 ? (
+                <div className="p-6 text-center">
+                  <p className="text-muted-foreground">No balance anchors set.</p>
+                  <Button variant="outline" className="mt-4" onClick={openAddAnchor}>
+                    Add your first anchor
+                  </Button>
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {anchors.map((anchor) => (
+                    <div
+                      key={anchor.id}
+                      className="flex items-center justify-between p-4"
+                    >
+                      <div>
+                        <p className="font-medium">{formatDate(anchor.date)}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatCents(anchor.balanceCents)}
+                          {anchor.label && ` · ${anchor.label}`}
+                        </p>
+                      </div>
+                      <div className="flex gap-1">
+                        {deletingAnchorId === anchor.id && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setDeletingAnchorId(null)}
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditAnchor(anchor)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant={deletingAnchorId === anchor.id ? 'destructive' : 'ghost'}
+                          size="sm"
+                          onClick={() => handleDeleteAnchor(anchor.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      </div>
 
       {/* Anchor Dialog */}
       <Dialog open={anchorDialogOpen} onOpenChange={setAnchorDialogOpen}>
