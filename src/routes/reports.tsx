@@ -7,6 +7,7 @@ import { useViewState } from '@/hooks/use-view-state';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useTransactions } from '@/hooks/use-transactions';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
+import { formatCompactDate } from '@/lib/utils';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { TimelineRangePicker } from '@/components/timeline-range-picker';
 import {
@@ -90,29 +91,67 @@ export function ReportsPage() {
   const isMixed = !isPastOnly && !isFutureOnly;
 
   // Calculate starting balance for cash flow chart
-  const { getActiveAnchor } = useBalanceAnchors();
+  const { getActiveAnchor, anchors } = useBalanceAnchors();
   const { allTransactions } = useTransactions();
 
-  const startingBalance = useMemo(() => {
+  const balanceInfo = useMemo(() => {
     // Get anchor that applies at the start of the report period
-    const anchor = getActiveAnchor(startDate);
-    if (!anchor) return null;
+    const anchorBeforeStart = getActiveAnchor(startDate);
 
-    // Sum transactions from anchor date up to (but not including) startDate
-    const transactionsBeforePeriod = allTransactions.filter(
-      (t) => t.date >= anchor.date && t.date < startDate,
-    );
+    // Find first anchor within the date range (if any)
+    const anchorInRange = anchors
+      .filter((a) => a.date >= startDate && a.date <= endDate)
+      .sort((a, b) => a.date.localeCompare(b.date))[0];
 
-    let balance = anchor.balanceCents;
-    for (const t of transactionsBeforePeriod) {
-      if (t.type === 'income' || t.type === 'adjustment') {
-        balance += t.amountCents;
-      } else {
-        balance -= t.amountCents;
+    if (anchorBeforeStart) {
+      // We have an anchor before the start - calculate balance from period start
+      const transactionsBeforePeriod = allTransactions.filter(
+        (t) => t.date >= anchorBeforeStart.date && t.date < startDate,
+      );
+
+      let balance = anchorBeforeStart.balanceCents;
+      for (const t of transactionsBeforePeriod) {
+        if (t.type === 'income' || t.type === 'adjustment') {
+          balance += t.amountCents;
+        } else {
+          balance -= t.amountCents;
+        }
       }
+
+      return {
+        startingBalance: balance,
+        balanceStartMonth: null, // Start from beginning
+        warning: null,
+      };
     }
-    return balance;
-  }, [getActiveAnchor, allTransactions, startDate]);
+
+    if (anchorInRange) {
+      // No anchor before start, but there's one in the range
+      // Start balance from that anchor's month
+      const anchorMonth = anchorInRange.date.slice(0, 7);
+
+      return {
+        startingBalance: anchorInRange.balanceCents,
+        balanceStartMonth: anchorMonth,
+        warning: {
+          title: `Balance shown from ${formatCompactDate(anchorInRange.date, true)}`,
+          linkText: 'Set an earlier balance anchor',
+          linkSuffix: 'to see your balance from the start of this period.',
+        },
+      };
+    }
+
+    // No anchors at all for this period
+    return {
+      startingBalance: null,
+      balanceStartMonth: null,
+      warning: {
+        title: 'No balance anchor set in this period',
+        linkText: 'Set a balance anchor',
+        linkSuffix: 'to see your bank balance over time.',
+      },
+    };
+  }, [getActiveAnchor, anchors, allTransactions, startDate, endDate]);
 
   return (
     <div className="space-y-6">
@@ -172,15 +211,14 @@ export function ReportsPage() {
         {/* Cash Flow Tab - Income vs expenses over time */}
         <TabsContent value="cashflow" className="mt-6">
           <div className="space-y-4">
-            {startingBalance === null && (
+            {balanceInfo.warning && (
               <Alert variant="warning">
-                <AlertTitle>No balance anchor set</AlertTitle>
+                <AlertTitle>{balanceInfo.warning.title}</AlertTitle>
                 <AlertDescription>
-                  Set a starting balance in{' '}
                   <Link to="/settings" className="underline">
-                    Settings
+                    {balanceInfo.warning.linkText}
                   </Link>{' '}
-                  to see your bank balance over time.
+                  {balanceInfo.warning.linkSuffix}
                 </AlertDescription>
               </Alert>
             )}
@@ -201,7 +239,11 @@ export function ReportsPage() {
                 )}
               </div>
               <div className="mt-6">
-                <CashFlowChart monthlyNetFlow={monthlyNetFlow} startingBalance={startingBalance} />
+                <CashFlowChart
+                  monthlyNetFlow={monthlyNetFlow}
+                  startingBalance={balanceInfo.startingBalance}
+                  balanceStartMonth={balanceInfo.balanceStartMonth}
+                />
               </div>
             </div>
           </div>

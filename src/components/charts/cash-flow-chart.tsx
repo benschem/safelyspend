@@ -23,6 +23,7 @@ interface MonthlyNetFlow {
 interface CashFlowChartProps {
   monthlyNetFlow: MonthlyNetFlow[];
   startingBalance?: number | null; // Balance at start of period (from anchor)
+  balanceStartMonth?: string | null; // Month to start showing balance (if anchor is mid-range)
 }
 
 interface ChartDataPoint {
@@ -164,7 +165,7 @@ function CustomTooltip({
   );
 }
 
-export function CashFlowChart({ monthlyNetFlow, startingBalance }: CashFlowChartProps) {
+export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMonth }: CashFlowChartProps) {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const hasCurrentMonth = monthlyNetFlow.some((m) => m.month === currentMonth);
   const hasFutureData = monthlyNetFlow.some((m) => m.month > currentMonth);
@@ -172,13 +173,22 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance }: CashFlowChart
   // Transform data for chart - combine actual + forecast for total line values
   const chartData = useMemo(() => {
     let cumulativeSavings = 0;
-    let runningBalance = startingBalance ?? null;
+    let runningBalance: number | null = null;
+    let balanceStarted = false;
 
     return monthlyNetFlow.map((m) => {
       cumulativeSavings += m.savings.actual + m.savings.forecast;
       const netTotal = m.net.actual + m.net.forecast;
 
-      // Update running balance if we have a starting balance
+      // Start tracking balance from the anchor month (or from start if no balanceStartMonth)
+      if (!balanceStarted && startingBalance !== null && startingBalance !== undefined) {
+        if (!balanceStartMonth || m.month >= balanceStartMonth) {
+          runningBalance = startingBalance;
+          balanceStarted = true;
+        }
+      }
+
+      // Update running balance if we've started tracking
       if (runningBalance !== null) {
         runningBalance += netTotal;
       }
@@ -200,7 +210,7 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance }: CashFlowChart
         balance: runningBalance,
       };
     });
-  }, [monthlyNetFlow, startingBalance]);
+  }, [monthlyNetFlow, startingBalance, balanceStartMonth]);
 
   const hasBalance = startingBalance !== null && startingBalance !== undefined;
 
