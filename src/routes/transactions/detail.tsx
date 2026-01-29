@@ -165,7 +165,9 @@ export function TransactionDetailPage() {
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <Receipt className="h-7 w-7" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
+              <Receipt className="h-5 w-5 text-slate-500" />
+            </div>
             <h1 className="text-3xl font-bold">{transaction.description}</h1>
             {transaction.type === 'income' ? (
               <Badge variant="success">Income</Badge>

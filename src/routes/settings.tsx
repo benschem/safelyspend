@@ -240,7 +240,9 @@ export function SettingsPage() {
     <div className="max-w-2xl">
       <div className="mb-8">
         <h1 className="flex items-center gap-3 text-3xl font-bold">
-          <Settings className="h-7 w-7" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-500/10">
+              <Settings className="h-5 w-5 text-gray-500" />
+            </div>
           Settings
         </h1>
         <p className="mt-1 text-muted-foreground">Manage your data and preferences.</p>

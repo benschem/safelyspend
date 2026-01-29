@@ -255,7 +255,9 @@ export function ScenariosIndexPage() {
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <Layers className="h-7 w-7" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
+              <Layers className="h-5 w-5 text-slate-500" />
+            </div>
             Scenarios
           </h1>
           <p className="mt-1 text-muted-foreground">

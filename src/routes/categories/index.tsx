@@ -213,7 +213,9 @@ export function CategoriesIndexPage() {
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <Tags className="h-7 w-7" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
+              <Tags className="h-5 w-5 text-slate-500" />
+            </div>
             Categories
           </h1>
           <p className="mt-1 text-muted-foreground">Organise your expenses by category.</p>
