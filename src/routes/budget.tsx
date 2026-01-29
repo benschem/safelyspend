@@ -404,22 +404,36 @@ export function BudgetPage() {
     };
   }, [allRows, savingsForecasts, savingsTransactions]);
 
-  // Build color map for charts
+  // Build color map for charts (include savings)
   const categoryColorMap = useMemo(() => {
-    return buildCategoryColorMap(activeCategories.map((c) => c.id));
+    const map = buildCategoryColorMap(activeCategories.map((c) => c.id));
+    map['savings'] = '#3b82f6'; // blue for savings
+    return map;
   }, [activeCategories]);
 
-  // Option A: Data for horizontal stacked bar (budget allocation)
+  // Data for horizontal stacked bar (budget allocation including savings)
   const budgetBreakdownSegments = useMemo(() => {
     const tracked = allRows.filter((r) => r.rule && r.budgetAmount > 0);
-    return tracked
+    const categorySegments = tracked
       .sort((a, b) => b.budgetAmount - a.budgetAmount)
       .map((row) => ({
         id: row.categoryId,
         name: row.categoryName,
         amount: row.budgetAmount,
       }));
-  }, [allRows]);
+
+    // Include forecasted savings as a segment
+    const totalSavingsForecasted = savingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
+    if (totalSavingsForecasted > 0) {
+      categorySegments.push({
+        id: 'savings',
+        name: 'Savings',
+        amount: totalSavingsForecasted,
+      });
+    }
+
+    return categorySegments;
+  }, [allRows, savingsForecasts]);
 
   const budgetBreakdownTotal = useMemo(() => {
     return budgetBreakdownSegments.reduce((sum, s) => sum + s.amount, 0);
@@ -880,9 +894,9 @@ export function BudgetPage() {
       {/* Budget Allocation Chart */}
       {budgetBreakdownSegments.length > 0 && (
         <div className="mt-6 rounded-lg border bg-card p-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Budget Allocation</h3>
+          <h3 className="font-semibold">Budget Allocation</h3>
           <p className="mb-3 text-sm text-muted-foreground">
-            How your budget is distributed across categories.
+            How your budget is distributed across spending and savings.
           </p>
           <SpendingBreakdownChart
             segments={budgetBreakdownSegments}
