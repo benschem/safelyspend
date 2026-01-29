@@ -16,6 +16,14 @@ const USER_ID = 'local';
 /**
  * Expand a forecast rule into individual forecast instances over a date range
  */
+/**
+ * Parse a YYYY-MM-DD string as a local date (not UTC)
+ */
+function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year!, month! - 1, day);
+}
+
 function expandRule(
   rule: ForecastRule,
   rangeStart: string,
@@ -29,8 +37,9 @@ function expandRule(
 
   if (effectiveStart > effectiveEnd) return results;
 
-  const start = new Date(effectiveStart);
-  const end = new Date(effectiveEnd);
+  // Parse as local dates to avoid timezone issues with date comparisons
+  const start = parseLocalDate(effectiveStart);
+  const end = parseLocalDate(effectiveEnd);
 
   switch (rule.cadence) {
     case 'weekly': {
