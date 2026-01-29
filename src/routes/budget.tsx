@@ -22,6 +22,7 @@ import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
 import { buildCategoryColorMap, CHART_COLORS } from '@/lib/chart-colors';
+import { BurnRateChart } from '@/components/charts';
 import { cn, formatCents } from '@/lib/utils';
 
 const MONTHS = [
@@ -360,6 +361,53 @@ export function BudgetPage() {
     const categoryIds = activeCategories.map((c) => c.id);
     return buildCategoryColorMap(categoryIds);
   }, [activeCategories]);
+
+  // Burn rate data for mini pace chart
+  const burnRateData = useMemo(() => {
+    // Get daily expense spending within this period
+    const expenses = allTransactions.filter(
+      (t) => t.type === 'expense' && t.date >= periodStart && t.date <= periodEnd,
+    );
+
+    const dailySpending = expenses.map((t) => ({
+      date: t.date,
+      amount: t.amountCents,
+    }));
+
+    // Calculate total budget for the period
+    const periodMultiplier = viewMode === 'year' ? 12 : 1;
+    const totalBudget = budgetRules.reduce((sum, r) => {
+      let monthlyAmount: number;
+      switch (r.cadence) {
+        case 'weekly':
+          monthlyAmount = r.amountCents * 4.33;
+          break;
+        case 'fortnightly':
+          monthlyAmount = r.amountCents * 2.17;
+          break;
+        case 'monthly':
+          monthlyAmount = r.amountCents;
+          break;
+        case 'quarterly':
+          monthlyAmount = r.amountCents / 3;
+          break;
+        case 'yearly':
+          monthlyAmount = r.amountCents / 12;
+          break;
+        default:
+          monthlyAmount = r.amountCents;
+      }
+      return sum + monthlyAmount * periodMultiplier;
+    }, 0);
+
+    return {
+      dailySpending,
+      totalBudget: Math.round(totalBudget),
+      periodStart,
+      periodEnd,
+      periodLabel,
+    };
+  }, [allTransactions, budgetRules, periodStart, periodEnd, periodLabel, viewMode]);
 
   if (!activeScenarioId || !activeScenario) {
     return (
@@ -710,8 +758,8 @@ export function BudgetPage() {
         </div>
       </div>
 
-      {/* Net & Speed Row */}
-      <div className="mb-8 grid grid-cols-2 gap-4">
+      {/* Net, Pace & Speed Row */}
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {/* Net Change */}
         <div className="rounded-xl border bg-card p-5">
           <div className="flex items-center gap-2">
@@ -740,33 +788,53 @@ export function BudgetPage() {
           </p>
         </div>
 
-        {/* Spending Speed */}
+        {/* Mini Pace Chart */}
         <Link
           to="/insights?tab=pace"
           className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50"
         >
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Spending speed</p>
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-500/10">
+                <CircleGauge className="h-4 w-4 text-slate-500" />
+              </div>
+              <p className="text-sm text-muted-foreground">Spending pace</p>
+            </div>
             <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
           </div>
-          <div className="mt-2 flex items-baseline gap-3">
-            {summary.overCount > 0 ? (
-              <>
-                <CircleGauge className="h-7 w-7 text-red-500" />
-                <span className="text-3xl font-bold text-red-600">Too Fast</span>
-              </>
-            ) : summary.overspendingCount > 0 ? (
-              <>
-                <CircleGauge className="h-7 w-7 text-amber-500" />
-                <span className="text-3xl font-bold text-amber-600">Speeding Up</span>
-              </>
-            ) : (
-              <>
-                <CircleGauge className="h-7 w-7 text-green-500" />
-                <span className="text-3xl font-bold text-green-600">On Track</span>
-              </>
-            )}
+          <div className="mt-2">
+            <BurnRateChart
+              dailySpending={burnRateData.dailySpending}
+              totalBudget={burnRateData.totalBudget}
+              periodStart={burnRateData.periodStart}
+              periodEnd={burnRateData.periodEnd}
+              periodLabel={burnRateData.periodLabel}
+              compact
+            />
           </div>
+        </Link>
+
+        {/* Spending Speed */}
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex items-center gap-2">
+            {summary.overCount > 0 ? (
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10">
+                <CircleGauge className="h-4 w-4 text-red-500" />
+              </div>
+            ) : summary.overspendingCount > 0 ? (
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/10">
+                <CircleGauge className="h-4 w-4 text-amber-500" />
+              </div>
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/10">
+                <CircleGauge className="h-4 w-4 text-green-500" />
+              </div>
+            )}
+            <p className="text-sm text-muted-foreground">Spending speed</p>
+          </div>
+          <p className={`mt-2 text-3xl font-bold ${summary.overCount > 0 ? 'text-red-600' : summary.overspendingCount > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+            {summary.overCount > 0 ? 'Too Fast' : summary.overspendingCount > 0 ? 'Speeding Up' : 'On Track'}
+          </p>
           <p className="mt-2 text-sm text-muted-foreground">
             {summary.overCount > 0
               ? `${summary.overCount} of ${summary.trackedCount} budgets exceeded`
@@ -774,7 +842,7 @@ export function BudgetPage() {
                 ? `${summary.overspendingCount} of ${summary.trackedCount} budgets overspending`
                 : `${summary.goodCount} of ${summary.trackedCount} budgets on pace`}
           </p>
-        </Link>
+        </div>
       </div>
 
       {/* Spending by Category - Horizontal Bar Chart */}

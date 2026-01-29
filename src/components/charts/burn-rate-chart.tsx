@@ -23,6 +23,7 @@ interface BurnRateChartProps {
   periodStart: string;
   periodEnd: string;
   periodLabel: string;
+  compact?: boolean;
 }
 
 interface ChartDataPoint {
@@ -121,6 +122,7 @@ export function BurnRateChart({
   periodStart,
   periodEnd,
   periodLabel,
+  compact = false,
 }: BurnRateChartProps) {
   const chartData = useMemo(() => {
     const start = new Date(periodStart);
@@ -178,16 +180,58 @@ export function BurnRateChart({
 
   if (totalBudget === 0) {
     return (
-      <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
-        No budget set. Add budget rules to track spending pace.
+      <div className={`flex items-center justify-center text-sm text-muted-foreground ${compact ? 'h-24' : 'h-64'}`}>
+        No budget set{compact ? '' : '. Add budget rules to track spending pace'}.
       </div>
     );
   }
 
   if (chartData.data.length === 0) {
     return (
-      <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
-        No spending data for this period yet.
+      <div className={`flex items-center justify-center text-sm text-muted-foreground ${compact ? 'h-24' : 'h-64'}`}>
+        No spending data yet.
+      </div>
+    );
+  }
+
+  // Compact mode: minimal chart only
+  if (compact) {
+    return (
+      <div className="w-full">
+        <ResponsiveContainer width="100%" height={80}>
+          <ComposedChart data={chartData.data} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+            {/* 100% budget line */}
+            <ReferenceLine y={100} stroke="#e5e7eb" strokeDasharray="2 2" />
+
+            {/* Area under actual spending */}
+            <Area
+              type="monotone"
+              dataKey="actualPercent"
+              fill={CHART_COLORS.expense}
+              fillOpacity={0.15}
+              stroke="none"
+            />
+
+            {/* Expected pace line (diagonal) */}
+            <Line
+              type="linear"
+              dataKey="expectedPercent"
+              stroke="#9ca3af"
+              strokeWidth={1.5}
+              strokeDasharray="3 3"
+              dot={false}
+            />
+
+            {/* Actual spending line */}
+            <Line
+              type="monotone"
+              dataKey="actualPercent"
+              stroke={CHART_COLORS.expense}
+              strokeWidth={2}
+              dot={false}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
       </div>
     );
   }
