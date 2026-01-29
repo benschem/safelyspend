@@ -22,6 +22,8 @@ import { useForecasts } from '@/hooks/use-forecasts';
 import { CategoryBudgetDialog } from '@/components/dialogs/category-budget-dialog';
 import { formatCents, parseCentsFromInput, formatISODate } from '@/lib/utils';
 import type { Cadence, BudgetRule } from '@/lib/types';
+import { SpendingBreakdownChart } from '@/components/charts/spending-breakdown-chart';
+import { buildCategoryColorMap } from '@/lib/chart-colors';
 
 interface OutletContext {
   activeScenarioId: string | null;
@@ -401,6 +403,27 @@ export function BudgetPage() {
       trackedCount: tracked.length,
     };
   }, [allRows, savingsForecasts, savingsTransactions]);
+
+  // Build color map for charts
+  const categoryColorMap = useMemo(() => {
+    return buildCategoryColorMap(activeCategories.map((c) => c.id));
+  }, [activeCategories]);
+
+  // Option A: Data for horizontal stacked bar (budget allocation)
+  const budgetBreakdownSegments = useMemo(() => {
+    const tracked = allRows.filter((r) => r.rule && r.budgetAmount > 0);
+    return tracked
+      .sort((a, b) => b.budgetAmount - a.budgetAmount)
+      .map((row) => ({
+        id: row.categoryId,
+        name: row.categoryName,
+        amount: row.budgetAmount,
+      }));
+  }, [allRows]);
+
+  const budgetBreakdownTotal = useMemo(() => {
+    return budgetBreakdownSegments.reduce((sum, s) => sum + s.amount, 0);
+  }, [budgetBreakdownSegments]);
 
   const startEditing = useCallback((categoryId: string) => {
     // Read fresh from rule to avoid stale row data
@@ -851,6 +874,21 @@ export function BudgetPage() {
               Forecast total of {formatCents(summary.totalSavingsProjected)}
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Budget Allocation Chart */}
+      {budgetBreakdownSegments.length > 0 && (
+        <div className="mt-6 rounded-lg border bg-card p-4">
+          <h3 className="text-sm font-medium text-muted-foreground">Budget Allocation</h3>
+          <p className="mb-3 text-sm text-muted-foreground">
+            How your budget is distributed across categories.
+          </p>
+          <SpendingBreakdownChart
+            segments={budgetBreakdownSegments}
+            total={budgetBreakdownTotal}
+            colorMap={categoryColorMap}
+          />
         </div>
       )}
 
