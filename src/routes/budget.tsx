@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Pencil, Check, X, Trash2, Plus, Target, CircleDollarSign, NotebookTabs, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { Pencil, Check, X, Trash2, Plus, Target, AlertTriangle, CheckCircle2, XCircle, PiggyBank, Wallet } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
@@ -220,7 +220,7 @@ export function BudgetPage() {
     return formatISODate(d);
   }, []);
 
-  const { expenseForecasts } = useForecasts(activeScenarioId, tomorrow, maxEndDate);
+  const { expenseForecasts, savingsForecasts } = useForecasts(activeScenarioId, tomorrow, maxEndDate);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState('');
@@ -371,6 +371,7 @@ export function BudgetPage() {
     const totalProjected = totalSpent + totalForecasted;
     const totalBudget = tracked.reduce((sum, r) => sum + r.budgetAmount, 0);
     const totalProjectedRemaining = totalBudget - totalProjected;
+    const totalRemaining = totalBudget - totalSpent; // Actual remaining right now
     const overCount = tracked.filter((r) => r.status === 'over').length;
     const overspendingCount = tracked.filter((r) => r.status === 'overspending').length;
     const watchCount = tracked.filter((r) => r.status === 'watch').length;
@@ -378,6 +379,8 @@ export function BudgetPage() {
     const untrackedCount = untracked.length;
     // Sum spending on untracked categories (use monthly as reference period)
     const untrackedSpent = untracked.reduce((sum, r) => sum + r.spent, 0);
+    // Sum forecasted savings
+    const totalSavingsForecasted = savingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
 
     return {
       totalSpent,
@@ -385,6 +388,8 @@ export function BudgetPage() {
       totalProjected,
       totalBudget,
       totalProjectedRemaining,
+      totalRemaining,
+      totalSavingsForecasted,
       overCount,
       overspendingCount,
       watchCount,
@@ -393,7 +398,7 @@ export function BudgetPage() {
       untrackedSpent,
       trackedCount: tracked.length,
     };
-  }, [allRows]);
+  }, [allRows, savingsForecasts]);
 
   const startEditing = useCallback((categoryId: string) => {
     // Read fresh from rule to avoid stale row data
@@ -751,20 +756,19 @@ export function BudgetPage() {
         <div className="mt-6 grid gap-3 grid-cols-2 lg:grid-cols-4">
           <div className="rounded-lg border bg-card p-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <CircleDollarSign className="h-4 w-4" />
-              Total Spent
+              {summary.totalProjectedRemaining >= 0 ? (
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+              )}
+              Projected Spending
             </div>
-            <p className="mt-1 text-xl font-bold">{formatCents(summary.totalSpent)}</p>
-            <p className="text-xs text-muted-foreground">across all current periods</p>
-          </div>
-
-          <div className="rounded-lg border bg-card p-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <NotebookTabs className="h-4 w-4" />
-              Total Budgeted
-            </div>
-            <p className="mt-1 text-xl font-bold">{formatCents(summary.totalBudget)}</p>
-            <p className="text-xs text-muted-foreground">{summary.trackedCount} categories tracked</p>
+            <p className={`mt-1 text-xl font-bold ${summary.totalProjectedRemaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCents(Math.abs(summary.totalProjectedRemaining))} {summary.totalProjectedRemaining >= 0 ? 'under' : 'over'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {summary.totalForecasted > 0 ? `incl. ${formatCents(summary.totalForecasted)} forecast` : 'vs total budget'}
+            </p>
           </div>
 
           <div className="rounded-lg border bg-card p-3">
@@ -807,18 +811,27 @@ export function BudgetPage() {
 
           <div className="rounded-lg border bg-card p-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              {summary.totalProjectedRemaining >= 0 ? (
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-              ) : (
-                <AlertTriangle className="h-4 w-4 text-red-600" />
-              )}
-              {summary.totalForecasted > 0 ? 'Projected Spending' : 'Remaining Spending'}
+              <PiggyBank className="h-4 w-4 text-blue-600" />
+              Projected Savings
             </div>
-            <p className={`mt-1 text-xl font-bold ${summary.totalProjectedRemaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatCents(Math.abs(summary.totalProjectedRemaining))} {summary.totalProjectedRemaining >= 0 ? 'under budget' : 'over budget'}
+            <p className="mt-1 text-xl font-bold text-blue-600">
+              {formatCents(summary.totalSavingsForecasted)}
             </p>
             <p className="text-xs text-muted-foreground">
-              {summary.totalForecasted > 0 ? `incl. ${formatCents(summary.totalForecasted)} forecast` : 'budget remaining'}
+              forecasted this period
+            </p>
+          </div>
+
+          <div className="rounded-lg border bg-card p-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Wallet className="h-4 w-4" />
+              Budget Remaining
+            </div>
+            <p className={`mt-1 text-xl font-bold ${summary.totalRemaining >= 0 ? '' : 'text-red-600'}`}>
+              {formatCents(Math.abs(summary.totalRemaining))}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {formatCents(summary.totalBudget)} budgeted, {formatCents(summary.totalSpent)} spent
             </p>
           </div>
         </div>
