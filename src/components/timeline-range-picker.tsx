@@ -224,6 +224,7 @@ export function TimelineRangePicker({
                   id="timeline-range-start"
                   type="date"
                   value={tempStartDate}
+                  max={tempEndDate}
                   onChange={(e) => setTempStartDate(e.target.value)}
                   className="h-8"
                 />
@@ -236,6 +237,7 @@ export function TimelineRangePicker({
                   id="timeline-range-end"
                   type="date"
                   value={tempEndDate}
+                  min={tempStartDate}
                   onChange={(e) => setTempEndDate(e.target.value)}
                   className="h-8"
                 />
