@@ -305,9 +305,11 @@ export function BudgetPage() {
               Today
             </Button>
           )}
-          {isCurrentPeriod && viewMode === 'month' && (
+          {isCurrentPeriod && (
             <span className="ml-2 text-sm text-muted-foreground">
-              Day {periodCashFlow.dayOfPeriod} of {periodCashFlow.daysInPeriod}
+              {viewMode === 'month'
+                ? `Day ${periodCashFlow.dayOfPeriod} of ${periodCashFlow.daysInPeriod}`
+                : `Month ${new Date().getMonth() + 1} of 12`}
             </span>
           )}
           {/* Time mode badge */}
