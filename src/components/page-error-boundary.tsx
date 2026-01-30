@@ -2,6 +2,7 @@ import { Component, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Home, RefreshCw } from 'lucide-react';
+import { debug } from '@/lib/debug';
 
 interface Props {
   children: ReactNode;
@@ -23,7 +24,7 @@ export class PageErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Page error:', error, errorInfo);
+    debug.error('ui', 'Page error caught by boundary', { error: error.message, stack: error.stack, componentStack: errorInfo.componentStack });
   }
 
   render() {

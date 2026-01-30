@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { STORAGE_SYNC_EVENT } from '@/lib/storage-keys';
+import { debug } from '@/lib/debug';
 
 // Counter for generating unique instance IDs
 let instanceCounter = 0;
@@ -54,7 +55,7 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
         try {
           window.localStorage.setItem(key, JSON.stringify(nextValue));
         } catch (error) {
-          console.error(`Failed to save "${key}" to localStorage:`, error);
+          debug.error('storage', `Failed to save "${key}" to localStorage`, error);
         }
 
         // Dispatch sync event for other hook instances (include our ID so we ignore it)

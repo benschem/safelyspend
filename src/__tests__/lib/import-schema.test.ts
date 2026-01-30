@@ -60,7 +60,7 @@ describe('sanitizeObject', () => {
         },
       },
     };
-    const result = sanitizeObject(malicious) as Record<string, Record<string, Record<string, unknown>>>;
+    const result = sanitizeObject(malicious) as { level1: { level2: { safe: string } } };
     expect(result.level1.level2.safe).toBe('value');
     expect(Object.hasOwn(result.level1.level2, '__proto__')).toBe(false);
   });
@@ -68,8 +68,8 @@ describe('sanitizeObject', () => {
   it('sanitizes arrays containing objects', () => {
     const malicious = [{ __proto__: { evil: true }, name: 'test' }];
     const result = sanitizeObject(malicious) as Array<Record<string, unknown>>;
-    expect(result[0].name).toBe('test');
-    expect(Object.hasOwn(result[0], '__proto__')).toBe(false);
+    expect(result[0]!.name).toBe('test');
+    expect(Object.hasOwn(result[0]!, '__proto__')).toBe(false);
   });
 });
 

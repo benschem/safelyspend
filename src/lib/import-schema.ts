@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { CURRENT_DATA_VERSION } from './db';
+import { debug } from './debug';
 
 // =============================================================================
 // Import Schema Validation
@@ -157,7 +158,7 @@ export function sanitizeObject(obj: unknown): unknown {
   for (const [key, value] of Object.entries(obj)) {
     // Block prototype pollution keys
     if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
-      console.warn(`[Security] Blocked dangerous key in import: ${key}`);
+      debug.warn('security', `Blocked dangerous key in import: ${key}`);
       continue;
     }
     sanitized[key] = sanitizeObject(value);
