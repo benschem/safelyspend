@@ -195,8 +195,8 @@ export function BudgetComparisonChart({
     });
   };
 
-  // Check if all categories are hidden
-  const allHidden = hiddenCategories.size === sortedCategories.length && sortedCategories.length > 0;
+  // Check if all categories are hidden (must check actual IDs, not just count)
+  const allHidden = sortedCategories.length > 0 && sortedCategories.every((c) => hiddenCategories.has(c.id));
 
   if (budgetCategories.length === 0) {
     return (

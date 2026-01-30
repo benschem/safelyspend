@@ -143,7 +143,8 @@ export function SpendingBreakdownChart({
   }, [segments, hiddenSegments]);
 
   // Check if all segments are hidden
-  const allHidden = hiddenSegments.size === segments.length && segments.length > 0;
+  // Check if all segments are hidden (must check actual IDs, not just count)
+  const allHidden = segments.length > 0 && segments.every((s) => hiddenSegments.has(s.id));
 
   if (total === 0 || segments.length === 0) {
     return null;

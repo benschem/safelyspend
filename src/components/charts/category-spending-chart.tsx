@@ -178,9 +178,11 @@ export function CategorySpendingChart({
     });
   };
 
-  // Check if all categories are hidden
-  const totalCategories = sortedCategories.length + (hasUncategorized ? 1 : 0);
-  const allHidden = hiddenCategories.size === totalCategories && totalCategories > 0;
+  // Check if all categories are hidden (must check actual IDs, not just count)
+  const allHidden =
+    sortedCategories.length > 0 &&
+    sortedCategories.every((c) => hiddenCategories.has(c.id)) &&
+    (!hasUncategorized || hiddenCategories.has('uncategorized'));
 
   if (!hasData) {
     return (
