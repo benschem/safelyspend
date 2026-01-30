@@ -543,6 +543,7 @@ function generateForecastRules(
 
   // Get income multiplier for this scenario (default to 1.0)
   const incomeMultiplier = scenarioConfig?.incomeMultiplier ?? 1.0;
+  const excludeExtras = scenarioConfig?.excludeExtras ?? false;
 
   // Income forecast (only if income multiplier > 0)
   if (incomeMultiplier > 0) {
@@ -571,6 +572,37 @@ function generateForecastRules(
       incomeRule.dayOfMonth = 28;
     }
     rules.push(incomeRule);
+
+    // Add extra income (bonuses) if not excluded
+    if (!excludeExtras && config.income.extras) {
+      for (const extra of config.income.extras) {
+        if (extra.frequency === 'yearly' && extra.months?.length === 1) {
+          // Yearly bonus - create as yearly cadence forecast
+          rules.push({
+            id: generateId(),
+            scenarioId,
+            categoryId: null,
+            description: extra.description,
+            type: 'income',
+            amountCents: extra.amountCents,
+            cadence: 'yearly',
+            dayOfMonth: 15, // Mid-month for bonuses
+          });
+        } else if (extra.frequency === 'quarterly') {
+          // Quarterly bonus
+          rules.push({
+            id: generateId(),
+            scenarioId,
+            categoryId: null,
+            description: extra.description,
+            type: 'income',
+            amountCents: extra.amountCents,
+            cadence: 'quarterly',
+            dayOfMonth: 15,
+          });
+        }
+      }
+    }
   }
 
   // Recurring expense forecasts (monthly bills, rent, etc.)
@@ -712,30 +744,39 @@ function calculateBalanceAnchor(
   startDate: Date,
 ): GeneratedBalanceAnchor[] {
   // Calculate a realistic checking account balance at start of data period.
-  // This should NOT be huge - most people keep a reasonable buffer, not months of expenses.
+  // This needs to account for 12 months of transaction variance.
 
   const monthlyIncome = estimateMonthlyIncome(config);
+  const monthlyExtras = estimateMonthlyExtras(config);
+  const totalMonthlyIncome = monthlyIncome + monthlyExtras;
   const monthlyExpenses = estimateMonthlyExpenses(config);
   const monthlySavings = estimateMonthlySavings(config);
 
   // Calculate what percentage of income goes to expenses+savings
-  const burnRate = (monthlyExpenses + monthlySavings) / monthlyIncome;
+  const burnRate = (monthlyExpenses + monthlySavings) / totalMonthlyIncome;
 
   let startingBalance: number;
 
   if (burnRate >= 0.95) {
     // Paycheck to paycheck - very little buffer, maybe just rent money
-    startingBalance = Math.round(monthlyIncome * 0.15); // ~2 weeks of very tight living
+    startingBalance = Math.round(totalMonthlyIncome * 0.2);
   } else if (burnRate >= 0.85) {
     // Tight budget - about 1 month buffer
-    startingBalance = Math.round(monthlyIncome * 0.3);
+    startingBalance = Math.round(totalMonthlyIncome * 0.4);
   } else if (burnRate >= 0.7) {
     // Comfortable - about 1.5 months buffer
-    startingBalance = Math.round(monthlyIncome * 0.5);
+    startingBalance = Math.round(totalMonthlyIncome * 0.6);
   } else {
     // High saver - 2 months buffer (rest goes to savings accounts)
-    startingBalance = Math.round(monthlyIncome * 0.6);
+    startingBalance = Math.round(totalMonthlyIncome * 0.8);
   }
+
+  // Add buffer for transaction variance over 12 months (~10% variance)
+  // This prevents ending up negative due to random expense spikes
+  startingBalance += Math.round(monthlyExpenses * 0.15 * 12);
+
+  // Minimum floor: at least 1 month of expenses
+  startingBalance = Math.max(startingBalance, monthlyExpenses);
 
   return [
     {
@@ -745,6 +786,20 @@ function calculateBalanceAnchor(
       description: 'Opening balance',
     },
   ];
+}
+
+function estimateMonthlyExtras(config: PersonaConfig): number {
+  if (!config.income.extras) return 0;
+
+  let total = 0;
+  for (const extra of config.income.extras) {
+    if (extra.frequency === 'yearly') {
+      total += extra.amountCents / 12;
+    } else if (extra.frequency === 'quarterly') {
+      total += extra.amountCents / 3;
+    }
+  }
+  return Math.round(total);
 }
 
 function estimateMonthlySavings(config: PersonaConfig): number {

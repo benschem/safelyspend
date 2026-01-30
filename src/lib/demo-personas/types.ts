@@ -69,6 +69,8 @@ export interface ScenarioConfig {
   }[];
   // Income multiplier for this scenario (e.g., 0.8 = 20% pay cut, 1.15 = 15% raise)
   incomeMultiplier?: number;
+  // Exclude bonus/extra income (e.g., for "no bonus this year" scenarios)
+  excludeExtras?: boolean;
   // Savings goal contribution overrides
   savingsOverrides?: {
     goalName: string;

@@ -364,39 +364,31 @@ export const execEvie: PersonaConfig = {
     {
       name: 'Tighten Up',
       description:
-        'Time to be more intentional. Skip the fancy dinners, cook at home twice a week. Cancel personal trainer, use Equinox classes instead.',
+        'Time to be more intentional. Skip the fancy dinners, cook at home twice a week. Cancel personal trainer, use Equinox classes instead. Extra savings go to property deposit.',
       isDefault: false,
       budgetOverrides: [
         { category: 'Groceries', amountCents: 70000 },
-        { category: 'Dining Out', amountCents: 45000 },
-        { category: 'Entertainment', amountCents: 10000 },
-        { category: 'Shopping', amountCents: 20000 },
-        { category: 'Health & Wellness', amountCents: 35000 },
-        { category: 'Travel', amountCents: 15000 },
-        { category: 'Personal Care', amountCents: 18000 },
+        { category: 'Dining Out', amountCents: 40000 },
+        { category: 'Entertainment', amountCents: 8000 },
+        { category: 'Shopping', amountCents: 15000 },
+        { category: 'Health & Wellness', amountCents: 30000 },
+        { category: 'Travel', amountCents: 12000 },
+        { category: 'Personal Care', amountCents: 15000 },
       ],
       savingsOverrides: [
-        { goalName: 'Investment Property', monthlyContributionCents: 120000 },
-        { goalName: 'New Car Fund', monthlyContributionCents: 25000 },
+        { goalName: 'Investment Property', monthlyContributionCents: 150000 },
+        { goalName: 'New Car Fund', monthlyContributionCents: 30000 },
       ],
     },
     {
       name: 'No Bonus This Year',
       description:
-        'Company restructure means no $20k bonus this December. Need to adjust savings targets and cut luxury spending.',
+        'Company restructure means no $20k bonus this December. Keep lifestyle similar but reduce savings targets to compensate.',
       isDefault: false,
-      budgetOverrides: [
-        { category: 'Groceries', amountCents: 60000 },
-        { category: 'Dining Out', amountCents: 40000 },
-        { category: 'Entertainment', amountCents: 8000 },
-        { category: 'Shopping', amountCents: 15000 },
-        { category: 'Health & Wellness', amountCents: 30000 },
-        { category: 'Travel', amountCents: 10000 },
-        { category: 'Personal Care', amountCents: 15000 },
-      ],
+      excludeExtras: true, // This removes the $20k bonus from income forecasts
       savingsOverrides: [
-        { goalName: 'Investment Property', monthlyContributionCents: 50000 },
-        { goalName: 'New Car Fund', monthlyContributionCents: 20000 },
+        { goalName: 'Investment Property', monthlyContributionCents: 60000 },
+        { goalName: 'New Car Fund', monthlyContributionCents: 30000 },
       ],
     },
   ],
