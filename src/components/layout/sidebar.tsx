@@ -10,6 +10,7 @@ import {
   Settings,
   ChartSpline,
   Menu,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
@@ -88,8 +89,8 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         <NavItem to="/forecasts" icon={<Telescope className="h-4 w-4" />} onClick={onNavigate}>
           Forecasts
         </NavItem>
-        <NavItem to="/spending-limits" icon={<Target className="h-4 w-4" />} onClick={onNavigate}>
-          Spending Limits
+        <NavItem to="/budget/plan" icon={<ClipboardList className="h-4 w-4" />} onClick={onNavigate}>
+          Budget Plan
         </NavItem>
       </NavSection>
 

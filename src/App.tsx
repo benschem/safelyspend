@@ -41,8 +41,8 @@ const router = createBrowserRouter([
       { path: 'forecasts', element: <ForecastIndexPage /> },
       { path: 'forecasts/recurring', element: <RecurringIndexPage /> },
 
-      // Spending Limits (plan)
-      { path: 'spending-limits', element: <SpendingLimitsPage /> },
+      // Planned Spending (plan)
+      { path: 'budget/plan', element: <SpendingLimitsPage /> },
 
       // Budget (track)
       { path: 'budget', element: <BudgetPage /> },

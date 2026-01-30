@@ -13,6 +13,7 @@ import {
   Tags,
   ChevronLeft,
   ChevronRight,
+  ArrowRight,
 } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -338,12 +339,15 @@ export function BudgetPage() {
           })()}
         </div>
 
-        {/* Budgeted Spending */}
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
-            <Receipt className="h-5 w-5 text-red-500" />
+        {/* Budget Plan */}
+        <Link to="/budget/plan" className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50">
+          <div className="flex items-center justify-between">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
+              <Receipt className="h-5 w-5 text-red-500" />
+            </div>
+            <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">Budgeted Spending</p>
+          <p className="mt-4 text-sm text-muted-foreground">Budget Plan</p>
           <p className="mt-1 text-xl font-semibold">{formatCents(periodCashFlow.budgeted.actual)}</p>
           <div className="mt-3 mb-3 h-px bg-border" />
           {(() => {
@@ -369,7 +373,7 @@ export function BudgetPage() {
               </>
             );
           })()}
-        </div>
+        </Link>
 
         {/* Unplanned Spending */}
         <div className="rounded-xl border bg-card p-5">

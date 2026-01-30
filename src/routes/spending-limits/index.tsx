@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Switch } from '@/components/ui/switch';
-import { Pencil, Trash2, Plus, Target } from 'lucide-react';
+import { Pencil, Trash2, Plus, ClipboardList } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
@@ -603,11 +603,11 @@ export function SpendingLimitsPage() {
         <div className="page-header">
           <h1 className="page-title">
             <div className="page-title-icon bg-slate-500/10">
-              <Target className="h-5 w-5 text-slate-500" />
+              <ClipboardList className="h-5 w-5 text-slate-500" />
             </div>
-            Spending Limits
+            Budget Plan
           </h1>
-          <p className="page-description">Set spending limits for each category</p>
+          <p className="page-description">Set spending limits by category</p>
         </div>
         <div className="empty-state">
           <p className="empty-state-text">Select a scenario to configure spending limits.</p>
@@ -625,11 +625,11 @@ export function SpendingLimitsPage() {
         <div>
           <h1 className="page-title">
             <div className="page-title-icon bg-slate-500/10">
-              <Target className="h-5 w-5 text-slate-500" />
+              <ClipboardList className="h-5 w-5 text-slate-500" />
             </div>
-            Spending Limits
+            Budget Plan
           </h1>
-          <p className="page-description">Set spending limits for each category</p>
+          <p className="page-description">Set spending limits by category</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <ScenarioSelector />
@@ -640,13 +640,13 @@ export function SpendingLimitsPage() {
         </div>
       </div>
 
-      {/* Category Limits Chart */}
+      {/* Breakdown Chart */}
       {budgetBreakdownSegments.length > 0 && (
         <div className="rounded-lg border p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold">Category Limits</h2>
-              <p className="text-sm text-muted-foreground">How you&apos;re budgeting your money</p>
+              <h2 className="text-lg font-semibold">Breakdown</h2>
+              <p className="text-sm text-muted-foreground">How your budget is split across categories</p>
             </div>
             <div className="text-right">
               <p className="text-lg font-bold">{formatCents(budgetBreakdownTotal)}</p>
