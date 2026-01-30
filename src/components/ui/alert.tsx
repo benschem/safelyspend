@@ -60,8 +60,8 @@ function Alert({
   );
 }
 
-function AlertTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h5 className={cn('font-medium leading-tight', className)} {...props} />;
+function AlertTitle({ className, children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+  return <h5 className={cn('font-medium leading-tight', className)} {...props}>{children}</h5>;
 }
 
 function AlertDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {

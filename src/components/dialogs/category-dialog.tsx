@@ -79,7 +79,6 @@ export function CategoryDialog({ open, onOpenChange, category, addCategory, upda
                   handleSave();
                 }
               }}
-              autoFocus
             />
           </div>
 
