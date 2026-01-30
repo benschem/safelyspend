@@ -11,6 +11,7 @@ import { BudgetPage } from '@/routes/budget';
 import { TransactionsIndexPage } from '@/routes/transactions/index';
 import { TransactionNewPage } from '@/routes/transactions/new';
 import { CategoriesIndexPage } from '@/routes/categories/index';
+import { CategoryDetailPage } from '@/routes/categories/detail';
 import { CategoryImportRulesPage } from '@/routes/categories/import-rules';
 import { SavingsIndexPage } from '@/routes/savings/index';
 import { InsightsPage } from '@/routes/insights';
@@ -53,6 +54,7 @@ const router = createBrowserRouter([
 
       // Categories (track)
       { path: 'categories', element: <CategoriesIndexPage /> },
+      { path: 'categories/:id', element: <CategoryDetailPage /> },
       { path: 'categories/import-rules', element: <CategoryImportRulesPage /> },
 
       // Savings (track)

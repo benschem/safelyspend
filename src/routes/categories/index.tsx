@@ -107,13 +107,12 @@ export function CategoriesIndexPage() {
         cell: ({ row }) => {
           const category = row.original;
           return (
-            <button
-              type="button"
-              onClick={() => openEditDialog(category)}
-              className="cursor-pointer text-left font-medium hover:underline"
+            <Link
+              to={`/categories/${category.id}`}
+              className="font-medium hover:underline"
             >
               {category.name}
-            </button>
+            </Link>
           );
         },
       },
