@@ -24,7 +24,6 @@ export interface ParsedTransaction {
   amountCents: number;
   type: 'income' | 'expense';
   category: string | null;
-  paymentMethod: string | null;
   notes: string;
   // For duplicate detection - uses full timestamp + account for uniqueness
   fingerprint: string;
@@ -200,7 +199,6 @@ export function parseUpCsv(csvContent: string): Promise<ParseResult> {
             amountCents,
             type: isIncome ? 'income' : 'expense',
             category: row.Category?.trim() || null,
-            paymentMethod: row['Payment Method']?.trim() || null,
             notes: sanitizeFormulaInjection(buildNotes(row)),
             fingerprint: createFingerprint(
               row.Time,

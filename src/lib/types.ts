@@ -107,7 +107,6 @@ export interface Transaction extends BaseEntity {
   categoryId: string | null; // Optional for expenses, null for income/savings
   savingsGoalId: string | null; // Required if type === 'savings'
   notes?: string;
-  paymentMethod?: string;
 
   // Import tracking
   importFingerprint?: string; // For deduplication

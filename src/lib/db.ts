@@ -26,12 +26,6 @@ export interface ActiveScenario {
   scenarioId: string | null;
 }
 
-// Payment method (simple string list stored as objects)
-export interface PaymentMethod {
-  id: string;
-  name: string;
-}
-
 export class BudgetDatabase extends Dexie {
   scenarios!: Table<Scenario, string>;
   categories!: Table<Category, string>;
@@ -42,7 +36,6 @@ export class BudgetDatabase extends Dexie {
   savingsGoals!: Table<SavingsGoal, string>;
   balanceAnchors!: Table<BalanceAnchor, string>;
   categoryRules!: Table<CategoryRule, string>;
-  paymentMethods!: Table<PaymentMethod, string>;
   appConfig!: Table<AppConfig, 'singleton'>;
   activeScenario!: Table<ActiveScenario, 'singleton'>;
 
@@ -60,7 +53,6 @@ export class BudgetDatabase extends Dexie {
       savingsGoals: 'id',
       balanceAnchors: 'id, date',
       categoryRules: 'id, priority',
-      paymentMethods: 'id',
       appConfig: 'id',
       activeScenario: 'id',
     });
@@ -77,7 +69,6 @@ export interface BudgetBackup extends BudgetData {
   version: number;
   exportedAt: string;
   activeScenarioId: string | null;
-  paymentMethods?: string[];
 }
 
 /**
@@ -94,7 +85,6 @@ export async function exportAllData(): Promise<BudgetBackup> {
     savingsGoals,
     balanceAnchors,
     categoryRules,
-    paymentMethodRecords,
     activeScenario,
   ] = await Promise.all([
     db.scenarios.toArray(),
@@ -106,7 +96,6 @@ export async function exportAllData(): Promise<BudgetBackup> {
     db.savingsGoals.toArray(),
     db.balanceAnchors.toArray(),
     db.categoryRules.toArray(),
-    db.paymentMethods.toArray(),
     db.activeScenario.get('singleton'),
   ]);
 
@@ -122,7 +111,6 @@ export async function exportAllData(): Promise<BudgetBackup> {
     savingsGoals,
     balanceAnchors,
     categoryRules,
-    paymentMethods: paymentMethodRecords.map((pm) => pm.name),
     activeScenarioId: activeScenario?.scenarioId ?? null,
   };
 }
@@ -131,7 +119,7 @@ export async function exportAllData(): Promise<BudgetBackup> {
  * Import all data into IndexedDB (replaces existing data)
  */
 export async function importAllData(
-  backup: BudgetData & { activeScenarioId?: string | null; paymentMethods?: string[] },
+  backup: BudgetData & { activeScenarioId?: string | null },
 ): Promise<void> {
   await db.transaction(
     'rw',
@@ -145,7 +133,6 @@ export async function importAllData(
       db.savingsGoals,
       db.balanceAnchors,
       db.categoryRules,
-      db.paymentMethods,
       db.activeScenario,
       db.appConfig,
     ],
@@ -161,7 +148,6 @@ export async function importAllData(
         db.savingsGoals.clear(),
         db.balanceAnchors.clear(),
         db.categoryRules.clear(),
-        db.paymentMethods.clear(),
       ]);
 
       // Import using bulkPut (idempotent)
@@ -176,15 +162,6 @@ export async function importAllData(
         db.balanceAnchors.bulkPut(backup.balanceAnchors ?? []),
         db.categoryRules.bulkPut(backup.categoryRules ?? []),
       ]);
-
-      // Import payment methods
-      if (backup.paymentMethods) {
-        const paymentMethodRecords = backup.paymentMethods.map((name, index) => ({
-          id: `pm_${index}`,
-          name,
-        }));
-        await db.paymentMethods.bulkPut(paymentMethodRecords);
-      }
 
       // Set active scenario
       if (backup.activeScenarioId !== undefined) {
@@ -220,7 +197,6 @@ export async function resetDatabase(): Promise<void> {
       db.savingsGoals,
       db.balanceAnchors,
       db.categoryRules,
-      db.paymentMethods,
       db.activeScenario,
       db.appConfig,
     ],
@@ -235,7 +211,6 @@ export async function resetDatabase(): Promise<void> {
         db.savingsGoals.clear(),
         db.balanceAnchors.clear(),
         db.categoryRules.clear(),
-        db.paymentMethods.clear(),
         db.activeScenario.clear(),
         db.appConfig.clear(),
       ]);

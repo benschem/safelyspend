@@ -85,7 +85,6 @@ const transactionSchema = baseEntitySchema.extend({
   categoryId: z.string().nullable(),
   savingsGoalId: z.string().nullable(),
   notes: z.string().max(1000).optional(),
-  paymentMethod: z.string().max(50).optional(),
   importFingerprint: z.string().max(500).optional(),
   importSource: z.string().max(50).optional(),
   importedAt: z.string().optional(),

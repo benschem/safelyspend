@@ -14,7 +14,6 @@ import { Upload, FileText, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { parseUpCsv, filterDuplicates, type ParsedTransaction } from '@/lib/up-csv-parser';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
-import { usePaymentMethods } from '@/hooks/use-payment-methods';
 import { useCategoryRules } from '@/hooks/use-category-rules';
 import { formatCents, now } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
@@ -49,7 +48,6 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
 
   const { getExistingFingerprints, bulkImport } = useTransactions();
   const { bulkGetOrCreate: bulkGetOrCreateCategories } = useCategories();
-  const { bulkGetOrCreate: bulkGetOrCreatePaymentMethods } = usePaymentMethods();
   const { applyRulesToBatch } = useCategoryRules();
   const [importProgress, setImportProgress] = useState(0);
 
@@ -195,22 +193,19 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
     setImportProgress(10);
     await yieldToUI();
 
-    // Collect unique categories and payment methods from CSV
+    // Collect unique categories from CSV
     const categoryNames = new Set<string>();
-    const paymentMethodNames = new Set<string>();
 
     for (const tx of transactions) {
       if (tx.category) categoryNames.add(tx.category);
-      if (tx.paymentMethod) paymentMethodNames.add(tx.paymentMethod);
     }
 
-    // Progress: 20% - Creating categories/payment methods
+    // Progress: 20% - Creating categories
     setImportProgress(20);
     await yieldToUI();
 
-    // Bulk create categories and payment methods
+    // Bulk create categories
     const categoryMap = await bulkGetOrCreateCategories(Array.from(categoryNames));
-    const paymentMethodMap = await bulkGetOrCreatePaymentMethods(Array.from(paymentMethodNames));
 
     // Progress: 30% - Applying category rules (batch)
     setImportProgress(30);
@@ -264,12 +259,6 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
       if (tx.notes) {
         data.notes = tx.notes;
       }
-      if (tx.paymentMethod) {
-        const method = paymentMethodMap.get(tx.paymentMethod);
-        if (method) {
-          data.paymentMethod = method;
-        }
-      }
       return data;
     });
 
@@ -292,7 +281,7 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
       needsReview,
     });
     setStep('complete');
-  }, [transactions, duplicates, skippedCount, bulkGetOrCreateCategories, bulkGetOrCreatePaymentMethods, bulkImport, applyRulesToBatch]);
+  }, [transactions, duplicates, skippedCount, bulkGetOrCreateCategories, bulkImport, applyRulesToBatch]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -400,7 +389,6 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
                             <p className="mt-1 text-sm text-muted-foreground">
                               {tx.date}
                               {tx.category && ` • ${tx.category}`}
-                              {tx.paymentMethod && ` • ${tx.paymentMethod}`}
                             </p>
                           </div>
                           <span

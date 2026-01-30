@@ -130,13 +130,6 @@ describe('parseUpCsv', () => {
     expect(result.transactions[0]!.category).toBe('Groceries');
   });
 
-  it('extracts payment method from CSV', async () => {
-    const csv = rowToCsv([makeRow({ 'Payment Method': 'Apple Pay' })]);
-    const result = await parseUpCsv(csv);
-
-    expect(result.transactions[0]!.paymentMethod).toBe('Apple Pay');
-  });
-
   it('creates fingerprint for deduplication', async () => {
     const csv = rowToCsv([makeRow()]);
     const result = await parseUpCsv(csv);
@@ -209,7 +202,6 @@ describe('filterDuplicates', () => {
     amountCents: 1000,
     type: 'expense',
     category: null,
-    paymentMethod: null,
     notes: '',
     fingerprint,
   });

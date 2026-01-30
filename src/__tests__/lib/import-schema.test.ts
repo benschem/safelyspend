@@ -161,25 +161,25 @@ describe('validateImport', () => {
     expect(() => validateImport(data)).not.toThrow();
   });
 
-  it('rejects negative amountCents', () => {
-    const invalidTransaction = {
+  it('accepts negative amountCents for savings withdrawals', () => {
+    const withdrawalTransaction = {
       id: '1',
       userId: 'local',
       createdAt: '2025-01-01T00:00:00.000Z',
       updatedAt: '2025-01-01T00:00:00.000Z',
-      type: 'expense',
+      type: 'savings',
       date: '2025-01-01',
       amountCents: -1000,
-      description: 'Test',
+      description: 'Withdrawal',
       categoryId: null,
-      savingsGoalId: null,
+      savingsGoalId: 'goal-1',
     };
 
     const data = {
       ...validMinimalData,
-      transactions: [invalidTransaction],
+      transactions: [withdrawalTransaction],
     };
-    expect(() => validateImport(data)).toThrow();
+    expect(() => validateImport(data)).not.toThrow();
   });
 
   it('rejects non-integer amountCents', () => {
