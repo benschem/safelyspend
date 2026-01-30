@@ -163,6 +163,16 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
           )}
 
           <div className="space-y-2">
+            <Label htmlFor="rule-description" className="select-none">Description</Label>
+            <Input
+              id="rule-description"
+              placeholder="e.g., Salary, Rent, Car payment"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label className="select-none">Type</Label>
             <Select value={type} onValueChange={(v) => setType(v as ForecastType)}>
               <SelectTrigger>
@@ -174,16 +184,6 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
                 <SelectItem value="savings">Savings</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="rule-description" className="select-none">Description</Label>
-            <Input
-              id="rule-description"
-              placeholder="e.g., Salary, Rent, Car payment"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

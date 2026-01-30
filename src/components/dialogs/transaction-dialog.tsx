@@ -141,6 +141,16 @@ export function TransactionDialog({ open, onOpenChange, transaction, addTransact
             </div>
           )}
 
+          <div className="space-y-2">
+            <Label htmlFor="tx-description" className="select-none">Description</Label>
+            <Input
+              id="tx-description"
+              placeholder="e.g., Woolworths, Salary"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+
           {!isAdjustment && (
             <div className="space-y-2">
               <Label className="select-none">Type</Label>
@@ -181,16 +191,6 @@ export function TransactionDialog({ open, onOpenChange, transaction, addTransact
                 onChange={(e) => setAmount(e.target.value)}
               />
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="tx-description" className="select-none">Description</Label>
-            <Input
-              id="tx-description"
-              placeholder="e.g., Woolworths, Salary"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
           </div>
 
           {type === 'savings' ? (

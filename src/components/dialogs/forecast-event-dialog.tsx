@@ -125,6 +125,16 @@ export function ForecastEventDialog({ open, onOpenChange, scenarioId, event, add
           )}
 
           <div className="space-y-2">
+            <Label htmlFor="event-description" className="select-none">Description</Label>
+            <Input
+              id="event-description"
+              placeholder="e.g., Car service, Tax return"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label className="select-none">Type</Label>
             <Select value={type} onValueChange={(v) => setType(v as ForecastType)}>
               <SelectTrigger>
@@ -161,16 +171,6 @@ export function ForecastEventDialog({ open, onOpenChange, scenarioId, event, add
                 onChange={(e) => setAmount(e.target.value)}
               />
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="event-description" className="select-none">Description</Label>
-            <Input
-              id="event-description"
-              placeholder="e.g., Car service, Tax return"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
           </div>
 
           {type === 'savings' ? (
