@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
@@ -24,8 +24,14 @@ import { useCategories } from '@/hooks/use-categories';
 import type { CategoryRuleMatchType } from '@/lib/types';
 
 export function CategoryImportRulesPage() {
+  const [searchParams] = useSearchParams();
   const { rules, addRule, updateRule, deleteRule, getNextPriority } = useCategoryRules();
   const { activeCategories } = useCategories();
+
+  // Determine where to go back to
+  const from = searchParams.get('from');
+  const backTo = from === 'transactions' ? '/transactions' : '/categories';
+  const backLabel = from === 'transactions' ? 'Back to Transactions' : 'Back to Categories';
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
@@ -126,9 +132,9 @@ export function CategoryImportRulesPage() {
     <div className="mx-auto max-w-6xl">
       <div className="mb-6">
         <Button variant="ghost" size="sm" className="-ml-2" asChild>
-          <Link to="/categories">
+          <Link to={backTo}>
             <ArrowLeft className="h-4 w-4" />
-            Back to Categories
+            {backLabel}
           </Link>
         </Button>
       </div>

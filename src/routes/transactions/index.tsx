@@ -413,7 +413,7 @@ export function TransactionsIndexPage() {
             </Button>
           </div>
           <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
-            <Link to="/categories/import-rules">
+            <Link to="/categories/import-rules?from=transactions">
               <Settings2 className="h-4 w-4" />
               Import Rules
             </Link>
