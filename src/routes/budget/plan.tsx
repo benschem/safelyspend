@@ -155,7 +155,7 @@ function getStatusTextColor(status: 'over' | 'overspending' | 'watch' | 'good' |
   }
 }
 
-export function SpendingLimitsPage() {
+export function BudgetPlanPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
   const { activeCategories, isLoading: categoriesLoading, addCategory } = useCategories();

@@ -15,7 +15,7 @@ import { CategoryImportRulesPage } from '@/routes/categories/import-rules';
 import { SavingsIndexPage } from '@/routes/savings/index';
 import { InsightsPage } from '@/routes/insights';
 import { ScenariosIndexPage } from '@/routes/scenarios/index';
-import { SpendingLimitsPage } from '@/routes/spending-limits/index';
+import { BudgetPlanPage } from '@/routes/budget/plan';
 import { SettingsPage } from '@/routes/settings';
 
 // Dev-only: style guide not bundled in production
@@ -42,7 +42,7 @@ const router = createBrowserRouter([
       { path: 'forecasts/recurring', element: <RecurringIndexPage /> },
 
       // Planned Spending (plan)
-      { path: 'budget/plan', element: <SpendingLimitsPage /> },
+      { path: 'budget/plan', element: <BudgetPlanPage /> },
 
       // Budget (track)
       { path: 'budget', element: <BudgetPage /> },
