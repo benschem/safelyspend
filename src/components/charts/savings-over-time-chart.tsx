@@ -188,7 +188,7 @@ export function SavingsOverTimeChart({ monthlySavings, deadline, targetAmount, s
   return (
     <div className="w-full">
       <ResponsiveContainer width="100%" height={250}>
-        <AreaChart data={chartData} margin={{ top: 20, right: 10, bottom: 20, left: 10 }}>
+        <AreaChart data={chartData} margin={{ top: 20, right: 55, bottom: 20, left: 10 }}>
           <defs>
             <linearGradient id="actualSavingsGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor={CHART_COLORS.savings} stopOpacity={0.4} />
