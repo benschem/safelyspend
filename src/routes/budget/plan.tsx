@@ -264,7 +264,7 @@ export function BudgetPlanPage() {
             </div>
             Budget Plan
           </h1>
-          <p className="page-description">Set spending limits by category</p>
+          <p className="page-description">Set spending limits by category per scenario</p>
         </div>
         <div className="empty-state">
           <p className="empty-state-text">Select a scenario to configure spending limits.</p>
@@ -286,7 +286,7 @@ export function BudgetPlanPage() {
             </div>
             Budget Plan
           </h1>
-          <p className="page-description">Set spending limits by category</p>
+          <p className="page-description">Set spending limits by category per scenario</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <ScenarioSelector />
