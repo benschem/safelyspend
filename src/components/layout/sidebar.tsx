@@ -10,7 +10,6 @@ import {
   Settings,
   ChartSpline,
   Menu,
-  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
@@ -36,7 +35,7 @@ function NavItem({ to, icon, children, onClick, end }: NavItemProps) {
   return (
     <NavLink
       to={to}
-      end={end}
+      end={end ?? false}
       onClick={onClick}
       className={({ isActive }) =>
         cn(
@@ -77,9 +76,6 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         <NavItem to="/snapshot" icon={<Camera className="h-4 w-4" />} onClick={onNavigate}>
           Snapshot
         </NavItem>
-        <NavItem to="/budget" icon={<Target className="h-4 w-4" />} onClick={onNavigate} end>
-          Budget
-        </NavItem>
         <NavItem to="/insights" icon={<ChartSpline className="h-4 w-4" />} onClick={onNavigate}>
           Insights
         </NavItem>
@@ -87,12 +83,23 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
       <Separator className="my-2" />
 
-      <NavSection title="Plan">
-        <NavItem to="/forecasts" icon={<Telescope className="h-4 w-4" />} onClick={onNavigate}>
-          Forecasts
+      <NavSection title="Monitor">
+        <NavItem to="/spending" icon={<Receipt className="h-4 w-4" />} onClick={onNavigate}>
+          Spending
         </NavItem>
-        <NavItem to="/budget/plan" icon={<ClipboardList className="h-4 w-4" />} onClick={onNavigate}>
-          Budget Plan
+        <NavItem to="/savings" icon={<PiggyBank className="h-4 w-4" />} onClick={onNavigate}>
+          Savings
+        </NavItem>
+      </NavSection>
+
+      <Separator className="my-2" />
+
+      <NavSection title="Plan">
+        <NavItem to="/budget" icon={<Target className="h-4 w-4" />} onClick={onNavigate}>
+          Budget
+        </NavItem>
+        <NavItem to="/scenarios" icon={<Layers className="h-4 w-4" />} onClick={onNavigate}>
+          Scenarios
         </NavItem>
       </NavSection>
 
@@ -102,9 +109,8 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         <NavItem to="/transactions" icon={<Receipt className="h-4 w-4" />} onClick={onNavigate}>
           Transactions
         </NavItem>
-
-        <NavItem to="/savings" icon={<PiggyBank className="h-4 w-4" />} onClick={onNavigate}>
-          Savings
+        <NavItem to="/forecasts" icon={<Telescope className="h-4 w-4" />} onClick={onNavigate}>
+          Forecasts
         </NavItem>
       </NavSection>
 
@@ -113,9 +119,6 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       <NavSection title="Manage">
         <NavItem to="/categories" icon={<Tags className="h-4 w-4" />} onClick={onNavigate}>
           Categories
-        </NavItem>
-        <NavItem to="/scenarios" icon={<Layers className="h-4 w-4" />} onClick={onNavigate}>
-          Scenarios
         </NavItem>
       </NavSection>
 
