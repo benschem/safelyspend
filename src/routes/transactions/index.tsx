@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
@@ -45,6 +45,8 @@ const getDefaultStartDate = () => '';
 const getDefaultEndDate = () => getToday();
 
 export function TransactionsIndexPage() {
+  const [searchParams] = useSearchParams();
+
   // Date filter state - defaults to past transactions (up to today)
   const [filterStartDate, setFilterStartDate] = useState(getDefaultStartDate);
   const [filterEndDate, setFilterEndDate] = useState(getDefaultEndDate);
@@ -67,7 +69,11 @@ export function TransactionsIndexPage() {
   const hasAnyTransactions = allTransactions.length > 0;
 
   const [filterType, setFilterType] = useState<FilterType>('all');
-  const [filterCategory, setFilterCategory] = useState<CategoryFilter>('all');
+  // Initialize category filter from URL param if present
+  const [filterCategory, setFilterCategory] = useState<CategoryFilter>(() => {
+    const categoryParam = searchParams.get('category');
+    return categoryParam ?? 'all';
+  });
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
