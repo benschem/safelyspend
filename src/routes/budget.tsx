@@ -367,7 +367,7 @@ export function BudgetPage() {
           <div className="mt-3 mb-3 h-px bg-border" />
           {isFuturePeriod ? (
             <p className="mt-2 text-sm text-muted-foreground">
-              Based on forecast rules
+              Based on forecasts
             </p>
           ) : (() => {
             const pct = periodCashFlow.income.expected > 0
@@ -413,7 +413,7 @@ export function BudgetPage() {
           <div className="mt-3 mb-3 h-px bg-border" />
           {isFuturePeriod ? (
             <p className="mt-2 text-sm text-muted-foreground">
-              Based on budget rules
+              Based on budget
             </p>
           ) : (() => {
             const pct = periodCashFlow.budgeted.expected > 0
@@ -456,7 +456,7 @@ export function BudgetPage() {
           <div className="mt-3 mb-3 h-px bg-border" />
           {isFuturePeriod ? (
             <p className="mt-2 text-sm text-muted-foreground">
-              Income minus budgeted expenses and savings
+              Income minus planned spending and savings
             </p>
           ) : (() => {
             const pct = periodCashFlow.unbudgeted.unallocated > 0
@@ -499,7 +499,7 @@ export function BudgetPage() {
           <div className="mt-3 mb-3 h-px bg-border" />
           {isFuturePeriod ? (
             <p className="mt-2 text-sm text-muted-foreground">
-              Based on savings goals
+              Based on forecasts
             </p>
           ) : (() => {
             const pct = periodCashFlow.savings.expected > 0
