@@ -271,13 +271,20 @@ export function InsightsPage() {
       {isLoading ? (
         <PageLoading />
       ) : activeTab === 'spending' ? (
-        <BudgetComparisonChart
-          monthlyBudgetComparison={monthlyBudgetComparison}
-          budgetCategories={budgetCategories}
-          colorMap={categoryColorMap}
-        />
+        <div className="space-y-6">
+          <p className="text-sm text-muted-foreground">
+            {isPastOnly
+              ? 'How your spending compared to your budget'
+              : 'Actual spending vs budget, plus forecasted expenses'}
+          </p>
+          <BudgetComparisonChart
+            monthlyBudgetComparison={monthlyBudgetComparison}
+            budgetCategories={budgetCategories}
+            colorMap={categoryColorMap}
+          />
+        </div>
       ) : activeTab === 'cashflow' ? (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {balanceInfo.warning && (
             <Alert variant="warning">
               <AlertTitle>{balanceInfo.warning.title}</AlertTitle>
@@ -289,6 +296,11 @@ export function InsightsPage() {
               </AlertDescription>
             </Alert>
           )}
+          <p className="text-sm text-muted-foreground">
+            {isPastOnly
+              ? 'Your bank balance and monthly income vs expenses'
+              : 'Cash and savings over time, with forecasted earnings, spending and saving'}
+          </p>
           <CashFlowChart
             monthlyNetFlow={monthlyNetFlow}
             startingBalance={balanceInfo.startingBalance}
