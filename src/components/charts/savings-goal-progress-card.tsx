@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Target, Calendar, TrendingUp, CheckCircle2, PiggyBank, Ambulance } from 'lucide-react';
+import { Target, Calendar, BadgePercent, CheckCircle2, PiggyBank, Ambulance } from 'lucide-react';
 import { formatCents, formatMonth } from '@/lib/utils';
 
 interface MonthlySavings {
@@ -181,40 +181,42 @@ export function SavingsGoalProgressCard({
       )}
 
       {/* Stats row */}
-      <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
-        {/* Expected completion - neutral color */}
-        {!isGoalReached && expectedCompletion && targetAmount > 0 && (
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Target className="h-3.5 w-3.5" />
-            <span>
-              Expected{' '}
-              <span className="font-medium text-foreground">
-                {formatMonth(expectedCompletion.month)}
+      <div className="mt-4 flex items-center justify-between gap-4 text-sm">
+        <div className="flex flex-wrap gap-x-4 gap-y-2">
+          {/* Expected completion - neutral color */}
+          {!isGoalReached && expectedCompletion && targetAmount > 0 && (
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <Target className="h-3.5 w-3.5" />
+              <span>
+                Expected{' '}
+                <span className="font-medium text-foreground">
+                  {formatMonth(expectedCompletion.month)}
+                </span>
               </span>
-            </span>
-          </div>
-        )}
+            </div>
+          )}
 
-        {/* Timeframe early/late - colored */}
-        {!isGoalReached && timeframeInfo && (
-          <div
-            className={`flex items-center gap-1.5 font-medium ${
-              timeframeInfo.status === 'early' || timeframeInfo.status === 'on-time'
-                ? 'text-green-600 dark:text-green-400'
-                : timeframeInfo.status === 'slightly-late'
-                  ? 'text-amber-600 dark:text-amber-400'
-                  : 'text-red-600 dark:text-red-400'
-            }`}
-          >
-            <Calendar className="h-3.5 w-3.5" />
-            <span>{timeframeInfo.label}</span>
-          </div>
-        )}
+          {/* Timeframe early/late - colored */}
+          {!isGoalReached && timeframeInfo && (
+            <div
+              className={`flex items-center gap-1.5 font-medium ${
+                timeframeInfo.status === 'early' || timeframeInfo.status === 'on-time'
+                  ? 'text-green-600 dark:text-green-400'
+                  : timeframeInfo.status === 'slightly-late'
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : 'text-red-600 dark:text-red-400'
+              }`}
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              <span>{timeframeInfo.label}</span>
+            </div>
+          )}
+        </div>
 
-        {/* Interest rate */}
+        {/* Interest rate - right aligned */}
         {annualInterestRate && annualInterestRate > 0 && (
           <div className="flex items-center gap-1.5 text-muted-foreground">
-            <TrendingUp className="h-3.5 w-3.5" />
+            <BadgePercent className="h-3.5 w-3.5" />
             <span>
               <span className="font-medium text-foreground">{annualInterestRate}%</span> p.a.
             </span>
