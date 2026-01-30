@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -16,11 +16,8 @@ import {
 } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
-import { useBudgetRules } from '@/hooks/use-budget-rules';
-import { useTransactions } from '@/hooks/use-transactions';
-import { useForecasts } from '@/hooks/use-forecasts';
-import { useCategories } from '@/hooks/use-categories';
-import { buildCategoryColorMap, CHART_COLORS } from '@/lib/chart-colors';
+import { useBudgetPeriodData } from '@/hooks/use-budget-period-data';
+import { CHART_COLORS } from '@/lib/chart-colors';
 import { BurnRateChart } from '@/components/charts';
 import { cn, formatCents } from '@/lib/utils';
 
@@ -36,45 +33,31 @@ interface OutletContext {
 export function BudgetPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
-  const { allTransactions } = useTransactions();
-  const { budgetRules } = useBudgetRules(activeScenarioId);
-  const { activeCategories } = useCategories();
 
   // Selected period state - defaults to current month
   const [selectedMonth, setSelectedMonth] = useState(() => new Date());
   const [viewMode, setViewMode] = useState<'month' | 'year'>('month');
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [pickerYear, setPickerYear] = useState(() => new Date().getFullYear());
 
-  // Calculate date range for selected period
-  const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  // Use the extracted hook for all business logic
+  const {
+    periodLabel,
+    isCurrentPeriod,
+    isFuturePeriod,
+    isPastPeriod,
+    periodCashFlow,
+    summary,
+    periodSpending,
+    burnRateData,
+    colorMap,
+  } = useBudgetPeriodData({
+    scenarioId: activeScenarioId,
+    selectedMonth,
+    viewMode,
+  });
+
   const selectedYear = selectedMonth.getFullYear();
-  const selectedMonthIndex = selectedMonth.getMonth();
-
-  // Period start/end depends on view mode
-  const periodStart = viewMode === 'year'
-    ? `${selectedYear}-01-01`
-    : `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-01`;
-  // Get last day of month without timezone conversion
-  const lastDayOfMonth = new Date(selectedYear, selectedMonthIndex + 1, 0).getDate();
-  const periodEnd = viewMode === 'year'
-    ? `${selectedYear}-12-31`
-    : `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-${String(lastDayOfMonth).padStart(2, '0')}`;
-
-  // Check if viewing current, past, or future period
-  const isCurrentPeriod = viewMode === 'year'
-    ? today.slice(0, 4) === String(selectedYear)
-    : today.slice(0, 7) === periodStart.slice(0, 7);
-  const isFuturePeriod = periodStart > today;
-  const isPastPeriod = periodEnd < today;
-  // For current period, use today; for past use period end; for future use period start (no actuals)
-  const effectiveDate = isCurrentPeriod ? today : (isFuturePeriod ? periodStart : periodEnd);
-
-  const { expandedForecasts: periodForecasts, savingsForecasts } = useForecasts(activeScenarioId, periodStart, periodEnd);
-
-  const shortMonthName = selectedMonth.toLocaleDateString('en-AU', { month: 'long' });
-  const periodLabel = viewMode === 'year' ? String(selectedYear) : `${shortMonthName} ${selectedYear}`;
-  const [pickerYear, setPickerYear] = useState(selectedYear);
 
   // Navigation handlers
   const goToPrevious = () => {
@@ -104,311 +87,7 @@ export function BudgetPage() {
     setCalendarOpen(false);
   };
 
-  // Period cash flow calculation (works for both month and year view)
-  const periodCashFlow = useMemo(() => {
-    const daysInPeriod = viewMode === 'year'
-      ? (selectedYear % 4 === 0 ? 366 : 365)
-      : new Date(selectedYear, selectedMonthIndex + 1, 0).getDate();
-    const effectiveDateObj = new Date(effectiveDate);
-    const dayOfPeriod = isCurrentPeriod
-      ? (viewMode === 'year'
-        ? Math.ceil((effectiveDateObj.getTime() - new Date(selectedYear, 0, 1).getTime()) / (1000 * 60 * 60 * 24)) + 1
-        : effectiveDateObj.getDate())
-      : daysInPeriod;
-
-    // Get category IDs that have budgets
-    const budgetedCategoryIds = new Set(budgetRules.map((r) => r.categoryId));
-
-    // Expected income for full period
-    const expectedIncome = periodForecasts
-      .filter((f) => f.type === 'income')
-      .reduce((sum, f) => sum + f.amountCents, 0);
-
-    // Expected savings for full period (use savingsForecasts which includes interest)
-    const expectedSavings = savingsForecasts
-      .reduce((sum, f) => sum + f.amountCents, 0);
-
-    // Expected expenses for full period
-    const expectedExpenses = periodForecasts
-      .filter((f) => f.type === 'expense')
-      .reduce((sum, f) => sum + f.amountCents, 0);
-
-    // Total budget for period (sum of all budget rules, converted to period)
-    const periodMultiplier = viewMode === 'year' ? 12 : 1;
-    const totalBudget = budgetRules.reduce((sum, r) => {
-      let monthlyAmount: number;
-      switch (r.cadence) {
-        case 'weekly':
-          monthlyAmount = r.amountCents * 4.33;
-          break;
-        case 'fortnightly':
-          monthlyAmount = r.amountCents * 2.17;
-          break;
-        case 'monthly':
-          monthlyAmount = r.amountCents;
-          break;
-        case 'quarterly':
-          monthlyAmount = r.amountCents / 3;
-          break;
-        case 'yearly':
-          monthlyAmount = r.amountCents / 12;
-          break;
-        default:
-          monthlyAmount = r.amountCents;
-      }
-      return sum + monthlyAmount * periodMultiplier;
-    }, 0);
-
-    // Actual income received so far (or full period if past)
-    const actualIncome = allTransactions
-      .filter((t) => t.type === 'income' && t.date >= periodStart && t.date <= effectiveDate)
-      .reduce((sum, t) => sum + t.amountCents, 0);
-
-    // Actual savings so far
-    const actualSavings = allTransactions
-      .filter((t) => t.type === 'savings' && t.date >= periodStart && t.date <= effectiveDate)
-      .reduce((sum, t) => sum + t.amountCents, 0);
-
-    // Actual expenses - split by budgeted vs unbudgeted
-    const expenseTransactionsThisPeriod = allTransactions.filter(
-      (t) => t.type === 'expense' && t.date >= periodStart && t.date <= effectiveDate,
-    );
-
-    const actualBudgetedExpenses = expenseTransactionsThisPeriod
-      .filter((t) => t.categoryId && budgetedCategoryIds.has(t.categoryId))
-      .reduce((sum, t) => sum + t.amountCents, 0);
-
-    const actualUnbudgetedExpenses = expenseTransactionsThisPeriod
-      .filter((t) => !t.categoryId || !budgetedCategoryIds.has(t.categoryId))
-      .reduce((sum, t) => sum + t.amountCents, 0);
-
-    const actualExpenses = actualBudgetedExpenses + actualUnbudgetedExpenses;
-
-    // Unallocated = Income - Budget - Savings
-    const unallocated = Math.round(expectedIncome - totalBudget - expectedSavings);
-
-    // Net for period = Income - Expenses - Savings (actual so far)
-    const actualNet = actualIncome - actualExpenses - actualSavings;
-
-    // Forecasted remaining income/expenses/savings for the rest of the period
-    // For current period: forecasts after today
-    // For future periods: all forecasts (no actuals exist yet)
-    // For past periods: no remaining forecasts
-    const forecastedIncome = isFuturePeriod
-      ? periodForecasts.filter((f) => f.type === 'income').reduce((sum, f) => sum + f.amountCents, 0)
-      : isCurrentPeriod
-        ? periodForecasts.filter((f) => f.type === 'income' && f.date > effectiveDate).reduce((sum, f) => sum + f.amountCents, 0)
-        : 0;
-    const forecastedExpenses = isFuturePeriod
-      ? periodForecasts.filter((f) => f.type === 'expense').reduce((sum, f) => sum + f.amountCents, 0)
-      : isCurrentPeriod
-        ? periodForecasts.filter((f) => f.type === 'expense' && f.date > effectiveDate).reduce((sum, f) => sum + f.amountCents, 0)
-        : 0;
-    const forecastedSavings = isFuturePeriod
-      ? periodForecasts.filter((f) => f.type === 'savings').reduce((sum, f) => sum + f.amountCents, 0)
-      : isCurrentPeriod
-        ? periodForecasts.filter((f) => f.type === 'savings' && f.date > effectiveDate).reduce((sum, f) => sum + f.amountCents, 0)
-        : 0;
-
-    // Projected net for full period
-    const projectedNet = actualNet + forecastedIncome - forecastedExpenses - forecastedSavings;
-    const forecastedNet = forecastedIncome - forecastedExpenses - forecastedSavings;
-
-    return {
-      dayOfPeriod,
-      daysInPeriod,
-      income: { expected: Math.round(expectedIncome), actual: actualIncome },
-      budgeted: { expected: Math.round(totalBudget), actual: actualBudgetedExpenses },
-      unbudgeted: { unallocated: Math.max(0, unallocated), actual: actualUnbudgetedExpenses },
-      savings: { expected: Math.round(expectedSavings), actual: actualSavings },
-      expenses: { expected: Math.round(expectedExpenses), actual: actualExpenses },
-      net: {
-        projected: projectedNet,
-        forecasted: forecastedNet,
-      },
-    };
-  }, [periodForecasts, savingsForecasts, budgetRules, allTransactions, periodStart, effectiveDate, selectedYear, selectedMonthIndex, isCurrentPeriod, isFuturePeriod, viewMode]);
-
-  // Summary stats for the cards
-  const summary = useMemo(() => {
-    // Calculate spending pace stats
-    const daysInPeriod = viewMode === 'year'
-      ? (selectedYear % 4 === 0 ? 366 : 365)
-      : new Date(selectedYear, selectedMonthIndex + 1, 0).getDate();
-    const effectiveDateObj = new Date(effectiveDate);
-    const dayOfPeriod = isCurrentPeriod
-      ? (viewMode === 'year'
-        ? Math.ceil((effectiveDateObj.getTime() - new Date(selectedYear, 0, 1).getTime()) / (1000 * 60 * 60 * 24)) + 1
-        : effectiveDateObj.getDate())
-      : daysInPeriod;
-    const periodProgress = dayOfPeriod / daysInPeriod;
-
-    let overCount = 0;
-    let overspendingCount = 0;
-    let goodCount = 0;
-
-    const periodMultiplier = viewMode === 'year' ? 12 : 1;
-
-    for (const rule of budgetRules) {
-      // Convert to period budget
-      let monthlyBudget = rule.amountCents;
-      switch (rule.cadence) {
-        case 'weekly':
-          monthlyBudget = rule.amountCents * 4.33;
-          break;
-        case 'fortnightly':
-          monthlyBudget = rule.amountCents * 2.17;
-          break;
-        case 'quarterly':
-          monthlyBudget = rule.amountCents / 3;
-          break;
-        case 'yearly':
-          monthlyBudget = rule.amountCents / 12;
-          break;
-      }
-      const periodBudget = monthlyBudget * periodMultiplier;
-
-      const spent = allTransactions
-        .filter((t) => t.type === 'expense' && t.categoryId === rule.categoryId && t.date >= periodStart && t.date <= effectiveDate)
-        .reduce((sum, t) => sum + t.amountCents, 0);
-
-      const spentPercent = periodBudget > 0 ? spent / periodBudget : 0;
-      const expectedSpend = periodBudget * periodProgress;
-      const burnRate = expectedSpend > 0 ? spent / expectedSpend : 0;
-
-      if (spentPercent >= 1) {
-        overCount++;
-      } else if (burnRate > 1.2) {
-        overspendingCount++;
-      } else {
-        goodCount++;
-      }
-    }
-
-    // Savings forecasted
-    const totalSavingsForecasted = periodForecasts
-      .filter((f) => f.type === 'savings')
-      .reduce((sum, f) => sum + f.amountCents, 0);
-
-    return {
-      overCount,
-      overspendingCount,
-      goodCount,
-      trackedCount: budgetRules.length,
-      totalSavingsForecasted,
-    };
-  }, [budgetRules, allTransactions, periodForecasts, periodStart, effectiveDate, selectedYear, selectedMonthIndex, isCurrentPeriod, viewMode]);
-
-  // Calculate selected period's spending by category for horizontal bar chart
-  const periodSpending = useMemo(() => {
-    const expenseTransactions = allTransactions.filter(
-      (t) => t.type === 'expense' && t.date >= periodStart && t.date <= effectiveDate,
-    );
-
-    // Build budget lookup (converted to period amounts)
-    const periodMultiplier = viewMode === 'year' ? 12 : 1;
-    const budgetByCategory = new Map<string, number>();
-    for (const rule of budgetRules) {
-      let monthlyBudget = rule.amountCents;
-      switch (rule.cadence) {
-        case 'weekly':
-          monthlyBudget = rule.amountCents * 4.33;
-          break;
-        case 'fortnightly':
-          monthlyBudget = rule.amountCents * 2.17;
-          break;
-        case 'quarterly':
-          monthlyBudget = rule.amountCents / 3;
-          break;
-        case 'yearly':
-          monthlyBudget = rule.amountCents / 12;
-          break;
-      }
-      budgetByCategory.set(rule.categoryId, Math.round(monthlyBudget * periodMultiplier));
-    }
-
-    const byCategory: Record<string, number> = {};
-    let uncategorized = 0;
-    let total = 0;
-
-    for (const tx of expenseTransactions) {
-      total += tx.amountCents;
-      if (tx.categoryId) {
-        byCategory[tx.categoryId] = (byCategory[tx.categoryId] ?? 0) + tx.amountCents;
-      } else {
-        uncategorized += tx.amountCents;
-      }
-    }
-
-    const categorySpending = activeCategories
-      .map((c) => ({
-        id: c.id,
-        name: c.name,
-        amount: byCategory[c.id] ?? 0,
-        budget: budgetByCategory.get(c.id) ?? 0,
-      }))
-      .filter((c) => c.amount > 0)
-      .sort((a, b) => b.amount - a.amount);
-
-    if (uncategorized > 0) {
-      categorySpending.push({ id: 'uncategorized', name: 'Uncategorised', amount: uncategorized, budget: 0 });
-    }
-
-    return { categorySpending, total };
-  }, [allTransactions, activeCategories, budgetRules, periodStart, effectiveDate, viewMode]);
-
-  // Build color map for spending chart
-  const colorMap = useMemo(() => {
-    const categoryIds = activeCategories.map((c) => c.id);
-    return buildCategoryColorMap(categoryIds);
-  }, [activeCategories]);
-
-  // Burn rate data for mini pace chart
-  const burnRateData = useMemo(() => {
-    // Get daily expense spending within this period
-    const expenses = allTransactions.filter(
-      (t) => t.type === 'expense' && t.date >= periodStart && t.date <= periodEnd,
-    );
-
-    const dailySpending = expenses.map((t) => ({
-      date: t.date,
-      amount: t.amountCents,
-    }));
-
-    // Calculate total budget for the period
-    const periodMultiplier = viewMode === 'year' ? 12 : 1;
-    const totalBudget = budgetRules.reduce((sum, r) => {
-      let monthlyAmount: number;
-      switch (r.cadence) {
-        case 'weekly':
-          monthlyAmount = r.amountCents * 4.33;
-          break;
-        case 'fortnightly':
-          monthlyAmount = r.amountCents * 2.17;
-          break;
-        case 'monthly':
-          monthlyAmount = r.amountCents;
-          break;
-        case 'quarterly':
-          monthlyAmount = r.amountCents / 3;
-          break;
-        case 'yearly':
-          monthlyAmount = r.amountCents / 12;
-          break;
-        default:
-          monthlyAmount = r.amountCents;
-      }
-      return sum + monthlyAmount * periodMultiplier;
-    }, 0);
-
-    return {
-      dailySpending,
-      totalBudget: Math.round(totalBudget),
-      periodStart,
-      periodEnd,
-      periodLabel,
-    };
-  }, [allTransactions, budgetRules, periodStart, periodEnd, periodLabel, viewMode]);
+  const selectedMonthIndex = selectedMonth.getMonth();
 
   if (!activeScenarioId || !activeScenario) {
     return (
