@@ -29,12 +29,14 @@ interface NavItemProps {
   icon: React.ReactNode;
   children: React.ReactNode;
   onClick?: (() => void) | undefined;
+  end?: boolean;
 }
 
-function NavItem({ to, icon, children, onClick }: NavItemProps) {
+function NavItem({ to, icon, children, onClick, end }: NavItemProps) {
   return (
     <NavLink
       to={to}
+      end={end}
       onClick={onClick}
       className={({ isActive }) =>
         cn(
@@ -75,7 +77,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         <NavItem to="/snapshot" icon={<Camera className="h-4 w-4" />} onClick={onNavigate}>
           Snapshot
         </NavItem>
-        <NavItem to="/budget" icon={<Target className="h-4 w-4" />} onClick={onNavigate}>
+        <NavItem to="/budget" icon={<Target className="h-4 w-4" />} onClick={onNavigate} end>
           Budget
         </NavItem>
         <NavItem to="/insights" icon={<ChartSpline className="h-4 w-4" />} onClick={onNavigate}>
