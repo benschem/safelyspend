@@ -148,7 +148,7 @@ export function RecurringIndexPage() {
           const isDeleting = deletingId === rule.id;
           return (
             <div className="flex justify-end gap-1">
-              <Button variant="ghost" size="sm" onClick={() => openEditDialog(rule)} title="Edit">
+              <Button variant="ghost" size="sm" onClick={() => openEditDialog(rule)} aria-label="Edit rule">
                 <Pencil className="h-4 w-4" />
               </Button>
               <Button
@@ -156,7 +156,7 @@ export function RecurringIndexPage() {
                 size="sm"
                 onClick={() => handleDelete(rule.id)}
                 onBlur={() => setTimeout(() => setDeletingId(null), 200)}
-                title={isDeleting ? 'Click again to confirm' : 'Delete'}
+                aria-label={isDeleting ? 'Confirm delete' : 'Delete rule'}
               >
                 {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
               </Button>
@@ -215,7 +215,7 @@ export function RecurringIndexPage() {
           const isDeleting = deletingId === rule.id;
           return (
             <div className="flex justify-end gap-1">
-              <Button variant="ghost" size="sm" onClick={() => openEditDialog(rule)} title="Edit">
+              <Button variant="ghost" size="sm" onClick={() => openEditDialog(rule)} aria-label="Edit rule">
                 <Pencil className="h-4 w-4" />
               </Button>
               <Button
@@ -223,7 +223,7 @@ export function RecurringIndexPage() {
                 size="sm"
                 onClick={() => handleDelete(rule.id)}
                 onBlur={() => setTimeout(() => setDeletingId(null), 200)}
-                title={isDeleting ? 'Click again to confirm' : 'Delete'}
+                aria-label={isDeleting ? 'Confirm delete' : 'Delete rule'}
               >
                 {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
               </Button>
@@ -282,7 +282,7 @@ export function RecurringIndexPage() {
           const isDeleting = deletingId === rule.id;
           return (
             <div className="flex justify-end gap-1">
-              <Button variant="ghost" size="sm" onClick={() => openEditDialog(rule)} title="Edit">
+              <Button variant="ghost" size="sm" onClick={() => openEditDialog(rule)} aria-label="Edit rule">
                 <Pencil className="h-4 w-4" />
               </Button>
               <Button
@@ -290,7 +290,7 @@ export function RecurringIndexPage() {
                 size="sm"
                 onClick={() => handleDelete(rule.id)}
                 onBlur={() => setTimeout(() => setDeletingId(null), 200)}
-                title={isDeleting ? 'Click again to confirm' : 'Delete'}
+                aria-label={isDeleting ? 'Confirm delete' : 'Delete rule'}
               >
                 {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
               </Button>

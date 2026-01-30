@@ -22,6 +22,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown, Search } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -34,6 +35,10 @@ interface DataTableProps<TData, TValue> {
   filterSlot?: ReactNode;
   emptyMessage?: string;
   initialSorting?: SortingState;
+  /** Show loading skeleton rows */
+  loading?: boolean;
+  /** Number of skeleton rows to show when loading (default: 5) */
+  loadingRows?: number;
 }
 
 export function DataTable<TData, TValue>({
@@ -47,6 +52,8 @@ export function DataTable<TData, TValue>({
   filterSlot,
   emptyMessage = 'No results.',
   initialSorting = [],
+  loading = false,
+  loadingRows = 5,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -117,7 +124,18 @@ export function DataTable<TData, TValue>({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {loading ? (
+              // Loading skeleton rows
+              Array.from({ length: loadingRows }).map((_, rowIndex) => (
+                <TableRow key={`skeleton-${rowIndex}`}>
+                  {columns.map((_, colIndex) => (
+                    <TableCell key={`skeleton-${rowIndex}-${colIndex}`}>
+                      <Skeleton className="h-4 w-full" />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -155,6 +173,7 @@ export function DataTable<TData, TValue>({
               size="sm"
               onClick={() => table.setPageIndex(0)}
               disabled={!table.getCanPreviousPage()}
+              aria-label="Go to first page"
             >
               <ChevronsLeft className="h-4 w-4" />
             </Button>
@@ -163,6 +182,7 @@ export function DataTable<TData, TValue>({
               size="sm"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
+              aria-label="Go to previous page"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -171,6 +191,7 @@ export function DataTable<TData, TValue>({
               size="sm"
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
+              aria-label="Go to next page"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -179,6 +200,7 @@ export function DataTable<TData, TValue>({
               size="sm"
               onClick={() => table.setPageIndex(table.getPageCount() - 1)}
               disabled={!table.getCanNextPage()}
+              aria-label="Go to last page"
             >
               <ChevronsRight className="h-4 w-4" />
             </Button>

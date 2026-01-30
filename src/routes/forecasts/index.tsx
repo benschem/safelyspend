@@ -265,7 +265,7 @@ export function ForecastIndexPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => openEditDialog(forecast)}
-                title="Edit"
+                aria-label="Edit forecast"
               >
                 <Pencil className="h-4 w-4" />
               </Button>
@@ -274,7 +274,7 @@ export function ForecastIndexPage() {
                 size="sm"
                 onClick={() => handleDelete(forecast)}
                 onBlur={() => setTimeout(() => setDeletingId(null), 200)}
-                title={isDeleting ? 'Click again to confirm' : 'Delete'}
+                aria-label={isDeleting ? 'Confirm delete' : 'Delete forecast'}
               >
                 {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
               </Button>

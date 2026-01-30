@@ -190,7 +190,7 @@ export function SavingsIndexPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => handleSetEmergencyFund(goal.id, !goal.isEmergencyFund)}
-                title={goal.isEmergencyFund ? 'Remove as emergency fund' : 'Set as emergency fund'}
+                aria-label={goal.isEmergencyFund ? 'Remove as emergency fund' : 'Set as emergency fund'}
               >
                 <Ambulance className={`h-4 w-4 ${goal.isEmergencyFund ? 'text-blue-600' : ''}`} />
               </Button>
@@ -198,7 +198,7 @@ export function SavingsIndexPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => openEditDialog(goal)}
-                title="Edit"
+                aria-label="Edit goal"
               >
                 <Pencil className="h-4 w-4" />
               </Button>
@@ -207,7 +207,7 @@ export function SavingsIndexPage() {
                 size="sm"
                 onClick={() => handleDelete(goal.id)}
                 onBlur={() => setTimeout(() => setDeletingId(null), 200)}
-                title={isDeleting ? 'Click again to confirm' : 'Delete'}
+                aria-label={isDeleting ? 'Confirm delete' : 'Delete goal'}
               >
                 {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
               </Button>

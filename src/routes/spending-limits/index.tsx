@@ -562,7 +562,7 @@ export function SpendingLimitsPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => openEditDialog(budgetRow)}
-                title="Edit"
+                aria-label="Edit spending limit"
               >
                 <Pencil className="h-4 w-4" />
               </Button>
@@ -572,7 +572,7 @@ export function SpendingLimitsPage() {
                   size="sm"
                   onClick={() => handleDelete(budgetRow.id)}
                   onBlur={() => setTimeout(() => setDeletingId(null), 200)}
-                  title={isDeleting ? 'Click again to confirm' : 'Delete'}
+                  aria-label={isDeleting ? 'Confirm delete' : 'Delete spending limit'}
                 >
                   {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
                 </Button>

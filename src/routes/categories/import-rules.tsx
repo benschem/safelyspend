@@ -216,7 +216,7 @@ export function CategoryImportRulesPage() {
                     </div>
 
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEditRule(rule)} title="Edit">
+                      <Button variant="ghost" size="sm" onClick={() => openEditRule(rule)} aria-label="Edit rule">
                         <Pencil className="h-4 w-4" />
                       </Button>
 
@@ -225,7 +225,7 @@ export function CategoryImportRulesPage() {
                         size="sm"
                         onClick={() => handleDeleteRule(rule.id)}
                         onBlur={() => setTimeout(() => setDeletingRuleId(null), 200)}
-                        title={deletingRuleId === rule.id ? 'Click again to confirm' : 'Delete'}
+                        aria-label={deletingRuleId === rule.id ? 'Confirm delete' : 'Delete rule'}
                       >
                         {deletingRuleId === rule.id ? 'Confirm' : <Trash2 className="h-4 w-4" />}
                       </Button>

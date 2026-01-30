@@ -167,7 +167,7 @@ export function ScenariosIndexPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => !scenario.isDefault && handleSetDefault(scenario.id)}
-                title={scenario.isDefault ? 'Default scenario' : 'Set as default'}
+                aria-label={scenario.isDefault ? 'Default scenario' : 'Set as default'}
                 className={scenario.isDefault ? 'cursor-default' : ''}
               >
                 <Star className={`h-4 w-4 ${scenario.isDefault ? 'text-blue-600' : ''}`} />
@@ -176,7 +176,7 @@ export function ScenariosIndexPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => openEditDialog(scenario)}
-                title="Edit"
+                aria-label="Edit scenario"
               >
                 <Pencil className="h-4 w-4" />
               </Button>
@@ -186,12 +186,12 @@ export function ScenariosIndexPage() {
                 onClick={() => handleDelete(scenario.id)}
                 onBlur={() => setTimeout(() => setDeletingId(null), 200)}
                 disabled={scenario.isDefault}
-                title={
+                aria-label={
                   scenario.isDefault
                     ? 'Cannot delete default scenario'
                     : isDeleting
-                      ? 'Click again to confirm'
-                      : 'Delete'
+                      ? 'Confirm delete'
+                      : 'Delete scenario'
                 }
               >
                 {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
