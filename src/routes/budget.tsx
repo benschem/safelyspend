@@ -30,7 +30,7 @@ import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetPeriodData } from '@/hooks/use-budget-period-data';
 import { CHART_COLORS } from '@/lib/chart-colors';
-import { BurnRateChart } from '@/components/charts';
+import { BurnRateChart, BudgetAllocationBar } from '@/components/charts';
 import { cn, formatCents } from '@/lib/utils';
 
 const MONTHS = [
@@ -528,12 +528,19 @@ export function BudgetPage() {
       </div>
 
       {/* Pace & Projection Row */}
-      <div className={cn(
-        'grid gap-4',
-        isFuturePeriod ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2',
-      )}>
-        {/* Mini Pace Chart - only show for past/current periods */}
-        {!isFuturePeriod && (
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* Mini Pace Chart - for past/current periods */}
+        {/* Budget Allocation Bar - for future periods */}
+        {isFuturePeriod ? (
+          <div className="rounded-xl border bg-card p-5">
+            <BudgetAllocationBar
+              income={periodCashFlow.income.expected}
+              spending={periodCashFlow.budgeted.expected}
+              savings={periodCashFlow.savings.expected}
+              surplus={periodCashFlow.unbudgeted.unallocated}
+            />
+          </div>
+        ) : (
           <div className="rounded-xl border bg-card p-5">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-500/10">
