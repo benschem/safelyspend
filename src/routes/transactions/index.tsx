@@ -308,16 +308,16 @@ export function TransactionsIndexPage() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="page-shell">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
+          <h1 className="page-title">
+            <div className="page-title-icon bg-slate-500/10">
               <Receipt className="h-5 w-5 text-slate-500" />
             </div>
             Transactions
           </h1>
-          <p className="mt-1 text-muted-foreground">Actual income, expenses, and savings.</p>
+          <p className="page-description">Actual income, expenses, and savings.</p>
         </div>
         <div className="flex flex-col items-end gap-2">
           <div className="flex gap-2">
@@ -344,9 +344,9 @@ export function TransactionsIndexPage() {
           <Alert variant="info">
             Record transactions here to track your spending against your budget and see your real financial position.
           </Alert>
-          <div className="rounded-lg border border-dashed p-8 text-center">
-            <p className="text-muted-foreground">No transactions yet.</p>
-            <Button onClick={openAddDialog} className="mt-4">
+          <div className="empty-state">
+            <p className="empty-state-text">No transactions yet.</p>
+            <Button onClick={openAddDialog} className="empty-state-action">
               Add a transaction
             </Button>
           </div>

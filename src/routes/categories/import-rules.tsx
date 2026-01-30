@@ -129,7 +129,7 @@ export function CategoryImportRulesPage() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="page-shell">
       <div className="mb-6">
         <Button variant="ghost" size="sm" className="-ml-2" asChild>
           <Link to={backTo}>
@@ -141,13 +141,13 @@ export function CategoryImportRulesPage() {
 
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
+          <h1 className="page-title">
+            <div className="page-title-icon bg-slate-500/10">
               <FileInput className="h-5 w-5 text-slate-500" />
             </div>
             Import Rules
           </h1>
-          <p className="mt-1 text-muted-foreground">
+          <p className="page-description">
             Auto-categorise imported transactions based on description matching.
           </p>
         </div>
@@ -162,16 +162,16 @@ export function CategoryImportRulesPage() {
           <Alert variant="info">
             Rules are applied automatically when you import transactions. The first matching rule wins.
           </Alert>
-          <div className="rounded-lg border border-dashed p-8 text-center">
-            <p className="text-muted-foreground">No import rules yet.</p>
-            <Button className="mt-4" onClick={openAddRule}>
+          <div className="empty-state">
+            <p className="empty-state-text">No import rules yet.</p>
+            <Button className="empty-state-action" onClick={openAddRule}>
               Create your first rule
             </Button>
           </div>
         </div>
       ) : (
         <div className="mt-6">
-          <div className="rounded-xl border bg-card">
+          <div className="panel">
             <div className="divide-y">
               {rules.map((rule) => (
                 <div

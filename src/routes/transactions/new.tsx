@@ -90,14 +90,14 @@ export function TransactionNewPage() {
         </Button>
       </div>
 
-      <div className="mb-8">
-        <h1 className="flex items-center gap-3 text-3xl font-semibold tracking-tight">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
+      <div className="page-header">
+        <h1 className="page-title">
+          <div className="page-title-icon bg-slate-500/10">
             <Plus className="h-5 w-5 text-slate-500" />
           </div>
           New Transaction
         </h1>
-        <p className="mt-1 text-muted-foreground">Record an income or expense.</p>
+        <p className="page-description">Record an income or expense.</p>
       </div>
 
       <form

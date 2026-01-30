@@ -205,16 +205,16 @@ export function ScenariosIndexPage() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="page-shell">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
+          <h1 className="page-title">
+            <div className="page-title-icon bg-slate-500/10">
               <Layers className="h-5 w-5 text-slate-500" />
             </div>
             Scenarios
           </h1>
-          <p className="mt-1 text-muted-foreground">
+          <p className="page-description">
             Create and manage budget scenarios for &quot;what-if&quot; planning.
           </p>
         </div>
@@ -229,9 +229,9 @@ export function ScenariosIndexPage() {
       </Alert>
 
       {scenarios.length === 0 ? (
-        <div className="mt-6 rounded-lg border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">No scenarios yet.</p>
-          <Button className="mt-4" onClick={openAddDialog}>
+        <div className="mt-6 empty-state">
+          <p className="empty-state-text">No scenarios yet.</p>
+          <Button className="empty-state-action" onClick={openAddDialog}>
             Create your first scenario
           </Button>
         </div>

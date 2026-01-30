@@ -91,16 +91,16 @@ export function BudgetPage() {
 
   if (!activeScenarioId || !activeScenario) {
     return (
-      <div className="mx-auto max-w-6xl space-y-6">
+      <div className="page-shell space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
+        <div className="page-header">
+          <h1 className="page-title">
+            <div className="page-title-icon bg-slate-500/10">
               <Target className="h-5 w-5 text-slate-500" />
             </div>
             Budget
           </h1>
-          <p className="mt-1 text-muted-foreground">Track your spending against your plan</p>
+          <p className="page-description">Track your spending against your plan</p>
         </div>
 
         {/* Controls Row */}
@@ -183,9 +183,9 @@ export function BudgetPage() {
           <ScenarioSelector />
         </div>
 
-        <div className="rounded-xl border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">Select a scenario to track your budget.</p>
-          <Button asChild className="mt-4">
+        <div className="empty-state">
+          <p className="empty-state-text">Select a scenario to track your budget.</p>
+          <Button asChild className="empty-state-action">
             <Link to="/scenarios">Manage Scenarios</Link>
           </Button>
         </div>
@@ -194,16 +194,16 @@ export function BudgetPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="page-shell space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="flex items-center gap-3 text-3xl font-bold">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
+      <div className="page-header">
+        <h1 className="page-title">
+          <div className="page-title-icon bg-slate-500/10">
             <Target className="h-5 w-5 text-slate-500" />
           </div>
           Budget
         </h1>
-        <p className="mt-1 text-muted-foreground">Track your spending against your plan</p>
+        <p className="page-description">Track your spending against your plan</p>
       </div>
 
       {/* Controls Row */}

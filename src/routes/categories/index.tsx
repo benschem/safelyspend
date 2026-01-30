@@ -203,16 +203,16 @@ export function CategoriesIndexPage() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="page-shell">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
+          <h1 className="page-title">
+            <div className="page-title-icon bg-slate-500/10">
               <Tags className="h-5 w-5 text-slate-500" />
             </div>
             Categories
           </h1>
-          <p className="mt-1 text-muted-foreground">Organise your expenses by category.</p>
+          <p className="page-description">Organise your expenses by category.</p>
         </div>
         <div className="flex flex-col items-end gap-2">
           <Button onClick={openAddDialog}>
@@ -233,9 +233,9 @@ export function CategoriesIndexPage() {
           <Alert variant="info">
             Create categories like groceries, transport, or entertainment to see where your money goes.
           </Alert>
-          <div className="rounded-lg border border-dashed p-8 text-center">
-            <p className="text-muted-foreground">No categories yet.</p>
-            <Button onClick={openAddDialog} className="mt-4">
+          <div className="empty-state">
+            <p className="empty-state-text">No categories yet.</p>
+            <Button onClick={openAddDialog} className="empty-state-action">
               Add your first category
             </Button>
           </div>

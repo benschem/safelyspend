@@ -288,21 +288,21 @@ export function ForecastIndexPage() {
 
   if (!activeScenarioId || !activeScenario) {
     return (
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-8">
-          <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
+      <div className="page-shell">
+        <div className="page-header">
+          <h1 className="page-title">
+            <div className="page-title-icon bg-slate-500/10">
               <Telescope className="h-5 w-5 text-slate-500" />
             </div>
             Forecasts
           </h1>
-          <p className="mt-1 text-muted-foreground">
+          <p className="page-description">
             Projected income, expenses, and savings for a scenario.
           </p>
         </div>
-        <div className="rounded-lg border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">Select a scenario to view forecasts.</p>
-          <Button asChild className="mt-4">
+        <div className="empty-state">
+          <p className="empty-state-text">Select a scenario to view forecasts.</p>
+          <Button asChild className="empty-state-action">
             <Link to="/scenarios">Manage Scenarios</Link>
           </Button>
         </div>
@@ -311,16 +311,16 @@ export function ForecastIndexPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="page-shell">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
+          <h1 className="page-title">
+            <div className="page-title-icon bg-slate-500/10">
               <Telescope className="h-5 w-5 text-slate-500" />
             </div>
             Forecasts
           </h1>
-          <p className="mt-1 text-muted-foreground">
+          <p className="page-description">
             Projected income, expenses, and savings for {activeScenario.name}.
           </p>
         </div>
@@ -349,9 +349,9 @@ export function ForecastIndexPage() {
           <Alert variant="info">
             Add your salary, rent, subscriptions, and other regular income and expenses to predict future cash flow.
           </Alert>
-          <div className="rounded-lg border border-dashed p-8 text-center">
-            <p className="text-muted-foreground">No forecasts yet.</p>
-            <div className="mt-4 flex justify-center gap-2">
+          <div className="empty-state">
+            <p className="empty-state-text">No forecasts yet.</p>
+            <div className="empty-state-action flex justify-center gap-2">
               <Button variant="outline" onClick={openAddEventDialog}>
                 Add one-time event
               </Button>

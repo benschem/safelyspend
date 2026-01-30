@@ -210,16 +210,16 @@ export function InsightsPage() {
   }, [getActiveAnchor, anchors, allTransactions, startDate, endDate]);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="page-shell space-y-6">
       {/* Page header */}
-      <div>
-        <h1 className="flex items-center gap-3 text-3xl font-bold">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
+      <div className="page-header">
+        <h1 className="page-title">
+          <div className="page-title-icon bg-slate-500/10">
             <ChartSpline className="h-5 w-5 text-slate-500" />
           </div>
           Insights
         </h1>
-        <p className="mt-1 text-muted-foreground">Understand your financial patterns</p>
+        <p className="page-description">Understand your financial patterns</p>
       </div>
 
       {/* Controls row: Segment + Date range + Scenario */}

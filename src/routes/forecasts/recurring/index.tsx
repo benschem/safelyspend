@@ -308,7 +308,7 @@ export function RecurringIndexPage() {
 
   if (!activeScenarioId || !activeScenario) {
     return (
-      <div className="mx-auto max-w-6xl">
+      <div className="page-shell">
         <div className="mb-6">
           <Button variant="ghost" size="sm" className="-ml-2" asChild>
             <Link to="/forecasts">
@@ -317,9 +317,9 @@ export function RecurringIndexPage() {
             </Link>
           </Button>
         </div>
-        <div className="rounded-lg border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">Select a scenario to manage recurring forecasts.</p>
-          <Button asChild className="mt-4">
+        <div className="empty-state">
+          <p className="empty-state-text">Select a scenario to manage recurring forecasts.</p>
+          <Button asChild className="empty-state-action">
             <Link to="/scenarios">Manage Scenarios</Link>
           </Button>
         </div>
@@ -328,7 +328,7 @@ export function RecurringIndexPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="page-shell">
       <div className="mb-6">
         <Button variant="ghost" size="sm" className="-ml-2" asChild>
           <Link to="/forecasts">
@@ -340,13 +340,13 @@ export function RecurringIndexPage() {
 
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
+          <h1 className="page-title">
+            <div className="page-title-icon bg-slate-500/10">
               <RefreshCw className="h-5 w-5 text-slate-500" />
             </div>
             Recurring Forecasts
           </h1>
-          <p className="mt-1 text-muted-foreground">
+          <p className="page-description">
             Recurring income, expense, and savings patterns for {activeScenario.name}.
           </p>
         </div>
@@ -357,9 +357,9 @@ export function RecurringIndexPage() {
       </div>
 
       {rules.length === 0 ? (
-        <div className="mt-8 rounded-lg border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">No recurring forecasts yet.</p>
-          <Button className="mt-4" onClick={() => setDialogOpen(true)}>
+        <div className="mt-8 empty-state">
+          <p className="empty-state-text">No recurring forecasts yet.</p>
+          <Button className="empty-state-action" onClick={() => setDialogOpen(true)}>
             Create your first recurring forecast
           </Button>
         </div>
@@ -410,9 +410,9 @@ export function RecurringIndexPage() {
           {/* Content sections */}
           {effectiveTab === 'income' && (
             incomeRules.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-8 text-center">
-                <p className="text-muted-foreground">No recurring income yet.</p>
-                <Button className="mt-4" onClick={() => setDialogOpen(true)}>
+              <div className="empty-state">
+                <p className="empty-state-text">No recurring income yet.</p>
+                <Button className="empty-state-action" onClick={() => setDialogOpen(true)}>
                   Add recurring income
                 </Button>
               </div>
@@ -429,9 +429,9 @@ export function RecurringIndexPage() {
 
           {effectiveTab === 'expenses' && (
             expenseRules.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-8 text-center">
-                <p className="text-muted-foreground">No recurring expenses yet.</p>
-                <Button className="mt-4" onClick={() => setDialogOpen(true)}>
+              <div className="empty-state">
+                <p className="empty-state-text">No recurring expenses yet.</p>
+                <Button className="empty-state-action" onClick={() => setDialogOpen(true)}>
                   Add recurring expense
                 </Button>
               </div>
@@ -448,9 +448,9 @@ export function RecurringIndexPage() {
 
           {effectiveTab === 'savings' && (
             savingsRules.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-8 text-center">
-                <p className="text-muted-foreground">No recurring savings yet.</p>
-                <Button className="mt-4" onClick={() => setDialogOpen(true)}>
+              <div className="empty-state">
+                <p className="empty-state-text">No recurring savings yet.</p>
+                <Button className="empty-state-action" onClick={() => setDialogOpen(true)}>
                   Add recurring savings
                 </Button>
               </div>

@@ -232,16 +232,16 @@ export function SavingsIndexPage() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="page-shell">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
+          <h1 className="page-title">
+            <div className="page-title-icon bg-slate-500/10">
               <PiggyBank className="h-5 w-5 text-slate-500" />
             </div>
             Savings
           </h1>
-          <p className="mt-1 text-muted-foreground">Track progress toward your savings targets.</p>
+          <p className="page-description">Track progress toward your savings targets.</p>
         </div>
         <Button onClick={openAddDialog}>
           <Plus className="h-4 w-4" />
@@ -254,9 +254,9 @@ export function SavingsIndexPage() {
           <Alert variant="info">
             Set goals for emergencies, holidays, or big purchases and watch your savings grow.
           </Alert>
-          <div className="rounded-lg border border-dashed p-8 text-center">
-            <p className="text-muted-foreground">No savings goals yet.</p>
-            <Button className="mt-4" onClick={openAddDialog}>
+          <div className="empty-state">
+            <p className="empty-state-text">No savings goals yet.</p>
+            <Button className="empty-state-action" onClick={openAddDialog}>
               Create your first goal
             </Button>
           </div>
