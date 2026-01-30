@@ -137,7 +137,7 @@ export function SavingsGoalProgressCard({
   }, [deadline, expectedCompletion]);
 
   return (
-    <div className="rounded-lg border bg-card p-4">
+    <div className="p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <h4 className="flex items-center gap-2 truncate font-medium">

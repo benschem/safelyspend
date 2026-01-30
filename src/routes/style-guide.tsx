@@ -1,10 +1,11 @@
+import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { Palette, Plus, Pencil, Trash2, Download, Settings } from 'lucide-react';
+import { Palette, Plus, Pencil, Trash2, Download, Settings, ArrowRight, Landmark, PiggyBank, CreditCard } from 'lucide-react';
 
 export function StyleGuidePage() {
   return (
@@ -167,6 +168,111 @@ export function StyleGuidePage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <Separator />
+
+        {/* Cards Section */}
+        <section className="section">
+          <div className="section-header">
+            <h2>Cards</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Interactive cards with consistent hover states.
+            </p>
+          </div>
+          <div className="section-content space-y-6">
+            {/* Clickable card - navigates */}
+            <div>
+              <h4 className="mb-3">Navigation Card (links to another page)</h4>
+              <p className="mb-3 text-sm text-muted-foreground">
+                Shows arrow on hover. Use for cards that navigate to another page.
+              </p>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                <Link
+                  to="/style-guide"
+                  className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-500/10">
+                      <Landmark className="h-5 w-5 text-sky-500" />
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                  </div>
+                  <p className="mt-4 text-sm text-muted-foreground">Cash</p>
+                  <p className="mt-1 text-xl font-semibold">$1,234.56</p>
+                </Link>
+                <Link
+                  to="/style-guide"
+                  className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10">
+                      <PiggyBank className="h-5 w-5 text-blue-500" />
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                  </div>
+                  <p className="mt-4 text-sm text-muted-foreground">Savings</p>
+                  <p className="mt-1 text-xl font-semibold">$5,678.90</p>
+                </Link>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Clickable card - opens dialog */}
+            <div>
+              <h4 className="mb-3">Action Card (opens dialog/modal)</h4>
+              <p className="mb-3 text-sm text-muted-foreground">
+                No arrow. Use for cards that open a dialog or perform an action without navigating.
+              </p>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                <button
+                  type="button"
+                  onClick={() => alert('Opens edit dialog')}
+                  className="w-full cursor-pointer text-left rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10">
+                    <PiggyBank className="h-5 w-5 text-emerald-500" />
+                  </div>
+                  <p className="mt-4 text-sm text-muted-foreground">Emergency Fund</p>
+                  <p className="mt-1 text-xl font-semibold">$10,000</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Click to edit</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => alert('Opens edit dialog')}
+                  className="w-full cursor-pointer text-left rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-500/10">
+                    <PiggyBank className="h-5 w-5 text-purple-500" />
+                  </div>
+                  <p className="mt-4 text-sm text-muted-foreground">Holiday Fund</p>
+                  <p className="mt-1 text-xl font-semibold">$2,500</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Click to edit</p>
+                </button>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Static/disabled card */}
+            <div>
+              <h4 className="mb-3">Static Card (disabled/coming soon)</h4>
+              <p className="mb-3 text-sm text-muted-foreground">
+                No hover effect. Use for disabled or placeholder cards.
+              </p>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                <div className="rounded-xl border bg-card p-5 opacity-50">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
+                    <CreditCard className="h-5 w-5 text-red-500" />
+                  </div>
+                  <p className="mt-4 text-sm text-muted-foreground">Debt</p>
+                  <p className="mt-1 text-xl font-semibold text-muted-foreground">$0</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Coming soon</p>
+                </div>
               </div>
             </div>
           </div>
