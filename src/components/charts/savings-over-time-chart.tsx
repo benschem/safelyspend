@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   AreaChart,
   Area,
@@ -9,6 +10,8 @@ import {
 } from 'recharts';
 import { formatCents, formatCentsShort, formatMonth } from '@/lib/utils';
 import { CHART_COLORS } from '@/lib/chart-colors';
+
+type LegendKey = 'actual' | 'forecast';
 
 interface MonthlySavings {
   month: string;
@@ -113,6 +116,20 @@ function CustomTooltip({
 export function SavingsOverTimeChart({ monthlySavings, deadline, targetAmount, startingBalance = 0 }: SavingsOverTimeChartProps) {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const hasCurrentMonth = monthlySavings.some((m) => m.month === currentMonth);
+
+  // Legend visibility state
+  const [hiddenLegends, setHiddenLegends] = useState<Set<LegendKey>>(new Set());
+  const toggleLegend = (key: LegendKey) => {
+    setHiddenLegends((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
 
   // Check if deadline month is within the chart range
   const deadlineMonth = deadline?.slice(0, 7);
@@ -260,7 +277,7 @@ export function SavingsOverTimeChart({ monthlySavings, deadline, targetAmount, s
             />
           )}
 
-          {hasForecast && (
+          {hasForecast && !hiddenLegends.has('forecast') && (
             <Area
               type="monotone"
               dataKey="cumulativeTotal"
@@ -271,34 +288,48 @@ export function SavingsOverTimeChart({ monthlySavings, deadline, targetAmount, s
               fill="url(#forecastSavingsGradient)"
             />
           )}
-          <Area
-            type="monotone"
-            dataKey="cumulativeActual"
-            name="Actual Savings"
-            stroke={CHART_COLORS.savings}
-            strokeWidth={2}
-            fill="url(#actualSavingsGradient)"
-          />
+          {!hiddenLegends.has('actual') && (
+            <Area
+              type="monotone"
+              dataKey="cumulativeActual"
+              name="Actual Savings"
+              stroke={CHART_COLORS.savings}
+              strokeWidth={2}
+              fill="url(#actualSavingsGradient)"
+            />
+          )}
         </AreaChart>
       </ResponsiveContainer>
 
       {/* Legend */}
-      <div className="mt-2 flex justify-center gap-6 text-xs">
-        <div className="flex items-center gap-1.5">
+      <div className="mt-3 flex justify-center gap-2">
+        <button
+          type="button"
+          onClick={() => toggleLegend('actual')}
+          className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm transition-all hover:bg-muted ${
+            hiddenLegends.has('actual') ? 'opacity-40' : ''
+          }`}
+        >
           <div
-            className="h-2.5 w-2.5 rounded-sm"
+            className="h-2.5 w-2.5 rounded-full"
             style={{ backgroundColor: CHART_COLORS.savings }}
           />
-          <span>Actual Savings</span>
-        </div>
+          <span className={hiddenLegends.has('actual') ? 'line-through' : ''}>Actual Savings</span>
+        </button>
         {hasForecast && (
-          <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => toggleLegend('forecast')}
+            className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm transition-all hover:bg-muted ${
+              hiddenLegends.has('forecast') ? 'opacity-40' : ''
+            }`}
+          >
             <div
-              className="h-2.5 w-2.5 rounded-sm"
+              className="h-2.5 w-2.5 rounded-full"
               style={{ backgroundColor: `${CHART_COLORS.savings}60` }}
             />
-            <span>Forecast</span>
-          </div>
+            <span className={hiddenLegends.has('forecast') ? 'line-through' : ''}>Forecast</span>
+          </button>
         )}
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ComposedChart,
   Line,
@@ -11,6 +11,8 @@ import {
 } from 'recharts';
 import { formatCents, formatCentsShort, formatMonth } from '@/lib/utils';
 import { CHART_COLORS } from '@/lib/chart-colors';
+
+type LegendKey = 'income' | 'expenses' | 'savings' | 'totalSaved' | 'balance';
 
 interface MonthlyNetFlow {
   month: string;
@@ -171,6 +173,20 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
   const hasCurrentMonth = monthlyNetFlow.some((m) => m.month === currentMonth);
   const hasFutureData = monthlyNetFlow.some((m) => m.month > currentMonth);
 
+  // Legend visibility state
+  const [hiddenLegends, setHiddenLegends] = useState<Set<LegendKey>>(new Set());
+  const toggleLegend = (key: LegendKey) => {
+    setHiddenLegends((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
   // Transform data for chart - combine actual + forecast for total line values
   const chartData = useMemo(() => {
     let cumulativeSavings = 0;
@@ -267,7 +283,7 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
           )}
 
           {/* Bank balance area in background (green) */}
-          {hasBalance && (
+          {hasBalance && !hiddenLegends.has('balance') && (
             <Area
               type="monotone"
               dataKey="balance"
@@ -281,74 +297,112 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
           )}
 
           {/* Cumulative savings area (blue) */}
-          <Area
-            type="monotone"
-            dataKey="cumulativeSavings"
-            name="Total Saved"
-            fill={CHART_COLORS.savings}
-            fillOpacity={0.15}
-            stroke="none"
-          />
+          {!hiddenLegends.has('totalSaved') && (
+            <Area
+              type="monotone"
+              dataKey="cumulativeSavings"
+              name="Total Saved"
+              fill={CHART_COLORS.savings}
+              fillOpacity={0.15}
+              stroke="none"
+            />
+          )}
 
-          <Line
-            type="monotone"
-            dataKey="incomeTotal"
-            name="Income"
-            stroke={CHART_COLORS.income}
-            strokeWidth={2.5}
-            dot={{ r: 4, strokeWidth: 0, fill: CHART_COLORS.income }}
-            activeDot={{ r: 6 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="expensesTotal"
-            name="Expenses"
-            stroke={CHART_COLORS.expense}
-            strokeWidth={2.5}
-            dot={{ r: 4, strokeWidth: 0, fill: CHART_COLORS.expense }}
-            activeDot={{ r: 6 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="savingsTotal"
-            name="Savings"
-            stroke={CHART_COLORS.savings}
-            strokeWidth={2.5}
-            dot={{ r: 4, strokeWidth: 0, fill: CHART_COLORS.savings }}
-            activeDot={{ r: 6 }}
-          />
+          {!hiddenLegends.has('income') && (
+            <Line
+              type="monotone"
+              dataKey="incomeTotal"
+              name="Income"
+              stroke={CHART_COLORS.income}
+              strokeWidth={2.5}
+              dot={{ r: 4, strokeWidth: 0, fill: CHART_COLORS.income }}
+              activeDot={{ r: 6 }}
+            />
+          )}
+          {!hiddenLegends.has('expenses') && (
+            <Line
+              type="monotone"
+              dataKey="expensesTotal"
+              name="Expenses"
+              stroke={CHART_COLORS.expense}
+              strokeWidth={2.5}
+              dot={{ r: 4, strokeWidth: 0, fill: CHART_COLORS.expense }}
+              activeDot={{ r: 6 }}
+            />
+          )}
+          {!hiddenLegends.has('savings') && (
+            <Line
+              type="monotone"
+              dataKey="savingsTotal"
+              name="Savings"
+              stroke={CHART_COLORS.savings}
+              strokeWidth={2.5}
+              dot={{ r: 4, strokeWidth: 0, fill: CHART_COLORS.savings }}
+              activeDot={{ r: 6 }}
+            />
+          )}
         </ComposedChart>
       </ResponsiveContainer>
 
       {/* Legend */}
-      <div className="mt-4 flex flex-wrap justify-center gap-4">
-        <div className="flex items-center gap-2 text-sm">
-          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: CHART_COLORS.income }} />
-          <span>Income</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: CHART_COLORS.expense }} />
-          <span>Expenses</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: CHART_COLORS.savings }} />
-          <span>Savings</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
+      <div className="mt-4 flex flex-wrap justify-center gap-2">
+        <button
+          type="button"
+          onClick={() => toggleLegend('income')}
+          className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm transition-all hover:bg-muted ${
+            hiddenLegends.has('income') ? 'opacity-40' : ''
+          }`}
+        >
+          <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS.income }} />
+          <span className={hiddenLegends.has('income') ? 'line-through' : ''}>Income</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => toggleLegend('expenses')}
+          className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm transition-all hover:bg-muted ${
+            hiddenLegends.has('expenses') ? 'opacity-40' : ''
+          }`}
+        >
+          <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS.expense }} />
+          <span className={hiddenLegends.has('expenses') ? 'line-through' : ''}>Expenses</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => toggleLegend('savings')}
+          className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm transition-all hover:bg-muted ${
+            hiddenLegends.has('savings') ? 'opacity-40' : ''
+          }`}
+        >
+          <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS.savings }} />
+          <span className={hiddenLegends.has('savings') ? 'line-through' : ''}>Savings</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => toggleLegend('totalSaved')}
+          className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm transition-all hover:bg-muted ${
+            hiddenLegends.has('totalSaved') ? 'opacity-40' : ''
+          }`}
+        >
           <div
-            className="h-3 w-3 rounded-sm"
+            className="h-2.5 w-2.5 rounded-sm"
             style={{ backgroundColor: CHART_COLORS.savings, opacity: 0.3 }}
           />
-          <span>Total Saved</span>
-        </div>
+          <span className={hiddenLegends.has('totalSaved') ? 'line-through' : ''}>Total Saved</span>
+        </button>
         {hasBalance && (
-          <div className="flex items-center gap-2 text-sm">
+          <button
+            type="button"
+            onClick={() => toggleLegend('balance')}
+            className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm transition-all hover:bg-muted ${
+              hiddenLegends.has('balance') ? 'opacity-40' : ''
+            }`}
+          >
             <div
-              className="h-3 w-3 rounded-sm"
+              className="h-2.5 w-2.5 rounded-sm"
               style={{ backgroundColor: CHART_COLORS.income, opacity: 0.25 }}
             />
-            <span>Bank Balance</span>
-          </div>
+            <span className={hiddenLegends.has('balance') ? 'line-through' : ''}>Bank Balance</span>
+          </button>
         )}
       </div>
 
