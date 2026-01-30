@@ -190,7 +190,21 @@ export function RecurringIndexPage() {
       {
         accessorKey: 'categoryId',
         header: 'Category',
-        cell: ({ row }) => getCategoryName(row.getValue('categoryId')),
+        cell: ({ row }) => {
+          const categoryId = row.getValue('categoryId') as string | null;
+          const categoryName = getCategoryName(categoryId);
+          if (!categoryId) {
+            return <span className="text-muted-foreground">—</span>;
+          }
+          return (
+            <Link
+              to={`/categories/${categoryId}`}
+              className="hover:underline"
+            >
+              {categoryName}
+            </Link>
+          );
+        },
       },
       {
         accessorKey: 'cadence',

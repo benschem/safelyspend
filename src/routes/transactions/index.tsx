@@ -236,7 +236,21 @@ export function TransactionsIndexPage() {
       {
         accessorKey: 'categoryId',
         header: 'Category',
-        cell: ({ row }) => getCategoryName(row.original.categoryId),
+        cell: ({ row }) => {
+          const categoryId = row.original.categoryId;
+          const categoryName = getCategoryName(categoryId);
+          if (!categoryId) {
+            return <span className="text-muted-foreground">—</span>;
+          }
+          return (
+            <Link
+              to={`/categories/${categoryId}`}
+              className="hover:underline"
+            >
+              {categoryName}
+            </Link>
+          );
+        },
       },
       {
         accessorKey: 'paymentMethod',

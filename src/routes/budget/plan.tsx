@@ -61,7 +61,7 @@ export function BudgetPlanPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<BudgetRow | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [showSavingsInChart, setShowSavingsInChart] = useState(true);
+  const [hiddenSegments, setHiddenSegments] = useState<Set<string>>(new Set());
 
   const allRows: BudgetRow[] = useMemo(() => {
     return activeCategories
@@ -106,19 +106,45 @@ export function BudgetPlanPage() {
       }))
       .sort((a, b) => b.amount - a.amount);
 
-    if (showSavingsInChart) {
-      const monthlySavings = savingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
-      if (monthlySavings > 0) {
-        categorySegments.push({
-          id: 'savings',
-          name: 'Savings',
-          amount: monthlySavings,
-        });
-      }
+    // Always include savings if there are any
+    const monthlySavings = savingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
+    if (monthlySavings > 0) {
+      categorySegments.push({
+        id: 'savings',
+        name: 'Savings',
+        amount: monthlySavings,
+      });
     }
 
     return categorySegments;
-  }, [allRows, savingsForecasts, showSavingsInChart]);
+  }, [allRows, savingsForecasts]);
+
+  const hasSavingsSegment = budgetBreakdownSegments.some((s) => s.id === 'savings');
+  const showSavingsInChart = !hiddenSegments.has('savings');
+
+  const handleSegmentToggle = useCallback((id: string) => {
+    setHiddenSegments((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSavingsToggle = useCallback((checked: boolean) => {
+    setHiddenSegments((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.delete('savings');
+      } else {
+        next.add('savings');
+      }
+      return next;
+    });
+  }, []);
 
   const budgetBreakdownTotal = useMemo(() => {
     return budgetBreakdownSegments.reduce((sum, s) => sum + s.amount, 0);
@@ -170,13 +196,12 @@ export function BudgetPlanPage() {
         cell: ({ row }) => {
           const budgetRow = row.original;
           return (
-            <button
-              type="button"
-              onClick={() => openEditDialog(budgetRow)}
-              className="cursor-pointer text-left font-medium hover:underline"
+            <Link
+              to={`/categories/${budgetRow.categoryId}`}
+              className="font-medium hover:underline"
             >
               {budgetRow.categoryName}
-            </button>
+            </Link>
           );
         },
       },
@@ -309,18 +334,22 @@ export function BudgetPlanPage() {
               segments={budgetBreakdownSegments}
               total={budgetBreakdownTotal}
               colorMap={categoryColorMap}
+              hiddenSegmentIds={hiddenSegments}
+              onSegmentToggle={handleSegmentToggle}
             />
           </div>
-          <div className="mt-4 flex items-center justify-end">
-            <label htmlFor="compare-savings" className="flex items-center gap-2 text-sm">
-              <Switch
-                id="compare-savings"
-                checked={showSavingsInChart}
-                onCheckedChange={setShowSavingsInChart}
-              />
-              <span className="text-muted-foreground">Include Savings</span>
-            </label>
-          </div>
+          {hasSavingsSegment && (
+            <div className="mt-4 flex items-center justify-end">
+              <label htmlFor="compare-savings" className="flex items-center gap-2 text-sm">
+                <Switch
+                  id="compare-savings"
+                  checked={showSavingsInChart}
+                  onCheckedChange={handleSavingsToggle}
+                />
+                <span className="text-muted-foreground">Include Savings</span>
+              </label>
+            </div>
+          )}
         </div>
       )}
 
