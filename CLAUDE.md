@@ -205,3 +205,10 @@ claude: refactor: code refactoring
 claude: docs: documentation changes
 claude: style: formatting changes
 ```
+
+When asked to commit changes:
+1. **Group by feature** - Each commit should be one logical change
+2. **Order by dependency** - Commit foundational changes before dependent ones
+3. **Keep descriptions brief** - One line of intent, optional body for context
+4. **Stage specific files** - Don't use `git add .`, list files explicitly per commit
+5. **Use patch mode** - Use `git add -p <file>` to stage partial changes when a file spans multiple features
