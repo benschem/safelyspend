@@ -241,16 +241,16 @@ export function SnapshotPage() {
         <p className="page-description">Your financial position right now</p>
       </div>
 
-      {/* Balance warning banner */}
+      {/* Cash warning banner */}
       {hasNoAnchor && (
         <Alert variant="warning" className="mb-8">
-          <AlertTitle>No balance anchor set</AlertTitle>
+          <AlertTitle>No starting cash set</AlertTitle>
           <AlertDescription>
-            Set a starting balance in{' '}
+            Add your starting cash in{' '}
             <Link to="/settings" className="underline">
               Settings
             </Link>{' '}
-            to enable balance tracking.
+            to track your cash over time.
           </AlertDescription>
         </Alert>
       )}

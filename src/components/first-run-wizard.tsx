@@ -71,11 +71,11 @@ export function FirstRunWizard() {
           await setActiveScenarioId(scenario.id);
         }
 
-        // Create balance anchor (even if 0, as it sets the anchor date)
+        // Create starting cash anchor (even if 0, as it sets the anchor date)
         await addAnchor({
           date: value.balanceDate,
           balanceCents: balanceCents,
-          label: 'Opening balance',
+          label: 'Starting cash',
         });
 
         await markInitialized(false);
@@ -103,7 +103,7 @@ export function FirstRunWizard() {
         <div className="text-center">
           <h1 className="text-3xl font-bold">Set up your budget</h1>
           <p className="mt-2 text-muted-foreground">
-            Enter your current total cash on hand balance to get started.
+            How much cash do you have right now? Check your bank account if you&apos;re not sure.
           </p>
         </div>
 
@@ -122,8 +122,8 @@ export function FirstRunWizard() {
             {(field) => (
               <FormField
                 field={field}
-                label="Current Spending Balance ($)"
-                description="Enter the amount of money you have available to spend right now."
+                label="Current Cash ($)"
+                description="The total amount in your bank account right now."
                 optional
               >
                 <Input

@@ -355,22 +355,22 @@ export function SettingsPage() {
 
         <Separator />
 
-        {/* Balance Anchors Section */}
+        {/* Starting Cash Section */}
         <section className="section">
           <div className="section-header">
-            <h2>Balance Anchors</h2>
+            <h2>Starting Cash</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Set your known balance at specific dates. Used as the baseline for balance calculations.
+              Tell us how much cash you had on a specific date. We&apos;ll calculate your current cash
+              from there using your transactions.
             </p>
             <p className="mt-3 text-xs text-muted-foreground">
-              Transactions before the earliest anchor date won&apos;t affect balance calculations but will
-              still appear in spending reports.
+              Tip: Check your bank statement for a date you remember, and enter that amount here.
             </p>
           </div>
           <div className="section-content">
             <div className="panel">
               <div className="panel-header">
-                <h3>Your Anchors</h3>
+                <h3>Known Amounts</h3>
                 <Button variant="outline" size="sm" onClick={openAddAnchor}>
                   <Plus className="h-4 w-4" />
                   Add
@@ -378,9 +378,9 @@ export function SettingsPage() {
               </div>
               {anchors.length === 0 ? (
                 <div className="empty-state">
-                  <p className="empty-state-text">No balance anchors set.</p>
+                  <p className="empty-state-text">No starting cash set.</p>
                   <Button variant="outline" className="empty-state-action" onClick={openAddAnchor}>
-                    Add your first anchor
+                    Add starting cash
                   </Button>
                 </div>
               ) : (
@@ -467,10 +467,10 @@ export function SettingsPage() {
       <Dialog open={anchorDialogOpen} onOpenChange={setAnchorDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingAnchorId ? 'Edit' : 'Add'} Balance Anchor</DialogTitle>
+            <DialogTitle>{editingAnchorId ? 'Edit' : 'Add'} Starting Cash</DialogTitle>
             <DialogDescription>
-              Set your known balance at a specific date. This becomes the baseline for all balance
-              calculations from this date forward.
+              Enter how much cash you had on a specific date. Check your bank statement if you&apos;re
+              not sure.
             </DialogDescription>
           </DialogHeader>
 
@@ -492,7 +492,7 @@ export function SettingsPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="anchor-amount" className="text-sm font-medium">Balance ($)</label>
+              <label htmlFor="anchor-amount" className="text-sm font-medium">Cash ($)</label>
               <Input
                 id="anchor-amount"
                 type="number"
@@ -504,10 +504,10 @@ export function SettingsPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="anchor-label" className="text-sm font-medium">Label (optional)</label>
+              <label htmlFor="anchor-label" className="text-sm font-medium">Note (optional)</label>
               <Input
                 id="anchor-label"
-                placeholder="e.g., Opening balance, After reconciliation"
+                placeholder="e.g., From bank statement"
                 value={anchorLabel}
                 onChange={(e) => setAnchorLabel(e.target.value)}
               />
@@ -518,7 +518,7 @@ export function SettingsPage() {
                 Cancel
               </Button>
               <Button onClick={handleSaveAnchor}>
-                {editingAnchorId ? 'Save' : 'Add'} Anchor
+                {editingAnchorId ? 'Save' : 'Add'}
               </Button>
             </div>
           </div>

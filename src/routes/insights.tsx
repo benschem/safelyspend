@@ -189,9 +189,9 @@ export function InsightsPage() {
         startingBalance: anchorInRange.balanceCents,
         balanceStartMonth: anchorMonth,
         warning: {
-          title: `Bank balance shown only from ${formatCompactDate(anchorInRange.date, true)}`,
-          linkText: 'Set an earlier balance anchor',
-          linkSuffix: 'to see your bank balance from the start of this period.',
+          title: `Cash shown only from ${formatCompactDate(anchorInRange.date, true)}`,
+          linkText: 'Add an earlier starting cash',
+          linkSuffix: 'to see cash from the start of this period.',
         },
       };
     }
@@ -201,9 +201,9 @@ export function InsightsPage() {
       startingBalance: null,
       balanceStartMonth: null,
       warning: {
-        title: 'No balance anchor set in this period',
-        linkText: 'Set a balance anchor',
-        linkSuffix: 'to see your bank balance over time.',
+        title: 'No starting cash set for this period',
+        linkText: 'Add your starting cash',
+        linkSuffix: 'to see your cash over time.',
       },
     };
   }, [getActiveAnchor, anchors, allTransactions, startDate, endDate]);
@@ -297,7 +297,7 @@ export function InsightsPage() {
           <div className="flex min-h-9 items-center">
             <p className="text-sm text-muted-foreground">
               {isPastOnly
-                ? 'Your bank balance and monthly income vs expenses'
+                ? 'Your cash and monthly income vs expenses'
                 : 'Cash and savings over time, including planned income, spending and saving'}
             </p>
           </div>

@@ -158,7 +158,7 @@ function CustomTooltip({
           )}
           {data.balance !== null && (
             <div className={`flex justify-between text-sm ${data.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              <span>Bank Balance</span>
+              <span>Cash</span>
               <span className="font-mono font-semibold">{formatCents(data.balance)}</span>
             </div>
           )}
@@ -295,12 +295,12 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
             />
           )}
 
-          {/* Bank balance area in background (green) */}
+          {/* Cash area in background (green) */}
           {hasBalance && !hiddenLegends.has('balance') && (
             <Area
               type="monotone"
               dataKey="balance"
-              name="Bank Balance"
+              name="Cash"
               fill={CHART_COLORS.income}
               fillOpacity={0.12}
               stroke={CHART_COLORS.income}
