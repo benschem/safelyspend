@@ -20,7 +20,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Pencil, Trash2, Check, X, Download, AlertTriangle, Receipt, RotateCcw, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Download, AlertTriangle, Receipt, RotateCcw, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, Settings2 } from 'lucide-react';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
 import { useCategoryRules } from '@/hooks/use-category-rules';
@@ -401,14 +401,22 @@ export function TransactionsIndexPage() {
           </h1>
           <p className="mt-1 text-muted-foreground">Actual income, expenses, and savings.</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={handleImportClick}>
-            <Download className="h-4 w-4" />
-            Import CSV
-          </Button>
-          <Button onClick={() => setAddDialogOpen(true)}>
-            <Plus className="h-4 w-4" />
-            Add Transaction
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={handleImportClick}>
+              <Download className="h-4 w-4" />
+              Import CSV
+            </Button>
+            <Button onClick={() => setAddDialogOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Add Transaction
+            </Button>
+          </div>
+          <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
+            <Link to="/categories/import-rules">
+              <Settings2 className="h-4 w-4" />
+              Import Rules
+            </Link>
           </Button>
         </div>
       </div>
