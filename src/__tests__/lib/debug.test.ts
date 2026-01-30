@@ -131,6 +131,21 @@ describe('debug logger', () => {
       expect(debug.isEnabled('import')).toBe(true);
       expect(debug.isEnabled('security')).toBe(true);
     });
+
+    it('returns true when called without category in dev mode', () => {
+      expect(debug.isEnabled()).toBe(true);
+    });
+  });
+
+  describe('setEnabled', () => {
+    it('setEnabled function exists', () => {
+      expect(typeof debug.setEnabled).toBe('function');
+    });
+
+    it('can be called without error', () => {
+      expect(() => debug.setEnabled(true)).not.toThrow();
+      expect(() => debug.setEnabled(false)).not.toThrow();
+    });
   });
 
   describe('console output in dev mode', () => {

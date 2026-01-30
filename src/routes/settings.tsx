@@ -14,7 +14,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Pencil, Trash2, Plus, AlertTriangle, Download, Upload, Check, Settings } from 'lucide-react';
+import { Pencil, Trash2, Plus, AlertTriangle, Download, Upload, Check, Settings, Bug } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { exportAllData, importAllData, fullReset } from '@/lib/db';
 import { formatCents, formatDate, today } from '@/lib/utils';
@@ -52,6 +53,14 @@ export function SettingsPage() {
   const [anchorLabel, setAnchorLabel] = useState('');
   const [anchorError, setAnchorError] = useState<string | null>(null);
   const [deletingAnchorId, setDeletingAnchorId] = useState<string | null>(null);
+
+  // Debug mode state - initialize from current debug setting
+  const [debugEnabled, setDebugEnabled] = useState(() => debug.isEnabled());
+
+  const handleDebugToggle = (enabled: boolean) => {
+    debug.setEnabled(enabled);
+    setDebugEnabled(enabled);
+  };
 
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text });
@@ -417,6 +426,38 @@ export function SettingsPage() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </section>
+
+        <Separator />
+
+        {/* Developer Section */}
+        <section className="grid gap-4 lg:grid-cols-3 lg:gap-8">
+          <div className="lg:col-span-1">
+            <h2 className="text-lg font-semibold">Developer</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Advanced options for debugging and troubleshooting.
+            </p>
+          </div>
+          <div className="lg:col-span-2">
+            <div className="rounded-xl border bg-card">
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <Bug className="mt-0.5 h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <h3 className="font-medium">Debug Mode</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Enable detailed logging to browser console. Can also be enabled via <code className="rounded bg-muted px-1 text-xs">?debug=1</code> URL parameter.
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={debugEnabled}
+                  onCheckedChange={handleDebugToggle}
+                  aria-label="Toggle debug mode"
+                />
+              </div>
             </div>
           </div>
         </section>

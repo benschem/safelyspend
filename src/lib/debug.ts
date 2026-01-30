@@ -2,10 +2,12 @@
  * Debug logging utility for observability.
  * Provides structured logging with categories and an in-memory buffer.
  *
- * Enable debug mode via localStorage:
- *   localStorage.setItem('budget:debug', 'true')
+ * Enable debug mode:
+ *   - URL parameter: ?debug=1
+ *   - Settings toggle in app
+ *   - localStorage: localStorage.setItem('budget:debug', 'true')
  *
- * Or enable specific categories:
+ * Enable specific categories only:
  *   localStorage.setItem('budget:debug', 'db,import')
  */
 
@@ -26,21 +28,69 @@ const MAX_LOG_ENTRIES = 100;
 // In-memory log buffer for debugging
 const logBuffer: LogEntry[] = [];
 
+// Cache for URL param check (checked once on load)
+let urlDebugEnabled: boolean | null = null;
+
+/**
+ * Check if debug is enabled via URL parameter (?debug=1).
+ * Cached after first check.
+ */
+function isEnabledViaUrl(): boolean {
+  if (urlDebugEnabled === null) {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      urlDebugEnabled = params.get('debug') === '1';
+      if (urlDebugEnabled) {
+        // Persist to localStorage when enabled via URL
+        localStorage.setItem(STORAGE_KEY, 'true');
+      }
+    } catch {
+      urlDebugEnabled = false;
+    }
+  }
+  return urlDebugEnabled;
+}
+
 /**
  * Check if debug logging is enabled for a category.
  */
-function isEnabled(category: LogCategory): boolean {
+function isEnabled(category?: LogCategory): boolean {
   if (import.meta.env.DEV) {
     return true; // Always enabled in development
+  }
+
+  // Check URL parameter first
+  if (isEnabledViaUrl()) {
+    return true;
   }
 
   try {
     const setting = localStorage.getItem(STORAGE_KEY);
     if (!setting) return false;
     if (setting === 'true' || setting === '*') return true;
-    return setting.split(',').includes(category);
+    if (category) {
+      return setting.split(',').includes(category);
+    }
+    return false;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Enable or disable debug mode.
+ */
+function setEnabled(enabled: boolean): void {
+  try {
+    if (enabled) {
+      localStorage.setItem(STORAGE_KEY, 'true');
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+    // Reset URL cache so isEnabled rechecks
+    urlDebugEnabled = null;
+  } catch {
+    // Ignore localStorage errors
   }
 }
 
@@ -137,9 +187,14 @@ export const debug = {
   },
 
   /**
-   * Check if debug mode is enabled for a category.
+   * Check if debug mode is enabled (optionally for a specific category).
    */
   isEnabled,
+
+  /**
+   * Enable or disable debug mode.
+   */
+  setEnabled,
 };
 
 // Expose debug helper on window for console access in production
