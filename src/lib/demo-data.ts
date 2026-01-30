@@ -3,16 +3,16 @@ import { now } from './utils';
 import { loadDemoData, resetDatabase } from './db';
 import { generatePersonaData, personas, defaultPersonaId, getPersona } from './demo-personas';
 import type { GeneratedData } from './demo-personas';
+import { STORAGE_KEYS } from './storage-keys';
 
 const USER_ID = 'local';
-const DEMO_PERSONA_KEY = 'budget:demoPersonaId';
 
 /**
  * Get the current demo persona ID from localStorage
  */
 export function getDemoPersonaId(): string {
   if (typeof window === 'undefined') return defaultPersonaId;
-  return localStorage.getItem(DEMO_PERSONA_KEY) ?? defaultPersonaId;
+  return localStorage.getItem(STORAGE_KEYS.DEMO_PERSONA) ?? defaultPersonaId;
 }
 
 /**
@@ -20,7 +20,7 @@ export function getDemoPersonaId(): string {
  */
 export function setDemoPersonaId(personaId: string): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(DEMO_PERSONA_KEY, personaId);
+  localStorage.setItem(STORAGE_KEYS.DEMO_PERSONA, personaId);
 }
 
 /**
@@ -184,6 +184,6 @@ export async function switchPersona(personaId: string): Promise<void> {
  * Clear all data and reset to initial state
  */
 export async function clearAllData(): Promise<void> {
-  localStorage.removeItem(DEMO_PERSONA_KEY);
+  localStorage.removeItem(STORAGE_KEYS.DEMO_PERSONA);
   await resetDatabase();
 }

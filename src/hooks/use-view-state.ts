@@ -2,8 +2,8 @@ import { useMemo, useCallback } from 'react';
 import { useLocalStorage } from './use-local-storage';
 import type { ViewState, TimelineMode, TimelineUnit, PresetTimelineMode } from '@/lib/types';
 import { calculateTimelineDateRange, TIMELINE_UNIT_BOUNDS } from '@/lib/utils';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 
-const STORAGE_KEY = 'budget:viewState';
 const DEFAULT_PRESET_MODE: PresetTimelineMode = 'around-present';
 
 const DEFAULT_STATE: ViewState = {
@@ -18,7 +18,7 @@ const DEFAULT_STATE: ViewState = {
  * Computes actual date range based on mode, amount, and unit
  */
 export function useViewState() {
-  const [rawViewState, setViewState] = useLocalStorage<ViewState>(STORAGE_KEY, DEFAULT_STATE);
+  const [rawViewState, setViewState] = useLocalStorage<ViewState>(STORAGE_KEYS.VIEW_STATE, DEFAULT_STATE);
 
   // Ensure amount and unit have valid defaults (handles old stored state)
   const viewState = useMemo(() => ({

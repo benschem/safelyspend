@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-
-// Custom event name for cross-component sync
-const STORAGE_SYNC_EVENT = 'budget:storage-sync';
+import { STORAGE_SYNC_EVENT } from '@/lib/storage-keys';
 
 // Counter for generating unique instance IDs
 let instanceCounter = 0;

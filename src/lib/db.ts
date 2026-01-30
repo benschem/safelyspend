@@ -11,6 +11,7 @@ import type {
   CategoryRule,
   BudgetData,
 } from './types';
+import { STORAGE_KEYS } from './storage-keys';
 
 // App config stored in IndexedDB
 export interface AppConfig {
@@ -250,7 +251,7 @@ export async function fullReset(): Promise<void> {
   await resetDatabase();
 
   // Clear localStorage preferences
-  const keysToRemove = ['budget:viewState', 'budget:theme'];
+  const keysToRemove = [STORAGE_KEYS.VIEW_STATE, STORAGE_KEYS.THEME];
   keysToRemove.forEach((key) => localStorage.removeItem(key));
 }
 
