@@ -372,8 +372,8 @@ export function SnapshotPage() {
 
       {/* Period Averages */}
       <div className="panel p-6">
-        {/* Header - wraps on mobile */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Header - centered */}
+        <div className="flex flex-col items-center gap-3">
           <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
             {periodLabels[averagePeriod].title}
           </h2>
@@ -395,10 +395,10 @@ export function SnapshotPage() {
           </div>
         </div>
 
-        {/* Metrics - stacked on mobile, side-by-side on larger */}
-        <div className="mt-5 flex flex-col gap-4 sm:grid sm:grid-cols-3 sm:gap-6">
+        {/* Metrics - stacked on mobile, centered grid on larger */}
+        <div className="mx-auto mt-6 flex max-w-md flex-col gap-4 sm:grid sm:grid-cols-3 sm:gap-2">
           {/* Income */}
-          <div className="flex items-center justify-between sm:block">
+          <div className="flex items-center justify-between sm:flex-col sm:items-center sm:justify-start sm:text-center">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-green-500" />
               <span className="text-sm text-muted-foreground">Income</span>
@@ -407,7 +407,7 @@ export function SnapshotPage() {
           </div>
 
           {/* Expenses */}
-          <div className="flex items-center justify-between sm:block">
+          <div className="flex items-center justify-between sm:flex-col sm:items-center sm:justify-start sm:text-center">
             <div className="flex items-center gap-2">
               <TrendingDown className="h-4 w-4 text-red-500" />
               <span className="text-sm text-muted-foreground">Expenses</span>
@@ -416,7 +416,7 @@ export function SnapshotPage() {
           </div>
 
           {/* Savings */}
-          <div className="flex items-center justify-between sm:block">
+          <div className="flex items-center justify-between sm:flex-col sm:items-center sm:justify-start sm:text-center">
             <div className="flex items-center gap-2">
               <PiggyBank className="h-4 w-4 text-blue-500" />
               <span className="text-sm text-muted-foreground">Savings</span>
