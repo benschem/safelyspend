@@ -318,7 +318,7 @@ export function BudgetPlanPage() {
                 checked={showSavingsInChart}
                 onCheckedChange={setShowSavingsInChart}
               />
-              <span className="text-muted-foreground">Compare Savings</span>
+              <span className="text-muted-foreground">Include Savings</span>
             </label>
           </div>
         </div>

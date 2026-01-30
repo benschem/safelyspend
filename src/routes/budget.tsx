@@ -352,13 +352,13 @@ export function BudgetPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {/* Income / Projected Income */}
+        {/* Earned / Projected Income */}
         <div className="rounded-xl border bg-card p-5">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/10">
             <TrendingUp className="h-5 w-5 text-green-500" />
           </div>
           <p className="mt-4 text-sm text-muted-foreground">
-            {isFuturePeriod ? 'Projected Income' : 'Income'}
+            {isFuturePeriod ? 'Projected Income' : 'Earned'}
           </p>
           <p className="mt-1 text-xl font-semibold">
             {formatCents(isFuturePeriod ? periodCashFlow.income.expected : periodCashFlow.income.actual)}

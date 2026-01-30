@@ -49,7 +49,7 @@ export function BudgetAllocationBar({
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-500/10">
           <PieChart className="h-4 w-4 text-slate-500" />
         </div>
-        <p className="text-sm text-muted-foreground">Income Allocation</p>
+        <p className="text-sm text-muted-foreground">Planned Income Allocation</p>
       </div>
 
       {/* Stacked bar */}
