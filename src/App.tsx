@@ -6,11 +6,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 // Route components
 import { SnapshotPage } from '@/routes/overview';
 import { ForecastIndexPage } from '@/routes/forecasts/index';
-import { ForecastNewPage } from '@/routes/forecasts/new';
-import { ForecastDetailPage } from '@/routes/forecasts/detail';
 import { RecurringIndexPage } from '@/routes/forecasts/recurring/index';
-import { RecurringNewPage } from '@/routes/forecasts/recurring/new';
-import { RecurringDetailPage } from '@/routes/forecasts/recurring/detail';
 import { BudgetPage } from '@/routes/budget';
 import { TransactionsIndexPage } from '@/routes/transactions/index';
 import { TransactionNewPage } from '@/routes/transactions/new';
@@ -38,11 +34,7 @@ const router = createBrowserRouter([
 
       // Forecasts (plan)
       { path: 'forecasts', element: <ForecastIndexPage /> },
-      { path: 'forecasts/new', element: <ForecastNewPage /> },
-      { path: 'forecasts/:id', element: <ForecastDetailPage /> },
       { path: 'forecasts/recurring', element: <RecurringIndexPage /> },
-      { path: 'forecasts/recurring/new', element: <RecurringNewPage /> },
-      { path: 'forecasts/recurring/:id', element: <RecurringDetailPage /> },
 
       // Spending Limits (plan)
       { path: 'spending-limits', element: <SpendingLimitsPage /> },

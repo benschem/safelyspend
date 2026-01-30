@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useOutletContext, Link, useSearchParams } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Repeat, Settings2, Pencil, Telescope, RotateCcw, TrendingUp, TrendingDown, PiggyBank } from 'lucide-react';
+import { Plus, Repeat, Settings2, Pencil, Trash2, Telescope, RotateCcw, TrendingUp, TrendingDown, PiggyBank } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useForecasts } from '@/hooks/use-forecasts';
@@ -24,7 +24,7 @@ import { DateRangeFilter } from '@/components/date-range-filter';
 import { ForecastEventDialog } from '@/components/dialogs/forecast-event-dialog';
 import { ForecastRuleDialog } from '@/components/dialogs/forecast-rule-dialog';
 import { formatCents, formatDate, today as getToday } from '@/lib/utils';
-import type { ExpandedForecast } from '@/lib/types';
+import type { ExpandedForecast, ForecastEvent, ForecastRule } from '@/lib/types';
 
 interface OutletContext {
   activeScenarioId: string | null;
@@ -58,7 +58,7 @@ export function ForecastIndexPage() {
   const queryStartDate = filterStartDate || defaultStart;
   const queryEndDate = filterEndDate || defaultEnd;
 
-  const { expandedForecasts, rules, events, addRule, updateRule, addEvent, updateEvent } = useForecasts(activeScenarioId, queryStartDate, queryEndDate);
+  const { expandedForecasts, rules, events, addRule, updateRule, deleteRule, addEvent, updateEvent, deleteEvent } = useForecasts(activeScenarioId, queryStartDate, queryEndDate);
 
   // Check if any forecasts exist at all (rules or events)
   const hasAnyForecasts = rules.length > 0 || events.length > 0;
@@ -69,8 +69,13 @@ export function ForecastIndexPage() {
     const categoryParam = searchParams.get('category');
     return categoryParam ?? 'all';
   });
+
+  // Dialog state
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<ForecastEvent | null>(null);
+  const [editingRule, setEditingRule] = useState<ForecastRule | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const getCategoryName = (id: string | null) =>
     id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-';
@@ -83,6 +88,71 @@ export function ForecastIndexPage() {
     }),
     [expandedForecasts, filterType, filterCategory],
   );
+
+  const openAddEventDialog = useCallback(() => {
+    setEditingEvent(null);
+    setEventDialogOpen(true);
+  }, []);
+
+  const openAddRuleDialog = useCallback(() => {
+    setEditingRule(null);
+    setRuleDialogOpen(true);
+  }, []);
+
+  const openEditDialog = useCallback((forecast: ExpandedForecast) => {
+    if (forecast.sourceType === 'rule') {
+      const rule = rules.find(r => r.id === forecast.sourceId);
+      if (rule) {
+        setEditingRule(rule);
+        setRuleDialogOpen(true);
+      }
+    } else {
+      const event = events.find(e => e.id === forecast.sourceId);
+      if (event) {
+        setEditingEvent(event);
+        setEventDialogOpen(true);
+      }
+    }
+  }, [rules, events]);
+
+  const handleEventDialogClose = useCallback((open: boolean) => {
+    setEventDialogOpen(open);
+    if (!open) {
+      setEditingEvent(null);
+    }
+  }, []);
+
+  const handleRuleDialogClose = useCallback((open: boolean) => {
+    setRuleDialogOpen(open);
+    if (!open) {
+      setEditingRule(null);
+    }
+  }, []);
+
+  const handleDelete = useCallback((forecast: ExpandedForecast) => {
+    const id = forecast.sourceId;
+    if (deletingId === id) {
+      if (forecast.sourceType === 'rule') {
+        deleteRule(id);
+      } else {
+        deleteEvent(id);
+      }
+      setDeletingId(null);
+    } else {
+      setDeletingId(id);
+    }
+  }, [deletingId, deleteRule, deleteEvent]);
+
+  // Close delete confirmation on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && deletingId) {
+        setDeletingId(null);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [deletingId]);
 
   const columns: ColumnDef<ExpandedForecast>[] = useMemo(
     () => [
@@ -97,14 +167,14 @@ export function ForecastIndexPage() {
         header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
         cell: ({ row }) => {
           const forecast = row.original;
-          const linkTo =
-            forecast.sourceType === 'rule'
-              ? `/forecasts/recurring/${forecast.sourceId}`
-              : `/forecasts/${forecast.sourceId}`;
           return (
-            <Link to={linkTo} className="font-medium hover:underline">
+            <button
+              type="button"
+              onClick={() => openEditDialog(forecast)}
+              className="cursor-pointer text-left font-medium hover:underline"
+            >
               {row.getValue('description')}
-            </Link>
+            </button>
           );
         },
       },
@@ -185,23 +255,33 @@ export function ForecastIndexPage() {
         id: 'actions',
         cell: ({ row }) => {
           const forecast = row.original;
-          const linkTo =
-            forecast.sourceType === 'rule'
-              ? `/forecasts/recurring/${forecast.sourceId}`
-              : `/forecasts/${forecast.sourceId}`;
+          const isDeleting = deletingId === forecast.sourceId;
+
           return (
-            <div className="flex justify-end">
-              <Button variant="ghost" size="sm" asChild title="Edit">
-                <Link to={linkTo}>
-                  <Pencil className="h-4 w-4" />
-                </Link>
+            <div className="flex justify-end gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => openEditDialog(forecast)}
+                title="Edit"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={isDeleting ? 'destructive' : 'ghost'}
+                size="sm"
+                onClick={() => handleDelete(forecast)}
+                onBlur={() => setTimeout(() => setDeletingId(null), 200)}
+                title={isDeleting ? 'Click again to confirm' : 'Delete'}
+              >
+                {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
               </Button>
             </div>
           );
         },
       },
     ],
-    [categories],
+    [categories, deletingId, openEditDialog, handleDelete],
   );
 
   if (!activeScenarioId || !activeScenario) {
@@ -244,11 +324,11 @@ export function ForecastIndexPage() {
         </div>
         <div className="flex flex-col items-end gap-2">
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => setEventDialogOpen(true)}>
+            <Button variant="secondary" onClick={openAddEventDialog}>
               <Plus className="h-4 w-4" />
               Add One-Time
             </Button>
-            <Button onClick={() => setRuleDialogOpen(true)}>
+            <Button onClick={openAddRuleDialog}>
               <Plus className="h-4 w-4" />
               Add Recurring
             </Button>
@@ -270,10 +350,10 @@ export function ForecastIndexPage() {
           <div className="rounded-lg border border-dashed p-8 text-center">
             <p className="text-muted-foreground">No forecasts yet.</p>
             <div className="mt-4 flex justify-center gap-2">
-              <Button variant="outline" onClick={() => setEventDialogOpen(true)}>
+              <Button variant="outline" onClick={openAddEventDialog}>
                 Add one-time event
               </Button>
-              <Button onClick={() => setRuleDialogOpen(true)}>
+              <Button onClick={openAddRuleDialog}>
                 Add recurring
               </Button>
             </div>
@@ -336,18 +416,18 @@ export function ForecastIndexPage() {
 
       <ForecastEventDialog
         open={eventDialogOpen}
-        onOpenChange={setEventDialogOpen}
+        onOpenChange={handleEventDialogClose}
         scenarioId={activeScenarioId}
-        event={null}
+        event={editingEvent}
         addEvent={addEvent}
         updateEvent={updateEvent}
       />
 
       <ForecastRuleDialog
         open={ruleDialogOpen}
-        onOpenChange={setRuleDialogOpen}
+        onOpenChange={handleRuleDialogClose}
         scenarioId={activeScenarioId}
-        rule={null}
+        rule={editingRule}
         addRule={addRule}
         updateRule={updateRule}
       />
