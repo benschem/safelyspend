@@ -396,7 +396,7 @@ export function BudgetPage() {
           })()}
         </div>
 
-        {/* Planned Spending */}
+        {/* Spent / Planned Spending */}
         <Link to="/budget/plan" className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50">
           <div className="flex items-center justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
@@ -404,7 +404,9 @@ export function BudgetPage() {
             </div>
             <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">Planned Spending</p>
+          <p className="mt-4 text-sm text-muted-foreground">
+            {isFuturePeriod ? 'Planned Spending' : 'Spent'}
+          </p>
           <p className="mt-1 text-xl font-semibold">
             {formatCents(isFuturePeriod ? periodCashFlow.budgeted.expected : periodCashFlow.budgeted.actual)}
           </p>
@@ -454,7 +456,7 @@ export function BudgetPage() {
           <div className="mt-3 mb-3 h-px bg-border" />
           {isFuturePeriod ? (
             <p className="mt-2 text-sm text-muted-foreground">
-              Income minus budget and savings
+              Income minus budgeted expenses and savings
             </p>
           ) : (() => {
             const pct = periodCashFlow.unbudgeted.unallocated > 0
