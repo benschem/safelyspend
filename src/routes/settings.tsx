@@ -353,7 +353,7 @@ export function SettingsPage() {
               Set your known balance at specific dates. Used as the baseline for balance calculations.
             </p>
             <p className="mt-3 text-xs text-muted-foreground">
-              Transactions before the earliest anchor date won't affect balance calculations but will
+              Transactions before the earliest anchor date won&apos;t affect balance calculations but will
               still appear in spending reports.
             </p>
           </div>

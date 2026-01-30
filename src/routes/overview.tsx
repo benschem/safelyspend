@@ -146,7 +146,7 @@ export function SnapshotPage() {
     // Calculate days between first and last transaction
     const daysDiff = Math.max(
       1,
-      Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+      Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)) + 1,
     );
 
     // Calculate periods based on selected period type
@@ -159,7 +159,7 @@ export function SnapshotPage() {
         periods = Math.max(
           1,
           (lastDate.getFullYear() - firstDate.getFullYear()) * 12 +
-            (lastDate.getMonth() - firstDate.getMonth()) + 1
+            (lastDate.getMonth() - firstDate.getMonth()) + 1,
         );
         break;
       case 'yearly':
@@ -321,7 +321,7 @@ export function SnapshotPage() {
               {formatCents(emergencyFundBalance ?? 0)}
             </p>
             <div className="mt-3 mb-2 h-px bg-border" />
-            <p className="text-sm text-muted-foreground">For life's surprises</p>
+            <p className="text-sm text-muted-foreground">For life&apos;s surprises</p>
           </button>
 
           {/* Super - Coming Soon */}
@@ -374,7 +374,7 @@ export function SnapshotPage() {
                   'rounded-md px-3 py-1 text-xs font-medium transition-colors',
                   averagePeriod === period
                     ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 {period.charAt(0).toUpperCase() + period.slice(1)}

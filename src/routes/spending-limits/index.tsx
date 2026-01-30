@@ -634,7 +634,7 @@ export function SpendingLimitsPage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold">Category Limits</h2>
-              <p className="text-sm text-muted-foreground">How you're budgeting your money</p>
+              <p className="text-sm text-muted-foreground">How you&apos;re budgeting your money</p>
             </div>
             <div className="text-right">
               <p className="text-lg font-bold">{formatCents(budgetBreakdownTotal)}</p>
@@ -651,8 +651,9 @@ export function SpendingLimitsPage() {
             />
           </div>
           <div className="mt-4 flex items-center justify-end">
-            <label className="flex items-center gap-2 text-sm">
+            <label htmlFor="compare-savings" className="flex items-center gap-2 text-sm">
               <Switch
+                id="compare-savings"
                 checked={showSavingsInChart}
                 onCheckedChange={setShowSavingsInChart}
               />

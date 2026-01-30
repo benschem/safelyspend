@@ -29,7 +29,7 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
             Know what you can safely spend
           </h1>
           <p className="mt-4 max-w-xl text-lg text-muted-foreground">
-            Not what you've already spent. What's actually left after bills, savings, and upcoming expenses.
+            Not what you&apos;ve already spent. What&apos;s actually left after bills, savings, and upcoming expenses.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Button size="lg" asChild className="gap-2">
@@ -90,7 +90,7 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
                 <p className="mt-4 text-sm text-muted-foreground">Emergency Fund</p>
                 <p className="mt-1 text-xl font-semibold">{formatCents(4820000)}</p>
                 <div className="mt-3 mb-2 h-px bg-border" />
-                <p className="text-sm text-muted-foreground">For life's surprises</p>
+                <p className="text-sm text-muted-foreground">For life&apos;s surprises</p>
               </div>
             </div>
           </div>
@@ -114,7 +114,7 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
             <div className="grid items-center gap-8 lg:grid-cols-2">
               <div>
                 <h2 className="text-2xl font-semibold">
-                  Set budgets. See how you're tracking.
+                  Set budgets. See how you&apos;re tracking.
                 </h2>
                 <p className="mt-4 text-muted-foreground">
                   Get warned before you overspend, not after. Weekly, fortnightly, or monthly budgets that match how you actually get paid.
@@ -190,10 +190,10 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
               </div>
               <div className="order-1 lg:order-2">
                 <h2 className="text-2xl font-semibold">
-                  See what's coming before it hits
+                  See what&apos;s coming before it hits
                 </h2>
                 <p className="mt-4 text-muted-foreground">
-                  Plan around lumpy expenses like car rego, insurance, or that trip you're saving for. Know what your account will look like next month, or in six months.
+                  Plan around lumpy expenses like car rego, insurance, or that trip you&apos;re saving for. Know what your account will look like next month, or in six months.
                 </p>
               </div>
             </div>
@@ -209,7 +209,7 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
                   Track progress on what matters
                 </h2>
                 <p className="mt-4 text-muted-foreground">
-                  House deposit, holiday fund, emergency buffer. Set targets with deadlines and see when you'll get there. Interest calculations included.
+                  House deposit, holiday fund, emergency buffer. Set targets with deadlines and see when you&apos;ll get there. Interest calculations included.
                 </p>
               </div>
               <div className="space-y-4">
@@ -346,7 +346,7 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
             <div>
               <p className="font-medium">Your data stays on your device</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                No accounts. No logins. No servers. Everything lives in your browser's local storage. Clear it anytime.
+                No accounts. No logins. No servers. Everything lives in your browser&apos;s local storage. Clear it anytime.
               </p>
             </div>
           </div>
