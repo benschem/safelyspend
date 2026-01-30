@@ -2,18 +2,10 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Link, useOutletContext } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Switch } from '@/components/ui/switch';
-import { Pencil, Check, X, Trash2, Plus, Target } from 'lucide-react';
+import { Pencil, Trash2, Plus, Target } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
@@ -21,7 +13,8 @@ import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { CategoryBudgetDialog } from '@/components/dialogs/category-budget-dialog';
-import { formatCents, parseCentsFromInput, formatISODate } from '@/lib/utils';
+import { BudgetRuleDialog } from '@/components/dialogs/budget-rule-dialog';
+import { formatCents, formatISODate } from '@/lib/utils';
 import type { Cadence, BudgetRule } from '@/lib/types';
 import { SpendingBreakdownChart } from '@/components/charts/spending-breakdown-chart';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
@@ -57,14 +50,6 @@ const CADENCE_LABELS: Record<Cadence, string> = {
   monthly: '/mo',
   quarterly: '/qtr',
   yearly: '/yr',
-};
-
-const CADENCE_FULL_LABELS: Record<Cadence, string> = {
-  weekly: 'Weekly',
-  fortnightly: 'Fortnightly',
-  monthly: 'Monthly',
-  quarterly: 'Quarterly',
-  yearly: 'Yearly',
 };
 
 function getPeriodProgress(cadence: Cadence): { daysElapsed: number; totalDays: number; progress: number } {
@@ -203,11 +188,11 @@ export function SpendingLimitsPage() {
 
   const { expenseForecasts, savingsForecasts } = useForecasts(activeScenarioId, tomorrow, maxEndDate);
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editAmount, setEditAmount] = useState('');
-  const [editCadence, setEditCadence] = useState<Cadence>('monthly');
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Dialog state
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingRow, setEditingRow] = useState<BudgetRow | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showSavingsInChart, setShowSavingsInChart] = useState(true);
 
   const categorySpending = useMemo(() => {
@@ -364,34 +349,17 @@ export function SpendingLimitsPage() {
     return budgetBreakdownSegments.reduce((sum, s) => sum + s.amount, 0);
   }, [budgetBreakdownSegments]);
 
-  const startEditing = useCallback((categoryId: string) => {
-    const rule = getRuleForCategory(categoryId);
-    setEditAmount(rule?.amountCents ? (rule.amountCents / 100).toFixed(2) : '');
-    setEditCadence(rule?.cadence ?? 'monthly');
-    setEditingId(categoryId);
-  }, [getRuleForCategory]);
-
-  const cancelEditing = useCallback(() => {
-    setEditingId(null);
-    setEditAmount('');
-    setEditCadence('monthly');
+  const openEditDialog = useCallback((row: BudgetRow) => {
+    setEditingRow(row);
+    setEditDialogOpen(true);
   }, []);
 
-  const saveEditing = useCallback(
-    (categoryId: string) => {
-      const amountCents = parseCentsFromInput(editAmount);
-      if (amountCents > 0) {
-        setBudgetForCategory(categoryId, amountCents, editCadence);
-      } else {
-        const rule = getRuleForCategory(categoryId);
-        if (rule) {
-          deleteBudgetRule(rule.id);
-        }
-      }
-      cancelEditing();
-    },
-    [editAmount, editCadence, setBudgetForCategory, getRuleForCategory, deleteBudgetRule, cancelEditing],
-  );
+  const handleEditDialogClose = useCallback((open: boolean) => {
+    setEditDialogOpen(open);
+    if (!open) {
+      setEditingRow(null);
+    }
+  }, []);
 
   const handleDelete = useCallback(
     (categoryId: string) => {
@@ -408,40 +376,49 @@ export function SpendingLimitsPage() {
     [deletingId, getRuleForCategory, deleteBudgetRule],
   );
 
+  // Close delete confirmation on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (editingId) cancelEditing();
-        if (deletingId) setDeletingId(null);
+      if (e.key === 'Escape' && deletingId) {
+        setDeletingId(null);
       }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [editingId, deletingId, cancelEditing]);
+  }, [deletingId]);
 
   const columns: ColumnDef<BudgetRow>[] = useMemo(
     () => [
       {
         accessorKey: 'categoryName',
         header: ({ column }) => <SortableHeader column={column}>Category</SortableHeader>,
-        cell: ({ row }) => (
-          <div className="flex items-center gap-2">
-            <div
-              className={`h-2 w-2 rounded-full ${
-                row.original.status === 'over'
-                  ? 'bg-red-500'
-                  : row.original.status === 'overspending'
-                    ? 'bg-amber-500'
-                    : row.original.status === 'watch'
-                      ? 'bg-yellow-500'
-                      : row.original.status === 'good'
-                        ? 'bg-green-500'
-                        : 'bg-gray-300'
-              }`}
-            />
-            <span className="font-medium">{row.getValue('categoryName')}</span>
-          </div>
-        ),
+        cell: ({ row }) => {
+          const budgetRow = row.original;
+          return (
+            <div className="flex items-center gap-2">
+              <div
+                className={`h-2 w-2 rounded-full ${
+                  budgetRow.status === 'over'
+                    ? 'bg-red-500'
+                    : budgetRow.status === 'overspending'
+                      ? 'bg-amber-500'
+                      : budgetRow.status === 'watch'
+                        ? 'bg-yellow-500'
+                        : budgetRow.status === 'good'
+                          ? 'bg-green-500'
+                          : 'bg-gray-300'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => openEditDialog(budgetRow)}
+                className="cursor-pointer text-left font-medium hover:underline"
+              >
+                {budgetRow.categoryName}
+              </button>
+            </div>
+          );
+        },
       },
       {
         accessorKey: 'spent',
@@ -478,45 +455,12 @@ export function SpendingLimitsPage() {
         ),
         cell: ({ row }) => {
           const budgetRow = row.original;
-          const isEditing = editingId === budgetRow.id;
-
-          if (isEditing) {
-            return (
-              <div className="flex items-center justify-end gap-1">
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={editAmount}
-                  onChange={(e) => setEditAmount(e.target.value)}
-                  className="h-8 w-24 text-right"
-                  placeholder="0.00"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') saveEditing(budgetRow.id);
-                    if (e.key === 'Escape') cancelEditing();
-                  }}
-                  autoFocus
-                />
-                <Select value={editCadence} onValueChange={(v) => setEditCadence(v as Cadence)}>
-                  <SelectTrigger className="h-8 w-20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(CADENCE_FULL_LABELS).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            );
-          }
 
           if (!budgetRow.rule) {
             return (
               <button
-                onClick={() => startEditing(budgetRow.categoryId)}
+                type="button"
+                onClick={() => openEditDialog(budgetRow)}
                 className="text-right text-sm text-muted-foreground hover:text-foreground"
               >
                 Set limit
@@ -610,33 +554,14 @@ export function SpendingLimitsPage() {
         id: 'actions',
         cell: ({ row }) => {
           const budgetRow = row.original;
-          const isEditing = editingId === budgetRow.id;
           const isDeleting = deletingId === budgetRow.id;
-
-          if (isEditing) {
-            return (
-              <div className="flex justify-end gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => saveEditing(budgetRow.id)}
-                  title="Save"
-                >
-                  <Check className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={cancelEditing} title="Cancel">
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            );
-          }
 
           return (
             <div className="flex justify-end gap-1">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => startEditing(budgetRow.categoryId)}
+                onClick={() => openEditDialog(budgetRow)}
                 title="Edit"
               >
                 <Pencil className="h-4 w-4" />
@@ -657,16 +582,7 @@ export function SpendingLimitsPage() {
         },
       },
     ],
-    [
-      editingId,
-      editAmount,
-      editCadence,
-      deletingId,
-      startEditing,
-      cancelEditing,
-      saveEditing,
-      handleDelete,
-    ],
+    [deletingId, openEditDialog, handleDelete],
   );
 
   if (!activeScenarioId || !activeScenario) {
@@ -781,6 +697,18 @@ export function SpendingLimitsPage() {
         addCategory={addCategory}
         setBudgetForCategory={setBudgetForCategory}
       />
+
+      {editingRow && (
+        <BudgetRuleDialog
+          open={editDialogOpen}
+          onOpenChange={handleEditDialogClose}
+          categoryId={editingRow.categoryId}
+          categoryName={editingRow.categoryName}
+          rule={editingRow.rule}
+          setBudgetForCategory={setBudgetForCategory}
+          deleteBudgetRule={deleteBudgetRule}
+        />
+      )}
     </div>
   );
 }
