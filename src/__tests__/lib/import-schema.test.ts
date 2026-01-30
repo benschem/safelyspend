@@ -291,6 +291,6 @@ describe('getImportErrorMessage', () => {
 
 describe('import schema constants', () => {
   it('CURRENT_DATA_VERSION is defined', () => {
-    expect(CURRENT_DATA_VERSION).toBe(1);
+    expect(CURRENT_DATA_VERSION).toBe(2);
   });
 });

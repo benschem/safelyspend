@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CURRENT_DATA_VERSION } from './db';
 
 // =============================================================================
 // Import Schema Validation
@@ -6,7 +7,8 @@ import { z } from 'zod';
 // Strict validation for imported JSON data to prevent malformed/malicious data
 // =============================================================================
 
-export const CURRENT_DATA_VERSION = 1;
+// Re-export for convenience
+export { CURRENT_DATA_VERSION };
 
 // Base entity schema - relaxed ID validation for legacy data
 const baseEntitySchema = z.object({
