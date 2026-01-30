@@ -331,7 +331,7 @@ export function BudgetPage() {
                   />
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {pct}% earned of {formatCents(periodCashFlow.income.expected)} forecast
+                  Earned {pct}% of {formatCents(periodCashFlow.income.expected)} forecast
                 </p>
               </>
             );
@@ -343,7 +343,7 @@ export function BudgetPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
             <Receipt className="h-5 w-5 text-red-500" />
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">Budgeted</p>
+          <p className="mt-4 text-sm text-muted-foreground">Budgeted Spending</p>
           <p className="mt-1 text-xl font-semibold">{formatCents(periodCashFlow.budgeted.actual)}</p>
           <div className="mt-3 mb-3 h-px bg-border" />
           {(() => {
@@ -364,19 +364,19 @@ export function BudgetPage() {
                   />
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {pct}% spent of {formatCents(periodCashFlow.budgeted.expected)} limit
+                  Spent {pct}% of {formatCents(periodCashFlow.budgeted.expected)} budget
                 </p>
               </>
             );
           })()}
         </div>
 
-        {/* Unbudgeted Spending */}
+        {/* Unplanned Spending */}
         <div className="rounded-xl border bg-card p-5">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10">
             <CircleAlert className="h-5 w-5 text-amber-500" />
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">Unbudgeted</p>
+          <p className="mt-4 text-sm text-muted-foreground">Unplanned Spending</p>
           <p className="mt-1 text-xl font-semibold">{formatCents(periodCashFlow.unbudgeted.actual)}</p>
           <div className="mt-3 mb-3 h-px bg-border" />
           {(() => {
@@ -397,7 +397,7 @@ export function BudgetPage() {
                   />
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {pct}% spent of {formatCents(periodCashFlow.unbudgeted.unallocated)} available
+                  Spent {pct}% of {formatCents(periodCashFlow.unbudgeted.unallocated)} surplus
                 </p>
               </>
             );
@@ -430,7 +430,7 @@ export function BudgetPage() {
                   />
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {pct}% saved of {formatCents(periodCashFlow.savings.expected)} planned
+                  Saved {pct}% of {formatCents(periodCashFlow.savings.expected)} planned
                 </p>
               </>
             );
@@ -487,9 +487,9 @@ export function BudgetPage() {
             // Compare to plan
             const diffFromPlan = leftover - planned;
             if (diffFromPlan >= 0) {
-              description = `${formatCents(Math.abs(diffFromPlan))} above your ${formatCents(planned)} plan`;
+              description = `${formatCents(Math.abs(diffFromPlan))} above ${formatCents(planned)} plan`;
             } else {
-              description = `${formatCents(Math.abs(diffFromPlan))} below your ${formatCents(planned)} plan`;
+              description = `${formatCents(Math.abs(diffFromPlan))} below ${formatCents(planned)} plan`;
             }
           }
 
