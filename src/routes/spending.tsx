@@ -20,10 +20,14 @@ import {
   History,
   Layers,
   Sparkles,
+  Plus,
+  Calendar,
 } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
+import { useTransactions } from '@/hooks/use-transactions';
 import { ScenarioSelector } from '@/components/scenario-selector';
+import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { useBudgetPeriodData } from '@/hooks/use-budget-period-data';
 import { CHART_COLORS } from '@/lib/chart-colors';
 import { BurnRateChart, BudgetAllocationBar } from '@/components/charts';
@@ -36,11 +40,14 @@ const MONTHS = [
 
 interface OutletContext {
   activeScenarioId: string | null;
+  startDate: string;
+  endDate: string;
 }
 
 export function SpendingPage() {
-  const { activeScenarioId } = useOutletContext<OutletContext>();
+  const { activeScenarioId, startDate, endDate } = useOutletContext<OutletContext>();
   const { activeScenario, scenarios, setActiveScenarioId } = useScenarios();
+  const { addTransaction, updateTransaction } = useTransactions(startDate, endDate);
 
   // Selected period state - defaults to current month
   const [selectedMonth, setSelectedMonth] = useState(() => new Date());
@@ -50,6 +57,9 @@ export function SpendingPage() {
 
   // Category visibility state for spending breakdown
   const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(new Set());
+
+  // Transaction dialog state
+  const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
 
   // Use the extracted hook for all business logic
   const {
@@ -226,13 +236,27 @@ export function SpendingPage() {
     <div className="page-shell space-y-6">
       {/* Page Header */}
       <div className="page-header">
-        <h1 className="page-title">
-          <div className="page-title-icon bg-red-500/10">
-            <Receipt className="h-5 w-5 text-red-500" />
-          </div>
-          Spending
-        </h1>
-        <p className="page-description">Track your spending against your plan</p>
+        <div>
+          <h1 className="page-title">
+            <div className="page-title-icon bg-red-500/10">
+              <Receipt className="h-5 w-5 text-red-500" />
+            </div>
+            Spending
+          </h1>
+          <p className="page-description">Track your spending against your plan</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" asChild>
+            <Link to="/forecasts">
+              <Calendar className="h-4 w-4" />
+              Add Forecast Expense
+            </Link>
+          </Button>
+          <Button onClick={() => setTransactionDialogOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Add Expense
+          </Button>
+        </div>
       </div>
 
       {/* Hero Header - Period Selector */}
@@ -891,6 +915,14 @@ export function SpendingPage() {
           )}
         </div>
       </div>
+
+      <TransactionDialog
+        open={transactionDialogOpen}
+        onOpenChange={setTransactionDialogOpen}
+        initialType="expense"
+        addTransaction={addTransaction}
+        updateTransaction={updateTransaction}
+      />
     </div>
   );
 }

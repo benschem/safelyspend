@@ -9,6 +9,7 @@ import { useTransactions } from '@/hooks/use-transactions';
 import { useReportsData } from '@/hooks/use-reports-data';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { SavingsGoalDialog } from '@/components/dialogs/savings-goal-dialog';
+import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { SavingsGoalProgressCard } from '@/components/charts';
 import { formatCents } from '@/lib/utils';
 import type { SavingsGoal } from '@/lib/types';
@@ -23,7 +24,7 @@ export function SavingsIndexPage() {
   const { activeScenarioId, startDate, endDate } = useOutletContext<OutletContext>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { savingsGoals, isLoading: savingsLoading, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal } = useSavingsGoals();
-  const { savingsTransactions, isLoading: transactionsLoading, addTransaction } = useTransactions(startDate, endDate);
+  const { savingsTransactions, isLoading: transactionsLoading, addTransaction, updateTransaction } = useTransactions(startDate, endDate);
   const { savingsByGoal, isLoading: reportsLoading } = useReportsData(activeScenarioId, startDate, endDate);
   const { anchors } = useBalanceAnchors();
 
@@ -39,6 +40,7 @@ export function SavingsIndexPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
+  const [contributionDialogOpen, setContributionDialogOpen] = useState(false);
 
   // Handle ?goal= query param to open a specific goal
   const goalParam = searchParams.get('goal');
@@ -207,10 +209,16 @@ export function SavingsIndexPage() {
           </h1>
           <p className="page-description">Track progress toward your savings targets.</p>
         </div>
-        <Button onClick={openAddDialog}>
-          <Plus className="h-4 w-4" />
-          Add Goal
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={openAddDialog}>
+            <Plus className="h-4 w-4" />
+            Add Goal
+          </Button>
+          <Button onClick={() => setContributionDialogOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Add Contribution
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -318,6 +326,14 @@ export function SavingsIndexPage() {
         addTransaction={addTransaction}
         transactionCount={editingGoal ? transactionCountByGoal[editingGoal.id] ?? 0 : 0}
         earliestAnchorDate={earliestAnchorDate}
+      />
+
+      <TransactionDialog
+        open={contributionDialogOpen}
+        onOpenChange={setContributionDialogOpen}
+        initialType="savings"
+        addTransaction={addTransaction}
+        updateTransaction={updateTransaction}
       />
     </div>
   );

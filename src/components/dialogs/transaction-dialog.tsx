@@ -26,11 +26,12 @@ interface TransactionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   transaction?: Transaction | null;
+  initialType?: TransactionType;
   addTransaction: (data: CreateEntity<Transaction>) => Promise<Transaction>;
   updateTransaction: (id: string, updates: Partial<Omit<Transaction, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
 }
 
-export function TransactionDialog({ open, onOpenChange, transaction, addTransaction, updateTransaction }: TransactionDialogProps) {
+export function TransactionDialog({ open, onOpenChange, transaction, initialType = 'expense', addTransaction, updateTransaction }: TransactionDialogProps) {
   const isEditing = !!transaction;
   const todayDate = today();
 
@@ -60,7 +61,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, addTransact
         setSavingsGoalId(transaction.savingsGoalId ?? '');
         setNotes(transaction.notes ?? '');
       } else {
-        setType('expense');
+        setType(initialType);
         setDate(todayDate);
         setDescription('');
         setAmount('');
@@ -71,7 +72,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, addTransact
       }
       setFormError(null);
     }
-  }, [open, transaction, todayDate]);
+  }, [open, transaction, todayDate, initialType]);
 
   const handleSave = async () => {
     setFormError(null);
