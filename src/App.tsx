@@ -18,6 +18,11 @@ import { ScenariosIndexPage } from '@/routes/scenarios/index';
 import { SpendingLimitsPage } from '@/routes/spending-limits/index';
 import { SettingsPage } from '@/routes/settings';
 
+// Dev-only: style guide not bundled in production
+const devOnlyRoutes = import.meta.env.DEV
+  ? [{ path: 'style-guide', lazy: () => import('@/routes/style-guide').then(m => ({ Component: m.StyleGuidePage })) }]
+  : [];
+
 const router = createBrowserRouter([
   // Landing page (outside of RootLayout - no sidebar/header)
   { path: '/landing', element: <FirstRunWizard />, errorElement: <ErrorBoundary /> },
@@ -62,6 +67,9 @@ const router = createBrowserRouter([
 
       // Settings
       { path: 'settings', element: <SettingsPage /> },
+
+      // Dev-only routes
+      ...devOnlyRoutes,
     ],
   },
 ]);
