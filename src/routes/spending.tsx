@@ -235,7 +235,7 @@ export function SpendingPage() {
   return (
     <div className="page-shell space-y-6">
       {/* Page Header */}
-      <div className="page-header">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="page-title">
             <div className="page-title-icon bg-red-500/10">
@@ -246,13 +246,13 @@ export function SpendingPage() {
           <p className="page-description">Track your spending against your plan</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" asChild>
+          <Button variant="outline" className="w-40" asChild>
             <Link to="/forecasts">
               <Calendar className="h-4 w-4" />
-              Add Forecast Expense
+              Forecast Expense
             </Link>
           </Button>
-          <Button onClick={() => setTransactionDialogOpen(true)}>
+          <Button className="w-40" onClick={() => setTransactionDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             Add Expense
           </Button>

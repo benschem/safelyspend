@@ -210,13 +210,13 @@ export function SavingsIndexPage() {
           <p className="page-description">Track progress toward your savings targets.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={openAddDialog}>
-            <Plus className="h-4 w-4" />
-            Add Goal
-          </Button>
-          <Button onClick={() => setContributionDialogOpen(true)}>
+          <Button variant="outline" className="w-40" onClick={() => setContributionDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             Add Contribution
+          </Button>
+          <Button className="w-40" onClick={openAddDialog}>
+            <Plus className="h-4 w-4" />
+            Add Goal
           </Button>
         </div>
       </div>
