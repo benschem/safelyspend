@@ -262,14 +262,14 @@ export function SavingsOverTimeChart({ monthlySavings, deadline, targetAmount, s
             />
           )}
 
-          {/* Expected completion vertical line - color based on deadline comparison */}
-          {targetReachedMonth && (
+          {/* Goal reached vertical line - only show if in future, color based on deadline comparison */}
+          {targetReachedMonth && targetReachedMonth > currentMonth && (
             <ReferenceLine
               x={targetReachedMonth}
               stroke={expectedColor}
               strokeWidth={2}
               label={{
-                value: 'Expected',
+                value: 'Goal reached',
                 position: 'top',
                 fontSize: 11,
                 fill: expectedColor,
