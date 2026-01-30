@@ -197,7 +197,7 @@ export function BudgetPage() {
             </Button>
             {!isCurrentPeriod && (
               <Button variant="ghost" size="sm" onClick={goToCurrent} className="ml-2 text-xs">
-                Today
+                ← Today
               </Button>
             )}
           </div>
@@ -302,7 +302,7 @@ export function BudgetPage() {
           </Button>
           {!isCurrentPeriod && (
             <Button variant="ghost" size="sm" onClick={goToCurrent} className="ml-2 text-xs">
-              Today
+              ← Today
             </Button>
           )}
           {isCurrentPeriod && (
