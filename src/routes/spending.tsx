@@ -21,7 +21,6 @@ import {
   Layers,
   Sparkles,
   Plus,
-  Calendar,
 } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -248,7 +247,7 @@ export function SpendingPage() {
         <div className="flex items-center gap-2">
           <Button variant="outline" className="w-40" asChild>
             <Link to="/forecasts">
-              <Calendar className="h-4 w-4" />
+              <Plus className="h-4 w-4" />
               Forecast Expense
             </Link>
           </Button>
