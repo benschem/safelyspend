@@ -452,6 +452,30 @@ export function formatCompactDate(isoDate: string, includeYear = false): string 
 }
 
 /**
+ * Get ordinal suffix for a day number (1st, 2nd, 3rd, etc.)
+ */
+function getOrdinalSuffix(day: number): string {
+  if (day > 3 && day < 21) return 'th';
+  switch (day % 10) {
+    case 1: return 'st';
+    case 2: return 'nd';
+    case 3: return 'rd';
+    default: return 'th';
+  }
+}
+
+/**
+ * Format date as long format with ordinal: "1st January 2025"
+ */
+export function formatLongDate(isoDate: string): string {
+  const date = new Date(isoDate);
+  const day = date.getDate();
+  const month = date.toLocaleDateString('en-AU', { month: 'long' });
+  const year = date.getFullYear();
+  return `${day}${getOrdinalSuffix(day)} ${month} ${year}`;
+}
+
+/**
  * Calculate compound interest
  * @param principalCents Starting amount in cents
  * @param annualRate Annual interest rate as percentage (e.g., 4.5 for 4.5%)
