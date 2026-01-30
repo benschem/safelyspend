@@ -21,8 +21,6 @@ interface TimelineRangePickerProps {
   lastPresetMode: 'past' | 'around-present' | 'future';
   startDate: string;
   endDate: string;
-  customStartDate: string | undefined;
-  customEndDate: string | undefined;
   onModeChange: (mode: TimelineMode) => void;
   onAmountChange: (amount: number) => void;
   onUnitChange: (unit: TimelineUnit) => void;
@@ -64,21 +62,23 @@ export function TimelineRangePicker({
   lastPresetMode,
   startDate,
   endDate,
-  customStartDate,
-  customEndDate,
   onModeChange,
   onAmountChange,
   onUnitChange,
   onCustomDateChange,
 }: TimelineRangePickerProps) {
   const [open, setOpen] = useState(false);
-  const [tempStartDate, setTempStartDate] = useState(customStartDate || startDate);
-  const [tempEndDate, setTempEndDate] = useState(customEndDate || endDate);
+  const [tempStartDate, setTempStartDate] = useState(startDate);
+  const [tempEndDate, setTempEndDate] = useState(endDate);
   const [customFocused, setCustomFocused] = useState(false);
 
   const isCustomMode = mode === 'custom';
   const isCustomActive = isCustomMode || customFocused;
   const bounds = TIMELINE_UNIT_BOUNDS[unit];
+
+  // Show computed dates when not actively editing custom range
+  const displayStartDate = isCustomActive ? tempStartDate : startDate;
+  const displayEndDate = isCustomActive ? tempEndDate : endDate;
 
   // Format description for button
   const description = isCustomMode
@@ -87,8 +87,8 @@ export function TimelineRangePicker({
 
   const handleOpenChange = (newOpen: boolean) => {
     if (newOpen) {
-      setTempStartDate(customStartDate || startDate);
-      setTempEndDate(customEndDate || endDate);
+      setTempStartDate(startDate);
+      setTempEndDate(endDate);
     } else {
       setCustomFocused(false);
     }
@@ -216,10 +216,14 @@ export function TimelineRangePicker({
               <Input
                 id="timeline-range-start"
                 type="date"
-                value={tempStartDate}
-                max={tempEndDate}
+                value={displayStartDate}
+                max={displayEndDate}
                 onChange={(e) => handleStartDateChange(e.target.value)}
-                onFocus={() => setCustomFocused(true)}
+                onFocus={() => {
+                  setTempStartDate(startDate);
+                  setTempEndDate(endDate);
+                  setCustomFocused(true);
+                }}
                 className="h-8 cursor-pointer"
               />
             </div>
@@ -230,10 +234,14 @@ export function TimelineRangePicker({
               <Input
                 id="timeline-range-end"
                 type="date"
-                value={tempEndDate}
-                min={tempStartDate}
+                value={displayEndDate}
+                min={displayStartDate}
                 onChange={(e) => handleEndDateChange(e.target.value)}
-                onFocus={() => setCustomFocused(true)}
+                onFocus={() => {
+                  setTempStartDate(startDate);
+                  setTempEndDate(endDate);
+                  setCustomFocused(true);
+                }}
                 className="h-8 cursor-pointer"
               />
             </div>

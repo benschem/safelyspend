@@ -45,8 +45,6 @@ export function InsightsPage() {
     lastPresetMode,
     startDate,
     endDate,
-    customStartDate,
-    customEndDate,
     setMode,
     setAmount,
     setUnit,
@@ -256,8 +254,6 @@ export function InsightsPage() {
             lastPresetMode={lastPresetMode}
             startDate={startDate}
             endDate={endDate}
-            customStartDate={customStartDate}
-            customEndDate={customEndDate}
             onModeChange={setMode}
             onAmountChange={setAmount}
             onUnitChange={setUnit}
