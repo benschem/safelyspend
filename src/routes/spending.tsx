@@ -245,13 +245,13 @@ export function SpendingPage() {
           <p className="page-description">Track your spending against your plan</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="w-40" asChild>
+          <Button variant="outline" className="h-9 w-40" asChild>
             <Link to="/forecasts">
               <Plus className="h-4 w-4" />
               Forecast Expense
             </Link>
           </Button>
-          <Button className="w-40" onClick={() => setTransactionDialogOpen(true)}>
+          <Button className="h-9 w-40" onClick={() => setTransactionDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             Add Expense
           </Button>
