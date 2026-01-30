@@ -272,11 +272,13 @@ export function InsightsPage() {
         <PageLoading />
       ) : activeTab === 'spending' ? (
         <div className="space-y-6">
-          <p className="text-sm text-muted-foreground">
-            {isPastOnly
-              ? 'How your spending compared to your budget'
-              : 'Actual and forecast spending vs budget'}
-          </p>
+          <div className="flex min-h-9 items-center">
+            <p className="text-sm text-muted-foreground">
+              {isPastOnly
+                ? 'How your spending compared to your budget'
+                : 'Actual and forecast spending vs budget'}
+            </p>
+          </div>
           <BudgetComparisonChart
             monthlyBudgetComparison={monthlyBudgetComparison}
             budgetCategories={budgetCategories}
@@ -296,11 +298,13 @@ export function InsightsPage() {
               </AlertDescription>
             </Alert>
           )}
-          <p className="text-sm text-muted-foreground">
-            {isPastOnly
-              ? 'Your bank balance and monthly income vs expenses'
-              : 'Cash and savings over time, including planned income, spending and saving'}
-          </p>
+          <div className="flex min-h-9 items-center">
+            <p className="text-sm text-muted-foreground">
+              {isPastOnly
+                ? 'Your bank balance and monthly income vs expenses'
+                : 'Cash and savings over time, including planned income, spending and saving'}
+            </p>
+          </div>
           <CashFlowChart
             monthlyNetFlow={monthlyNetFlow}
             startingBalance={balanceInfo.startingBalance}
@@ -309,7 +313,7 @@ export function InsightsPage() {
         </div>
       ) : activeTab === 'savings' ? (
         <div className="space-y-6">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex min-h-9 items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">
               {isPastOnly
                 ? 'Cumulative savings contributions'

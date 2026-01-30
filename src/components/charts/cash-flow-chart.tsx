@@ -249,7 +249,7 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
   return (
     <div className="w-full">
       <ResponsiveContainer width="100%" height={350}>
-        <ComposedChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+        <ComposedChart data={chartData} margin={{ top: 20, right: 55, bottom: 20, left: 20 }}>
           <XAxis
             dataKey="month"
             tickFormatter={(value) => formatMonth(value)}

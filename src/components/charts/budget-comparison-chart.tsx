@@ -206,7 +206,7 @@ export function BudgetComparisonChart({
   return (
     <div className="w-full">
       <ResponsiveContainer width="100%" height={350}>
-        <LineChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+        <LineChart data={chartData} margin={{ top: 20, right: 55, bottom: 20, left: 20 }}>
           <XAxis
             dataKey="month"
             tickFormatter={(value) => formatMonth(value)}
@@ -278,21 +278,19 @@ export function BudgetComparisonChart({
       </ResponsiveContainer>
 
       {/* Controls row */}
-      <div className="mt-4 flex items-center justify-between">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setHiddenCategories(new Set())}
-            className="cursor-pointer rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            Show All
-          </button>
-          <button
-            onClick={() => setHiddenCategories(new Set(sortedCategories.map((c) => c.id)))}
-            className="cursor-pointer rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            Hide All
-          </button>
-        </div>
+      <div className="mt-4 flex items-center justify-center gap-2">
+        <button
+          onClick={() => setHiddenCategories(new Set())}
+          className="cursor-pointer rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Show All
+        </button>
+        <button
+          onClick={() => setHiddenCategories(new Set(sortedCategories.map((c) => c.id)))}
+          className="cursor-pointer rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Hide All
+        </button>
         <button
           onClick={() => setShowBudget(!showBudget)}
           className={`flex cursor-pointer items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors ${
@@ -306,8 +304,8 @@ export function BudgetComparisonChart({
         </button>
       </div>
 
-      {/* Category legend - left aligned, sorted by spending */}
-      <div className="mt-3 flex flex-wrap gap-2">
+      {/* Category legend - centered, sorted by spending */}
+      <div className="mt-3 flex flex-wrap justify-center gap-2">
         {sortedCategories.map((cat) => {
           const isHidden = hiddenCategories.has(cat.id);
           const stats = categoryStats[cat.id];
@@ -342,10 +340,11 @@ export function BudgetComparisonChart({
         })}
       </div>
 
-      <p className="mt-3 text-xs text-muted-foreground">
-        Click categories to show/hide.
-        {hasFutureData && ' Data after "Now" is forecast.'}
-      </p>
+      {hasFutureData && (
+        <p className="mt-3 text-center text-xs text-muted-foreground">
+          Data after "Now" is forecast.
+        </p>
+      )}
     </div>
   );
 }
