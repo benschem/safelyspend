@@ -8,7 +8,6 @@ import {
   Landmark,
   CreditCard,
   Sprout,
-  HandCoins,
   TrendingUp,
   TrendingDown,
   ArrowRight,
@@ -371,7 +370,8 @@ export function SnapshotPage() {
 
       {/* Period Averages */}
       <div className="panel p-6">
-        <div className="flex items-center justify-between">
+        {/* Header - wraps on mobile */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
             {periodLabels[averagePeriod].title}
           </h2>
@@ -392,42 +392,44 @@ export function SnapshotPage() {
             ))}
           </div>
         </div>
-        <div className="mt-5 grid grid-cols-3 gap-6">
+
+        {/* Metrics - stacked on mobile, side-by-side on larger */}
+        <div className="mt-5 flex flex-col gap-4 sm:grid sm:grid-cols-3 sm:gap-6">
           {/* Income */}
-          <div>
+          <div className="flex items-center justify-between sm:block">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-green-500" />
               <span className="text-sm text-muted-foreground">Income</span>
             </div>
-            <p className="mt-1 text-2xl font-semibold">{formatCents(periodAverages.income)}</p>
+            <p className="text-lg font-semibold sm:mt-1 sm:text-2xl">{formatCents(periodAverages.income)}</p>
           </div>
 
           {/* Expenses */}
-          <div>
+          <div className="flex items-center justify-between sm:block">
             <div className="flex items-center gap-2">
               <TrendingDown className="h-4 w-4 text-red-500" />
               <span className="text-sm text-muted-foreground">Expenses</span>
             </div>
-            <p className="mt-1 text-2xl font-semibold">{formatCents(periodAverages.expenses)}</p>
+            <p className="text-lg font-semibold sm:mt-1 sm:text-2xl">{formatCents(periodAverages.expenses)}</p>
           </div>
 
           {/* Savings */}
-          <div>
+          <div className="flex items-center justify-between sm:block">
             <div className="flex items-center gap-2">
               <PiggyBank className="h-4 w-4 text-blue-500" />
               <span className="text-sm text-muted-foreground">Savings</span>
             </div>
-            <p className="mt-1 text-2xl font-semibold">{formatCents(periodAverages.savings)}</p>
+            <p className="text-lg font-semibold sm:mt-1 sm:text-2xl">{formatCents(periodAverages.savings)}</p>
           </div>
         </div>
 
         {/* Net per period */}
-        <div className="mt-5 flex items-center justify-between border-t pt-5">
-          <div className="flex items-center gap-2">
-            <HandCoins className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">{periodLabels[averagePeriod].net}</span>
-          </div>
-          <p className={`text-lg font-semibold ${periodAverages.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+        <div className="mt-5 border-t pt-5 text-center">
+          <span className="text-sm text-muted-foreground">{periodLabels[averagePeriod].net}</span>
+          <p className={cn(
+            'mt-1 text-2xl font-bold',
+            periodAverages.net >= 0 ? 'text-green-600' : 'text-red-600',
+          )}>
             {periodAverages.net >= 0 ? '+' : ''}{formatCents(periodAverages.net)}
           </p>
         </div>
