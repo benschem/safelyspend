@@ -247,15 +247,15 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <div className="mb-8">
-        <h1 className="flex items-center gap-3 text-3xl font-bold">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-500/10">
+    <div className="page-shell">
+      <div className="page-header">
+        <h1 className="page-title">
+          <div className="page-title-icon bg-gray-500/10">
             <Settings className="h-5 w-5 text-gray-500" />
           </div>
           Settings
         </h1>
-        <p className="mt-1 text-muted-foreground">Manage your data and preferences.</p>
+        <p className="page-description">Manage your data and preferences.</p>
       </div>
 
       {message && (
@@ -269,18 +269,18 @@ export function SettingsPage() {
 
       <div className="space-y-8">
         {/* Appearance Section */}
-        <section className="grid gap-4 lg:grid-cols-3 lg:gap-8">
-          <div className="lg:col-span-1">
-            <h2 className="text-lg font-semibold">Appearance</h2>
+        <section className="section">
+          <div className="section-header">
+            <h2>Appearance</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Customize how the app looks.
             </p>
           </div>
-          <div className="lg:col-span-2">
-            <div className="rounded-xl border bg-card">
+          <div className="section-content">
+            <div className="panel">
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="font-medium">Theme</h3>
+                  <h3>Theme</h3>
                   <p className="text-sm text-muted-foreground">Choose light, dark, or system theme.</p>
                 </div>
                 <ThemeToggle />
@@ -292,18 +292,18 @@ export function SettingsPage() {
         <Separator />
 
         {/* Data Management Section */}
-        <section className="grid gap-4 lg:grid-cols-3 lg:gap-8">
-          <div className="lg:col-span-1">
-            <h2 className="text-lg font-semibold">Data Management</h2>
+        <section className="section">
+          <div className="section-header">
+            <h2>Data Management</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Export, import, or delete your budget data.
             </p>
           </div>
-          <div className="space-y-3 lg:col-span-2">
-            <div className="rounded-xl border bg-card">
+          <div className="section-content space-y-3">
+            <div className="panel">
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="font-medium">Export Data</h3>
+                  <h3>Export Data</h3>
                   <p className="text-sm text-muted-foreground">Download all your budget data as JSON.</p>
                 </div>
                 <Button variant="outline" onClick={handleExportClick} className="w-full sm:w-auto">
@@ -314,7 +314,7 @@ export function SettingsPage() {
               <Separator />
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="font-medium">Import Data</h3>
+                  <h3>Import Data</h3>
                   <p className="text-sm text-muted-foreground">Restore from a JSON backup file.</p>
                 </div>
                 <Button variant="outline" onClick={handleImportClick} className="w-full sm:w-auto">
@@ -331,10 +331,10 @@ export function SettingsPage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-destructive/50 bg-card">
+            <div className="panel border-destructive/50">
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="font-medium text-destructive">Delete All Data</h3>
+                  <h3 className="text-destructive">Delete All Data</h3>
                   <p className="text-sm text-muted-foreground">Permanently delete all data and start fresh.</p>
                 </div>
                 <div className="flex gap-2">
@@ -356,9 +356,9 @@ export function SettingsPage() {
         <Separator />
 
         {/* Balance Anchors Section */}
-        <section className="grid gap-4 lg:grid-cols-3 lg:gap-8">
-          <div className="lg:col-span-1">
-            <h2 className="text-lg font-semibold">Balance Anchors</h2>
+        <section className="section">
+          <div className="section-header">
+            <h2>Balance Anchors</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Set your known balance at specific dates. Used as the baseline for balance calculations.
             </p>
@@ -367,19 +367,19 @@ export function SettingsPage() {
               still appear in spending reports.
             </p>
           </div>
-          <div className="lg:col-span-2">
-            <div className="rounded-xl border bg-card">
-              <div className="flex items-center justify-between border-b p-4">
-                <h3 className="font-medium">Your Anchors</h3>
+          <div className="section-content">
+            <div className="panel">
+              <div className="panel-header">
+                <h3>Your Anchors</h3>
                 <Button variant="outline" size="sm" onClick={openAddAnchor}>
                   <Plus className="h-4 w-4" />
                   Add
                 </Button>
               </div>
               {anchors.length === 0 ? (
-                <div className="p-6 text-center">
-                  <p className="text-muted-foreground">No balance anchors set.</p>
-                  <Button variant="outline" className="mt-4" onClick={openAddAnchor}>
+                <div className="empty-state">
+                  <p className="empty-state-text">No balance anchors set.</p>
+                  <Button variant="outline" className="empty-state-action" onClick={openAddAnchor}>
                     Add your first anchor
                   </Button>
                 </div>
@@ -433,20 +433,20 @@ export function SettingsPage() {
         <Separator />
 
         {/* Developer Section */}
-        <section className="grid gap-4 lg:grid-cols-3 lg:gap-8">
-          <div className="lg:col-span-1">
-            <h2 className="text-lg font-semibold">Developer</h2>
+        <section className="section">
+          <div className="section-header">
+            <h2>Developer</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Advanced options for debugging and troubleshooting.
             </p>
           </div>
-          <div className="lg:col-span-2">
-            <div className="rounded-xl border bg-card">
+          <div className="section-content">
+            <div className="panel">
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-3">
                   <Bug className="mt-0.5 h-5 w-5 text-muted-foreground" />
                   <div>
-                    <h3 className="font-medium">Debug Mode</h3>
+                    <h3>Debug Mode</h3>
                     <p className="text-sm text-muted-foreground">
                       Enable detailed logging to browser console. Can also be enabled via <code className="rounded bg-muted px-1 text-xs">?debug=1</code> URL parameter.
                     </p>

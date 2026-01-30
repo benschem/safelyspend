@@ -199,19 +199,19 @@ export function SnapshotPage() {
 
   if (!activeScenarioId || !activeScenario) {
     return (
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-8">
-          <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
+      <div className="page-shell">
+        <div className="page-header">
+          <h1 className="page-title">
+            <div className="page-title-icon bg-slate-500/10">
               <Camera className="h-5 w-5 text-slate-500" />
             </div>
             Snapshot
           </h1>
-          <p className="mt-1 text-muted-foreground">Your financial position right now</p>
+          <p className="page-description">Your financial position right now</p>
         </div>
-        <div className="rounded-lg border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">No scenario selected.</p>
-          <Button asChild className="mt-4">
+        <div className="empty-state">
+          <p className="empty-state-text">No scenario selected.</p>
+          <Button asChild className="empty-state-action">
             <Link to="/scenarios">Manage Scenarios</Link>
           </Button>
         </div>
@@ -220,16 +220,16 @@ export function SnapshotPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="page-shell">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="flex items-center gap-3 text-3xl font-bold">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
+      <div className="page-header">
+        <h1 className="page-title">
+          <div className="page-title-icon bg-slate-500/10">
             <Camera className="h-5 w-5 text-slate-500" />
           </div>
           Snapshot
         </h1>
-        <p className="mt-1 text-muted-foreground">Your financial position right now</p>
+        <p className="page-description">Your financial position right now</p>
       </div>
 
       {/* Balance warning banner */}
@@ -360,7 +360,7 @@ export function SnapshotPage() {
       </div>
 
       {/* Period Averages */}
-      <div className="rounded-xl border bg-card p-6">
+      <div className="panel p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
             {periodLabels[averagePeriod].title}
