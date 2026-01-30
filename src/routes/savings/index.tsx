@@ -7,6 +7,7 @@ import { PageLoading } from '@/components/page-loading';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useReportsData } from '@/hooks/use-reports-data';
+import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { SavingsGoalDialog } from '@/components/dialogs/savings-goal-dialog';
 import { SavingsGoalProgressCard } from '@/components/charts';
 import { formatCents } from '@/lib/utils';
@@ -23,6 +24,15 @@ export function SavingsIndexPage() {
   const { savingsGoals, isLoading: savingsLoading, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal } = useSavingsGoals();
   const { savingsTransactions, isLoading: transactionsLoading, addTransaction } = useTransactions(startDate, endDate);
   const { savingsByGoal, isLoading: reportsLoading } = useReportsData(activeScenarioId, startDate, endDate);
+  const { anchors } = useBalanceAnchors();
+
+  // Get the earliest anchor date (for determining if starting balances should be backdated)
+  const earliestAnchorDate = useMemo(() => {
+    if (anchors.length === 0) return null;
+    return anchors.reduce((earliest: string, anchor) =>
+      anchor.date < earliest ? anchor.date : earliest,
+    anchors[0]!.date);
+  }, [anchors]);
 
   const isLoading = savingsLoading || transactionsLoading || reportsLoading;
 
@@ -292,6 +302,7 @@ export function SavingsIndexPage() {
         deleteSavingsGoal={deleteSavingsGoal}
         addTransaction={addTransaction}
         transactionCount={editingGoal ? transactionCountByGoal[editingGoal.id] ?? 0 : 0}
+        earliestAnchorDate={earliestAnchorDate}
       />
     </div>
   );

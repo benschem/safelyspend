@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Ambulance, Trash2 } from 'lucide-react';
+import { Ambulance, Trash2, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Dialog,
   DialogContent,
@@ -24,15 +25,18 @@ interface SavingsGoalDialogProps {
   addTransaction: (data: CreateEntity<Transaction>) => Promise<Transaction>;
   /** Number of transactions linked to this goal, for delete warning */
   transactionCount?: number;
+  /** Earliest balance anchor date - used to determine if starting balance should be backdated */
+  earliestAnchorDate?: string | null;
 }
 
-export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal, addTransaction, transactionCount = 0 }: SavingsGoalDialogProps) {
+export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal, addTransaction, transactionCount = 0, earliestAnchorDate }: SavingsGoalDialogProps) {
   const isEditing = !!goal;
 
   // Form state
   const [name, setName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [startingBalance, setStartingBalance] = useState('');
+  const [balanceType, setBalanceType] = useState<'already-saved' | 'transfer-now'>('already-saved');
   const [deadline, setDeadline] = useState('');
   const [interestRate, setInterestRate] = useState('');
   const [isEmergencyFund, setIsEmergencyFund] = useState(false);
@@ -45,6 +49,7 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
         setName(goal.name);
         setTargetAmount((goal.targetAmountCents / 100).toFixed(2));
         setStartingBalance('');
+        setBalanceType('already-saved');
         setDeadline(goal.deadline ?? '');
         setInterestRate(goal.annualInterestRate?.toString() ?? '');
         setIsEmergencyFund(goal.isEmergencyFund ?? false);
@@ -52,6 +57,7 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
         setName('');
         setTargetAmount('');
         setStartingBalance('');
+        setBalanceType('already-saved');
         setDeadline('');
         setInterestRate('');
         setIsEmergencyFund(false);
@@ -110,11 +116,20 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
         // Create starting balance transaction if amount > 0
         const startingBalanceCents = parseCentsFromInput(startingBalance);
         if (startingBalanceCents > 0) {
+          // Determine the transaction date based on user's choice
+          let transactionDate = today();
+          if (balanceType === 'already-saved' && earliestAnchorDate) {
+            // Backdate to one day before the anchor so it doesn't affect checking balance
+            const anchorDate = new Date(earliestAnchorDate);
+            anchorDate.setDate(anchorDate.getDate() - 1);
+            transactionDate = anchorDate.toISOString().slice(0, 10);
+          }
+
           await addTransaction({
             type: 'savings',
-            date: today(),
+            date: transactionDate,
             amountCents: startingBalanceCents,
-            description: 'Starting balance',
+            description: balanceType === 'already-saved' ? 'Opening balance' : 'Transfer to savings',
             categoryId: null,
             savingsGoalId: newGoal.id,
           });
@@ -170,7 +185,7 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
             {!isEditing && (
               <div className="space-y-2">
                 <Label htmlFor="goal-starting" className="select-none">
-                  Starting Balance
+                  Current Balance
                   <span className="ml-1 font-normal text-muted-foreground">(opt.)</span>
                 </Label>
                 <Input
@@ -185,6 +200,36 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
               </div>
             )}
           </div>
+
+          {/* Balance type selector - only show when creating with a starting balance and anchor exists */}
+          {!isEditing && parseCentsFromInput(startingBalance) > 0 && earliestAnchorDate && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/50">
+              <div className="mb-2 flex items-start gap-2">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  Is this money you&apos;ve <strong>already saved</strong>, or are you <strong>transferring it now</strong> from your bank account?
+                </p>
+              </div>
+              <RadioGroup
+                value={balanceType}
+                onValueChange={(v) => setBalanceType(v as 'already-saved' | 'transfer-now')}
+                className="mt-2 space-y-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="already-saved" id="already-saved" />
+                  <Label htmlFor="already-saved" className="cursor-pointer font-normal">
+                    Already in savings account
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="transfer-now" id="transfer-now" />
+                  <Label htmlFor="transfer-now" className="cursor-pointer font-normal">
+                    Transferring from bank account now
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="goal-deadline" className="select-none">
