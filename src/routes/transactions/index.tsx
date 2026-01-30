@@ -19,7 +19,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
@@ -256,18 +255,6 @@ export function TransactionsIndexPage() {
               {categoryName}
             </Link>
           );
-        },
-      },
-      {
-        accessorKey: 'paymentMethod',
-        header: 'Method',
-        cell: ({ row }) => {
-          const method = row.original.paymentMethod;
-          if (!method) return <span className="text-muted-foreground">—</span>;
-          return <Badge variant="outline">{method}</Badge>;
-        },
-        meta: {
-          className: 'hidden lg:table-cell',
         },
       },
       {

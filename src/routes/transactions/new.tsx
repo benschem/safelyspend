@@ -7,7 +7,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { CategorySelect } from '@/components/category-select';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
-import { PaymentMethodSelect } from '@/components/payment-method-select';
 import { FormField, FormError } from '@/components/form-field';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { useTransactions } from '@/hooks/use-transactions';
@@ -32,7 +31,6 @@ export function TransactionNewPage() {
       categoryId: '',
       savingsGoalId: '',
       notes: '',
-      paymentMethod: '',
     },
     validators: {
       onSubmit: ({ value }) => {
@@ -69,9 +67,6 @@ export function TransactionNewPage() {
       };
       if (value.notes.trim()) {
         transactionData.notes = value.notes.trim();
-      }
-      if (value.paymentMethod) {
-        transactionData.paymentMethod = value.paymentMethod;
       }
       const transaction = await addTransaction(transactionData);
 
@@ -218,18 +213,6 @@ export function TransactionNewPage() {
             )
           }
         </form.Subscribe>
-
-        <form.Field name="paymentMethod">
-          {(field) => (
-            <FormField field={field} label="Payment Method" optional>
-              <PaymentMethodSelect
-                value={field.state.value}
-                onChange={(v) => field.handleChange(v)}
-                allowNone
-              />
-            </FormField>
-          )}
-        </form.Field>
 
         <form.Field name="notes">
           {(field) => (

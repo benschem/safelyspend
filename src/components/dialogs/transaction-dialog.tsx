@@ -19,7 +19,6 @@ import {
 } from '@/components/ui/select';
 import { CategorySelect } from '@/components/category-select';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
-import { PaymentMethodSelect } from '@/components/payment-method-select';
 import { cn, today, parseCentsFromInput } from '@/lib/utils';
 import type { Transaction, TransactionType, CreateEntity } from '@/lib/types';
 
@@ -42,7 +41,6 @@ export function TransactionDialog({ open, onOpenChange, transaction, addTransact
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [savingsGoalId, setSavingsGoalId] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('');
   const [notes, setNotes] = useState('');
   const [isWithdrawal, setIsWithdrawal] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -60,7 +58,6 @@ export function TransactionDialog({ open, onOpenChange, transaction, addTransact
         setIsWithdrawal(transaction.type === 'savings' && isNegative);
         setCategoryId(transaction.categoryId ?? '');
         setSavingsGoalId(transaction.savingsGoalId ?? '');
-        setPaymentMethod(transaction.paymentMethod ?? '');
         setNotes(transaction.notes ?? '');
       } else {
         setType('expense');
@@ -69,7 +66,6 @@ export function TransactionDialog({ open, onOpenChange, transaction, addTransact
         setAmount('');
         setCategoryId('');
         setSavingsGoalId('');
-        setPaymentMethod('');
         setNotes('');
         setIsWithdrawal(false);
       }
@@ -118,9 +114,6 @@ export function TransactionDialog({ open, onOpenChange, transaction, addTransact
 
     if (notes.trim()) {
       data.notes = notes.trim();
-    }
-    if (paymentMethod) {
-      data.paymentMethod = paymentMethod;
     }
 
     try {
@@ -260,18 +253,6 @@ export function TransactionDialog({ open, onOpenChange, transaction, addTransact
               />
             </div>
           )}
-
-          <div className="space-y-2">
-            <Label className="select-none">
-              Payment Method
-              <span className="ml-1 font-normal text-muted-foreground">(optional)</span>
-            </Label>
-            <PaymentMethodSelect
-              value={paymentMethod}
-              onChange={setPaymentMethod}
-              allowNone
-            />
-          </div>
 
           <div className="space-y-2">
             <Label htmlFor="tx-notes" className="select-none">
