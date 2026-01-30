@@ -28,8 +28,10 @@ export function ScenariosIndexPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Get rule counts per scenario
-  const allBudgetRules = useLiveQuery(() => db.budgetRules.toArray(), []) ?? [];
-  const allForecastRules = useLiveQuery(() => db.forecastRules.toArray(), []) ?? [];
+  const rawBudgetRules = useLiveQuery(() => db.budgetRules.toArray(), []);
+  const rawForecastRules = useLiveQuery(() => db.forecastRules.toArray(), []);
+  const allBudgetRules = useMemo(() => rawBudgetRules ?? [], [rawBudgetRules]);
+  const allForecastRules = useMemo(() => rawForecastRules ?? [], [rawForecastRules]);
 
   // Build scenario rows with counts
   const scenarioRows: ScenarioRow[] = useMemo(() => {

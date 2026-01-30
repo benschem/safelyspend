@@ -304,7 +304,7 @@ export function TransactionsIndexPage() {
         },
       },
     ],
-    [categories, deletingId, openEditDialog, handleDelete, getCategoryName],
+    [deletingId, openEditDialog, handleDelete, getCategoryName],
   );
 
   return (

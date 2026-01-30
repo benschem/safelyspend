@@ -77,8 +77,10 @@ export function ForecastIndexPage() {
   const [editingRule, setEditingRule] = useState<ForecastRule | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const getCategoryName = (id: string | null) =>
-    id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-';
+  const getCategoryName = useCallback(
+    (id: string | null) => (id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-'),
+    [categories],
+  );
 
   const filteredForecasts = useMemo(
     () => expandedForecasts.filter((f) => {
@@ -281,7 +283,7 @@ export function ForecastIndexPage() {
         },
       },
     ],
-    [categories, deletingId, openEditDialog, handleDelete],
+    [deletingId, openEditDialog, handleDelete, getCategoryName],
   );
 
   if (!activeScenarioId || !activeScenario) {

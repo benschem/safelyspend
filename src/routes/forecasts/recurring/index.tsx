@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useOutletContext, Link, useSearchParams } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
@@ -59,31 +59,35 @@ export function RecurringIndexPage() {
   // Active tab state
   const [activeTab, setActiveTab] = useState<TabValue | null>(null);
 
-  const openEditDialog = (rule: ForecastRule) => {
+  const openEditDialog = useCallback((rule: ForecastRule) => {
     setEditingRule(rule);
     setDialogOpen(true);
-  };
+  }, []);
 
-  const handleDialogClose = (open: boolean) => {
+  const handleDialogClose = useCallback((open: boolean) => {
     setDialogOpen(open);
     if (!open) {
       setEditingRule(null);
     }
-  };
+  }, []);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = useCallback((id: string) => {
     if (deletingId === id) {
       deleteRule(id);
       setDeletingId(null);
     } else {
       setDeletingId(id);
     }
-  };
+  }, [deletingId, deleteRule]);
 
-  const getCategoryName = (id: string | null) =>
-    id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-';
-  const getSavingsGoalName = (id: string | null) =>
-    id ? (savingsGoals.find((g) => g.id === id)?.name ?? 'Unknown') : '-';
+  const getCategoryName = useCallback(
+    (id: string | null) => (id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-'),
+    [categories],
+  );
+  const getSavingsGoalName = useCallback(
+    (id: string | null) => (id ? (savingsGoals.find((g) => g.id === id)?.name ?? 'Unknown') : '-'),
+    [savingsGoals],
+  );
 
   // Filter rules by category if specified (only affects expense rules which have categories)
   const filteredRules = useMemo(() => {
@@ -161,7 +165,7 @@ export function RecurringIndexPage() {
         },
       },
     ],
-    [deletingId],
+    [deletingId, openEditDialog, handleDelete],
   );
 
   const expenseColumns: ColumnDef<ForecastRule>[] = useMemo(
@@ -228,7 +232,7 @@ export function RecurringIndexPage() {
         },
       },
     ],
-    [categories, deletingId],
+    [deletingId, openEditDialog, handleDelete, getCategoryName],
   );
 
   const savingsColumns: ColumnDef<ForecastRule>[] = useMemo(
@@ -295,7 +299,7 @@ export function RecurringIndexPage() {
         },
       },
     ],
-    [savingsGoals, deletingId],
+    [deletingId, openEditDialog, handleDelete, getSavingsGoalName],
   );
 
   // Determine the effective tab (use state if set, otherwise default based on which has rules)
@@ -378,7 +382,7 @@ export function RecurringIndexPage() {
                     'inline-flex cursor-pointer items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all',
                     effectiveTab === tab.value
                       ? 'bg-background text-foreground shadow-sm'
-                      : 'hover:text-foreground'
+                      : 'hover:text-foreground',
                   )}
                 >
                   {tab.label} {tab.count > 0 && `(${tab.count})`}
