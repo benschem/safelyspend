@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Ambulance } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Ambulance, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,10 +27,13 @@ interface SavingsGoalDialogProps {
   goal?: SavingsGoal | null;
   addSavingsGoal: (data: CreateEntity<SavingsGoal>) => Promise<SavingsGoal>;
   updateSavingsGoal: (id: string, updates: Partial<Omit<SavingsGoal, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
+  deleteSavingsGoal?: (id: string) => void;
   addTransaction: (data: CreateEntity<Transaction>) => Promise<Transaction>;
+  /** Number of transactions linked to this goal, for delete warning */
+  transactionCount?: number;
 }
 
-export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, updateSavingsGoal, addTransaction }: SavingsGoalDialogProps) {
+export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal, addTransaction, transactionCount = 0 }: SavingsGoalDialogProps) {
   const isEditing = !!goal;
 
   // Form state
@@ -42,6 +45,7 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
   const [compoundingFrequency, setCompoundingFrequency] = useState<CompoundingFrequency>('monthly');
   const [isEmergencyFund, setIsEmergencyFund] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -63,8 +67,20 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
         setIsEmergencyFund(false);
       }
       setFormError(null);
+      setIsDeleting(false);
     }
   }, [open, goal]);
+
+  const handleDelete = useCallback(() => {
+    if (!goal || !deleteSavingsGoal) return;
+
+    if (isDeleting) {
+      deleteSavingsGoal(goal.id);
+      onOpenChange(false);
+    } else {
+      setIsDeleting(true);
+    }
+  }, [goal, deleteSavingsGoal, isDeleting, onOpenChange]);
 
   const handleSave = async () => {
     setFormError(null);
@@ -248,13 +264,28 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
             )}
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave}>
-              {isEditing ? 'Save' : 'Create'} Goal
-            </Button>
+          <div className="flex items-center justify-between gap-3 pt-2">
+            {isEditing && deleteSavingsGoal ? (
+              <Button
+                variant={isDeleting ? 'destructive' : 'ghost'}
+                onClick={handleDelete}
+                onBlur={() => setTimeout(() => setIsDeleting(false), 200)}
+                className="gap-1.5"
+              >
+                <Trash2 className="h-4 w-4" />
+                {isDeleting ? (transactionCount > 0 ? `Delete with ${transactionCount} txn?` : 'Confirm delete') : 'Delete'}
+              </Button>
+            ) : (
+              <div />
+            )}
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSave}>
+                {isEditing ? 'Save' : 'Create'} Goal
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
