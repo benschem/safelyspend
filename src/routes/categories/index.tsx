@@ -1,12 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Link, useOutletContext } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert } from '@/components/ui/alert';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Pencil, Trash2, Check, X, Archive, ArchiveRestore, Settings2, Tags } from 'lucide-react';
+import { Plus, Pencil, Trash2, Archive, ArchiveRestore, Settings2, Tags } from 'lucide-react';
 import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
@@ -23,9 +22,8 @@ export function CategoriesIndexPage() {
   const { allTransactions } = useTransactions();
   const { rules: forecastRules } = useForecasts(activeScenarioId);
 
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Compute transaction counts per category
@@ -56,30 +54,31 @@ export function CategoriesIndexPage() {
     [categories],
   );
 
-  const startEditing = (id: string, currentName: string) => {
-    setEditingId(id);
-    setEditName(currentName);
-  };
+  const openAddDialog = useCallback(() => {
+    setEditingCategory(null);
+    setDialogOpen(true);
+  }, []);
 
-  const saveEdit = (id: string) => {
-    if (!editName.trim()) return;
-    updateCategory(id, { name: editName.trim() });
-    setEditingId(null);
-  };
+  const openEditDialog = useCallback((category: Category) => {
+    setEditingCategory(category);
+    setDialogOpen(true);
+  }, []);
 
-  const cancelEdit = () => {
-    setEditingId(null);
-    setEditName('');
-  };
+  const handleDialogClose = useCallback((open: boolean) => {
+    setDialogOpen(open);
+    if (!open) {
+      setEditingCategory(null);
+    }
+  }, []);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = useCallback((id: string) => {
     if (deletingId === id) {
       deleteCategory(id);
       setDeletingId(null);
     } else {
       setDeletingId(id);
     }
-  };
+  }, [deletingId, deleteCategory]);
 
   const columns: ColumnDef<Category>[] = useMemo(
     () => [
@@ -88,33 +87,15 @@ export function CategoriesIndexPage() {
         header: ({ column }) => <SortableHeader column={column}>Name</SortableHeader>,
         cell: ({ row }) => {
           const category = row.original;
-          const isEditing = editingId === category.id;
-
-          if (isEditing) {
-            return (
-              <div className="flex items-center gap-2">
-                <Input
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="h-8 w-48"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') saveEdit(category.id);
-                    if (e.key === 'Escape') cancelEdit();
-                  }}
-                  // eslint-disable-next-line jsx-a11y/no-autofocus -- Expected behaviour when entering edit mode
-                  autoFocus
-                />
-                <Button size="sm" variant="ghost" onClick={() => saveEdit(category.id)} title="Save">
-                  <Check className="h-4 w-4" />
-                </Button>
-                <Button size="sm" variant="ghost" onClick={cancelEdit} title="Cancel">
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            );
-          }
-
-          return <span className="font-medium">{category.name}</span>;
+          return (
+            <button
+              type="button"
+              onClick={() => openEditDialog(category)}
+              className="cursor-pointer text-left font-medium hover:underline"
+            >
+              {category.name}
+            </button>
+          );
         },
       },
       {
@@ -167,18 +148,15 @@ export function CategoriesIndexPage() {
         id: 'actions',
         cell: ({ row }) => {
           const category = row.original;
-          const isEditing = editingId === category.id;
           const isDeleting = deletingId === category.id;
           const isArchived = category.isArchived;
-
-          if (isEditing) return null;
 
           return (
             <div className="flex justify-end gap-1">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => startEditing(category.id, category.name)}
+                onClick={() => openEditDialog(category)}
                 title="Edit"
               >
                 <Pencil className="h-4 w-4" />
@@ -205,7 +183,7 @@ export function CategoriesIndexPage() {
         },
       },
     ],
-    [editingId, editName, deletingId, updateCategory, transactionCounts, forecastCounts],
+    [deletingId, updateCategory, transactionCounts, forecastCounts, openEditDialog, handleDelete],
   );
 
   return (
@@ -221,7 +199,7 @@ export function CategoriesIndexPage() {
           <p className="mt-1 text-muted-foreground">Organise your expenses by category.</p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <Button onClick={() => setAddDialogOpen(true)}>
+          <Button onClick={openAddDialog}>
             <Plus className="h-4 w-4" />
             Add Category
           </Button>
@@ -241,7 +219,7 @@ export function CategoriesIndexPage() {
           </Alert>
           <div className="rounded-lg border border-dashed p-8 text-center">
             <p className="text-muted-foreground">No categories yet.</p>
-            <Button onClick={() => setAddDialogOpen(true)} className="mt-4">
+            <Button onClick={openAddDialog} className="mt-4">
               Add your first category
             </Button>
           </div>
@@ -259,9 +237,9 @@ export function CategoriesIndexPage() {
       )}
 
       <CategoryDialog
-        open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
-        category={null}
+        open={dialogOpen}
+        onOpenChange={handleDialogClose}
+        category={editingCategory}
         addCategory={addCategory}
         updateCategory={updateCategory}
       />
