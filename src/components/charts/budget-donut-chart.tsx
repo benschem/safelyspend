@@ -103,6 +103,7 @@ export function BudgetDonutChart({
                       </text>
                     );
                   }
+                  return null;
                 }}
               />
             </Pie>

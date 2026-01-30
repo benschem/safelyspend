@@ -33,21 +33,21 @@ describe('sanitizeObject', () => {
   it('removes __proto__ keys', () => {
     const malicious = JSON.parse('{"name": "test", "__proto__": {"admin": true}}');
     const result = sanitizeObject(malicious) as Record<string, unknown>;
-    expect(result.name).toBe('test');
+    expect(result['name']).toBe('test');
     expect(Object.hasOwn(result, '__proto__')).toBe(false);
   });
 
   it('removes constructor keys', () => {
     const malicious = { name: 'test', constructor: { evil: true } };
     const result = sanitizeObject(malicious) as Record<string, unknown>;
-    expect(result.name).toBe('test');
+    expect(result['name']).toBe('test');
     expect(Object.hasOwn(result, 'constructor')).toBe(false);
   });
 
   it('removes prototype keys', () => {
     const malicious = { name: 'test', prototype: { evil: true } };
     const result = sanitizeObject(malicious) as Record<string, unknown>;
-    expect(result.name).toBe('test');
+    expect(result['name']).toBe('test');
     expect(Object.hasOwn(result, 'prototype')).toBe(false);
   });
 
@@ -68,7 +68,7 @@ describe('sanitizeObject', () => {
   it('sanitizes arrays containing objects', () => {
     const malicious = [{ __proto__: { evil: true }, name: 'test' }];
     const result = sanitizeObject(malicious) as Array<Record<string, unknown>>;
-    expect(result[0]!.name).toBe('test');
+    expect(result[0]!['name']).toBe('test');
     expect(Object.hasOwn(result[0]!, '__proto__')).toBe(false);
   });
 });
@@ -251,7 +251,7 @@ describe('validateImport', () => {
     // Should not throw - sanitization happens first
     const result = validateImport(malicious);
     expect(result).toBeDefined();
-    expect((result as Record<string, unknown>).isAdmin).toBeUndefined();
+    expect((result as Record<string, unknown>)['isAdmin']).toBeUndefined();
   });
 });
 

@@ -69,6 +69,7 @@ export function SavingsDonutChart({
                       </text>
                     );
                   }
+                  return null;
                 }}
               />
             </Pie>

@@ -23,11 +23,11 @@ export class PageErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     debug.error('ui', 'Page error caught by boundary', { error: error.message, stack: error.stack, componentStack: errorInfo.componentStack });
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <div className="flex min-h-[50vh] flex-col items-center justify-center p-8 text-center">
