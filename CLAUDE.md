@@ -155,6 +155,35 @@ Key principles:
 - No arrow for cards that open dialogs/modals
 - Use `group` class to show/hide arrow on hover
 
+#### Interactive Elements
+
+**All clickable elements must have `cursor-pointer`** to provide clear visual feedback that the element is interactive. This applies to:
+- Native `<button>` elements (add `cursor-pointer` class explicitly)
+- Icons with `onClick` handlers
+- Custom toggle buttons, legend items, tab controls
+- Any element that responds to click events
+
+Exception: shadcn `<Button>` component and `<Link>` elements already have proper cursor styling built-in.
+
+```tsx
+// Native button - always add cursor-pointer
+<button
+  onClick={handleClick}
+  className="cursor-pointer rounded px-2 py-1 hover:bg-muted"
+>
+  Click me
+</button>
+
+// Icon with onClick - add cursor-pointer
+<X
+  className="h-4 w-4 cursor-pointer opacity-50 hover:opacity-100"
+  onClick={handleClose}
+/>
+
+// shadcn Button - cursor-pointer is built-in (no need to add)
+<Button onClick={handleClick}>Click me</Button>
+```
+
 ### Conventions
 
 - All money amounts stored as cents, displayed with `formatCents()`
