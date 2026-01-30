@@ -4,6 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert } from '@/components/ui/alert';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus, Pencil, Trash2, Archive, ArchiveRestore, Settings2, Tags } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
@@ -185,17 +186,36 @@ export function CategoriesIndexPage() {
               >
                 {isArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
               </Button>
-              <Button
-                variant={isDeleting ? 'destructive' : 'ghost'}
-                size="sm"
-                onClick={() => handleDelete(category.id)}
-                onBlur={() => setTimeout(() => setDeletingId(null), 200)}
-                aria-label={isDeleting ? 'Confirm delete' : 'Delete category'}
-                title={hasReferences(category.id) ? `Archive instead - used by ${getReferenceText(category.id)}` : undefined}
-                disabled={hasReferences(category.id)}
-              >
-                {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
-              </Button>
+              {hasReferences(category.id) ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-block">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled
+                        className="pointer-events-none"
+                        aria-label="Delete category (disabled)"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Archive instead — used by {getReferenceText(category.id)}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <Button
+                  variant={isDeleting ? 'destructive' : 'ghost'}
+                  size="sm"
+                  onClick={() => handleDelete(category.id)}
+                  onBlur={() => setTimeout(() => setDeletingId(null), 200)}
+                  aria-label={isDeleting ? 'Confirm delete' : 'Delete category'}
+                >
+                  {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+                </Button>
+              )}
             </div>
           );
         },
