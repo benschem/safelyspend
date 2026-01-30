@@ -16,6 +16,7 @@ import {
   Ambulance,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PageLoading } from '@/components/page-loading';
 
 type AveragePeriod = 'fortnightly' | 'monthly' | 'yearly';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -85,7 +86,7 @@ export function SnapshotPage() {
   const today = new Date().toISOString().slice(0, 10);
 
   // Get all transactions for calculations
-  const { allTransactions } = useTransactions();
+  const { allTransactions, isLoading: transactionsLoading } = useTransactions();
 
   // Calculate total savings (all time)
   const totalSavings = useMemo(() => {
@@ -95,7 +96,9 @@ export function SnapshotPage() {
   }, [allTransactions]);
 
   // Get emergency fund and calculate its balance
-  const { emergencyFund } = useSavingsGoals();
+  const { emergencyFund, isLoading: savingsLoading } = useSavingsGoals();
+
+  const isLoading = transactionsLoading || savingsLoading;
   const emergencyFundBalance = useMemo(() => {
     if (!emergencyFund) return null;
     return allTransactions
@@ -196,6 +199,15 @@ export function SnapshotPage() {
     monthly: { title: 'Monthly Average', net: 'Net per month' },
     yearly: { title: 'Yearly Average', net: 'Net per year' },
   };
+
+  // Show loading spinner while data is being fetched
+  if (isLoading) {
+    return (
+      <div className="page-shell">
+        <PageLoading />
+      </div>
+    );
+  }
 
   if (!activeScenarioId || !activeScenario) {
     return (

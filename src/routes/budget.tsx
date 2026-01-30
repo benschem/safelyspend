@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
+import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetPeriodData } from '@/hooks/use-budget-period-data';
@@ -46,6 +47,7 @@ export function BudgetPage() {
     isCurrentPeriod,
     isFuturePeriod,
     isPastPeriod,
+    isLoading,
     periodCashFlow,
     summary,
     periodSpending,
@@ -88,6 +90,15 @@ export function BudgetPage() {
   };
 
   const selectedMonthIndex = selectedMonth.getMonth();
+
+  // Show loading spinner while data is being fetched
+  if (isLoading) {
+    return (
+      <div className="page-shell">
+        <PageLoading />
+      </div>
+    );
+  }
 
   if (!activeScenarioId || !activeScenario) {
     return (

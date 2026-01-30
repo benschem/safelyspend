@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus, Repeat, Settings2, Pencil, Trash2, Telescope, RotateCcw, TrendingUp, TrendingDown, PiggyBank } from 'lucide-react';
+import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useForecasts } from '@/hooks/use-forecasts';
@@ -37,8 +38,8 @@ const getDefaultEndDate = () => '';
 export function ForecastIndexPage() {
   const [searchParams] = useSearchParams();
   const { activeScenarioId } = useOutletContext<OutletContext>();
-  const { activeScenario } = useScenarios();
-  const { categories, activeCategories } = useCategories();
+  const { activeScenario, isLoading: scenariosLoading } = useScenarios();
+  const { categories, activeCategories, isLoading: categoriesLoading } = useCategories();
 
   // Date filter - defaults to today onwards
   const [filterStartDate, setFilterStartDate] = useState(getDefaultStartDate);
@@ -58,7 +59,10 @@ export function ForecastIndexPage() {
   const queryStartDate = filterStartDate || defaultStart;
   const queryEndDate = filterEndDate || defaultEnd;
 
-  const { expandedForecasts, rules, events, addRule, updateRule, deleteRule, addEvent, updateEvent, deleteEvent } = useForecasts(activeScenarioId, queryStartDate, queryEndDate);
+  const { expandedForecasts, rules, events, isLoading: forecastsLoading, addRule, updateRule, deleteRule, addEvent, updateEvent, deleteEvent } = useForecasts(activeScenarioId, queryStartDate, queryEndDate);
+
+  // Combined loading state from all data hooks
+  const isLoading = scenariosLoading || categoriesLoading || forecastsLoading;
 
   // Check if any forecasts exist at all (rules or events)
   const hasAnyForecasts = rules.length > 0 || events.length > 0;
@@ -285,6 +289,15 @@ export function ForecastIndexPage() {
     ],
     [deletingId, openEditDialog, handleDelete, getCategoryName],
   );
+
+  // Show loading spinner while data is being fetched
+  if (isLoading) {
+    return (
+      <div className="page-shell">
+        <PageLoading />
+      </div>
+    );
+  }
 
   if (!activeScenarioId || !activeScenario) {
     return (

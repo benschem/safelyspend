@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus, ArrowLeft, Pencil, Trash2, RefreshCw } from 'lucide-react';
+import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
@@ -42,10 +43,13 @@ type TabValue = 'income' | 'expenses' | 'savings';
 export function RecurringIndexPage() {
   const [searchParams] = useSearchParams();
   const { activeScenarioId } = useOutletContext<OutletContext>();
-  const { activeScenario } = useScenarios();
-  const { rules, addRule, updateRule, deleteRule } = useForecasts(activeScenarioId);
-  const { categories, activeCategories } = useCategories();
-  const { savingsGoals } = useSavingsGoals();
+  const { activeScenario, isLoading: scenariosLoading } = useScenarios();
+  const { rules, isLoading: forecastsLoading, addRule, updateRule, deleteRule } = useForecasts(activeScenarioId);
+  const { categories, activeCategories, isLoading: categoriesLoading } = useCategories();
+  const { savingsGoals, isLoading: savingsLoading } = useSavingsGoals();
+
+  // Combined loading state from all data hooks
+  const isLoading = scenariosLoading || forecastsLoading || categoriesLoading || savingsLoading;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<ForecastRule | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -305,6 +309,15 @@ export function RecurringIndexPage() {
   // Determine the effective tab (use state if set, otherwise default based on which has rules)
   const defaultTab: TabValue = incomeRules.length > 0 ? 'income' : expenseRules.length > 0 ? 'expenses' : 'savings';
   const effectiveTab = activeTab ?? defaultTab;
+
+  // Show loading spinner while data is being fetched
+  if (isLoading) {
+    return (
+      <div className="page-shell">
+        <PageLoading />
+      </div>
+    );
+  }
 
   if (!activeScenarioId || !activeScenario) {
     return (

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert } from '@/components/ui/alert';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus, Pencil, Trash2, Archive, ArchiveRestore, Settings2, Tags } from 'lucide-react';
+import { PageLoading } from '@/components/page-loading';
 import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
@@ -18,9 +19,12 @@ interface OutletContext {
 
 export function CategoriesIndexPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
-  const { categories, addCategory, updateCategory, deleteCategory } = useCategories();
-  const { allTransactions } = useTransactions();
-  const { rules: forecastRules } = useForecasts(activeScenarioId);
+  const { categories, isLoading: categoriesLoading, addCategory, updateCategory, deleteCategory } = useCategories();
+  const { allTransactions, isLoading: transactionsLoading } = useTransactions();
+  const { rules: forecastRules, isLoading: forecastsLoading } = useForecasts(activeScenarioId);
+
+  // Combined loading state from all data hooks
+  const isLoading = categoriesLoading || transactionsLoading || forecastsLoading;
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -228,7 +232,9 @@ export function CategoriesIndexPage() {
         </div>
       </div>
 
-      {categories.length === 0 ? (
+      {isLoading ? (
+        <PageLoading />
+      ) : categories.length === 0 ? (
         <div className="space-y-4">
           <Alert variant="info">
             Create categories like groceries, transport, or entertainment to see where your money goes.

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus, Pencil, Trash2, PiggyBank, Ambulance } from 'lucide-react';
+import { PageLoading } from '@/components/page-loading';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useTransactions } from '@/hooks/use-transactions';
 import { SavingsGoalDialog } from '@/components/dialogs/savings-goal-dialog';
@@ -24,8 +25,11 @@ interface SavingsGoalRow extends SavingsGoal {
 
 export function SavingsIndexPage() {
   const { startDate, endDate } = useOutletContext<OutletContext>();
-  const { savingsGoals, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal } = useSavingsGoals();
-  const { savingsTransactions, addTransaction } = useTransactions(startDate, endDate);
+  const { savingsGoals, isLoading: savingsLoading, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal } = useSavingsGoals();
+  const { savingsTransactions, isLoading: transactionsLoading, addTransaction } = useTransactions(startDate, endDate);
+
+  // Combined loading state from all data hooks
+  const isLoading = savingsLoading || transactionsLoading;
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
@@ -249,7 +253,9 @@ export function SavingsIndexPage() {
         </Button>
       </div>
 
-      {savingsGoals.length === 0 ? (
+      {isLoading ? (
+        <PageLoading />
+      ) : savingsGoals.length === 0 ? (
         <div className="space-y-4">
           <Alert variant="info">
             Set goals for emergencies, holidays, or big purchases and watch your savings grow.

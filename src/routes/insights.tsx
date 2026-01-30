@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useOutletContext, useSearchParams } from 'react-router';
 import { ChartSpline } from 'lucide-react';
+import { PageLoading } from '@/components/page-loading';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useReportsData } from '@/hooks/use-reports-data';
 import { useViewState } from '@/hooks/use-view-state';
@@ -90,6 +91,7 @@ export function InsightsPage() {
   const { emergencyFund } = useSavingsGoals();
 
   const {
+    isLoading,
     monthlyBudgetComparison,
     budgetCategories,
     monthlyNetFlow,
@@ -267,15 +269,15 @@ export function InsightsPage() {
       </div>
 
       {/* Content sections */}
-      {activeTab === 'spending' && (
+      {isLoading ? (
+        <PageLoading />
+      ) : activeTab === 'spending' ? (
         <BudgetComparisonChart
           monthlyBudgetComparison={monthlyBudgetComparison}
           budgetCategories={budgetCategories}
           colorMap={categoryColorMap}
         />
-      )}
-
-      {activeTab === 'cashflow' && (
+      ) : activeTab === 'cashflow' ? (
         <div className="space-y-4">
           {balanceInfo.warning && (
             <Alert variant="warning">
@@ -294,9 +296,7 @@ export function InsightsPage() {
             balanceStartMonth={balanceInfo.balanceStartMonth}
           />
         </div>
-      )}
-
-      {activeTab === 'savings' && (
+      ) : activeTab === 'savings' ? (
         <div className="space-y-6">
           <div className="flex items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">
@@ -361,7 +361,7 @@ export function InsightsPage() {
             </div>
           )}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -27,6 +27,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Plus, Pencil, Trash2, Download, AlertTriangle, Receipt, RotateCcw, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, Settings2 } from 'lucide-react';
+import { PageLoading } from '@/components/page-loading';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
 import { useCategoryRules } from '@/hooks/use-category-rules';
@@ -55,12 +56,15 @@ export function TransactionsIndexPage() {
   const queryStartDate = filterStartDate || undefined;
   const queryEndDate = filterEndDate || undefined;
 
-  const { transactions, allTransactions, addTransaction, updateTransaction, deleteTransaction } = useTransactions(queryStartDate, queryEndDate);
+  const { transactions, allTransactions, isLoading: transactionsLoading, addTransaction, updateTransaction, deleteTransaction } = useTransactions(queryStartDate, queryEndDate);
+  const { categories, activeCategories, isLoading: categoriesLoading } = useCategories();
+  const { rules: categoryRules } = useCategoryRules();
+
+  // Combined loading state from all data hooks
+  const isLoading = transactionsLoading || categoriesLoading;
 
   // Check if any transactions exist at all
   const hasAnyTransactions = allTransactions.length > 0;
-  const { categories, activeCategories } = useCategories();
-  const { rules: categoryRules } = useCategoryRules();
 
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [filterCategory, setFilterCategory] = useState<CategoryFilter>('all');
@@ -339,7 +343,9 @@ export function TransactionsIndexPage() {
         </div>
       </div>
 
-      {!hasAnyTransactions ? (
+      {isLoading ? (
+        <PageLoading />
+      ) : !hasAnyTransactions ? (
         <div className="space-y-4">
           <Alert variant="info">
             Record transactions here to track your spending against your budget and see your real financial position.

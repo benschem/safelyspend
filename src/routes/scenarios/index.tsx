@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Button } from '@/components/ui/button';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus, Pencil, Trash2, Star, Layers } from 'lucide-react';
+import { PageLoading } from '@/components/page-loading';
 import { Alert } from '@/components/ui/alert';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
@@ -18,7 +19,7 @@ interface ScenarioRow extends Scenario {
 }
 
 export function ScenariosIndexPage() {
-  const { scenarios, addScenario, updateScenario, deleteScenario } = useScenarios();
+  const { scenarios, isLoading: scenariosLoading, addScenario, updateScenario, deleteScenario } = useScenarios();
   const { duplicateToScenario: duplicateForecastsToScenario } = useForecasts(null);
   const { duplicateToScenario: duplicateBudgetsToScenario } = useBudgetRules(null);
 
@@ -32,6 +33,9 @@ export function ScenariosIndexPage() {
   const rawForecastRules = useLiveQuery(() => db.forecastRules.toArray(), []);
   const allBudgetRules = useMemo(() => rawBudgetRules ?? [], [rawBudgetRules]);
   const allForecastRules = useMemo(() => rawForecastRules ?? [], [rawForecastRules]);
+
+  // Combined loading state from all data hooks
+  const isLoading = scenariosLoading || rawBudgetRules === undefined || rawForecastRules === undefined;
 
   // Build scenario rows with counts
   const scenarioRows: ScenarioRow[] = useMemo(() => {
@@ -228,7 +232,9 @@ export function ScenariosIndexPage() {
         Switching scenarios changes your budget and forecasts. Your past transactions and categories stay the same.
       </Alert>
 
-      {scenarios.length === 0 ? (
+      {isLoading ? (
+        <PageLoading />
+      ) : scenarios.length === 0 ? (
         <div className="mt-6 empty-state">
           <p className="empty-state-text">No scenarios yet.</p>
           <Button className="empty-state-action" onClick={openAddDialog}>

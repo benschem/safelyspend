@@ -6,6 +6,7 @@ import { Alert } from '@/components/ui/alert';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Switch } from '@/components/ui/switch';
 import { Pencil, Trash2, Plus, Target } from 'lucide-react';
+import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
@@ -157,10 +158,12 @@ function getStatusTextColor(status: 'over' | 'overspending' | 'watch' | 'good' |
 export function SpendingLimitsPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
-  const { activeCategories, addCategory } = useCategories();
+  const { activeCategories, isLoading: categoriesLoading, addCategory } = useCategories();
   const { allTransactions } = useTransactions();
-  const { getRuleForCategory, setBudgetForCategory, deleteBudgetRule } =
+  const { getRuleForCategory, isLoading: budgetLoading, setBudgetForCategory, deleteBudgetRule } =
     useBudgetRules(activeScenarioId);
+
+  const isLoading = categoriesLoading || budgetLoading;
 
   const remainingPeriodRanges = useMemo(() => {
     const ranges: Record<Cadence, { start: string; end: string }> = {
@@ -584,6 +587,15 @@ export function SpendingLimitsPage() {
     ],
     [deletingId, openEditDialog, handleDelete],
   );
+
+  // Show loading spinner while data is being fetched
+  if (isLoading) {
+    return (
+      <div className="page-shell">
+        <PageLoading />
+      </div>
+    );
+  }
 
   if (!activeScenarioId || !activeScenario) {
     return (
