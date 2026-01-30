@@ -485,7 +485,7 @@ export function BudgetPage() {
                   )}
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Saved {pct}% of {formatCents(periodCashFlow.savings.expected)} planned
+                  {pct}% of {formatCents(periodCashFlow.savings.expected)} planned
                 </p>
               </>
             );
@@ -635,7 +635,7 @@ export function BudgetPage() {
                   key={scenario.id}
                   onClick={() => setActiveScenarioId(scenario.id)}
                   className={cn(
-                    'rounded-lg border p-4 text-left transition-colors',
+                    'cursor-pointer rounded-lg border p-4 text-left transition-colors',
                     isActive
                       ? 'border-primary bg-primary/5'
                       : 'hover:bg-muted/50',

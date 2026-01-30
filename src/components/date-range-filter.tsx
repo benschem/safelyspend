@@ -47,7 +47,7 @@ export function DateRangeFilter({
           <span className="truncate">{getDisplayText()}</span>
           {hasFilter && (
             <X
-              className="ml-auto h-4 w-4 shrink-0 opacity-50 hover:opacity-100"
+              className="ml-auto h-4 w-4 shrink-0 cursor-pointer opacity-50 hover:opacity-100"
               onClick={(e) => {
                 e.stopPropagation();
                 onClear();

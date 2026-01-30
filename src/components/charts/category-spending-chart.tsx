@@ -266,7 +266,7 @@ export function CategorySpendingChart({
       <div className="mt-4 flex justify-center gap-2">
         <button
           onClick={() => setHiddenCategories(new Set())}
-          className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="cursor-pointer rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           Select All
         </button>
@@ -276,7 +276,7 @@ export function CategorySpendingChart({
             if (hasUncategorized) allIds.add('uncategorized');
             setHiddenCategories(allIds);
           }}
-          className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="cursor-pointer rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           Deselect All
         </button>
@@ -291,7 +291,7 @@ export function CategorySpendingChart({
             <button
               key={cat.id}
               onClick={() => toggleCategory(cat.id)}
-              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all hover:bg-muted ${
+              className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all hover:bg-muted ${
                 isHidden ? 'opacity-40' : ''
               }`}
             >
@@ -309,7 +309,7 @@ export function CategorySpendingChart({
         {hasUncategorized && (
           <button
             onClick={() => toggleCategory('uncategorized')}
-            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all hover:bg-muted ${
+            className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all hover:bg-muted ${
               hiddenCategories.has('uncategorized') ? 'opacity-40' : ''
             }`}
           >

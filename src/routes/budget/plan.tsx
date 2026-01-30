@@ -195,7 +195,7 @@ export function BudgetPlanPage() {
               <button
                 type="button"
                 onClick={() => openEditDialog(budgetRow)}
-                className="text-right text-sm text-muted-foreground hover:text-foreground"
+                className="cursor-pointer text-right text-sm text-muted-foreground hover:text-foreground"
               >
                 Set limit
               </button>

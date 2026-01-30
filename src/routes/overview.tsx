@@ -381,7 +381,7 @@ export function SnapshotPage() {
                 key={period}
                 onClick={() => setAveragePeriod(period)}
                 className={cn(
-                  'rounded-md px-3 py-1 text-xs font-medium transition-colors',
+                  'cursor-pointer rounded-md px-3 py-1 text-xs font-medium transition-colors',
                   averagePeriod === period
                     ? 'bg-background text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground',

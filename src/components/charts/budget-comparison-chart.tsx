@@ -282,20 +282,20 @@ export function BudgetComparisonChart({
         <div className="flex gap-2">
           <button
             onClick={() => setHiddenCategories(new Set())}
-            className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="cursor-pointer rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             Show All
           </button>
           <button
             onClick={() => setHiddenCategories(new Set(sortedCategories.map((c) => c.id)))}
-            className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="cursor-pointer rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             Hide All
           </button>
         </div>
         <button
           onClick={() => setShowBudget(!showBudget)}
-          className={`flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors ${
+          className={`flex cursor-pointer items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors ${
             showBudget
               ? 'bg-muted text-foreground'
               : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -317,7 +317,7 @@ export function BudgetComparisonChart({
             <button
               key={cat.id}
               onClick={() => toggleCategory(cat.id)}
-              className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm transition-all hover:bg-muted ${
+              className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm transition-all hover:bg-muted ${
                 isHidden ? 'opacity-40' : ''
               }`}
             >

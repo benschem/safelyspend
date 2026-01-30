@@ -119,7 +119,7 @@ export function RecurringIndexPage() {
           <button
             type="button"
             onClick={() => openEditDialog(row.original)}
-            className="font-medium hover:underline text-left"
+            className="cursor-pointer font-medium hover:underline text-left"
           >
             {row.getValue('description')}
           </button>
@@ -181,7 +181,7 @@ export function RecurringIndexPage() {
           <button
             type="button"
             onClick={() => openEditDialog(row.original)}
-            className="font-medium hover:underline text-left"
+            className="cursor-pointer font-medium hover:underline text-left"
           >
             {row.getValue('description')}
           </button>
@@ -248,7 +248,7 @@ export function RecurringIndexPage() {
           <button
             type="button"
             onClick={() => openEditDialog(row.original)}
-            className="font-medium hover:underline text-left"
+            className="cursor-pointer font-medium hover:underline text-left"
           >
             {row.getValue('description')}
           </button>
