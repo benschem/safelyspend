@@ -16,7 +16,6 @@ import {
   TrendingUp,
   TrendingDown,
   Receipt,
-  CircleAlert,
   Tags,
   ChevronLeft,
   ChevronRight,
@@ -352,7 +351,7 @@ export function BudgetPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {/* Income / Projected Income */}
         <div className="rounded-xl border bg-card p-5">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/10">
@@ -408,7 +407,7 @@ export function BudgetPage() {
             {isFuturePeriod ? 'Planned Spending' : 'Spent'}
           </p>
           <p className="mt-1 text-xl font-semibold">
-            {formatCents(isFuturePeriod ? periodCashFlow.budgeted.expected : periodCashFlow.budgeted.actual)}
+            {formatCents(isFuturePeriod ? periodCashFlow.budgeted.expected : periodCashFlow.expenses.actual)}
           </p>
           <div className="mt-3 mb-3 h-px bg-border" />
           {isFuturePeriod ? (
@@ -416,8 +415,11 @@ export function BudgetPage() {
               Based on budget
             </p>
           ) : (() => {
-            const pct = periodCashFlow.budgeted.expected > 0
-              ? Math.round((periodCashFlow.budgeted.actual / periodCashFlow.budgeted.expected) * 100)
+            const totalSpent = periodCashFlow.expenses.actual;
+            const totalBudget = periodCashFlow.budgeted.expected;
+            const unplanned = periodCashFlow.unbudgeted.actual;
+            const pct = totalBudget > 0
+              ? Math.round((totalSpent / totalBudget) * 100)
               : 0;
             const markerPos = isPastPeriod ? 100 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
             return (
@@ -435,55 +437,17 @@ export function BudgetPage() {
                   )}
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Spent {pct}% of {formatCents(periodCashFlow.budgeted.expected)} budget
+                  {pct}% of {formatCents(totalBudget)} budget
+                  {unplanned > 0 && (
+                    <span className="text-amber-600 dark:text-amber-400">
+                      {' '}· {formatCents(unplanned)} unplanned
+                    </span>
+                  )}
                 </p>
               </>
             );
           })()}
         </Link>
-
-        {/* Unplanned Spending / Available Surplus */}
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10">
-            <CircleAlert className="h-5 w-5 text-amber-500" />
-          </div>
-          <p className="mt-4 text-sm text-muted-foreground">
-            {isFuturePeriod ? 'Available Surplus' : 'Unplanned Spending'}
-          </p>
-          <p className="mt-1 text-xl font-semibold">
-            {formatCents(isFuturePeriod ? periodCashFlow.unbudgeted.unallocated : periodCashFlow.unbudgeted.actual)}
-          </p>
-          <div className="mt-3 mb-3 h-px bg-border" />
-          {isFuturePeriod ? (
-            <p className="mt-2 text-sm text-muted-foreground">
-              Income minus planned spending and savings
-            </p>
-          ) : (() => {
-            const pct = periodCashFlow.unbudgeted.unallocated > 0
-              ? Math.round((periodCashFlow.unbudgeted.actual / periodCashFlow.unbudgeted.unallocated) * 100)
-              : 0;
-            const markerPos = isPastPeriod ? 100 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
-            return (
-              <>
-                <div className="relative h-1.5 rounded-full bg-amber-500/20">
-                  <div
-                    className="h-1.5 rounded-full bg-amber-500"
-                    style={{ width: `${Math.min(pct, 100)}%` }}
-                  />
-                  {isCurrentPeriod && (
-                    <div
-                      className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
-                      style={{ left: `${Math.min(markerPos, 100)}%` }}
-                    />
-                  )}
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Spent {pct}% of {formatCents(periodCashFlow.unbudgeted.unallocated)} surplus
-                </p>
-              </>
-            );
-          })()}
-        </div>
 
         {/* Saved / Planned Savings */}
         <div className="rounded-xl border bg-card p-5">
@@ -548,7 +512,7 @@ export function BudgetPage() {
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-500/10">
                 <CircleGauge className="h-4 w-4 text-slate-500" />
               </div>
-              <p className="text-sm text-muted-foreground">Spending pace</p>
+              <p className="text-sm text-muted-foreground">Spending Pace</p>
             </div>
             <div className="mt-2">
               <BurnRateChart
@@ -635,7 +599,7 @@ export function BudgetPage() {
                     <TrendingUp className={`h-4 w-4 ${iconColor}`} />
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground">{viewMode === 'year' ? 'Year' : 'Month'} end</p>
+                <p className="text-sm text-muted-foreground">{viewMode === 'year' ? 'Year' : 'Month'} End</p>
               </div>
               <p className={`mt-2 text-3xl font-bold ${textColor}`}>
                 {isShortfall ? '' : '+'}{formatCents(leftover)}
