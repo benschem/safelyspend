@@ -254,7 +254,7 @@ export function CategoryDetailPage() {
               </>
             ) : (
               <Link
-                to="/budget/plan"
+                to="/budget"
                 className="text-primary hover:underline"
               >
                 No budget set – Set one →

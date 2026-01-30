@@ -9,6 +9,7 @@ import { SnapshotPage } from '@/routes/overview';
 import { ForecastIndexPage } from '@/routes/forecasts/index';
 import { RecurringIndexPage } from '@/routes/forecasts/recurring/index';
 import { BudgetPage } from '@/routes/budget';
+import { SpendingPage } from '@/routes/spending';
 import { TransactionsIndexPage } from '@/routes/transactions/index';
 import { TransactionNewPage } from '@/routes/transactions/new';
 import { CategoriesIndexPage } from '@/routes/categories/index';
@@ -17,7 +18,6 @@ import { CategoryImportRulesPage } from '@/routes/categories/import-rules';
 import { SavingsIndexPage } from '@/routes/savings/index';
 import { InsightsPage } from '@/routes/insights';
 import { ScenariosIndexPage } from '@/routes/scenarios/index';
-import { BudgetPlanPage } from '@/routes/budget/plan';
 import { SettingsPage } from '@/routes/settings';
 
 // Dev-only: style guide and error preview not bundled in production
@@ -46,11 +46,11 @@ const router = createBrowserRouter([
       { path: 'forecasts', element: <ForecastIndexPage /> },
       { path: 'forecasts/recurring', element: <RecurringIndexPage /> },
 
-      // Planned Spending (plan)
-      { path: 'budget/plan', element: <BudgetPlanPage /> },
-
-      // Budget (track)
+      // Budget - spending limits (plan)
       { path: 'budget', element: <BudgetPage /> },
+
+      // Spending - period view (track)
+      { path: 'spending', element: <SpendingPage /> },
 
       // Transactions (track)
       { path: 'transactions', element: <TransactionsIndexPage /> },
