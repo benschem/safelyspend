@@ -37,6 +37,22 @@ interface PeriodSpending {
   total: number;
 }
 
+interface ForecastExpense {
+  id: string;
+  description: string;
+  amount: number;
+  date: string;
+  categoryId: string | null;
+  categoryName: string | null;
+}
+
+interface ForecastExpensesByCategory {
+  id: string;
+  name: string;
+  amount: number;
+  items: ForecastExpense[];
+}
+
 interface BurnRateData {
   dailySpending: { date: string; amount: number }[];
   totalBudget: number;
@@ -62,6 +78,7 @@ interface UseBudgetPeriodDataResult {
   periodCashFlow: PeriodCashFlow;
   summary: BudgetSummary;
   periodSpending: PeriodSpending;
+  forecastExpenses: ForecastExpensesByCategory[];
   burnRateData: BurnRateData;
   colorMap: Record<string, string>;
 }
@@ -314,6 +331,52 @@ function calculatePeriodSpending(
 }
 
 /**
+ * Calculate forecast expenses grouped by category
+ */
+function calculateForecastExpenses(
+  periodForecasts: ExpandedForecast[],
+  activeCategories: Category[],
+): ForecastExpensesByCategory[] {
+  const expenseForecasts = periodForecasts.filter((f) => f.type === 'expense');
+
+  // Build category lookup
+  const categoryMap = new Map(activeCategories.map((c) => [c.id, c.name]));
+
+  // Group by category
+  const byCategory = new Map<string, ForecastExpense[]>();
+
+  for (const forecast of expenseForecasts) {
+    const catId = forecast.categoryId ?? 'uncategorized';
+    if (!byCategory.has(catId)) {
+      byCategory.set(catId, []);
+    }
+    byCategory.get(catId)!.push({
+      id: forecast.sourceId,
+      description: forecast.description,
+      amount: forecast.amountCents,
+      date: forecast.date,
+      categoryId: forecast.categoryId,
+      categoryName: forecast.categoryId ? (categoryMap.get(forecast.categoryId) ?? null) : null,
+    });
+  }
+
+  // Convert to array and sort by total amount
+  const result: ForecastExpensesByCategory[] = [];
+
+  for (const [catId, items] of byCategory) {
+    const total = items.reduce((sum, item) => sum + item.amount, 0);
+    result.push({
+      id: catId,
+      name: catId === 'uncategorized' ? 'Uncategorised' : (categoryMap.get(catId) ?? 'Unknown'),
+      amount: total,
+      items: items.sort((a, b) => b.amount - a.amount),
+    });
+  }
+
+  return result.sort((a, b) => b.amount - a.amount);
+}
+
+/**
  * Calculate burn rate chart data
  */
 function calculateBurnRateData(
@@ -416,6 +479,11 @@ export function useBudgetPeriodData({
     [viewMode, periodStart, effectiveDate, budgetRules, activeCategories, allTransactions],
   );
 
+  const forecastExpenses = useMemo(
+    () => calculateForecastExpenses(periodForecasts, activeCategories),
+    [periodForecasts, activeCategories],
+  );
+
   const burnRateData = useMemo(
     () => calculateBurnRateData(viewMode, periodStart, periodEnd, periodLabel, budgetRules, allTransactions),
     [viewMode, periodStart, periodEnd, periodLabel, budgetRules, allTransactions],
@@ -432,6 +500,7 @@ export function useBudgetPeriodData({
     periodCashFlow,
     summary,
     periodSpending,
+    forecastExpenses,
     burnRateData,
     colorMap,
   };

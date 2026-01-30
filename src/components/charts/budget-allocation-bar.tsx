@@ -44,7 +44,7 @@ export function BudgetAllocationBar({
     : savingsPct;
 
   return (
-    <div>
+    <div className="flex h-full flex-col">
       <div className="flex items-center gap-2">
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-500/10">
           <PieChart className="h-4 w-4 text-slate-500" />
@@ -53,7 +53,7 @@ export function BudgetAllocationBar({
       </div>
 
       {/* Stacked bar */}
-      <div className="mt-3 h-4 overflow-hidden rounded-full bg-muted">
+      <div className="mt-3 h-6 overflow-hidden rounded-full bg-muted">
         <div className="flex h-full">
           {/* Spending segment */}
           {scaledSpendingPct > 0 && (
@@ -85,6 +85,9 @@ export function BudgetAllocationBar({
           Budget exceeds income by {formatCents(totalAllocated - income)} ({overallocationPct - 100}%)
         </p>
       )}
+
+      {/* Spacer to push legend to bottom */}
+      <div className="flex-1" />
 
       {/* Legend */}
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
