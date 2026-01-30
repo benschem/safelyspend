@@ -20,35 +20,45 @@ export function ErrorBoundary() {
     message = error.message;
   }
 
+  const isDev = import.meta.env.DEV;
+  const errorStack = error instanceof Error ? error.stack : null;
+
   return (
-    <div className="flex min-h-[50vh] flex-col items-center justify-center p-8 text-center">
-      <div className="rounded-full bg-destructive/10 p-4">
-        <AlertTriangle className="h-8 w-8 text-destructive" />
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-8">
+      <div className="w-full max-w-md space-y-6 text-center">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10">
+          <AlertTriangle className="h-8 w-8 text-red-500" />
+        </div>
+
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+          <p className="text-muted-foreground">{message}</p>
+        </div>
+
+        <div className="flex justify-center gap-3">
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            <RefreshCw className="h-4 w-4" />
+            Reload
+          </Button>
+          <Button asChild>
+            <Link to="/">
+              <Home className="h-4 w-4" />
+              Home
+            </Link>
+          </Button>
+        </div>
+
+        {isDev && errorStack && (
+          <div className="mt-8 w-full text-left">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Error details (dev only)
+            </p>
+            <pre className="overflow-auto rounded-lg border bg-muted/50 p-4 text-xs">
+              {errorStack}
+            </pre>
+          </div>
+        )}
       </div>
-      <h1 className="mt-6 text-2xl font-bold">{title}</h1>
-      <p className="mt-2 max-w-md text-muted-foreground">{message}</p>
-      <div className="mt-6 flex gap-3">
-        <Button variant="outline" onClick={() => window.location.reload()}>
-          <RefreshCw className="h-4 w-4" />
-          Reload page
-        </Button>
-        <Button asChild>
-          <Link to="/">
-            <Home className="h-4 w-4" />
-            Go home
-          </Link>
-        </Button>
-      </div>
-      {import.meta.env.DEV && error instanceof Error && error.stack && (
-        <details className="mt-8 w-full max-w-2xl text-left">
-          <summary className="cursor-pointer text-sm text-muted-foreground">
-            Error details (development only)
-          </summary>
-          <pre className="mt-2 overflow-auto rounded-lg bg-muted p-4 text-xs">
-            {error.stack}
-          </pre>
-        </details>
-      )}
     </div>
   );
 }

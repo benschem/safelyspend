@@ -29,43 +29,53 @@ export class PageErrorBoundary extends Component<Props, State> {
 
   override render() {
     if (this.state.hasError) {
+      const isDev = import.meta.env.DEV;
+      const errorStack = this.state.error?.stack;
+
       return (
-        <div className="flex min-h-[50vh] flex-col items-center justify-center p-8 text-center">
-          <div className="rounded-full bg-destructive/10 p-4">
-            <AlertTriangle className="h-8 w-8 text-destructive" />
+        <div className="flex min-h-[50vh] flex-col items-center justify-center p-8">
+          <div className="w-full max-w-md space-y-6 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10">
+              <AlertTriangle className="h-8 w-8 text-red-500" />
+            </div>
+
+            <div className="space-y-2">
+              <h1 className="text-2xl font-semibold tracking-tight">Something went wrong</h1>
+              <p className="text-muted-foreground">
+                This page encountered an error. You can try reloading or navigate elsewhere.
+              </p>
+            </div>
+
+            <div className="flex justify-center gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  this.setState({ hasError: false, error: null });
+                  window.location.reload();
+                }}
+              >
+                <RefreshCw className="h-4 w-4" />
+                Reload
+              </Button>
+              <Button asChild onClick={() => this.setState({ hasError: false, error: null })}>
+                <Link to="/">
+                  <Home className="h-4 w-4" />
+                  Home
+                </Link>
+              </Button>
+            </div>
+
+            {isDev && errorStack && (
+              <div className="mt-8 w-full text-left">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Error details (dev only)
+                </p>
+                <pre className="overflow-auto rounded-lg border bg-muted/50 p-4 text-xs">
+                  {errorStack}
+                </pre>
+              </div>
+            )}
           </div>
-          <h1 className="mt-6 text-2xl font-bold">Something went wrong</h1>
-          <p className="mt-2 max-w-md text-muted-foreground">
-            This page encountered an error. You can try reloading or navigate elsewhere.
-          </p>
-          <div className="mt-6 flex gap-3">
-            <Button
-              variant="outline"
-              onClick={() => {
-                this.setState({ hasError: false, error: null });
-                window.location.reload();
-              }}
-            >
-              <RefreshCw className="h-4 w-4" />
-              Reload page
-            </Button>
-            <Button asChild onClick={() => this.setState({ hasError: false, error: null })}>
-              <Link to="/">
-                <Home className="h-4 w-4" />
-                Go home
-              </Link>
-            </Button>
-          </div>
-          {import.meta.env.DEV && this.state.error?.stack && (
-            <details className="mt-8 w-full max-w-2xl text-left">
-              <summary className="cursor-pointer text-sm text-muted-foreground">
-                Error details (development only)
-              </summary>
-              <pre className="mt-2 overflow-auto rounded-lg bg-muted p-4 text-xs">
-                {this.state.error.stack}
-              </pre>
-            </details>
-          )}
         </div>
       );
     }
