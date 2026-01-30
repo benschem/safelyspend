@@ -563,6 +563,8 @@ export function BudgetPage() {
           let leftover: number;
           let description: string;
 
+          let secondaryDescription: string | null = null;
+
           if (isPastPeriod) {
             // Past: show actual result
             leftover = periodCashFlow.income.actual - periodCashFlow.expenses.actual - periodCashFlow.savings.actual;
@@ -578,12 +580,15 @@ export function BudgetPage() {
             const availableToSpend = periodCashFlow.income.expected - periodCashFlow.savings.expected;
             leftover = availableToSpend - projectedSpending;
 
-            // Compare to plan
+            // Label for projected outcome
+            description = leftover >= 0 ? 'Projected surplus' : 'Projected shortfall';
+
+            // Compare to plan as secondary info
             const diffFromPlan = leftover - planned;
             if (diffFromPlan >= 0) {
-              description = `${formatCents(Math.abs(diffFromPlan))} above ${formatCents(planned)} plan`;
+              secondaryDescription = `${formatCents(Math.abs(diffFromPlan))} above ${formatCents(planned)} plan`;
             } else {
-              description = `${formatCents(Math.abs(diffFromPlan))} below ${formatCents(planned)} plan`;
+              secondaryDescription = `${formatCents(Math.abs(diffFromPlan))} below ${formatCents(planned)} plan`;
             }
           }
 
@@ -626,9 +631,14 @@ export function BudgetPage() {
               <p className={`mt-2 text-3xl font-bold ${textColor}`}>
                 {isShortfall ? '' : '+'}{formatCents(leftover)}
               </p>
-              <p className="mt-2 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-muted-foreground">
                 {description}
               </p>
+              {secondaryDescription && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {secondaryDescription}
+                </p>
+              )}
             </div>
           );
         })()}
