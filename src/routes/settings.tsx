@@ -14,7 +14,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Pencil, Trash2, Plus, AlertTriangle, Download, Upload, Check, Settings, Bug } from 'lucide-react';
+import { Pencil, Trash2, Plus, AlertTriangle, Download, Upload, Check, Settings, Bug, Info } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { exportAllData, importAllData, fullReset } from '@/lib/db';
@@ -276,15 +276,20 @@ export function SettingsPage() {
               Tell us how much cash you had on a specific date. We&apos;ll calculate your current cash
               from there using your transactions.
             </p>
-            <p className="mt-3 text-xs text-muted-foreground">
-              You&apos;ll need to enter all transactions from this date onwards for the numbers to be accurate.
-              If you don&apos;t want to backfill, just use today&apos;s date and start fresh.
-            </p>
+            <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/50">
+              <div className="flex items-start gap-2">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  You&apos;ll need to enter all transactions from this date onwards for the numbers to be accurate.
+                  If you don&apos;t want to backfill, just use today&apos;s date and start fresh.
+                </p>
+              </div>
+            </div>
           </div>
           <div className="section-content">
             <div className="panel">
               <div className="panel-header">
-                <h3>Known Amounts</h3>
+                <h3>Initial Amounts</h3>
                 <Button variant="outline" size="sm" onClick={openAddAnchor}>
                   <Plus className="h-4 w-4" />
                   Add

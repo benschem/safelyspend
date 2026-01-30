@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useForm } from '@tanstack/react-form';
+import { Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAppConfig } from '@/hooks/use-app-config';
@@ -123,8 +124,7 @@ export function FirstRunWizard() {
               <FormField
                 field={field}
                 label="Current Cash ($)"
-                description="The total amount in your bank account right now."
-                optional
+                description="The total in your bank account right now. Enter $0 if you really have nothing."
               >
                 <Input
                   id={field.name}
@@ -142,11 +142,7 @@ export function FirstRunWizard() {
 
           <form.Field name="balanceDate">
             {(field) => (
-              <FormField
-                field={field}
-                label="As of Date"
-                description="You'll need to enter all transactions from this date onwards. Use today if you want to start fresh."
-              >
+              <FormField field={field} label="As of Date">
                 <Input
                   id={field.name}
                   type="date"
@@ -157,6 +153,15 @@ export function FirstRunWizard() {
               </FormField>
             )}
           </form.Field>
+
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/50">
+            <div className="flex items-start gap-2">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                You&apos;ll need to enter all transactions from this date onwards for the numbers to be accurate. If you don&apos;t want to backfill, just use today&apos;s date and start fresh.
+              </p>
+            </div>
+          </div>
 
           <div className="flex gap-3">
             <Button
