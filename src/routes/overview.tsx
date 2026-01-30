@@ -246,7 +246,7 @@ export function SnapshotPage() {
         <Alert variant="warning" className="mb-8">
           <AlertTitle>No starting cash set</AlertTitle>
           <AlertDescription>
-            Add your starting cash in{' '}
+            Add a starting cash amount in{' '}
             <Link to="/settings" className="underline">
               Settings
             </Link>{' '}
