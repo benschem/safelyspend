@@ -383,12 +383,13 @@ export function calculateTimelineDateRange(
         endDate: formatISODate(todayDate),
       };
     case 'around-present': {
-      // Today is always exactly centered - equal periods on each side
-      // For even numbers, this shows one extra period to maintain centering
-      const half = Math.floor(amount / 2);
+      // Today is centered - half the duration on each side
+      // Convert to months for calculation to handle "1 year around now" correctly
+      const totalMonths = unit === 'years' ? amount * 12 : amount;
+      const halfMonths = Math.floor(totalMonths / 2);
       return {
-        startDate: addDuration(todayDate, -half, unit),
-        endDate: addDuration(todayDate, half, unit),
+        startDate: addDuration(todayDate, -halfMonths, 'months'),
+        endDate: addDuration(todayDate, halfMonths, 'months'),
       };
     }
     case 'future':
@@ -403,10 +404,11 @@ export function calculateTimelineDateRange(
         return { startDate: customStartDate, endDate: customEndDate };
       }
       // Fallback uses same logic as around-present
-      const defaultHalf = Math.floor(amount / 2);
+      const totalMonths = unit === 'years' ? amount * 12 : amount;
+      const halfMonths = Math.floor(totalMonths / 2);
       return {
-        startDate: addDuration(todayDate, -defaultHalf, unit),
-        endDate: addDuration(todayDate, defaultHalf, unit),
+        startDate: addDuration(todayDate, -halfMonths, 'months'),
+        endDate: addDuration(todayDate, halfMonths, 'months'),
       };
     }
   }
