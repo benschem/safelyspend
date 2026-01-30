@@ -162,8 +162,6 @@ export function generatePersonaData(
   const balanceAnchors: GeneratedBalanceAnchor[] = calculateBalanceAnchor(
     config,
     startDate,
-    transactions,
-    random,
   );
 
   return {
@@ -712,8 +710,6 @@ function ensureCurrentMonthTransactions(
 function calculateBalanceAnchor(
   config: PersonaConfig,
   startDate: Date,
-  _transactions: GeneratedTransaction[],
-  _random: () => number,
 ): GeneratedBalanceAnchor[] {
   // Calculate a realistic checking account balance at start of data period.
   // This should NOT be huge - most people keep a reasonable buffer, not months of expenses.
@@ -926,7 +922,7 @@ function ensureCurrentMonthIncome(
 
   // Check if we have income this month
   const currentMonthIncome = transactions.filter(
-    (t) => t.type === 'income' && t.date.startsWith(currentMonthStr)
+    (t) => t.type === 'income' && t.date.startsWith(currentMonthStr),
   );
 
   // If no income this month, add it based on cadence and day of month
