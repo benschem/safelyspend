@@ -145,7 +145,7 @@ export function FirstRunWizard() {
               <FormField
                 field={field}
                 label="As of Date"
-                description="The date this balance was accurate."
+                description="You'll need to enter all transactions from this date onwards. Use today if you want to start fresh."
               >
                 <Input
                   id={field.name}

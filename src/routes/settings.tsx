@@ -364,7 +364,8 @@ export function SettingsPage() {
               from there using your transactions.
             </p>
             <p className="mt-3 text-xs text-muted-foreground">
-              Tip: Check your bank statement for a date you remember, and enter that amount here.
+              You&apos;ll need to enter all transactions from this date onwards for the numbers to be accurate.
+              If you don&apos;t want to backfill, just use today&apos;s date and start fresh.
             </p>
           </div>
           <div className="section-content">
