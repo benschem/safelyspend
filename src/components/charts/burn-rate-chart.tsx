@@ -196,6 +196,9 @@ export function BurnRateChart({
 
   // Compact mode: minimal chart only
   if (compact) {
+    // Dynamic color based on burn rate: green (on track), amber (slightly over), red (overspending)
+    const paceColor = burnRate > 120 ? '#dc2626' : burnRate > 100 ? '#d97706' : '#16a34a';
+
     return (
       <div className="w-full">
         <ResponsiveContainer width="100%" height={80}>
@@ -207,7 +210,7 @@ export function BurnRateChart({
             <Area
               type="monotone"
               dataKey="actualPercent"
-              fill={CHART_COLORS.expense}
+              fill={paceColor}
               fillOpacity={0.15}
               stroke="none"
             />
@@ -226,7 +229,7 @@ export function BurnRateChart({
             <Line
               type="monotone"
               dataKey="actualPercent"
-              stroke={CHART_COLORS.expense}
+              stroke={paceColor}
               strokeWidth={2}
               dot={false}
             />
