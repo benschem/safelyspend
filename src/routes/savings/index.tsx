@@ -1,5 +1,5 @@
-import { useState, useMemo, useCallback } from 'react';
-import { useOutletContext } from 'react-router';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useOutletContext, useSearchParams } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { Plus, PiggyBank, TrendingUp, Target, Clock } from 'lucide-react';
@@ -21,6 +21,7 @@ interface OutletContext {
 
 export function SavingsIndexPage() {
   const { activeScenarioId, startDate, endDate } = useOutletContext<OutletContext>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { savingsGoals, isLoading: savingsLoading, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal } = useSavingsGoals();
   const { savingsTransactions, isLoading: transactionsLoading, addTransaction } = useTransactions(startDate, endDate);
   const { savingsByGoal, isLoading: reportsLoading } = useReportsData(activeScenarioId, startDate, endDate);
@@ -38,6 +39,20 @@ export function SavingsIndexPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
+
+  // Handle ?goal= query param to open a specific goal
+  const goalParam = searchParams.get('goal');
+  useEffect(() => {
+    if (goalParam && !isLoading) {
+      const goal = savingsGoals.find((g) => g.id === goalParam);
+      if (goal) {
+        setEditingGoal(goal);
+        setDialogOpen(true);
+        // Clear the param so refreshing doesn't reopen
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [goalParam, savingsGoals, isLoading, setSearchParams]);
 
   // Map goalId to SavingsGoal for editing
   const goalMap = useMemo(() => {

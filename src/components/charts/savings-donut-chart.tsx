@@ -77,7 +77,7 @@ export function SavingsDonutChart({
         </ResponsiveContainer>
       </div>
       <Link
-        to={`/savings/${goalId}`}
+        to={`/savings?goal=${goalId}`}
         className="mt-2 text-center text-sm font-medium hover:underline"
       >
         {goalName}
