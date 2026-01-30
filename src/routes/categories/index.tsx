@@ -122,9 +122,7 @@ export function CategoriesIndexPage() {
         cell: ({ row }) =>
           row.getValue('isArchived') ? (
             <Badge variant="secondary">Archived</Badge>
-          ) : (
-            <Badge variant="success">Active</Badge>
-          ),
+          ) : null,
       },
       {
         id: 'transactions',
@@ -193,9 +191,10 @@ export function CategoriesIndexPage() {
                 onClick={() => handleDelete(category.id)}
                 onBlur={() => setTimeout(() => setDeletingId(null), 200)}
                 aria-label={isDeleting ? 'Confirm delete' : 'Delete category'}
-                title={isDeleting && hasReferences(category.id) ? `Warning: Used by ${getReferenceText(category.id)}` : undefined}
+                title={hasReferences(category.id) ? `Archive instead - used by ${getReferenceText(category.id)}` : undefined}
+                disabled={hasReferences(category.id)}
               >
-                {isDeleting ? (hasReferences(category.id) ? 'Delete anyway?' : 'Confirm') : <Trash2 className="h-4 w-4" />}
+                {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
               </Button>
             </div>
           );
