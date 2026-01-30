@@ -306,12 +306,12 @@ export function BudgetPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {/* Income */}
+        {/* Earned */}
         <div className="rounded-xl border bg-card p-5">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/10">
             <TrendingUp className="h-5 w-5 text-green-500" />
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">Income</p>
+          <p className="mt-4 text-sm text-muted-foreground">Earned</p>
           <p className="mt-1 text-xl font-semibold">{formatCents(periodCashFlow.income.actual)}</p>
           <div className="mt-3 mb-3 h-px bg-border" />
           {(() => {
@@ -372,12 +372,12 @@ export function BudgetPage() {
           })()}
         </div>
 
-        {/* Unallocated Spending */}
+        {/* Unbudgeted Spending */}
         <div className="rounded-xl border bg-card p-5">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10">
             <CircleAlert className="h-5 w-5 text-amber-500" />
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">Unallocated</p>
+          <p className="mt-4 text-sm text-muted-foreground">Unbudgeted</p>
           <p className="mt-1 text-xl font-semibold">{formatCents(periodCashFlow.unbudgeted.actual)}</p>
           <div className="mt-3 mb-3 h-px bg-border" />
           {(() => {
@@ -405,12 +405,12 @@ export function BudgetPage() {
           })()}
         </div>
 
-        {/* Savings */}
+        {/* Saved */}
         <div className="rounded-xl border bg-card p-5">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10">
             <PiggyBank className="h-5 w-5 text-blue-500" />
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">Savings</p>
+          <p className="mt-4 text-sm text-muted-foreground">Saved</p>
           <p className="mt-1 text-xl font-semibold">{formatCents(periodCashFlow.savings.actual)}</p>
           <div className="mt-3 mb-3 h-px bg-border" />
           {(() => {
