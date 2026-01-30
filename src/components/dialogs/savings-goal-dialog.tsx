@@ -82,39 +82,42 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
 
     const parsedInterestRate = interestRate ? parseFloat(interestRate) : null;
 
-    if (isEditing && goal) {
-      const updates: Parameters<typeof updateSavingsGoal>[1] = {
-        name: name.trim(),
-        targetAmountCents,
-        isEmergencyFund,
-        ...(deadline ? { deadline } : {}),
-        ...(parsedInterestRate ? { annualInterestRate: parsedInterestRate, compoundingFrequency } : {}),
-      };
-      await updateSavingsGoal(goal.id, updates);
-    } else {
-      const newGoal = await addSavingsGoal({
-        name: name.trim(),
-        targetAmountCents,
-        isEmergencyFund,
-        ...(deadline ? { deadline } : {}),
-        ...(parsedInterestRate ? { annualInterestRate: parsedInterestRate, compoundingFrequency } : {}),
-      });
-
-      // Create starting balance transaction if amount > 0
-      const startingBalanceCents = parseCentsFromInput(startingBalance);
-      if (startingBalanceCents > 0) {
-        await addTransaction({
-          type: 'savings',
-          date: today(),
-          amountCents: startingBalanceCents,
-          description: 'Starting balance',
-          categoryId: null,
-          savingsGoalId: newGoal.id,
+    try {
+      if (isEditing && goal) {
+        const updates: Parameters<typeof updateSavingsGoal>[1] = {
+          name: name.trim(),
+          targetAmountCents,
+          isEmergencyFund,
+          ...(deadline ? { deadline } : {}),
+          ...(parsedInterestRate ? { annualInterestRate: parsedInterestRate, compoundingFrequency } : {}),
+        };
+        await updateSavingsGoal(goal.id, updates);
+      } else {
+        const newGoal = await addSavingsGoal({
+          name: name.trim(),
+          targetAmountCents,
+          isEmergencyFund,
+          ...(deadline ? { deadline } : {}),
+          ...(parsedInterestRate ? { annualInterestRate: parsedInterestRate, compoundingFrequency } : {}),
         });
-      }
-    }
 
-    onOpenChange(false);
+        // Create starting balance transaction if amount > 0
+        const startingBalanceCents = parseCentsFromInput(startingBalance);
+        if (startingBalanceCents > 0) {
+          await addTransaction({
+            type: 'savings',
+            date: today(),
+            amountCents: startingBalanceCents,
+            description: 'Starting balance',
+            categoryId: null,
+            savingsGoalId: newGoal.id,
+          });
+        }
+      }
+      onOpenChange(false);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Failed to save goal. Please try again.');
+    }
   };
 
   return (

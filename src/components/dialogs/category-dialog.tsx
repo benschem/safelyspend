@@ -40,13 +40,16 @@ export function CategoryDialog({ open, onOpenChange, category, addCategory, upda
       return;
     }
 
-    if (isEditing && category) {
-      await updateCategory(category.id, { name: name.trim() });
-    } else {
-      await addCategory({ name: name.trim(), isArchived: false });
+    try {
+      if (isEditing && category) {
+        await updateCategory(category.id, { name: name.trim() });
+      } else {
+        await addCategory({ name: name.trim(), isArchived: false });
+      }
+      onOpenChange(false);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Failed to save category. Please try again.');
     }
-
-    onOpenChange(false);
   };
 
   return (

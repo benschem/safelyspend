@@ -98,13 +98,16 @@ export function ForecastEventDialog({ open, onOpenChange, scenarioId, event, add
       savingsGoalId: type === 'savings' ? savingsGoalId : null,
     };
 
-    if (isEditing && event) {
-      await updateEvent(event.id, data);
-    } else {
-      await addEvent(data);
+    try {
+      if (isEditing && event) {
+        await updateEvent(event.id, data);
+      } else {
+        await addEvent(data);
+      }
+      onOpenChange(false);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Failed to save event. Please try again.');
     }
-
-    onOpenChange(false);
   };
 
   return (

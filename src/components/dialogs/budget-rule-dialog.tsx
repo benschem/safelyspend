@@ -98,22 +98,29 @@ export function BudgetRuleDialog({
     const isWeekly = cadence === 'weekly' || cadence === 'fortnightly';
     const isQuarterly = cadence === 'quarterly';
 
-    await setBudgetForCategory(
-      categoryId,
-      amountCents,
-      cadence,
-      isWeekly ? parseInt(day) : undefined,
-      isWeekly ? undefined : parseInt(day),
-      isQuarterly ? parseInt(monthOfQuarter) : undefined,
-    );
-
-    onOpenChange(false);
+    try {
+      await setBudgetForCategory(
+        categoryId,
+        amountCents,
+        cadence,
+        isWeekly ? parseInt(day) : undefined,
+        isWeekly ? undefined : parseInt(day),
+        isQuarterly ? parseInt(monthOfQuarter) : undefined,
+      );
+      onOpenChange(false);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Failed to save budget. Please try again.');
+    }
   };
 
   const handleDelete = async () => {
     if (rule) {
-      await deleteBudgetRule(rule.id);
-      onOpenChange(false);
+      try {
+        await deleteBudgetRule(rule.id);
+        onOpenChange(false);
+      } catch (error) {
+        setFormError(error instanceof Error ? error.message : 'Failed to remove limit. Please try again.');
+      }
     }
   };
 

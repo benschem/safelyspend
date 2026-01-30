@@ -62,29 +62,32 @@ export function ScenarioDialog({ open, onOpenChange, scenario, scenarios, addSce
       return;
     }
 
-    if (isEditing && scenario) {
-      const updates: Parameters<typeof updateScenario>[1] = {
-        name: name.trim(),
-      };
-      if (description.trim()) {
-        updates.description = description.trim();
-      }
-      await updateScenario(scenario.id, updates);
-    } else {
-      const newScenario = await addScenario({
-        name: name.trim(),
-        ...(description.trim() ? { description: description.trim() } : {}),
-        isDefault: scenarios.length === 0,
-      });
+    try {
+      if (isEditing && scenario) {
+        const updates: Parameters<typeof updateScenario>[1] = {
+          name: name.trim(),
+        };
+        if (description.trim()) {
+          updates.description = description.trim();
+        }
+        await updateScenario(scenario.id, updates);
+      } else {
+        const newScenario = await addScenario({
+          name: name.trim(),
+          ...(description.trim() ? { description: description.trim() } : {}),
+          isDefault: scenarios.length === 0,
+        });
 
-      // Copy rules from another scenario if selected
-      if (copyFromId && copyFromId !== '__none__') {
-        await duplicateForecastsToScenario(copyFromId, newScenario.id);
-        await duplicateBudgetsToScenario(copyFromId, newScenario.id);
+        // Copy rules from another scenario if selected
+        if (copyFromId && copyFromId !== '__none__') {
+          await duplicateForecastsToScenario(copyFromId, newScenario.id);
+          await duplicateBudgetsToScenario(copyFromId, newScenario.id);
+        }
       }
+      onOpenChange(false);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Failed to save scenario. Please try again.');
     }
-
-    onOpenChange(false);
   };
 
   return (

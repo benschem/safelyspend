@@ -131,13 +131,16 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
       data.monthOfQuarter = parseInt(monthOfQuarter, 10);
     }
 
-    if (isEditing && rule) {
-      await updateRule(rule.id, data);
-    } else {
-      await addRule(data);
+    try {
+      if (isEditing && rule) {
+        await updateRule(rule.id, data);
+      } else {
+        await addRule(data);
+      }
+      onOpenChange(false);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Failed to save rule. Please try again.');
     }
-
-    onOpenChange(false);
   };
 
   const showDayOfWeek = cadence === 'weekly' || cadence === 'fortnightly';

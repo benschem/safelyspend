@@ -66,25 +66,28 @@ export function CategoryBudgetDialog({ open, onOpenChange, scenarioId, addCatego
       return;
     }
 
-    // Create the category first
-    const newCategory = await addCategory({ name: name.trim(), isArchived: false });
+    try {
+      // Create the category first
+      const newCategory = await addCategory({ name: name.trim(), isArchived: false });
 
-    // If amount is provided, create the budget rule
-    const amountCents = parseCentsFromInput(amount);
-    if (amountCents > 0 && scenarioId) {
-      const isWeekly = cadence === 'weekly' || cadence === 'fortnightly';
-      const isQuarterly = cadence === 'quarterly';
-      await setBudgetForCategory(
-        newCategory.id,
-        amountCents,
-        cadence,
-        isWeekly ? parseInt(day) : undefined,
-        isWeekly ? undefined : parseInt(day),
-        isQuarterly ? parseInt(monthOfQuarter) : undefined,
-      );
+      // If amount is provided, create the budget rule
+      const amountCents = parseCentsFromInput(amount);
+      if (amountCents > 0 && scenarioId) {
+        const isWeekly = cadence === 'weekly' || cadence === 'fortnightly';
+        const isQuarterly = cadence === 'quarterly';
+        await setBudgetForCategory(
+          newCategory.id,
+          amountCents,
+          cadence,
+          isWeekly ? parseInt(day) : undefined,
+          isWeekly ? undefined : parseInt(day),
+          isQuarterly ? parseInt(monthOfQuarter) : undefined,
+        );
+      }
+      onOpenChange(false);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Failed to create category. Please try again.');
     }
-
-    onOpenChange(false);
   };
 
   const isWeeklyCadence = cadence === 'weekly' || cadence === 'fortnightly';

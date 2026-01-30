@@ -113,13 +113,16 @@ export function TransactionDialog({ open, onOpenChange, transaction, addTransact
       data.paymentMethod = paymentMethod;
     }
 
-    if (isEditing && transaction) {
-      await updateTransaction(transaction.id, data);
-    } else {
-      await addTransaction(data);
+    try {
+      if (isEditing && transaction) {
+        await updateTransaction(transaction.id, data);
+      } else {
+        await addTransaction(data);
+      }
+      onOpenChange(false);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Failed to save transaction. Please try again.');
     }
-
-    onOpenChange(false);
   };
 
   const isAdjustment = transaction?.type === 'adjustment';
