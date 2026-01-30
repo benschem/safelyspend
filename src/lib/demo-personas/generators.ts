@@ -465,11 +465,15 @@ function generateSavingsTransactions(
     const goalId = savingsGoalMap.get(goalConfig.name);
     if (!goalId) continue;
 
-    // Add starting balance transaction if specified
+    // Add starting balance as a transaction BEFORE the anchor date.
+    // This way it counts toward the savings goal total but doesn't affect
+    // the checking account balance (which filters t.date >= anchorDate).
     if (goalConfig.startingBalanceCents && goalConfig.startingBalanceCents > 0) {
+      const dayBeforeStart = new Date(startDate);
+      dayBeforeStart.setDate(dayBeforeStart.getDate() - 1);
       transactions.push({
         id: generateId(),
-        date: formatDate(startDate),
+        date: formatDate(dayBeforeStart),
         description: `Opening balance - ${goalConfig.name}`,
         type: 'savings',
         amountCents: goalConfig.startingBalanceCents,
