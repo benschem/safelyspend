@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -57,10 +57,13 @@ export function CreatableSelect({
   const showCreateOption = onCreateNew && search.trim() && !exactMatch;
 
   // Build list of all selectable items for keyboard navigation
-  const selectableItems: Array<{ type: 'none' | 'option' | 'create'; value?: string }> = [];
-  if (allowNone) selectableItems.push({ type: 'none' });
-  filteredOptions.forEach((opt) => selectableItems.push({ type: 'option', value: opt.value }));
-  if (showCreateOption) selectableItems.push({ type: 'create' });
+  const selectableItems = useMemo(() => {
+    const items: Array<{ type: 'none' | 'option' | 'create'; value?: string }> = [];
+    if (allowNone) items.push({ type: 'none' });
+    filteredOptions.forEach((opt) => items.push({ type: 'option', value: opt.value }));
+    if (showCreateOption) items.push({ type: 'create' });
+    return items;
+  }, [allowNone, filteredOptions, showCreateOption]);
 
   const handleSelect = useCallback(
     (newValue: string) => {
