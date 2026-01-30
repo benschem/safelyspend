@@ -127,37 +127,41 @@ export function CategoriesIndexPage() {
       },
       {
         id: 'transactions',
-        header: 'Transactions',
+        header: () => <div className="text-center">Transactions</div>,
         cell: ({ row }) => {
           const count = transactionCounts[row.original.id] ?? 0;
           if (count === 0) {
-            return <span className="text-muted-foreground">—</span>;
+            return <div className="text-center text-muted-foreground">—</div>;
           }
           return (
-            <Link
-              to={`/transactions?category=${row.original.id}`}
-              className="hover:underline"
-            >
-              {count}
-            </Link>
+            <div className="text-center">
+              <Link
+                to={`/transactions?category=${row.original.id}`}
+                className="hover:underline"
+              >
+                {count}
+              </Link>
+            </div>
           );
         },
       },
       {
         id: 'forecasts',
-        header: 'Forecasts',
+        header: () => <div className="text-center">Forecasts</div>,
         cell: ({ row }) => {
           const count = forecastCounts[row.original.id] ?? 0;
           if (count === 0) {
-            return <span className="text-muted-foreground">—</span>;
+            return <div className="text-center text-muted-foreground">—</div>;
           }
           return (
-            <Link
-              to={`/forecasts?category=${row.original.id}`}
-              className="hover:underline"
-            >
-              {count}
-            </Link>
+            <div className="text-center">
+              <Link
+                to={`/forecasts?category=${row.original.id}`}
+                className="hover:underline"
+              >
+                {count}
+              </Link>
+            </div>
           );
         },
       },
