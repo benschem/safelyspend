@@ -6,6 +6,7 @@ import type {
   GeneratedScenario,
   GeneratedBudgetRule,
   GeneratedForecastRule,
+  GeneratedForecastEvent,
   GeneratedTransaction,
   GeneratedSavingsGoal,
   GeneratedBalanceAnchor,
@@ -144,8 +145,10 @@ export function generatePersonaData(
   // Sort transactions by date
   transactions.sort((a, b) => a.date.localeCompare(b.date));
 
-  // Generate forecast rules for ALL scenarios (not just default)
+  // Generate forecast rules and events for ALL scenarios
   const forecastRules: GeneratedForecastRule[] = [];
+  const forecastEvents: GeneratedForecastEvent[] = [];
+
   for (const scenario of scenarios) {
     const scenarioConfig = config.scenarios.find((s) => s.name === scenario.name);
     const scenarioRules = generateForecastRules(
@@ -156,6 +159,25 @@ export function generatePersonaData(
       scenarioConfig,
     );
     forecastRules.push(...scenarioRules);
+
+    // Generate one-off forecast events from scenario config
+    if (scenarioConfig?.forecastEvents) {
+      for (const event of scenarioConfig.forecastEvents) {
+        const eventDate = new Date(today);
+        eventDate.setMonth(eventDate.getMonth() + event.monthsFromNow);
+        eventDate.setDate(15); // Mid-month
+
+        forecastEvents.push({
+          id: generateId(),
+          scenarioId: scenario.id,
+          categoryId: null,
+          description: event.description,
+          type: event.type,
+          amountCents: event.amountCents,
+          date: formatDate(eventDate),
+        });
+      }
+    }
   }
 
   // Calculate opening balance (what balance would result in current state)
@@ -169,7 +191,7 @@ export function generatePersonaData(
     scenarios,
     budgetRules,
     forecastRules,
-    forecastEvents: [], // Can add one-off future events if needed
+    forecastEvents,
     transactions,
     savingsGoals,
     balanceAnchors,
@@ -543,7 +565,6 @@ function generateForecastRules(
 
   // Get income multiplier for this scenario (default to 1.0)
   const incomeMultiplier = scenarioConfig?.incomeMultiplier ?? 1.0;
-  const excludeExtras = scenarioConfig?.excludeExtras ?? false;
 
   // Income forecast (only if income multiplier > 0)
   if (incomeMultiplier > 0) {
@@ -572,37 +593,9 @@ function generateForecastRules(
       incomeRule.dayOfMonth = 28;
     }
     rules.push(incomeRule);
-
-    // Add extra income (bonuses) if not excluded
-    if (!excludeExtras && config.income.extras) {
-      for (const extra of config.income.extras) {
-        if (extra.frequency === 'yearly' && extra.months?.length === 1) {
-          // Yearly bonus - create as yearly cadence forecast
-          rules.push({
-            id: generateId(),
-            scenarioId,
-            categoryId: null,
-            description: extra.description,
-            type: 'income',
-            amountCents: extra.amountCents,
-            cadence: 'yearly',
-            dayOfMonth: 15, // Mid-month for bonuses
-          });
-        } else if (extra.frequency === 'quarterly') {
-          // Quarterly bonus
-          rules.push({
-            id: generateId(),
-            scenarioId,
-            categoryId: null,
-            description: extra.description,
-            type: 'income',
-            amountCents: extra.amountCents,
-            cadence: 'quarterly',
-            dayOfMonth: 15,
-          });
-        }
-      }
-    }
+    // Note: Bonuses/extras are NOT added as forecast rules.
+    // They appear as past transactions (generated in generateIncomeTransactions)
+    // and can be added as one-off forecast events via scenario.forecastEvents
   }
 
   // Recurring expense forecasts (monthly bills, rent, etc.)
