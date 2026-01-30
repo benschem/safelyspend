@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Target, Calendar, TrendingUp, CheckCircle2, PiggyBank } from 'lucide-react';
+import { Target, Calendar, TrendingUp, CheckCircle2, PiggyBank, Ambulance } from 'lucide-react';
 import { formatCents, formatMonth } from '@/lib/utils';
 
 interface MonthlySavings {
@@ -17,6 +17,7 @@ interface SavingsGoalProgressCardProps {
   deadline: string | undefined;
   annualInterestRate: number | undefined;
   monthlySavings: MonthlySavings[];
+  isEmergencyFund?: boolean;
 }
 
 /**
@@ -72,6 +73,7 @@ export function SavingsGoalProgressCard({
   deadline,
   annualInterestRate,
   monthlySavings,
+  isEmergencyFund,
 }: SavingsGoalProgressCardProps) {
   const percentComplete = targetAmount > 0
     ? Math.min(100, (currentBalance / targetAmount) * 100)
@@ -139,7 +141,11 @@ export function SavingsGoalProgressCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <h4 className="flex items-center gap-2 truncate font-medium">
-            <PiggyBank className="h-4 w-4 shrink-0 text-muted-foreground" />
+            {isEmergencyFund ? (
+              <Ambulance className="h-4 w-4 shrink-0 text-blue-500" />
+            ) : (
+              <PiggyBank className="h-4 w-4 shrink-0 text-muted-foreground" />
+            )}
             {goalName}
           </h4>
           {targetAmount > 0 && (
