@@ -324,23 +324,40 @@ export function SpendingLimitsPage() {
     return map;
   }, [activeCategories]);
 
+  // Normalize amounts to monthly equivalents for accurate comparison
+  const toMonthly = (amount: number, cadence: Cadence): number => {
+    switch (cadence) {
+      case 'weekly': return Math.round(amount * 52 / 12);
+      case 'fortnightly': return Math.round(amount * 26 / 12);
+      case 'monthly': return amount;
+      case 'quarterly': return Math.round(amount / 3);
+      case 'yearly': return Math.round(amount / 12);
+    }
+  };
+
   const budgetBreakdownSegments = useMemo(() => {
     const tracked = allRows.filter((r) => r.rule && r.budgetAmount > 0);
     const categorySegments = tracked
-      .sort((a, b) => b.budgetAmount - a.budgetAmount)
       .map((row) => ({
         id: row.categoryId,
         name: row.categoryName,
-        amount: row.budgetAmount,
-      }));
+        amount: toMonthly(row.budgetAmount, row.cadence!),
+      }))
+      .sort((a, b) => b.amount - a.amount);
 
     if (showSavingsInChart) {
-      const totalSavingsForecasted = savingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
-      if (totalSavingsForecasted > 0) {
+      // Savings forecasts are already date-based, sum those in the current month
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+      const monthlySavings = savingsForecasts
+        .filter((f) => f.date >= monthStart && f.date <= monthEnd)
+        .reduce((sum, f) => sum + f.amountCents, 0);
+      if (monthlySavings > 0) {
         categorySegments.push({
           id: 'savings',
           name: 'Savings',
-          amount: totalSavingsForecasted,
+          amount: monthlySavings,
         });
       }
     }
@@ -643,17 +660,9 @@ export function SpendingLimitsPage() {
       {/* Breakdown Chart */}
       {budgetBreakdownSegments.length > 0 && (
         <div className="rounded-lg border p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold">Breakdown</h2>
-              <p className="text-sm text-muted-foreground">How your budget is split across categories</p>
-            </div>
-            <div className="text-right">
-              <p className="text-lg font-bold">{formatCents(budgetBreakdownTotal)}</p>
-              <p className="text-xs text-muted-foreground">
-                {budgetBreakdownSegments.length} {budgetBreakdownSegments.length === 1 ? 'category' : 'categories'}
-              </p>
-            </div>
+          <div>
+            <h2 className="text-lg font-semibold">Breakdown</h2>
+            <p className="text-sm text-muted-foreground">How your budget is split across categories</p>
           </div>
           <div className="mt-4">
             <SpendingBreakdownChart
