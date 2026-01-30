@@ -1,4 +1,5 @@
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { RootLayout } from '@/components/layout/root-layout';
 import { FirstRunWizard } from '@/components/first-run-wizard';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -77,5 +78,9 @@ const router = createBrowserRouter([
 ]);
 
 export default function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <TooltipProvider>
+      <RouterProvider router={router} />
+    </TooltipProvider>
+  );
 }
