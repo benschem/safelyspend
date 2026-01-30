@@ -11,15 +11,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { today, parseCentsFromInput } from '@/lib/utils';
-import type { SavingsGoal, CompoundingFrequency, CreateEntity, Transaction } from '@/lib/types';
+import type { SavingsGoal, CreateEntity, Transaction } from '@/lib/types';
 
 interface SavingsGoalDialogProps {
   open: boolean;
@@ -42,7 +35,6 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
   const [startingBalance, setStartingBalance] = useState('');
   const [deadline, setDeadline] = useState('');
   const [interestRate, setInterestRate] = useState('');
-  const [compoundingFrequency, setCompoundingFrequency] = useState<CompoundingFrequency>('monthly');
   const [isEmergencyFund, setIsEmergencyFund] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -55,7 +47,6 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
         setStartingBalance('');
         setDeadline(goal.deadline ?? '');
         setInterestRate(goal.annualInterestRate?.toString() ?? '');
-        setCompoundingFrequency(goal.compoundingFrequency ?? 'monthly');
         setIsEmergencyFund(goal.isEmergencyFund ?? false);
       } else {
         setName('');
@@ -63,7 +54,6 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
         setStartingBalance('');
         setDeadline('');
         setInterestRate('');
-        setCompoundingFrequency('monthly');
         setIsEmergencyFund(false);
       }
       setFormError(null);
@@ -105,7 +95,7 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
           targetAmountCents,
           isEmergencyFund,
           ...(deadline ? { deadline } : {}),
-          ...(parsedInterestRate ? { annualInterestRate: parsedInterestRate, compoundingFrequency } : {}),
+          ...(parsedInterestRate ? { annualInterestRate: parsedInterestRate } : {}),
         };
         await updateSavingsGoal(goal.id, updates);
       } else {
@@ -114,7 +104,7 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
           targetAmountCents,
           isEmergencyFund,
           ...(deadline ? { deadline } : {}),
-          ...(parsedInterestRate ? { annualInterestRate: parsedInterestRate, compoundingFrequency } : {}),
+          ...(parsedInterestRate ? { annualInterestRate: parsedInterestRate } : {}),
         });
 
         // Create starting balance transaction if amount > 0
@@ -223,45 +213,27 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="goal-interest" className="select-none">
-                Interest Rate
-                <span className="ml-1 font-normal text-muted-foreground">(opt.)</span>
-              </Label>
-              <div className="relative">
-                <Input
-                  id="goal-interest"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="100"
-                  placeholder="e.g., 4.5"
-                  value={interestRate}
-                  onChange={(e) => setInterestRate(e.target.value)}
-                  className="pr-8"
-                />
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  %
-                </span>
-              </div>
+          <div className="space-y-2">
+            <Label htmlFor="goal-interest" className="select-none">
+              Interest Rate
+              <span className="ml-1 font-normal text-muted-foreground">(optional, p.a.)</span>
+            </Label>
+            <div className="relative">
+              <Input
+                id="goal-interest"
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                placeholder="e.g., 4.5"
+                value={interestRate}
+                onChange={(e) => setInterestRate(e.target.value)}
+                className="pr-12"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                % p.a.
+              </span>
             </div>
-
-            {interestRate && (
-              <div className="space-y-2">
-                <Label htmlFor="goal-compounding" className="select-none">Compounding</Label>
-                <Select value={compoundingFrequency} onValueChange={(v) => setCompoundingFrequency(v as CompoundingFrequency)}>
-                  <SelectTrigger id="goal-compounding">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="yearly">Yearly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
 
           <div className="flex items-center justify-between gap-3 pt-2">

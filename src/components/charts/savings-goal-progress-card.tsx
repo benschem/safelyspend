@@ -119,7 +119,7 @@ export function SavingsGoalProgressCard({
           if (remainingMonths === 0) {
             return `${years} year${years === 1 ? '' : 's'}`;
           }
-          return `${years} year${years === 1 ? '' : 's'} ${remainingMonths} month${remainingMonths === 1 ? '' : 's'}`;
+          return `${years}y ${remainingMonths}m`;
         }
         return `${months} month${months === 1 ? '' : 's'}`;
       }
@@ -138,66 +138,75 @@ export function SavingsGoalProgressCard({
 
   return (
     <div className="p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <h4 className="flex items-center gap-2 truncate font-medium">
-            {isEmergencyFund ? (
-              <Ambulance className="h-4 w-4 shrink-0 text-blue-500" />
-            ) : (
-              <PiggyBank className="h-4 w-4 shrink-0 text-muted-foreground" />
-            )}
-            {goalName}
-          </h4>
-          {targetAmount > 0 && (
-            <p className="mt-1 text-sm text-muted-foreground">
-              <span className="font-mono">{formatCents(currentBalance)}</span>
-              <span> of </span>
-              <span className="font-mono">{formatCents(targetAmount)}</span>
-            </p>
+      {/* Header: Goal name + Interest rate */}
+      <div className="flex items-center justify-between gap-3">
+        <h4 className="flex items-center gap-2 truncate text-sm text-muted-foreground">
+          {isEmergencyFund ? (
+            <Ambulance className="h-4 w-4 shrink-0 text-blue-500" />
+          ) : (
+            <PiggyBank className="h-4 w-4 shrink-0" />
           )}
-        </div>
-        {isGoalReached ? (
-          <div className="flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            Reached
+          {goalName}
+        </h4>
+        {annualInterestRate && annualInterestRate > 0 && (
+          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+            <BadgePercent className="h-3.5 w-3.5" />
+            <span>{annualInterestRate}%</span>
           </div>
-        ) : targetAmount > 0 ? (
-          <div className="text-right">
-            <div className="text-lg font-semibold">{percentComplete.toFixed(0)}%</div>
-          </div>
-        ) : null}
+        )}
       </div>
 
-      {/* Progress bar */}
+      {/* Hero: Current balance */}
+      <div className="mt-2">
+        {isGoalReached ? (
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-2xl font-bold text-green-600 dark:text-green-400">
+              {formatCents(currentBalance)}
+            </span>
+            <div className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+              <CheckCircle2 className="h-3 w-3" />
+              Reached
+            </div>
+          </div>
+        ) : (
+          <span className="font-mono text-2xl font-bold">
+            {formatCents(currentBalance)}
+          </span>
+        )}
+        {targetAmount > 0 && (
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            saved of <span className="font-mono">{formatCents(targetAmount)}</span> goal
+          </p>
+        )}
+      </div>
+
+      {/* Progress bar + percentage */}
       {targetAmount > 0 && !isGoalReached && (
-        <div className="mt-3">
-          <div className="h-2 overflow-hidden rounded-full bg-muted">
+        <div className="mt-3 flex items-center gap-3">
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full bg-blue-500 transition-all"
               style={{ width: `${percentComplete}%` }}
             />
           </div>
+          <span className="text-sm font-medium tabular-nums">{percentComplete.toFixed(0)}%</span>
         </div>
       )}
 
       {/* Stats row */}
-      <div className="mt-4 flex items-center justify-between gap-4 text-sm">
-        <div className="flex flex-wrap gap-x-4 gap-y-2">
-          {/* Expected completion - neutral color */}
-          {!isGoalReached && expectedCompletion && targetAmount > 0 && (
+      {!isGoalReached && (expectedCompletion || timeframeInfo) && targetAmount > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+          {expectedCompletion && (
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <Target className="h-3.5 w-3.5" />
               <span>
-                Expected{' '}
                 <span className="font-medium text-foreground">
                   {formatMonth(expectedCompletion.month)}
                 </span>
               </span>
             </div>
           )}
-
-          {/* Timeframe early/late - colored */}
-          {!isGoalReached && timeframeInfo && (
+          {timeframeInfo && (
             <div
               className={`flex items-center gap-1.5 font-medium ${
                 timeframeInfo.status === 'early' || timeframeInfo.status === 'on-time'
@@ -212,23 +221,12 @@ export function SavingsGoalProgressCard({
             </div>
           )}
         </div>
-
-        {/* Interest rate - right aligned */}
-        {annualInterestRate && annualInterestRate > 0 && (
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <BadgePercent className="h-3.5 w-3.5" />
-            <span>
-              <span className="font-medium text-foreground">{annualInterestRate}%</span> p.a.
-            </span>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* No target set message */}
       {targetAmount <= 0 && (
-        <p className="mt-3 text-sm text-muted-foreground">
-          No target amount set. Currently saved{' '}
-          <span className="font-mono font-medium">{formatCents(currentBalance)}</span>.
+        <p className="mt-2 text-sm text-muted-foreground">
+          No target set
         </p>
       )}
 
