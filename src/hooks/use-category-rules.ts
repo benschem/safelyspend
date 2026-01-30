@@ -7,9 +7,10 @@ import { generateId, now } from '@/lib/utils';
 const USER_ID = 'local';
 
 export function useCategoryRules() {
-  const rules = useLiveQuery(() => db.categoryRules.toArray(), []) ?? [];
+  const rawRules = useLiveQuery(() => db.categoryRules.toArray(), []);
+  const rules = useMemo(() => rawRules ?? [], [rawRules]);
 
-  const isLoading = rules === undefined;
+  const isLoading = rawRules === undefined;
 
   // Sort rules by priority (lower = higher priority)
   const sortedRules = useMemo(

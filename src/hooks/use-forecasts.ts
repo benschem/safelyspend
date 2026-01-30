@@ -316,12 +316,17 @@ function generateInterestForecasts(
  * Hook for managing forecast rules and events
  */
 export function useForecasts(scenarioId: string | null, startDate?: string, endDate?: string) {
-  const allRules = useLiveQuery(() => db.forecastRules.toArray(), []) ?? [];
-  const allEvents = useLiveQuery(() => db.forecastEvents.toArray(), []) ?? [];
-  const savingsGoals = useLiveQuery(() => db.savingsGoals.toArray(), []) ?? [];
-  const allTransactions = useLiveQuery(() => db.transactions.toArray(), []) ?? [];
+  const rawRules = useLiveQuery(() => db.forecastRules.toArray(), []);
+  const rawEvents = useLiveQuery(() => db.forecastEvents.toArray(), []);
+  const rawSavingsGoals = useLiveQuery(() => db.savingsGoals.toArray(), []);
+  const rawTransactions = useLiveQuery(() => db.transactions.toArray(), []);
 
-  const isLoading = allRules === undefined || allEvents === undefined;
+  const allRules = useMemo(() => rawRules ?? [], [rawRules]);
+  const allEvents = useMemo(() => rawEvents ?? [], [rawEvents]);
+  const savingsGoals = useMemo(() => rawSavingsGoals ?? [], [rawSavingsGoals]);
+  const allTransactions = useMemo(() => rawTransactions ?? [], [rawTransactions]);
+
+  const isLoading = rawRules === undefined || rawEvents === undefined;
 
   // Filter savings transactions
   const savingsTransactions = useMemo(

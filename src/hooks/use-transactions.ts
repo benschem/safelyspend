@@ -13,7 +13,7 @@ const USER_ID = 'local';
  */
 export function useTransactions(startDate?: string, endDate?: string) {
   // Use indexed date query for transactions in range (supports partial ranges)
-  const transactions = useLiveQuery(
+  const rawTransactions = useLiveQuery(
     () => {
       if (startDate && endDate) {
         // Both dates: range query
@@ -31,12 +31,14 @@ export function useTransactions(startDate?: string, endDate?: string) {
       return db.transactions.toArray();
     },
     [startDate, endDate],
-  ) ?? [];
+  );
+  const transactions = useMemo(() => rawTransactions ?? [], [rawTransactions]);
 
   // For allTransactions, we need all of them (used for balance calculations, fingerprints, etc.)
-  const allTransactions = useLiveQuery(() => db.transactions.toArray(), []) ?? [];
+  const rawAllTransactions = useLiveQuery(() => db.transactions.toArray(), []);
+  const allTransactions = useMemo(() => rawAllTransactions ?? [], [rawAllTransactions]);
 
-  const isLoading = transactions === undefined || allTransactions === undefined;
+  const isLoading = rawTransactions === undefined || rawAllTransactions === undefined;
 
   const incomeTransactions = useMemo(
     () => transactions.filter((t) => t.type === 'income'),

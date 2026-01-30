@@ -11,9 +11,10 @@ const USER_ID = 'local';
  * Savings goals are global (not tied to scenarios or periods)
  */
 export function useSavingsGoals() {
-  const savingsGoals = useLiveQuery(() => db.savingsGoals.toArray(), []) ?? [];
+  const rawSavingsGoals = useLiveQuery(() => db.savingsGoals.toArray(), []);
+  const savingsGoals = useMemo(() => rawSavingsGoals ?? [], [rawSavingsGoals]);
 
-  const isLoading = savingsGoals === undefined;
+  const isLoading = rawSavingsGoals === undefined;
 
   // Get the current emergency fund goal (if any)
   const emergencyFund = useMemo(

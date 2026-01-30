@@ -8,7 +8,7 @@ const USER_ID = 'local';
 
 export function useScenarios() {
   const rawScenarios = useLiveQuery(() => db.scenarios.toArray(), []);
-  const scenarios = rawScenarios ?? [];
+  const scenarios = useMemo(() => rawScenarios ?? [], [rawScenarios]);
 
   const activeScenarioRecord = useLiveQuery(
     () => db.activeScenario.get('singleton'),

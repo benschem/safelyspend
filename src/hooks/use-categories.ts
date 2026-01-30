@@ -7,9 +7,10 @@ import { generateId, now } from '@/lib/utils';
 const USER_ID = 'local';
 
 export function useCategories() {
-  const categories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
+  const rawCategories = useLiveQuery(() => db.categories.toArray(), []);
+  const categories = useMemo(() => rawCategories ?? [], [rawCategories]);
 
-  const isLoading = categories === undefined;
+  const isLoading = rawCategories === undefined;
 
   const addCategory = useCallback(async (data: CreateEntity<Category>) => {
     const timestamp = now();

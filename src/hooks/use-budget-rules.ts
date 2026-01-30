@@ -61,9 +61,10 @@ function expandBudgetRule(
  * Hook for managing budget rules with cadence
  */
 export function useBudgetRules(scenarioId: string | null, startDate?: string, endDate?: string) {
-  const allBudgetRules = useLiveQuery(() => db.budgetRules.toArray(), []) ?? [];
+  const rawBudgetRules = useLiveQuery(() => db.budgetRules.toArray(), []);
+  const allBudgetRules = useMemo(() => rawBudgetRules ?? [], [rawBudgetRules]);
 
-  const isLoading = allBudgetRules === undefined;
+  const isLoading = rawBudgetRules === undefined;
 
   // Filter to current scenario
   const budgetRules = useMemo(

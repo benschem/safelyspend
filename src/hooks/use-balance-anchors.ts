@@ -7,9 +7,10 @@ import { generateId, now } from '@/lib/utils';
 const USER_ID = 'local';
 
 export function useBalanceAnchors() {
-  const rawAnchors = useLiveQuery(() => db.balanceAnchors.toArray(), []) ?? [];
+  const queryResult = useLiveQuery(() => db.balanceAnchors.toArray(), []);
+  const rawAnchors = useMemo(() => queryResult ?? [], [queryResult]);
 
-  const isLoading = rawAnchors === undefined;
+  const isLoading = queryResult === undefined;
 
   // Sort anchors by date descending (most recent first)
   const sortedAnchors = useMemo(
