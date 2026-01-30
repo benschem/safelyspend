@@ -190,7 +190,7 @@ export function InsightsPage() {
         balanceStartMonth: anchorMonth,
         warning: {
           title: `Cash shown only from ${formatCompactDate(anchorInRange.date, true)}`,
-          linkText: 'Add an earlier starting cash amount',
+          linkText: 'Add an earlier initial cash amount',
           linkSuffix: 'to see cash from the start of this period.',
         },
       };
@@ -201,8 +201,8 @@ export function InsightsPage() {
       startingBalance: null,
       balanceStartMonth: null,
       warning: {
-        title: 'No starting cash set for this period',
-        linkText: 'Add a starting cash amount',
+        title: 'No initial cash set for this period',
+        linkText: 'Add a initial cash amount',
         linkSuffix: 'to see your cash over time.',
       },
     };

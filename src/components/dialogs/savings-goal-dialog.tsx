@@ -129,7 +129,7 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
             type: 'savings',
             date: transactionDate,
             amountCents: startingBalanceCents,
-            description: balanceType === 'already-saved' ? 'Opening balance' : 'Transfer to savings',
+            description: balanceType === 'already-saved' ? 'Initial amount' : 'Transfer to savings',
             categoryId: null,
             savingsGoalId: newGoal.id,
           });

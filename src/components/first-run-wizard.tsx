@@ -71,11 +71,11 @@ export function FirstRunWizard() {
           await setActiveScenarioId(scenario.id);
         }
 
-        // Create starting cash anchor (even if 0, as it sets the anchor date)
+        // Create initial cash anchor (even if 0, as it sets the anchor date)
         await addAnchor({
           date: value.balanceDate,
           balanceCents: balanceCents,
-          label: 'Starting cash',
+          label: 'Initial cash',
         });
 
         await markInitialized(false);

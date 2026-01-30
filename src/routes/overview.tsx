@@ -244,9 +244,9 @@ export function SnapshotPage() {
       {/* Cash warning banner */}
       {hasNoAnchor && (
         <Alert variant="warning" className="mb-8">
-          <AlertTitle>No starting cash set</AlertTitle>
+          <AlertTitle>No initial cash set</AlertTitle>
           <AlertDescription>
-            Add a starting cash amount in{' '}
+            Add a initial cash amount in{' '}
             <Link to="/settings" className="underline">
               Settings
             </Link>{' '}

@@ -355,10 +355,10 @@ export function SettingsPage() {
 
         <Separator />
 
-        {/* Starting Cash Section */}
+        {/* Initial Cash Section */}
         <section className="section">
           <div className="section-header">
-            <h2>Starting Cash</h2>
+            <h2>Initial Cash</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Tell us how much cash you had on a specific date. We&apos;ll calculate your current cash
               from there using your transactions.
@@ -379,9 +379,9 @@ export function SettingsPage() {
               </div>
               {anchors.length === 0 ? (
                 <div className="empty-state">
-                  <p className="empty-state-text">No starting cash set.</p>
+                  <p className="empty-state-text">No initial cash set.</p>
                   <Button variant="outline" className="empty-state-action" onClick={openAddAnchor}>
-                    Add starting cash
+                    Add initial cash
                   </Button>
                 </div>
               ) : (
@@ -468,7 +468,7 @@ export function SettingsPage() {
       <Dialog open={anchorDialogOpen} onOpenChange={setAnchorDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingAnchorId ? 'Edit' : 'Add'} Starting Cash</DialogTitle>
+            <DialogTitle>{editingAnchorId ? 'Edit' : 'Add'} Initial Cash</DialogTitle>
             <DialogDescription>
               Enter how much cash you had on a specific date. Check your bank statement if you&apos;re
               not sure.
