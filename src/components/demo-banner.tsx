@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { clearAllData, getAvailablePersonas, getDemoPersonaId, switchPersona } from '@/lib/demo-data';
+import { debug } from '@/lib/debug';
 
 export function DemoBanner() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -43,7 +44,7 @@ export function DemoBanner() {
       // Reload the page to reflect new data
       window.location.reload();
     } catch (error) {
-      console.error('Failed to switch persona:', error);
+      debug.error('db', 'Failed to switch persona', error);
       setIsLoading(false);
     }
   };

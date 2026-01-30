@@ -10,6 +10,7 @@ import { today } from '@/lib/utils';
 import { loadDemoDataToStorage } from '@/lib/demo-data';
 import { FormField, FormError } from '@/components/form-field';
 import { firstRunSetupSchema, parseCents } from '@/lib/schemas';
+import { debug } from '@/lib/debug';
 import { LandingPage } from '@/components/landing-page';
 
 type WizardStep = 'choose' | 'setup';
@@ -80,7 +81,7 @@ export function FirstRunWizard() {
         await markInitialized(false);
         navigate('/');
       } catch (error) {
-        console.error('Setup failed:', error);
+        debug.error('db', 'Setup failed', error);
         setSubmitError('Setup failed. Please try again.');
       }
     },

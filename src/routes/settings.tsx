@@ -23,6 +23,7 @@ import {
   getImportErrorMessage,
   type ValidatedBudgetData,
 } from '@/lib/import-schema';
+import { debug } from '@/lib/debug';
 import type { BudgetData } from '@/lib/types';
 
 // Rate limiting: minimum 5 seconds between imports
@@ -77,7 +78,7 @@ export function SettingsPage() {
       URL.revokeObjectURL(url);
       showMessage('success', 'Data exported successfully.');
     } catch (error) {
-      console.error('Export failed:', error);
+      debug.error('db', 'Export failed', error);
       showMessage('error', 'Export failed. Please try again.');
     }
   };
@@ -140,7 +141,7 @@ export function SettingsPage() {
         window.location.reload();
       }, 1500);
     } catch (error) {
-      console.error('Import failed:', error);
+      debug.error('import', 'Import failed', error);
       showMessage('error', 'Import failed. Please try again.');
       setImportPreviewOpen(false);
       setPendingImport(null);
@@ -163,7 +164,7 @@ export function SettingsPage() {
       await fullReset();
       navigate('/landing');
     } catch (error) {
-      console.error('Delete failed:', error);
+      debug.error('db', 'Delete failed', error);
       showMessage('error', 'Delete failed. Please try again.');
     }
   };
