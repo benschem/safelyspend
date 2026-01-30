@@ -105,12 +105,14 @@ export function useReportsData(
   startDate: string,
   endDate: string,
 ) {
-  const { incomeTransactions, expenseTransactions, savingsTransactions } =
+  const { incomeTransactions, expenseTransactions, savingsTransactions, isLoading: transactionsLoading } =
     useTransactions(startDate, endDate);
-  const { expandedBudgets, budgetRules } = useBudgetRules(scenarioId, startDate, endDate);
-  const { savingsGoals } = useSavingsGoals();
-  const { categories, activeCategories } = useCategories();
-  const { incomeForecasts, expenseForecasts, savingsForecasts } = useForecasts(scenarioId, startDate, endDate);
+  const { expandedBudgets, budgetRules, isLoading: budgetLoading } = useBudgetRules(scenarioId, startDate, endDate);
+  const { savingsGoals, isLoading: savingsLoading } = useSavingsGoals();
+  const { categories, activeCategories, isLoading: categoriesLoading } = useCategories();
+  const { incomeForecasts, expenseForecasts, savingsForecasts, isLoading: forecastsLoading } = useForecasts(scenarioId, startDate, endDate);
+
+  const isLoading = transactionsLoading || budgetLoading || savingsLoading || categoriesLoading || forecastsLoading;
 
   // Separate savings forecasts into contributions and interest
   // Interest is shown as "actual" (earned money) not forecast in charts
@@ -526,6 +528,7 @@ export function useReportsData(
   }, [monthlySpending, categoryMap]);
 
   return {
+    isLoading,
     monthlySpending,
     budgetComparison,
     monthlyBudgetComparison,

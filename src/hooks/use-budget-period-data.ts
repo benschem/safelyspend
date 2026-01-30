@@ -58,6 +58,7 @@ interface UseBudgetPeriodDataResult {
   isCurrentPeriod: boolean;
   isFuturePeriod: boolean;
   isPastPeriod: boolean;
+  isLoading: boolean;
   periodCashFlow: PeriodCashFlow;
   summary: BudgetSummary;
   periodSpending: PeriodSpending;
@@ -355,9 +356,9 @@ export function useBudgetPeriodData({
   selectedMonth,
   viewMode,
 }: UseBudgetPeriodDataOptions): UseBudgetPeriodDataResult {
-  const { allTransactions } = useTransactions();
-  const { budgetRules } = useBudgetRules(scenarioId);
-  const { activeCategories } = useCategories();
+  const { allTransactions, isLoading: transactionsLoading } = useTransactions();
+  const { budgetRules, isLoading: budgetLoading } = useBudgetRules(scenarioId);
+  const { activeCategories, isLoading: categoriesLoading } = useCategories();
 
   // Calculate dates
   const now = new Date();
@@ -384,7 +385,9 @@ export function useBudgetPeriodData({
   const periodLabel = viewMode === 'year' ? String(selectedYear) : `${shortMonthName} ${selectedYear}`;
 
   // Get forecasts for the period
-  const { expandedForecasts: periodForecasts, savingsForecasts } = useForecasts(scenarioId, periodStart, periodEnd);
+  const { expandedForecasts: periodForecasts, savingsForecasts, isLoading: forecastsLoading } = useForecasts(scenarioId, periodStart, periodEnd);
+
+  const isLoading = transactionsLoading || budgetLoading || categoriesLoading || forecastsLoading;
 
   // Build color map
   const colorMap = useMemo(() => {
@@ -425,6 +428,7 @@ export function useBudgetPeriodData({
     isCurrentPeriod,
     isFuturePeriod,
     isPastPeriod,
+    isLoading,
     periodCashFlow,
     summary,
     periodSpending,
