@@ -151,6 +151,7 @@ describe('debug logger', () => {
   describe('console output in dev mode', () => {
     it('outputs to console.info for info level', () => {
       debug.info('db', 'info message');
+      // eslint-disable-next-line no-console -- Testing console output
       expect(console.info).toHaveBeenCalledWith('[DB]', 'info message');
     });
 
@@ -167,6 +168,7 @@ describe('debug logger', () => {
     it('includes data in console output when provided', () => {
       const testData = { foo: 'bar' };
       debug.info('db', 'with data', testData);
+      // eslint-disable-next-line no-console -- Testing console output
       expect(console.info).toHaveBeenCalledWith('[DB]', 'with data', testData);
     });
   });

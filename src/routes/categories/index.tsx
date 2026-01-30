@@ -80,6 +80,21 @@ export function CategoriesIndexPage() {
     }
   }, [deletingId, deleteCategory]);
 
+  // Check if category has references (transactions or forecasts)
+  const hasReferences = useCallback((id: string) => {
+    return (transactionCounts[id] ?? 0) > 0 || (forecastCounts[id] ?? 0) > 0;
+  }, [transactionCounts, forecastCounts]);
+
+  // Get reference count text for warning
+  const getReferenceText = useCallback((id: string) => {
+    const txCount = transactionCounts[id] ?? 0;
+    const fcCount = forecastCounts[id] ?? 0;
+    const parts: string[] = [];
+    if (txCount > 0) parts.push(`${txCount} transaction${txCount !== 1 ? 's' : ''}`);
+    if (fcCount > 0) parts.push(`${fcCount} forecast${fcCount !== 1 ? 's' : ''}`);
+    return parts.join(' and ');
+  }, [transactionCounts, forecastCounts]);
+
   const columns: ColumnDef<Category>[] = useMemo(
     () => [
       {
@@ -175,15 +190,16 @@ export function CategoriesIndexPage() {
                 onClick={() => handleDelete(category.id)}
                 onBlur={() => setTimeout(() => setDeletingId(null), 200)}
                 aria-label={isDeleting ? 'Confirm delete' : 'Delete category'}
+                title={isDeleting && hasReferences(category.id) ? `Warning: Used by ${getReferenceText(category.id)}` : undefined}
               >
-                {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+                {isDeleting ? (hasReferences(category.id) ? 'Delete anyway?' : 'Confirm') : <Trash2 className="h-4 w-4" />}
               </Button>
             </div>
           );
         },
       },
     ],
-    [deletingId, updateCategory, transactionCounts, forecastCounts, openEditDialog, handleDelete],
+    [deletingId, updateCategory, transactionCounts, forecastCounts, openEditDialog, handleDelete, hasReferences, getReferenceText],
   );
 
   return (

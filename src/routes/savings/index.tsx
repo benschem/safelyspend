@@ -86,6 +86,17 @@ export function SavingsIndexPage() {
     [deletingId, deleteSavingsGoal],
   );
 
+  // Check if savings goal has transactions
+  const getTransactionCount = useCallback(
+    (goalId: string) => savingsTransactions.filter((t) => t.savingsGoalId === goalId).length,
+    [savingsTransactions],
+  );
+
+  const hasTransactions = useCallback(
+    (goalId: string) => getTransactionCount(goalId) > 0,
+    [getTransactionCount],
+  );
+
   const handleSetEmergencyFund = useCallback(
     (id: string, isEmergencyFund: boolean) => {
       updateSavingsGoal(id, { isEmergencyFund });
@@ -208,15 +219,16 @@ export function SavingsIndexPage() {
                 onClick={() => handleDelete(goal.id)}
                 onBlur={() => setTimeout(() => setDeletingId(null), 200)}
                 aria-label={isDeleting ? 'Confirm delete' : 'Delete goal'}
+                title={isDeleting && hasTransactions(goal.id) ? `Warning: Has ${getTransactionCount(goal.id)} transaction(s)` : undefined}
               >
-                {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+                {isDeleting ? (hasTransactions(goal.id) ? 'Delete anyway?' : 'Confirm') : <Trash2 className="h-4 w-4" />}
               </Button>
             </div>
           );
         },
       },
     ],
-    [deletingId, openEditDialog, handleDelete, handleSetEmergencyFund],
+    [deletingId, openEditDialog, handleDelete, handleSetEmergencyFund, hasTransactions, getTransactionCount],
   );
 
   return (

@@ -43,6 +43,8 @@ export default [
       'react/react-in-jsx-scope': 'off',
       'comma-dangle': ['error', 'always-multiline'],
       'no-undef': 'off',
+      // Prevent raw console usage - use debug utility instead
+      'no-console': ['error', { allow: ['warn', 'error'] }],
     },
     settings: {
       react: {

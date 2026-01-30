@@ -130,6 +130,7 @@ function log(level: LogLevel, category: LogCategory, message: string, data?: unk
   if (!isEnabled(category)) return;
 
   const prefix = `[${category.toUpperCase()}]`;
+  // eslint-disable-next-line no-console -- This is the debug utility that wraps console
   const consoleFn = console[level] || console.log;
 
   if (data !== undefined) {
