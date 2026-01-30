@@ -21,6 +21,12 @@ import {
 } from '@/components/ui/dialog';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Plus, Pencil, Trash2, Check, X, Download, AlertTriangle, Receipt, RotateCcw, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, Settings2, StickyNote } from 'lucide-react';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
@@ -209,16 +215,18 @@ export function TransactionsIndexPage() {
           }
           return (
             <div className="flex items-center gap-1.5">
-              <Link
-                to={`/transactions/${transaction.id}`}
-                className="font-medium hover:underline"
-              >
-                {row.getValue('description')}
-              </Link>
+              <span className="font-medium">{row.getValue('description')}</span>
               {transaction.notes && (
-                <span title={transaction.notes}>
-                  <StickyNote className="h-3.5 w-3.5 text-muted-foreground" />
-                </span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <StickyNote className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p className="whitespace-pre-wrap">{transaction.notes}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
             </div>
           );

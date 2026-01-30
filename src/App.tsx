@@ -14,7 +14,6 @@ import { RecurringDetailPage } from '@/routes/forecasts/recurring/detail';
 import { BudgetPage } from '@/routes/budget';
 import { TransactionsIndexPage } from '@/routes/transactions/index';
 import { TransactionNewPage } from '@/routes/transactions/new';
-import { TransactionDetailPage } from '@/routes/transactions/detail';
 import { CategoriesIndexPage } from '@/routes/categories/index';
 import { CategoryImportRulesPage } from '@/routes/categories/import-rules';
 import { SavingsIndexPage } from '@/routes/savings/index';
@@ -54,7 +53,6 @@ const router = createBrowserRouter([
       // Transactions (track)
       { path: 'transactions', element: <TransactionsIndexPage /> },
       { path: 'transactions/new', element: <TransactionNewPage /> },
-      { path: 'transactions/:id', element: <TransactionDetailPage /> },
 
       // Categories (track)
       { path: 'categories', element: <CategoriesIndexPage /> },
