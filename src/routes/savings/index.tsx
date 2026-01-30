@@ -265,7 +265,7 @@ export function SavingsIndexPage() {
                   key={goal.goalId}
                   type="button"
                   onClick={() => openEditDialog(goal.goalId)}
-                  className="cursor-pointer text-left transition-shadow hover:ring-2 hover:ring-primary/20 focus:outline-none focus:ring-2 focus:ring-primary rounded-lg"
+                  className="w-full cursor-pointer text-left rounded-lg transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <SavingsGoalProgressCard
                     goalName={goal.goalName}

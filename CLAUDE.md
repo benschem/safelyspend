@@ -114,6 +114,47 @@ const [items, setItems] = useLocalStorage<Type[]>('budget:key', []);
 
 On first launch (when `budget:appConfig.isInitialized` is false), a wizard prompts for initial spending balance. This creates an `adjustment` transaction for the opening balance.
 
+### UI Component Patterns
+
+#### Cards
+
+Base card style: `rounded-lg border bg-card p-4` (or `rounded-xl` and `p-5` for larger cards)
+
+**Clickable card that navigates (Link):**
+```tsx
+<Link
+  to="/some-page"
+  className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50"
+>
+  {/* Card content */}
+  <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+</Link>
+```
+
+**Clickable card that opens dialog/modal (no navigation):**
+```tsx
+<button
+  type="button"
+  onClick={handleClick}
+  className="w-full cursor-pointer text-left rounded-lg transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+>
+  {/* Card content - NO arrow icon */}
+</button>
+```
+
+**Static/disabled card:**
+```tsx
+<div className="rounded-xl border bg-card p-5 opacity-50">
+  {/* Card content */}
+</div>
+```
+
+Key principles:
+- Use `hover:bg-muted/50` for interactive cards (not ring/shadow)
+- Arrow icon only for cards that navigate to another page
+- No arrow for cards that open dialogs/modals
+- Use `group` class to show/hide arrow on hover
+
 ### Conventions
 
 - All money amounts stored as cents, displayed with `formatCents()`
