@@ -47,11 +47,11 @@ function formatTimelineDescription(amount: number, unit: TimelineUnit, mode: Tim
 
   switch (mode) {
     case 'past':
-      return `${amount} ${unitLabel} in the past`;
+      return `${amount} ${unitLabel} before now`;
     case 'around-present':
       return `${amount} ${unitLabel} around now`;
     case 'future':
-      return `${amount} ${unitLabel} into the future`;
+      return `${amount} ${unitLabel} after now`;
     case 'custom':
       return 'Custom range';
   }

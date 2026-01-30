@@ -349,11 +349,11 @@ export function BudgetComparisonChart({
         })}
       </div>
 
-      {hasFutureData && (
-        <p className="mt-3 text-center text-xs text-muted-foreground">
-          Data after &quot;Now&quot; is forecast.
-        </p>
-      )}
+      <p className="mt-3 text-center text-xs text-muted-foreground">
+        {hasFutureData
+          ? 'Data after the "Now" line is forecast. Hover for breakdown.'
+          : 'Hover for breakdown.'}
+      </p>
     </div>
   );
 }
