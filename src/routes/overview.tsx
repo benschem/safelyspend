@@ -229,7 +229,7 @@ export function SnapshotPage() {
   }
 
   return (
-    <div className="page-shell">
+    <div className="page-shell space-y-6">
       {/* Header */}
       <div className="page-header">
         <h1 className="page-title">
@@ -243,7 +243,7 @@ export function SnapshotPage() {
 
       {/* Cash warning banner */}
       {hasNoAnchor && (
-        <Alert variant="warning" className="mb-8">
+        <Alert variant="warning">
           <AlertTitle>No initial cash set</AlertTitle>
           <AlertDescription>
             Add a initial cash amount in{' '}
@@ -256,7 +256,9 @@ export function SnapshotPage() {
       )}
 
       {/* Net Wealth Hero */}
-      <div className="mb-10 text-center">
+      <div className="mb-4 min-h-28 text-center sm:min-h-32">
+        {/* Spacer row for alignment with other pages */}
+        <div className="min-h-8" />
         <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
           Net Wealth
         </p>
@@ -270,8 +272,8 @@ export function SnapshotPage() {
       </div>
 
       {/* Assets & Liabilities */}
-      <div className="mb-10">
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
           {/* Cash */}
           <Link
             to="/insights?tab=cashflow"
