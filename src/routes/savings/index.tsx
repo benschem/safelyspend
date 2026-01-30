@@ -1,15 +1,14 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useOutletContext } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Pencil, Trash2, Check, X, PiggyBank, Ambulance } from 'lucide-react';
+import { Plus, Pencil, Trash2, PiggyBank, Ambulance } from 'lucide-react';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useTransactions } from '@/hooks/use-transactions';
 import { SavingsGoalDialog } from '@/components/dialogs/savings-goal-dialog';
-import { formatCents, formatDate, parseCentsFromInput } from '@/lib/utils';
+import { formatCents, formatDate } from '@/lib/utils';
 import type { SavingsGoal } from '@/lib/types';
 
 interface OutletContext {
@@ -27,13 +26,9 @@ export function SavingsIndexPage() {
   const { startDate, endDate } = useOutletContext<OutletContext>();
   const { savingsGoals, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal } = useSavingsGoals();
   const { savingsTransactions, addTransaction } = useTransactions(startDate, endDate);
-  const [dialogOpen, setDialogOpen] = useState(false);
 
-  // Inline editing state
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editTarget, setEditTarget] = useState('');
-  const [editDeadline, setEditDeadline] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const getSavedAmount = useCallback(
@@ -62,36 +57,22 @@ export function SavingsIndexPage() {
     [savingsGoals, getSavedAmount],
   );
 
-  const startEditing = useCallback((goal: SavingsGoal) => {
-    setEditingId(goal.id);
-    setEditName(goal.name);
-    setEditTarget((goal.targetAmountCents / 100).toFixed(2));
-    setEditDeadline(goal.deadline ?? '');
+  const openAddDialog = useCallback(() => {
+    setEditingGoal(null);
+    setDialogOpen(true);
   }, []);
 
-  const cancelEditing = useCallback(() => {
-    setEditingId(null);
-    setEditName('');
-    setEditTarget('');
-    setEditDeadline('');
+  const openEditDialog = useCallback((goal: SavingsGoal) => {
+    setEditingGoal(goal);
+    setDialogOpen(true);
   }, []);
 
-  const saveEditing = useCallback(() => {
-    if (!editingId || !editName.trim()) return;
-
-    const targetCents = parseCentsFromInput(editTarget);
-    if (targetCents <= 0) return;
-
-    const updates: Parameters<typeof updateSavingsGoal>[1] = {
-      name: editName.trim(),
-      targetAmountCents: targetCents,
-    };
-    if (editDeadline) {
-      updates.deadline = editDeadline;
+  const handleDialogClose = useCallback((open: boolean) => {
+    setDialogOpen(open);
+    if (!open) {
+      setEditingGoal(null);
     }
-    updateSavingsGoal(editingId, updates);
-    cancelEditing();
-  }, [editingId, editName, editTarget, editDeadline, updateSavingsGoal, cancelEditing]);
+  }, []);
 
   const handleDelete = useCallback(
     (id: string) => {
@@ -112,18 +93,6 @@ export function SavingsIndexPage() {
     [updateSavingsGoal],
   );
 
-  // Close editors on Escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (editingId) cancelEditing();
-        if (deletingId) setDeletingId(null);
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [editingId, deletingId, cancelEditing]);
-
   const columns: ColumnDef<SavingsGoalRow>[] = useMemo(
     () => [
       {
@@ -131,37 +100,21 @@ export function SavingsIndexPage() {
         header: ({ column }) => <SortableHeader column={column}>Name</SortableHeader>,
         cell: ({ row }) => {
           const goal = row.original;
-          if (editingId === goal.id) {
-            return (
-              <Input
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="h-8 w-full min-w-[120px]"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') saveEditing();
-                  if (e.key === 'Escape') cancelEditing();
-                }}
-              />
-            );
-          }
-          return <span className="font-medium">{goal.name}</span>;
+          return (
+            <button
+              type="button"
+              onClick={() => openEditDialog(goal)}
+              className="cursor-pointer text-left font-medium hover:underline"
+            >
+              {goal.name}
+            </button>
+          );
         },
       },
       {
         accessorKey: 'deadline',
         header: ({ column }) => <SortableHeader column={column}>Deadline</SortableHeader>,
         cell: ({ row }) => {
-          const goal = row.original;
-          if (editingId === goal.id) {
-            return (
-              <Input
-                type="date"
-                value={editDeadline}
-                onChange={(e) => setEditDeadline(e.target.value)}
-                className="h-8 w-36"
-              />
-            );
-          }
           const deadline = row.getValue('deadline') as string | undefined;
           return deadline ? formatDate(deadline) : '-';
         },
@@ -219,50 +172,17 @@ export function SavingsIndexPage() {
             Goal
           </SortableHeader>
         ),
-        cell: ({ row }) => {
-          const goal = row.original;
-          if (editingId === goal.id) {
-            return (
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={editTarget}
-                onChange={(e) => setEditTarget(e.target.value)}
-                className="h-8 w-24 text-right"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') saveEditing();
-                  if (e.key === 'Escape') cancelEditing();
-                }}
-              />
-            );
-          }
-          return (
-            <div className="text-right font-mono">
-              {formatCents(row.getValue('targetAmountCents'))}
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          <div className="text-right font-mono">
+            {formatCents(row.getValue('targetAmountCents'))}
+          </div>
+        ),
       },
       {
         id: 'actions',
         cell: ({ row }) => {
           const goal = row.original;
-          const isEditing = editingId === goal.id;
           const isDeleting = deletingId === goal.id;
-
-          if (isEditing) {
-            return (
-              <div className="flex justify-end gap-1">
-                <Button variant="ghost" size="sm" onClick={saveEditing} title="Save">
-                  <Check className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={cancelEditing} title="Cancel">
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            );
-          }
 
           return (
             <div className="flex justify-end gap-1">
@@ -277,7 +197,7 @@ export function SavingsIndexPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => startEditing(goal)}
+                onClick={() => openEditDialog(goal)}
                 title="Edit"
               >
                 <Pencil className="h-4 w-4" />
@@ -296,7 +216,7 @@ export function SavingsIndexPage() {
         },
       },
     ],
-    [editingId, editName, editTarget, editDeadline, deletingId, startEditing, cancelEditing, saveEditing, handleDelete, handleSetEmergencyFund],
+    [deletingId, openEditDialog, handleDelete, handleSetEmergencyFund],
   );
 
   return (
@@ -311,7 +231,7 @@ export function SavingsIndexPage() {
           </h1>
           <p className="mt-1 text-muted-foreground">Track progress toward your savings targets.</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
+        <Button onClick={openAddDialog}>
           <Plus className="h-4 w-4" />
           Add Goal
         </Button>
@@ -324,7 +244,7 @@ export function SavingsIndexPage() {
           </Alert>
           <div className="rounded-lg border border-dashed p-8 text-center">
             <p className="text-muted-foreground">No savings goals yet.</p>
-            <Button className="mt-4" onClick={() => setDialogOpen(true)}>
+            <Button className="mt-4" onClick={openAddDialog}>
               Create your first goal
             </Button>
           </div>
@@ -343,8 +263,8 @@ export function SavingsIndexPage() {
 
       <SavingsGoalDialog
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        goal={null}
+        onOpenChange={handleDialogClose}
+        goal={editingGoal}
         addSavingsGoal={addSavingsGoal}
         updateSavingsGoal={updateSavingsGoal}
         addTransaction={addTransaction}
