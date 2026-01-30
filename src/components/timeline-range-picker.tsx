@@ -49,9 +49,9 @@ function formatTimelineDescription(amount: number, unit: TimelineUnit, mode: Tim
     case 'past':
       return `${amount} ${unitLabel} in the past`;
     case 'around-present':
-      return `${amount} ${unitLabel} around the present`;
+      return `${amount} ${unitLabel} around now`;
     case 'future':
-      return `${amount} ${unitLabel} in the future`;
+      return `${amount} ${unitLabel} into the future`;
     case 'custom':
       return 'Custom range';
   }
