@@ -25,27 +25,25 @@ import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { formatCents } from '@/lib/utils';
 
-// Australian net worth percentiles (approximate, ABS data)
-// Values in cents
-const AU_NET_WORTH_PERCENTILES = [
+// Global wealth percentiles (approximate, Credit Suisse Global Wealth Report)
+// Values in AUD cents - most people with any savings rank highly globally
+const GLOBAL_WEALTH_PERCENTILES = [
   { percentile: 0, value: -10000000 },   // -$100k (negative net worth)
-  { percentile: 10, value: 5000000 },    // $50k
-  { percentile: 20, value: 15000000 },   // $150k
-  { percentile: 30, value: 28000000 },   // $280k
-  { percentile: 40, value: 43000000 },   // $430k
-  { percentile: 50, value: 58000000 },   // $580k (median)
-  { percentile: 60, value: 78000000 },   // $780k
-  { percentile: 70, value: 105000000 },  // $1.05M
-  { percentile: 80, value: 140000000 },  // $1.4M
-  { percentile: 90, value: 220000000 },  // $2.2M
-  { percentile: 99, value: 500000000 },  // $5M
+  { percentile: 30, value: 0 },          // $0 - having no debt puts you ahead of 30%
+  { percentile: 50, value: 600000 },     // $6k - median global wealth
+  { percentile: 60, value: 1500000 },    // $15k
+  { percentile: 70, value: 4000000 },    // $40k
+  { percentile: 80, value: 7500000 },    // $75k
+  { percentile: 88, value: 15000000 },   // $150k
+  { percentile: 95, value: 50000000 },   // $500k
+  { percentile: 99, value: 150000000 },  // $1.5M
   { percentile: 100, value: 1000000000 }, // $10M+
 ];
 
-function getPercentile(value: number, percentiles: typeof AU_NET_WORTH_PERCENTILES): number {
-  for (let i = 0; i < percentiles.length - 1; i++) {
-    const lower = percentiles[i]!;
-    const upper = percentiles[i + 1]!;
+function getGlobalPercentile(value: number): number {
+  for (let i = 0; i < GLOBAL_WEALTH_PERCENTILES.length - 1; i++) {
+    const lower = GLOBAL_WEALTH_PERCENTILES[i]!;
+    const upper = GLOBAL_WEALTH_PERCENTILES[i + 1]!;
 
     if (value >= lower.value && value < upper.value) {
       const range = upper.value - lower.value;
@@ -55,7 +53,7 @@ function getPercentile(value: number, percentiles: typeof AU_NET_WORTH_PERCENTIL
     }
   }
 
-  if (value < percentiles[0]!.value) return 0;
+  if (value < GLOBAL_WEALTH_PERCENTILES[0]!.value) return 0;
   return 99;
 }
 
@@ -258,17 +256,17 @@ export function SnapshotPage() {
         </Alert>
       )}
 
-      {/* Net Worth Hero */}
+      {/* Net Wealth Hero */}
       <div className="mb-10 text-center">
         <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-          Net Worth
+          Net Wealth
         </p>
         <p className={`mt-2 text-5xl font-bold tracking-tight ${netWorth >= 0 ? '' : 'text-red-500'}`}>
           {netWorth >= 0 ? '' : '-'}{formatCents(Math.abs(netWorth))}
         </p>
         <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
         <p className="text-sm text-muted-foreground">
-          More than {getPercentile(netWorth, AU_NET_WORTH_PERCENTILES)}% of Australians
+          Wealthier than {getGlobalPercentile(netWorth)}% of the world
         </p>
       </div>
 
