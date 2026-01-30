@@ -1,11 +1,5 @@
 import { useState } from 'react';
-import {
-  Calendar,
-  ChevronDown,
-  ArrowLeftFromLine,
-  SeparatorVertical,
-  ArrowRightFromLine,
-} from 'lucide-react';
+import { Calendar, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,10 +29,10 @@ interface TimelineRangePickerProps {
   onCustomDateChange: (startDate: string, endDate: string) => void;
 }
 
-const MODES: { value: TimelineMode; label: string; icon: typeof ArrowLeftFromLine }[] = [
-  { value: 'past', label: 'Past', icon: ArrowLeftFromLine },
-  { value: 'around-present', label: 'Present', icon: SeparatorVertical },
-  { value: 'future', label: 'Future', icon: ArrowRightFromLine },
+const MODES: { value: TimelineMode; label: string }[] = [
+  { value: 'past', label: 'Past' },
+  { value: 'around-present', label: 'Present' },
+  { value: 'future', label: 'Future' },
 ];
 
 const UNITS: { value: TimelineUnit; label: string; pluralLabel: string }[] = [
@@ -154,124 +148,94 @@ export function TimelineRangePicker({
           <ChevronDown className="h-4 w-4 text-muted-foreground" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-fit min-w-80" align="start">
+      <PopoverContent className="w-fit min-w-72" align="start">
         <div className="space-y-4">
-          <div className="space-y-1">
-            <h4 className="text-sm font-medium">Date Range</h4>
-            <p className="text-xs text-muted-foreground">
-              Choose a time period or set custom dates
-            </p>
-          </div>
+          {/* Preset controls */}
+          <div className="flex items-center gap-2">
+            <Select value={amount.toString()} onValueChange={handleAmountChange}>
+              <SelectTrigger className="w-16 cursor-pointer">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                {amountOptions.map((n) => (
+                  <SelectItem key={n} value={n.toString()}>
+                    {n}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={unit}
+              onValueChange={(v) => handleUnitChange(v as TimelineUnit)}
+            >
+              <SelectTrigger className="w-24 cursor-pointer">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {UNITS.map((u) => (
+                  <SelectItem key={u.value} value={u.value}>
+                    {amount === 1 ? u.label : u.pluralLabel}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          {/* Preset Range */}
-          <div className={cn(
-            'space-y-2 rounded-lg border p-3 transition-colors',
-            !isCustomActive ? 'border-border bg-muted/50' : 'border-transparent',
-          )}>
-            <Label className="text-xs">Preset Range</Label>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-3">
-              {/* Amount + Unit selector */}
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Show</Label>
-                <div className="flex items-center gap-2">
-                  <Select value={amount.toString()} onValueChange={handleAmountChange}>
-                    <SelectTrigger className="w-20 cursor-pointer">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      {amountOptions.map((n) => (
-                        <SelectItem key={n} value={n.toString()}>
-                          {n}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={unit}
-                    onValueChange={(v) => handleUnitChange(v as TimelineUnit)}
+            {/* Direction Toggle */}
+            <div className="inline-flex h-9 flex-1 rounded-md border border-input bg-background p-1 shadow-sm">
+              {MODES.map((m) => {
+                const isSelected = isCustomActive
+                  ? m.value === lastPresetMode
+                  : m.value === mode;
+                return (
+                  <button
+                    key={m.value}
+                    onClick={() => handleModeClick(m.value)}
+                    className={cn(
+                      'flex flex-1 cursor-pointer items-center justify-center rounded-sm px-2 text-sm font-medium transition-colors',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                      isSelected
+                        ? isCustomActive
+                          ? 'bg-primary/50 text-primary-foreground/70 shadow-sm'
+                          : 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                    )}
                   >
-                    <SelectTrigger className="w-28 cursor-pointer">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {UNITS.map((u) => (
-                        <SelectItem key={u.value} value={u.value}>
-                          {amount === 1 ? u.label : u.pluralLabel}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Direction Toggle */}
-              <div className="space-y-1 sm:flex-1">
-                <Label className="text-xs text-muted-foreground">in the</Label>
-                <div className="inline-flex h-9 w-full rounded-md border border-input bg-background p-1 shadow-sm">
-                  {MODES.map((m) => {
-                    const Icon = m.icon;
-                    const isSelected = isCustomActive
-                      ? m.value === lastPresetMode
-                      : m.value === mode;
-                    return (
-                      <button
-                        key={m.value}
-                        onClick={() => handleModeClick(m.value)}
-                        className={cn(
-                          'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-sm px-3 text-sm font-medium transition-colors',
-                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                          isSelected
-                            ? isCustomActive
-                              ? 'bg-primary/50 text-primary-foreground/70 shadow-sm'
-                              : 'bg-primary text-primary-foreground shadow-sm'
-                            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                        )}
-                      >
-                        <Icon className="h-4 w-4 shrink-0" />
-                        {m.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+                    {m.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Custom Date Range */}
-          <div className={cn(
-            'space-y-2 rounded-lg border p-3 transition-colors',
-            isCustomActive ? 'border-border bg-muted/50' : 'border-transparent',
-          )}>
-            <Label className="text-xs">Custom Range</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="grid gap-1">
-                <Label htmlFor="timeline-range-start" className="text-xs text-muted-foreground">
-                  Start
-                </Label>
-                <Input
-                  id="timeline-range-start"
-                  type="date"
-                  value={tempStartDate}
-                  max={tempEndDate}
-                  onChange={(e) => handleStartDateChange(e.target.value)}
-                  onFocus={() => setCustomFocused(true)}
-                  className="h-8 cursor-pointer"
-                />
-              </div>
-              <div className="grid gap-1">
-                <Label htmlFor="timeline-range-end" className="text-xs text-muted-foreground">
-                  End
-                </Label>
-                <Input
-                  id="timeline-range-end"
-                  type="date"
-                  value={tempEndDate}
-                  min={tempStartDate}
-                  onChange={(e) => handleEndDateChange(e.target.value)}
-                  onFocus={() => setCustomFocused(true)}
-                  className="h-8 cursor-pointer"
-                />
-              </div>
+          {/* Date inputs - always visible, synced with current range */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="grid gap-1">
+              <Label htmlFor="timeline-range-start" className="text-xs text-muted-foreground">
+                Start
+              </Label>
+              <Input
+                id="timeline-range-start"
+                type="date"
+                value={tempStartDate}
+                max={tempEndDate}
+                onChange={(e) => handleStartDateChange(e.target.value)}
+                onFocus={() => setCustomFocused(true)}
+                className="h-8 cursor-pointer"
+              />
+            </div>
+            <div className="grid gap-1">
+              <Label htmlFor="timeline-range-end" className="text-xs text-muted-foreground">
+                End
+              </Label>
+              <Input
+                id="timeline-range-end"
+                type="date"
+                value={tempEndDate}
+                min={tempStartDate}
+                onChange={(e) => handleEndDateChange(e.target.value)}
+                onFocus={() => setCustomFocused(true)}
+                className="h-8 cursor-pointer"
+              />
             </div>
           </div>
         </div>
