@@ -3,6 +3,13 @@ import { Link, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   CircleGauge,
   PiggyBank,
   Target,
@@ -14,6 +21,9 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowRight,
+  History,
+  CalendarClock,
+  Sparkles,
 } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -34,7 +44,7 @@ interface OutletContext {
 
 export function BudgetPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
-  const { activeScenario } = useScenarios();
+  const { activeScenario, scenarios, setActiveScenarioId } = useScenarios();
 
   // Selected period state - defaults to current month
   const [selectedMonth, setSelectedMonth] = useState(() => new Date());
@@ -300,25 +310,68 @@ export function BudgetPage() {
               Day {periodCashFlow.dayOfPeriod} of {periodCashFlow.daysInPeriod}
             </span>
           )}
+          {/* Time mode badge */}
+          {isPastPeriod && (
+            <span className="ml-2 flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+              <History className="h-3 w-3" />
+              Historical
+            </span>
+          )}
+          {isFuturePeriod && (
+            <span className="ml-2 flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-xs text-blue-600 dark:text-blue-400">
+              <Sparkles className="h-3 w-3" />
+              Projected
+            </span>
+          )}
         </div>
-        <ScenarioSelector />
+        {/* Scenario selector - more prominent for future periods */}
+        {isFuturePeriod && scenarios.length > 1 ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Scenario:</span>
+            <Select
+              value={activeScenarioId ?? undefined}
+              onValueChange={(value) => setActiveScenarioId(value)}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select scenario" />
+              </SelectTrigger>
+              <SelectContent>
+                {scenarios.map((scenario) => (
+                  <SelectItem key={scenario.id} value={scenario.id}>
+                    {scenario.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : (
+          <ScenarioSelector />
+        )}
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {/* Earned */}
+        {/* Earned / Projected Income */}
         <div className="rounded-xl border bg-card p-5">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/10">
             <TrendingUp className="h-5 w-5 text-green-500" />
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">Earned</p>
-          <p className="mt-1 text-xl font-semibold">{formatCents(periodCashFlow.income.actual)}</p>
+          <p className="mt-4 text-sm text-muted-foreground">
+            {isFuturePeriod ? 'Projected Income' : 'Earned'}
+          </p>
+          <p className="mt-1 text-xl font-semibold">
+            {formatCents(isFuturePeriod ? periodCashFlow.income.expected : periodCashFlow.income.actual)}
+          </p>
           <div className="mt-3 mb-3 h-px bg-border" />
-          {(() => {
+          {isFuturePeriod ? (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Based on forecast rules
+            </p>
+          ) : (() => {
             const pct = periodCashFlow.income.expected > 0
               ? Math.round((periodCashFlow.income.actual / periodCashFlow.income.expected) * 100)
               : 0;
-            const markerPos = isPastPeriod ? 100 : isFuturePeriod ? 0 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
+            const markerPos = isPastPeriod ? 100 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
             return (
               <>
                 <div className="relative h-1.5 rounded-full bg-green-500/20">
@@ -326,20 +379,24 @@ export function BudgetPage() {
                     className="h-1.5 rounded-full bg-green-500"
                     style={{ width: `${Math.min(pct, 100)}%` }}
                   />
-                  <div
-                    className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
-                    style={{ left: `${Math.min(markerPos, 100)}%` }}
-                  />
+                  {isCurrentPeriod && (
+                    <div
+                      className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
+                      style={{ left: `${Math.min(markerPos, 100)}%` }}
+                    />
+                  )}
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Earned {pct}% of {formatCents(periodCashFlow.income.expected)} forecast
+                  {isPastPeriod
+                    ? `${pct}% of ${formatCents(periodCashFlow.income.expected)} forecast`
+                    : `${pct}% of ${formatCents(periodCashFlow.income.expected)} forecast`}
                 </p>
               </>
             );
           })()}
         </div>
 
-        {/* Budget Plan */}
+        {/* Budget Plan / Planned Spending */}
         <Link to="/budget/plan" className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50">
           <div className="flex items-center justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
@@ -347,14 +404,22 @@ export function BudgetPage() {
             </div>
             <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">Budget Plan</p>
-          <p className="mt-1 text-xl font-semibold">{formatCents(periodCashFlow.budgeted.actual)}</p>
+          <p className="mt-4 text-sm text-muted-foreground">
+            {isFuturePeriod ? 'Planned Spending' : 'Budget Plan'}
+          </p>
+          <p className="mt-1 text-xl font-semibold">
+            {formatCents(isFuturePeriod ? periodCashFlow.budgeted.expected : periodCashFlow.budgeted.actual)}
+          </p>
           <div className="mt-3 mb-3 h-px bg-border" />
-          {(() => {
+          {isFuturePeriod ? (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Based on budget rules
+            </p>
+          ) : (() => {
             const pct = periodCashFlow.budgeted.expected > 0
               ? Math.round((periodCashFlow.budgeted.actual / periodCashFlow.budgeted.expected) * 100)
               : 0;
-            const markerPos = isPastPeriod ? 100 : isFuturePeriod ? 0 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
+            const markerPos = isPastPeriod ? 100 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
             return (
               <>
                 <div className="relative h-1.5 rounded-full bg-red-500/20">
@@ -362,10 +427,12 @@ export function BudgetPage() {
                     className="h-1.5 rounded-full bg-red-500"
                     style={{ width: `${Math.min(pct, 100)}%` }}
                   />
-                  <div
-                    className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
-                    style={{ left: `${Math.min(markerPos, 100)}%` }}
-                  />
+                  {isCurrentPeriod && (
+                    <div
+                      className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
+                      style={{ left: `${Math.min(markerPos, 100)}%` }}
+                    />
+                  )}
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
                   Spent {pct}% of {formatCents(periodCashFlow.budgeted.expected)} budget
@@ -375,19 +442,27 @@ export function BudgetPage() {
           })()}
         </Link>
 
-        {/* Unplanned Spending */}
+        {/* Unplanned Spending / Available Surplus */}
         <div className="rounded-xl border bg-card p-5">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10">
             <CircleAlert className="h-5 w-5 text-amber-500" />
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">Unplanned Spending</p>
-          <p className="mt-1 text-xl font-semibold">{formatCents(periodCashFlow.unbudgeted.actual)}</p>
+          <p className="mt-4 text-sm text-muted-foreground">
+            {isFuturePeriod ? 'Available Surplus' : 'Unplanned Spending'}
+          </p>
+          <p className="mt-1 text-xl font-semibold">
+            {formatCents(isFuturePeriod ? periodCashFlow.unbudgeted.unallocated : periodCashFlow.unbudgeted.actual)}
+          </p>
           <div className="mt-3 mb-3 h-px bg-border" />
-          {(() => {
+          {isFuturePeriod ? (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Income minus budget and savings
+            </p>
+          ) : (() => {
             const pct = periodCashFlow.unbudgeted.unallocated > 0
               ? Math.round((periodCashFlow.unbudgeted.actual / periodCashFlow.unbudgeted.unallocated) * 100)
               : 0;
-            const markerPos = isPastPeriod ? 100 : isFuturePeriod ? 0 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
+            const markerPos = isPastPeriod ? 100 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
             return (
               <>
                 <div className="relative h-1.5 rounded-full bg-amber-500/20">
@@ -395,10 +470,12 @@ export function BudgetPage() {
                     className="h-1.5 rounded-full bg-amber-500"
                     style={{ width: `${Math.min(pct, 100)}%` }}
                   />
-                  <div
-                    className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
-                    style={{ left: `${Math.min(markerPos, 100)}%` }}
-                  />
+                  {isCurrentPeriod && (
+                    <div
+                      className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
+                      style={{ left: `${Math.min(markerPos, 100)}%` }}
+                    />
+                  )}
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
                   Spent {pct}% of {formatCents(periodCashFlow.unbudgeted.unallocated)} surplus
@@ -408,19 +485,27 @@ export function BudgetPage() {
           })()}
         </div>
 
-        {/* Saved */}
+        {/* Saved / Planned Savings */}
         <div className="rounded-xl border bg-card p-5">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10">
             <PiggyBank className="h-5 w-5 text-blue-500" />
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">Saved</p>
-          <p className="mt-1 text-xl font-semibold">{formatCents(periodCashFlow.savings.actual)}</p>
+          <p className="mt-4 text-sm text-muted-foreground">
+            {isFuturePeriod ? 'Planned Savings' : 'Saved'}
+          </p>
+          <p className="mt-1 text-xl font-semibold">
+            {formatCents(isFuturePeriod ? periodCashFlow.savings.expected : periodCashFlow.savings.actual)}
+          </p>
           <div className="mt-3 mb-3 h-px bg-border" />
-          {(() => {
+          {isFuturePeriod ? (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Based on savings goals
+            </p>
+          ) : (() => {
             const pct = periodCashFlow.savings.expected > 0
               ? Math.round((periodCashFlow.savings.actual / periodCashFlow.savings.expected) * 100)
               : 0;
-            const markerPos = isPastPeriod ? 100 : isFuturePeriod ? 0 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
+            const markerPos = isPastPeriod ? 100 : (periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod) * 100;
             return (
               <>
                 <div className="relative h-1.5 rounded-full bg-blue-500/20">
@@ -428,10 +513,12 @@ export function BudgetPage() {
                     className="h-1.5 rounded-full bg-blue-500"
                     style={{ width: `${Math.min(pct, 100)}%` }}
                   />
-                  <div
-                    className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
-                    style={{ left: `${Math.min(markerPos, 100)}%` }}
-                  />
+                  {isCurrentPeriod && (
+                    <div
+                      className="absolute top-0 h-1.5 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
+                      style={{ left: `${Math.min(markerPos, 100)}%` }}
+                    />
+                  )}
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
                   Saved {pct}% of {formatCents(periodCashFlow.savings.expected)} planned
@@ -443,26 +530,31 @@ export function BudgetPage() {
       </div>
 
       {/* Pace & Projection Row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {/* Mini Pace Chart */}
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-500/10">
-              <CircleGauge className="h-4 w-4 text-slate-500" />
+      <div className={cn(
+        'grid gap-4',
+        isFuturePeriod ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2',
+      )}>
+        {/* Mini Pace Chart - only show for past/current periods */}
+        {!isFuturePeriod && (
+          <div className="rounded-xl border bg-card p-5">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-500/10">
+                <CircleGauge className="h-4 w-4 text-slate-500" />
+              </div>
+              <p className="text-sm text-muted-foreground">Spending pace</p>
             </div>
-            <p className="text-sm text-muted-foreground">Spending pace</p>
+            <div className="mt-2">
+              <BurnRateChart
+                dailySpending={burnRateData.dailySpending}
+                totalBudget={burnRateData.totalBudget}
+                periodStart={burnRateData.periodStart}
+                periodEnd={burnRateData.periodEnd}
+                periodLabel={burnRateData.periodLabel}
+                compact
+              />
+            </div>
           </div>
-          <div className="mt-2">
-            <BurnRateChart
-              dailySpending={burnRateData.dailySpending}
-              totalBudget={burnRateData.totalBudget}
-              periodStart={burnRateData.periodStart}
-              periodEnd={burnRateData.periodEnd}
-              periodLabel={burnRateData.periodLabel}
-              compact
-            />
-          </div>
-        </div>
+        )}
 
         {/* Month End Projection */}
         {(() => {
@@ -544,72 +636,123 @@ export function BudgetPage() {
         })()}
       </div>
 
-      {/* Spending by Category */}
-      <div className="rounded-xl border bg-card p-6">
-        <div className="flex items-center justify-between">
+      {/* Scenario Comparison - only for future periods when multiple scenarios exist */}
+      {isFuturePeriod && scenarios.length > 1 && (
+        <div className="rounded-xl border bg-card p-6">
           <div className="flex items-center gap-2">
-            <Tags className="h-5 w-5 text-muted-foreground" />
-            <h3 className="font-semibold">{periodLabel} Spending</h3>
+            <CalendarClock className="h-5 w-5 text-muted-foreground" />
+            <h3 className="font-semibold">Compare Scenarios</h3>
           </div>
-          <div className="text-right">
-            <p className="text-lg font-bold">{formatCents(periodSpending.total)}</p>
-            <p className="text-sm text-muted-foreground">
-              {periodSpending.categorySpending.length} {periodSpending.categorySpending.length === 1 ? 'category' : 'categories'}
-            </p>
-          </div>
-        </div>
-
-        {periodSpending.categorySpending.length === 0 ? (
-          <div className="mt-6 flex h-24 items-center justify-center text-sm text-muted-foreground">
-            No expenses recorded {isCurrentPeriod ? (viewMode === 'year' ? 'this year' : 'this month') : `in ${periodLabel}`}.
-          </div>
-        ) : (
-          <div className="mt-6 space-y-3">
-            {periodSpending.categorySpending.map((item) => {
-              const color = colorMap[item.id] ?? CHART_COLORS.uncategorized;
-              const hasBudget = item.budget > 0;
-              // Percentage of budget spent (capped at 100% for display)
-              const spentPercent = hasBudget ? Math.min((item.amount / item.budget) * 100, 100) : 100;
-              const isOverBudget = hasBudget && item.amount > item.budget;
-
+          <p className="mt-1 text-sm text-muted-foreground">
+            See how different scenarios affect your {viewMode === 'year' ? 'year' : 'month'}
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {scenarios.map((scenario) => {
+              const isActive = scenario.id === activeScenarioId;
               return (
-                <div key={item.id} className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">{item.name}</span>
-                    <span className="font-mono text-muted-foreground">
-                      {formatCents(item.amount)}
-                      {hasBudget && (
-                        <span className="text-sm"> / {formatCents(item.budget)}</span>
-                      )}
+                <button
+                  key={scenario.id}
+                  onClick={() => setActiveScenarioId(scenario.id)}
+                  className={cn(
+                    'rounded-lg border p-4 text-left transition-colors',
+                    isActive
+                      ? 'border-primary bg-primary/5'
+                      : 'hover:bg-muted/50',
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={cn(
+                      'text-sm font-medium',
+                      isActive && 'text-primary',
+                    )}>
+                      {scenario.name}
                     </span>
-                  </div>
-                  <div className="relative h-3 rounded-full bg-muted">
-                    {/* Light bar: budget amount (full width if budgeted) */}
-                    {hasBudget && (
-                      <div
-                        className="absolute h-3 rounded-full"
-                        style={{
-                          width: '100%',
-                          backgroundColor: color,
-                          opacity: 0.25,
-                        }}
-                      />
+                    {isActive && (
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                        Selected
+                      </span>
                     )}
-                    {/* Dark bar: actual spending relative to budget */}
-                    <div
-                      className={`absolute h-3 rounded-full ${isOverBudget ? 'ring-2 ring-red-500 ring-offset-1' : ''}`}
-                      style={{
-                        width: `${spentPercent}%`,
-                        backgroundColor: color,
-                      }}
-                    />
                   </div>
-                </div>
+                  {scenario.description && (
+                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                      {scenario.description}
+                    </p>
+                  )}
+                </button>
               );
             })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Spending by Category - hide for future periods as there's no actual spending */}
+      {!isFuturePeriod && (
+        <div className="rounded-xl border bg-card p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Tags className="h-5 w-5 text-muted-foreground" />
+              <h3 className="font-semibold">{periodLabel} Spending</h3>
+            </div>
+            <div className="text-right">
+              <p className="text-lg font-bold">{formatCents(periodSpending.total)}</p>
+              <p className="text-sm text-muted-foreground">
+                {periodSpending.categorySpending.length} {periodSpending.categorySpending.length === 1 ? 'category' : 'categories'}
+              </p>
+            </div>
+          </div>
+
+          {periodSpending.categorySpending.length === 0 ? (
+            <div className="mt-6 flex h-24 items-center justify-center text-sm text-muted-foreground">
+              No expenses recorded {isCurrentPeriod ? (viewMode === 'year' ? 'this year' : 'this month') : `in ${periodLabel}`}.
+            </div>
+          ) : (
+            <div className="mt-6 space-y-3">
+              {periodSpending.categorySpending.map((item) => {
+                const color = colorMap[item.id] ?? CHART_COLORS.uncategorized;
+                const hasBudget = item.budget > 0;
+                // Percentage of budget spent (capped at 100% for display)
+                const spentPercent = hasBudget ? Math.min((item.amount / item.budget) * 100, 100) : 100;
+                const isOverBudget = hasBudget && item.amount > item.budget;
+
+                return (
+                  <div key={item.id} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium">{item.name}</span>
+                      <span className="font-mono text-muted-foreground">
+                        {formatCents(item.amount)}
+                        {hasBudget && (
+                          <span className="text-sm"> / {formatCents(item.budget)}</span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="relative h-3 rounded-full bg-muted">
+                      {/* Light bar: budget amount (full width if budgeted) */}
+                      {hasBudget && (
+                        <div
+                          className="absolute h-3 rounded-full"
+                          style={{
+                            width: '100%',
+                            backgroundColor: color,
+                            opacity: 0.25,
+                          }}
+                        />
+                      )}
+                      {/* Dark bar: actual spending relative to budget */}
+                      <div
+                        className={`absolute h-3 rounded-full ${isOverBudget ? 'ring-2 ring-red-500 ring-offset-1' : ''}`}
+                        style={{
+                          width: `${spentPercent}%`,
+                          backgroundColor: color,
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
