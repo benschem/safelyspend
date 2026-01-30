@@ -20,9 +20,12 @@ import { ScenariosIndexPage } from '@/routes/scenarios/index';
 import { BudgetPlanPage } from '@/routes/budget/plan';
 import { SettingsPage } from '@/routes/settings';
 
-// Dev-only: style guide not bundled in production
+// Dev-only: style guide and error preview not bundled in production
 const devOnlyRoutes = import.meta.env.DEV
-  ? [{ path: 'style-guide', lazy: () => import('@/routes/style-guide').then(m => ({ Component: m.StyleGuidePage })) }]
+  ? [
+      { path: 'style-guide', lazy: () => import('@/routes/style-guide').then(m => ({ Component: m.StyleGuidePage })) },
+      { path: 'error', lazy: () => import('@/routes/error-preview').then(m => ({ Component: m.ErrorPreviewPage })) },
+    ]
   : [];
 
 const router = createBrowserRouter([
