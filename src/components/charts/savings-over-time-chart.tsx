@@ -328,7 +328,7 @@ export function SavingsOverTimeChart({ monthlySavings, deadline, targetAmount, s
               className="h-2.5 w-2.5 rounded-full"
               style={{ backgroundColor: `${CHART_COLORS.savings}60` }}
             />
-            <span className={hiddenLegends.has('forecast') ? 'line-through' : ''}>Forecast</span>
+            <span className={hiddenLegends.has('forecast') ? 'line-through' : ''}>Planned contributions</span>
           </button>
         )}
       </div>

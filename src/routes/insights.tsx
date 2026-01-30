@@ -301,7 +301,7 @@ export function InsightsPage() {
             <p className="text-sm text-muted-foreground">
               {isPastOnly
                 ? 'Cumulative savings contributions'
-                : 'Solid line is actual, dashed line is forecasted'}
+                : 'Saved so far, plus planned contributions'}
             </p>
             {savingsByGoal.length > 0 && (
               <Select value={effectiveSavingsView} onValueChange={handleSavingsViewChange}>
