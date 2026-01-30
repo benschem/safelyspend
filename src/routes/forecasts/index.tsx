@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Repeat, Settings2, Pencil, Trash2, Telescope, RotateCcw, TrendingUp, TrendingDown, PiggyBank } from 'lucide-react';
+import { Plus, Repeat, Settings2, Pencil, Trash2, Telescope, RotateCcw, TrendingUp, TrendingDown, PiggyBank, ChevronUp, ChevronDown } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
@@ -255,12 +255,24 @@ export function ForecastIndexPage() {
         cell: ({ row }) => {
           const type = row.original.type;
           const amount = row.getValue('amountCents') as number;
-          const colorClass =
-            type === 'income'
-              ? 'text-green-600'
-              : type === 'savings'
-                ? 'text-blue-600'
-                : 'text-red-600';
+
+          // Savings: show absolute value with chevron indicator
+          if (type === 'savings') {
+            const isWithdrawal = amount < 0;
+            return (
+              <div className="flex items-center justify-end gap-1 font-mono text-blue-600">
+                {isWithdrawal ? (
+                  <ChevronDown className="h-4 w-4 text-red-500" />
+                ) : (
+                  <ChevronUp className="h-4 w-4 text-green-500" />
+                )}
+                {formatCents(Math.abs(amount))}
+              </div>
+            );
+          }
+
+          // Other types: income positive, expense negative
+          const colorClass = type === 'income' ? 'text-green-600' : 'text-red-600';
           return (
             <div className="text-right font-mono">
               <span className={colorClass}>

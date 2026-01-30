@@ -26,7 +26,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Plus, Pencil, Trash2, Download, AlertTriangle, Receipt, RotateCcw, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, Settings2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Download, AlertTriangle, Receipt, RotateCcw, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, Settings2, ChevronUp, ChevronDown } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
@@ -281,13 +281,25 @@ export function TransactionsIndexPage() {
           const transaction = row.original;
           const type = transaction.type;
           const amount = row.getValue('amountCents') as number;
+
+          // Savings: show absolute value with chevron indicator
+          if (type === 'savings') {
+            const isWithdrawal = amount < 0;
+            return (
+              <div className="flex items-center justify-end gap-1 font-mono text-blue-600">
+                {isWithdrawal ? (
+                  <ChevronDown className="h-4 w-4 text-red-500" />
+                ) : (
+                  <ChevronUp className="h-4 w-4 text-green-500" />
+                )}
+                {formatCents(Math.abs(amount))}
+              </div>
+            );
+          }
+
+          // Other types: income/adjustment positive, expense negative
           const isPositive = type === 'income' || type === 'adjustment';
-          const colorClass =
-            type === 'income' || type === 'adjustment'
-              ? 'text-green-600'
-              : type === 'savings'
-                ? 'text-blue-600'
-                : 'text-red-600';
+          const colorClass = isPositive ? 'text-green-600' : 'text-red-600';
           return (
             <div className="text-right font-mono">
               <span className={colorClass}>
