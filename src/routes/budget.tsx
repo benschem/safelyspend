@@ -351,13 +351,13 @@ export function BudgetPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {/* Earned / Projected Income */}
+        {/* Income / Projected Income */}
         <div className="rounded-xl border bg-card p-5">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/10">
             <TrendingUp className="h-5 w-5 text-green-500" />
           </div>
           <p className="mt-4 text-sm text-muted-foreground">
-            {isFuturePeriod ? 'Projected Income' : 'Earned'}
+            {isFuturePeriod ? 'Projected Income' : 'Income'}
           </p>
           <p className="mt-1 text-xl font-semibold">
             {formatCents(isFuturePeriod ? periodCashFlow.income.expected : periodCashFlow.income.actual)}
@@ -387,16 +387,14 @@ export function BudgetPage() {
                   )}
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {isPastPeriod
-                    ? `${pct}% of ${formatCents(periodCashFlow.income.expected)} forecast`
-                    : `${pct}% of ${formatCents(periodCashFlow.income.expected)} forecast`}
+                  {pct}% of {formatCents(periodCashFlow.income.expected)} forecast
                 </p>
               </>
             );
           })()}
         </div>
 
-        {/* Budget Plan / Planned Spending */}
+        {/* Planned Spending */}
         <Link to="/budget/plan" className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50">
           <div className="flex items-center justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
@@ -404,9 +402,7 @@ export function BudgetPage() {
             </div>
             <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">
-            {isFuturePeriod ? 'Planned Spending' : 'Budget Plan'}
-          </p>
+          <p className="mt-4 text-sm text-muted-foreground">Planned Spending</p>
           <p className="mt-1 text-xl font-semibold">
             {formatCents(isFuturePeriod ? periodCashFlow.budgeted.expected : periodCashFlow.budgeted.actual)}
           </p>
