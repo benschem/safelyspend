@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, ArrowLeft, Pencil, RefreshCw } from 'lucide-react';
+import { Plus, ArrowLeft, Pencil, Trash2, RefreshCw } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
@@ -43,10 +43,12 @@ export function RecurringIndexPage() {
   const [searchParams] = useSearchParams();
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
-  const { rules, addRule, updateRule } = useForecasts(activeScenarioId);
+  const { rules, addRule, updateRule, deleteRule } = useForecasts(activeScenarioId);
   const { categories, activeCategories } = useCategories();
   const { savingsGoals } = useSavingsGoals();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingRule, setEditingRule] = useState<ForecastRule | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Initialize category filter from URL param if present
   const [filterCategory, setFilterCategory] = useState<CategoryFilter>(() => {
@@ -56,6 +58,27 @@ export function RecurringIndexPage() {
 
   // Active tab state
   const [activeTab, setActiveTab] = useState<TabValue | null>(null);
+
+  const openEditDialog = (rule: ForecastRule) => {
+    setEditingRule(rule);
+    setDialogOpen(true);
+  };
+
+  const handleDialogClose = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open) {
+      setEditingRule(null);
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    if (deletingId === id) {
+      deleteRule(id);
+      setDeletingId(null);
+    } else {
+      setDeletingId(id);
+    }
+  };
 
   const getCategoryName = (id: string | null) =>
     id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-';
@@ -85,9 +108,13 @@ export function RecurringIndexPage() {
         accessorKey: 'description',
         header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
         cell: ({ row }) => (
-          <Link to={`/forecasts/recurring/${row.original.id}`} className="font-medium hover:underline">
+          <button
+            type="button"
+            onClick={() => openEditDialog(row.original)}
+            className="font-medium hover:underline text-left"
+          >
             {row.getValue('description')}
-          </Link>
+          </button>
         ),
       },
       {
@@ -112,18 +139,29 @@ export function RecurringIndexPage() {
       },
       {
         id: 'actions',
-        cell: ({ row }) => (
-          <div className="flex justify-end">
-            <Button variant="ghost" size="sm" asChild title="Edit">
-              <Link to={`/forecasts/recurring/${row.original.id}`}>
+        cell: ({ row }) => {
+          const rule = row.original;
+          const isDeleting = deletingId === rule.id;
+          return (
+            <div className="flex justify-end gap-1">
+              <Button variant="ghost" size="sm" onClick={() => openEditDialog(rule)} title="Edit">
                 <Pencil className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        ),
+              </Button>
+              <Button
+                variant={isDeleting ? 'destructive' : 'ghost'}
+                size="sm"
+                onClick={() => handleDelete(rule.id)}
+                onBlur={() => setTimeout(() => setDeletingId(null), 200)}
+                title={isDeleting ? 'Click again to confirm' : 'Delete'}
+              >
+                {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+              </Button>
+            </div>
+          );
+        },
       },
     ],
-    [],
+    [deletingId],
   );
 
   const expenseColumns: ColumnDef<ForecastRule>[] = useMemo(
@@ -132,9 +170,13 @@ export function RecurringIndexPage() {
         accessorKey: 'description',
         header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
         cell: ({ row }) => (
-          <Link to={`/forecasts/recurring/${row.original.id}`} className="font-medium hover:underline">
+          <button
+            type="button"
+            onClick={() => openEditDialog(row.original)}
+            className="font-medium hover:underline text-left"
+          >
             {row.getValue('description')}
-          </Link>
+          </button>
         ),
       },
       {
@@ -164,18 +206,29 @@ export function RecurringIndexPage() {
       },
       {
         id: 'actions',
-        cell: ({ row }) => (
-          <div className="flex justify-end">
-            <Button variant="ghost" size="sm" asChild title="Edit">
-              <Link to={`/forecasts/recurring/${row.original.id}`}>
+        cell: ({ row }) => {
+          const rule = row.original;
+          const isDeleting = deletingId === rule.id;
+          return (
+            <div className="flex justify-end gap-1">
+              <Button variant="ghost" size="sm" onClick={() => openEditDialog(rule)} title="Edit">
                 <Pencil className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        ),
+              </Button>
+              <Button
+                variant={isDeleting ? 'destructive' : 'ghost'}
+                size="sm"
+                onClick={() => handleDelete(rule.id)}
+                onBlur={() => setTimeout(() => setDeletingId(null), 200)}
+                title={isDeleting ? 'Click again to confirm' : 'Delete'}
+              >
+                {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+              </Button>
+            </div>
+          );
+        },
       },
     ],
-    [categories],
+    [categories, deletingId],
   );
 
   const savingsColumns: ColumnDef<ForecastRule>[] = useMemo(
@@ -184,9 +237,13 @@ export function RecurringIndexPage() {
         accessorKey: 'description',
         header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
         cell: ({ row }) => (
-          <Link to={`/forecasts/recurring/${row.original.id}`} className="font-medium hover:underline">
+          <button
+            type="button"
+            onClick={() => openEditDialog(row.original)}
+            className="font-medium hover:underline text-left"
+          >
             {row.getValue('description')}
-          </Link>
+          </button>
         ),
       },
       {
@@ -216,18 +273,29 @@ export function RecurringIndexPage() {
       },
       {
         id: 'actions',
-        cell: ({ row }) => (
-          <div className="flex justify-end">
-            <Button variant="ghost" size="sm" asChild title="Edit">
-              <Link to={`/forecasts/recurring/${row.original.id}`}>
+        cell: ({ row }) => {
+          const rule = row.original;
+          const isDeleting = deletingId === rule.id;
+          return (
+            <div className="flex justify-end gap-1">
+              <Button variant="ghost" size="sm" onClick={() => openEditDialog(rule)} title="Edit">
                 <Pencil className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        ),
+              </Button>
+              <Button
+                variant={isDeleting ? 'destructive' : 'ghost'}
+                size="sm"
+                onClick={() => handleDelete(rule.id)}
+                onBlur={() => setTimeout(() => setDeletingId(null), 200)}
+                title={isDeleting ? 'Click again to confirm' : 'Delete'}
+              >
+                {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+              </Button>
+            </div>
+          );
+        },
       },
     ],
-    [savingsGoals],
+    [savingsGoals, deletingId],
   );
 
   // Determine the effective tab (use state if set, otherwise default based on which has rules)
@@ -397,9 +465,9 @@ export function RecurringIndexPage() {
 
       <ForecastRuleDialog
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={handleDialogClose}
         scenarioId={activeScenarioId}
-        rule={null}
+        rule={editingRule}
         addRule={addRule}
         updateRule={updateRule}
       />
