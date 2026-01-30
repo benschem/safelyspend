@@ -20,12 +20,47 @@ interface SpendingBreakdownChartProps {
   segments: BreakdownSegment[];
   total: number;
   colorMap?: Record<string, string>;
+  hiddenSegmentIds?: Set<string>;
+  onSegmentToggle?: (id: string) => void;
 }
 
-export function SpendingBreakdownChart({ segments, total, colorMap: externalColorMap }: SpendingBreakdownChartProps) {
+export function SpendingBreakdownChart({
+  segments,
+  total,
+  colorMap: externalColorMap,
+  hiddenSegmentIds,
+  onSegmentToggle,
+}: SpendingBreakdownChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredSegment, setHoveredSegment] = useState<BreakdownSegment | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const [internalHiddenSegments, setInternalHiddenSegments] = useState<Set<string>>(new Set());
+
+  // Use controlled state if provided, otherwise use internal state
+  const hiddenSegments = hiddenSegmentIds ?? internalHiddenSegments;
+
+  const toggleSegment = useCallback((id: string) => {
+    if (onSegmentToggle) {
+      onSegmentToggle(id);
+    } else {
+      setInternalHiddenSegments((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+    }
+  }, [onSegmentToggle]);
+
+  // Calculate total of visible segments (for scaling)
+  const visibleTotal = useMemo(() => {
+    return segments
+      .filter((s) => !hiddenSegments.has(s.id))
+      .reduce((sum, s) => sum + s.amount, 0);
+  }, [segments, hiddenSegments]);
 
   // Build colour map for segments (use external if provided)
   const colorMap = useMemo(() => {
@@ -58,16 +93,18 @@ export function SpendingBreakdownChart({ segments, total, colorMap: externalColo
     return map;
   }, [segments, externalColorMap]);
 
-  // Pre-calculate segment boundaries for hover detection
+  // Pre-calculate segment boundaries for hover detection (only visible segments)
   const segmentBoundaries = useMemo(() => {
     let cumulative = 0;
-    return segments.map((segment) => {
-      const start = cumulative / total;
-      cumulative += segment.amount;
-      const end = cumulative / total;
-      return { segment, start, end };
-    });
-  }, [segments, total]);
+    return segments
+      .filter((s) => !hiddenSegments.has(s.id))
+      .map((segment) => {
+        const start = visibleTotal > 0 ? cumulative / visibleTotal : 0;
+        cumulative += segment.amount;
+        const end = visibleTotal > 0 ? cumulative / visibleTotal : 0;
+        return { segment, start, end };
+      });
+  }, [segments, hiddenSegments, visibleTotal]);
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -96,14 +133,14 @@ export function SpendingBreakdownChart({ segments, total, colorMap: externalColo
     setHoveredSegment(null);
   }, []);
 
-  // Transform data for horizontal stacked bar
+  // Transform data for horizontal stacked bar (all segments, hidden ones have 0 value)
   const chartData = useMemo(() => {
     const dataPoint: Record<string, number | string> = { name: 'Spending' };
     for (const segment of segments) {
-      dataPoint[segment.id] = segment.amount;
+      dataPoint[segment.id] = hiddenSegments.has(segment.id) ? 0 : segment.amount;
     }
     return [dataPoint];
-  }, [segments]);
+  }, [segments, hiddenSegments]);
 
   if (total === 0 || segments.length === 0) {
     return null;
@@ -123,7 +160,7 @@ export function SpendingBreakdownChart({ segments, total, colorMap: externalColo
             layout="vertical"
             margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
           >
-            <XAxis type="number" hide domain={[0, total]} />
+            <XAxis type="number" hide domain={[0, visibleTotal]} />
             <YAxis type="category" dataKey="name" hide />
             {segments.map((segment) => (
               <Bar
@@ -158,20 +195,28 @@ export function SpendingBreakdownChart({ segments, total, colorMap: externalColo
         )}
       </div>
 
-      {/* Legend */}
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+      {/* Interactive Legend */}
+      <div className="mt-3 flex flex-wrap gap-2">
         {segments.map((segment) => {
           const percentage = ((segment.amount / total) * 100).toFixed(0);
+          const isHidden = hiddenSegments.has(segment.id);
           return (
-            <div key={segment.id} className="flex items-center gap-1.5 text-xs">
+            <button
+              key={segment.id}
+              type="button"
+              onClick={() => toggleSegment(segment.id)}
+              className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-all hover:bg-muted ${
+                isHidden ? 'opacity-40' : ''
+              }`}
+            >
               <div
                 className="h-2.5 w-2.5 rounded-sm"
                 style={{ backgroundColor: colorMap[segment.id] ?? CHART_COLORS.uncategorized }}
               />
-              <span>
+              <span className={isHidden ? 'line-through' : ''}>
                 {segment.name} ({percentage}%)
               </span>
-            </div>
+            </button>
           );
         })}
       </div>
