@@ -171,7 +171,7 @@ export function BudgetPage() {
 
     // Actual expenses - split by budgeted vs unbudgeted
     const expenseTransactionsThisPeriod = allTransactions.filter(
-      (t) => t.type === 'expense' && t.date >= periodStart && t.date <= effectiveDate
+      (t) => t.type === 'expense' && t.date >= periodStart && t.date <= effectiveDate,
     );
 
     const actualBudgetedExpenses = expenseTransactionsThisPeriod
@@ -302,7 +302,7 @@ export function BudgetPage() {
   // Calculate selected period's spending by category for horizontal bar chart
   const periodSpending = useMemo(() => {
     const expenseTransactions = allTransactions.filter(
-      (t) => t.type === 'expense' && t.date >= periodStart && t.date <= effectiveDate
+      (t) => t.type === 'expense' && t.date >= periodStart && t.date <= effectiveDate,
     );
 
     // Build budget lookup (converted to period amounts)
@@ -477,7 +477,7 @@ export function BudgetPage() {
                         size="sm"
                         className={cn(
                           'h-8 text-xs',
-                          isCurrent && !isSelected && 'border border-primary'
+                          isCurrent && !isSelected && 'border border-primary',
                         )}
                         onClick={() => {
                           setSelectedMonth(new Date(pickerYear, index, 1));
@@ -582,7 +582,7 @@ export function BudgetPage() {
                       size="sm"
                       className={cn(
                         'h-8 text-xs',
-                        isCurrent && !isSelected && 'border border-primary'
+                        isCurrent && !isSelected && 'border border-primary',
                       )}
                       onClick={() => {
                         setSelectedMonth(new Date(pickerYear, index, 1));

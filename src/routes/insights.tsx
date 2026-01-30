@@ -239,7 +239,7 @@ export function InsightsPage() {
                 'inline-flex cursor-pointer items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all',
                 activeTab === tab.value
                   ? 'bg-background text-foreground shadow-sm'
-                  : 'hover:text-foreground'
+                  : 'hover:text-foreground',
               )}
             >
               {tab.label}

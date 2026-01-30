@@ -23,7 +23,7 @@ export function FirstRunWizard() {
 
   // Start at setup step if ?setup=1 is in URL
   const [step, setStep] = useState<WizardStep>(() =>
-    searchParams.get('setup') ? 'setup' : 'choose'
+    searchParams.get('setup') ? 'setup' : 'choose',
   );
   const [submitError, setSubmitError] = useState<string | null>(null);
 
