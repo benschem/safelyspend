@@ -2,9 +2,8 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Pencil, Trash2, Check, X, Star, Layers } from 'lucide-react';
+import { Plus, Pencil, Trash2, Star, Layers } from 'lucide-react';
 import { Alert } from '@/components/ui/alert';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
@@ -22,17 +21,15 @@ export function ScenariosIndexPage() {
   const { scenarios, addScenario, updateScenario, deleteScenario } = useScenarios();
   const { duplicateToScenario: duplicateForecastsToScenario } = useForecasts(null);
   const { duplicateToScenario: duplicateBudgetsToScenario } = useBudgetRules(null);
+
+  // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingScenario, setEditingScenario] = useState<Scenario | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Get rule counts per scenario
   const allBudgetRules = useLiveQuery(() => db.budgetRules.toArray(), []) ?? [];
   const allForecastRules = useLiveQuery(() => db.forecastRules.toArray(), []) ?? [];
-
-  // Inline editing state
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Build scenario rows with counts
   const scenarioRows: ScenarioRow[] = useMemo(() => {
@@ -60,30 +57,22 @@ export function ScenariosIndexPage() {
     }));
   }, [scenarios, allBudgetRules, allForecastRules]);
 
-  const startEditing = useCallback((scenario: Scenario) => {
-    setEditingId(scenario.id);
-    setEditName(scenario.name);
-    setEditDescription(scenario.description ?? '');
+  const openAddDialog = useCallback(() => {
+    setEditingScenario(null);
+    setDialogOpen(true);
   }, []);
 
-  const cancelEditing = useCallback(() => {
-    setEditingId(null);
-    setEditName('');
-    setEditDescription('');
+  const openEditDialog = useCallback((scenario: Scenario) => {
+    setEditingScenario(scenario);
+    setDialogOpen(true);
   }, []);
 
-  const saveEditing = useCallback(() => {
-    if (!editingId || !editName.trim()) return;
-
-    const updates: Parameters<typeof updateScenario>[1] = {
-      name: editName.trim(),
-    };
-    if (editDescription.trim()) {
-      updates.description = editDescription.trim();
+  const handleDialogClose = useCallback((open: boolean) => {
+    setDialogOpen(open);
+    if (!open) {
+      setEditingScenario(null);
     }
-    updateScenario(editingId, updates);
-    cancelEditing();
-  }, [editingId, editName, editDescription, updateScenario, cancelEditing]);
+  }, []);
 
   const handleDelete = useCallback(
     (id: string) => {
@@ -104,17 +93,16 @@ export function ScenariosIndexPage() {
     [updateScenario],
   );
 
-  // Close editors on Escape key
+  // Close delete confirmation on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (editingId) cancelEditing();
-        if (deletingId) setDeletingId(null);
+      if (e.key === 'Escape' && deletingId) {
+        setDeletingId(null);
       }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [editingId, deletingId, cancelEditing]);
+  }, [deletingId]);
 
   const columns: ColumnDef<ScenarioRow>[] = useMemo(
     () => [
@@ -123,47 +111,25 @@ export function ScenariosIndexPage() {
         header: ({ column }) => <SortableHeader column={column}>Name</SortableHeader>,
         cell: ({ row }) => {
           const scenario = row.original;
-          if (editingId === scenario.id) {
-            return (
-              <Input
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="h-8 w-full min-w-[120px]"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') saveEditing();
-                  if (e.key === 'Escape') cancelEditing();
-                }}
-              />
-            );
-          }
-          return <span className="font-medium">{scenario.name}</span>;
+          return (
+            <button
+              type="button"
+              onClick={() => openEditDialog(scenario)}
+              className="cursor-pointer text-left font-medium hover:underline"
+            >
+              {scenario.name}
+            </button>
+          );
         },
       },
       {
         accessorKey: 'description',
         header: 'Description',
-        cell: ({ row }) => {
-          const scenario = row.original;
-          if (editingId === scenario.id) {
-            return (
-              <Input
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                className="h-8 w-full min-w-[150px]"
-                placeholder="Optional description"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') saveEditing();
-                  if (e.key === 'Escape') cancelEditing();
-                }}
-              />
-            );
-          }
-          return (
-            <span className="text-muted-foreground">
-              {row.getValue('description') || '-'}
-            </span>
-          );
-        },
+        cell: ({ row }) => (
+          <span className="text-muted-foreground">
+            {row.getValue('description') || '-'}
+          </span>
+        ),
       },
       {
         accessorKey: 'budgetRuleCount',
@@ -191,21 +157,7 @@ export function ScenariosIndexPage() {
         id: 'actions',
         cell: ({ row }) => {
           const scenario = row.original;
-          const isEditing = editingId === scenario.id;
           const isDeleting = deletingId === scenario.id;
-
-          if (isEditing) {
-            return (
-              <div className="flex justify-end gap-1">
-                <Button variant="ghost" size="sm" onClick={saveEditing} title="Save">
-                  <Check className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={cancelEditing} title="Cancel">
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            );
-          }
 
           return (
             <div className="flex justify-end gap-1">
@@ -221,7 +173,7 @@ export function ScenariosIndexPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => startEditing(scenario)}
+                onClick={() => openEditDialog(scenario)}
                 title="Edit"
               >
                 <Pencil className="h-4 w-4" />
@@ -247,7 +199,7 @@ export function ScenariosIndexPage() {
         },
       },
     ],
-    [editingId, editName, editDescription, deletingId, startEditing, cancelEditing, saveEditing, handleDelete, handleSetDefault],
+    [deletingId, openEditDialog, handleDelete, handleSetDefault],
   );
 
   return (
@@ -264,7 +216,7 @@ export function ScenariosIndexPage() {
             Create and manage budget scenarios for &quot;what-if&quot; planning.
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
+        <Button onClick={openAddDialog}>
           <Plus className="h-4 w-4" />
           Add Scenario
         </Button>
@@ -277,7 +229,7 @@ export function ScenariosIndexPage() {
       {scenarios.length === 0 ? (
         <div className="mt-6 rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground">No scenarios yet.</p>
-          <Button className="mt-4" onClick={() => setDialogOpen(true)}>
+          <Button className="mt-4" onClick={openAddDialog}>
             Create your first scenario
           </Button>
         </div>
@@ -295,8 +247,8 @@ export function ScenariosIndexPage() {
 
       <ScenarioDialog
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        scenario={null}
+        onOpenChange={handleDialogClose}
+        scenario={editingScenario}
         scenarios={scenarios}
         addScenario={addScenario}
         updateScenario={updateScenario}
