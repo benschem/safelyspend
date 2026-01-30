@@ -260,23 +260,33 @@ export const professionalPaul: PersonaConfig = {
       name: 'Emergency Fund',
       targetAmountCents: 1500000, // $15,000
       isEmergencyFund: true,
-      startingBalanceCents: 800000, // Started with $8k
+      startingBalanceCents: 1100000, // Started with $11k - almost there!
       monthlyContributionCents: 30000, // $300/month
-      annualInterestRate: 4.5,
+      annualInterestRate: 5.0, // ING Savings Maximiser rate
+      deadline: { monthsFromNow: 8 }, // Soft deadline to finish building
     },
     {
       name: 'Japan Holiday',
-      targetAmountCents: 800000, // $8,000
-      deadline: { monthsFromNow: 10 },
-      startingBalanceCents: 200000, // Started with $2k
-      monthlyContributionCents: 40000, // $400/month
+      targetAmountCents: 600000, // $6,000
+      deadline: { monthsFromNow: 8 }, // October trip
+      startingBalanceCents: 350000, // $3,500 saved already
+      monthlyContributionCents: 50000, // $500/month - will hit ~$7,500, well ahead!
+      annualInterestRate: 4.5,
     },
     {
       name: 'House Deposit',
-      targetAmountCents: 8000000, // $80,000
-      startingBalanceCents: 500000, // $5k saved
-      monthlyContributionCents: 20000, // $200/month - slow start
-      annualInterestRate: 4.5,
+      targetAmountCents: 10000000, // $100,000
+      deadline: { monthsFromNow: 36 }, // 3 year goal
+      startingBalanceCents: 1200000, // $12k saved
+      monthlyContributionCents: 25000, // $250/month - will need to increase
+      annualInterestRate: 5.0,
+    },
+    {
+      name: 'New Laptop',
+      targetAmountCents: 350000, // $3,500 MacBook Pro
+      deadline: { monthsFromNow: 4 }, // Need it soon
+      startingBalanceCents: 200000, // $2k saved
+      monthlyContributionCents: 40000, // $400/month - will be $200 short, slightly late
     },
   ],
 
@@ -302,8 +312,9 @@ export const professionalPaul: PersonaConfig = {
       ],
       savingsOverrides: [
         { goalName: 'Japan Holiday', monthlyContributionCents: 0 },
-        { goalName: 'House Deposit', monthlyContributionCents: 80000 },
+        { goalName: 'House Deposit', monthlyContributionCents: 100000 },
         { goalName: 'Emergency Fund', monthlyContributionCents: 20000 },
+        { goalName: 'New Laptop', monthlyContributionCents: 0 },
       ],
     },
     {
@@ -326,6 +337,7 @@ export const professionalPaul: PersonaConfig = {
         { goalName: 'Japan Holiday', monthlyContributionCents: 0 },
         { goalName: 'Emergency Fund', monthlyContributionCents: 0 },
         { goalName: 'House Deposit', monthlyContributionCents: 0 },
+        { goalName: 'New Laptop', monthlyContributionCents: 0 },
       ],
     },
   ],
