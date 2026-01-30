@@ -20,7 +20,7 @@ import {
 import { CategorySelect } from '@/components/category-select';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
 import { PaymentMethodSelect } from '@/components/payment-method-select';
-import { today, parseCentsFromInput } from '@/lib/utils';
+import { cn, today, parseCentsFromInput } from '@/lib/utils';
 import type { Transaction, TransactionType, CreateEntity } from '@/lib/types';
 
 interface TransactionDialogProps {
@@ -44,6 +44,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, addTransact
   const [savingsGoalId, setSavingsGoalId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [notes, setNotes] = useState('');
+  const [isWithdrawal, setIsWithdrawal] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   // Reset form when dialog opens/closes or transaction changes
@@ -53,7 +54,10 @@ export function TransactionDialog({ open, onOpenChange, transaction, addTransact
         setType(transaction.type);
         setDate(transaction.date);
         setDescription(transaction.description);
-        setAmount((transaction.amountCents / 100).toFixed(2));
+        // Handle negative amounts (withdrawals) - show as positive in form
+        const isNegative = transaction.amountCents < 0;
+        setAmount((Math.abs(transaction.amountCents) / 100).toFixed(2));
+        setIsWithdrawal(transaction.type === 'savings' && isNegative);
         setCategoryId(transaction.categoryId ?? '');
         setSavingsGoalId(transaction.savingsGoalId ?? '');
         setPaymentMethod(transaction.paymentMethod ?? '');
@@ -67,6 +71,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, addTransact
         setSavingsGoalId('');
         setPaymentMethod('');
         setNotes('');
+        setIsWithdrawal(false);
       }
       setFormError(null);
     }
@@ -81,10 +86,15 @@ export function TransactionDialog({ open, onOpenChange, transaction, addTransact
       return;
     }
 
-    const amountCents = parseCentsFromInput(amount);
+    let amountCents = parseCentsFromInput(amount);
     if (amountCents <= 0) {
       setFormError('Please enter a valid amount');
       return;
+    }
+
+    // Apply withdrawal as negative amount
+    if (type === 'savings' && isWithdrawal) {
+      amountCents = -amountCents;
     }
 
     if (date > todayDate) {
@@ -197,12 +207,45 @@ export function TransactionDialog({ open, onOpenChange, transaction, addTransact
           </div>
 
           {type === 'savings' ? (
-            <div className="space-y-2">
-              <Label className="select-none">Savings Goal</Label>
-              <SavingsGoalSelect
-                value={savingsGoalId}
-                onChange={setSavingsGoalId}
-              />
+            <div className="space-y-4">
+              {/* Deposit/Withdraw toggle */}
+              <div className="space-y-2">
+                <Label className="select-none">Action</Label>
+                <div className="inline-flex h-9 w-full items-center rounded-lg bg-muted p-1 text-muted-foreground">
+                  <button
+                    type="button"
+                    onClick={() => setIsWithdrawal(false)}
+                    className={cn(
+                      'inline-flex h-7 flex-1 cursor-pointer items-center justify-center rounded-md text-sm font-medium transition-all',
+                      !isWithdrawal
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'hover:text-foreground',
+                    )}
+                  >
+                    Deposit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsWithdrawal(true)}
+                    className={cn(
+                      'inline-flex h-7 flex-1 cursor-pointer items-center justify-center rounded-md text-sm font-medium transition-all',
+                      isWithdrawal
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'hover:text-foreground',
+                    )}
+                  >
+                    Withdraw
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="select-none">Savings Goal</Label>
+                <SavingsGoalSelect
+                  value={savingsGoalId}
+                  onChange={setSavingsGoalId}
+                />
+              </div>
             </div>
           ) : (
             <div className="space-y-2">

@@ -76,10 +76,11 @@ const forecastEventSchema = baseEntitySchema.extend({
 });
 
 // Transaction
+// Note: amountCents can be negative for savings withdrawals
 const transactionSchema = baseEntitySchema.extend({
   type: z.enum(['income', 'expense', 'savings', 'adjustment']),
   date: z.string(),
-  amountCents: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+  amountCents: z.number().int().min(Number.MIN_SAFE_INTEGER).max(Number.MAX_SAFE_INTEGER),
   description: z.string().max(500),
   categoryId: z.string().nullable(),
   savingsGoalId: z.string().nullable(),
