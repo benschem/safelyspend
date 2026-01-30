@@ -49,7 +49,6 @@ export function BudgetPage() {
     isPastPeriod,
     isLoading,
     periodCashFlow,
-    summary,
     periodSpending,
     burnRateData,
     colorMap,
@@ -439,36 +438,8 @@ export function BudgetPage() {
         </div>
       </div>
 
-      {/* Net, Pace & Speed Row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {/* Net Change */}
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center gap-2">
-            {periodCashFlow.net.projected >= 0 ? (
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/10">
-                <TrendingUp className="h-4 w-4 text-green-500" />
-              </div>
-            ) : (
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10">
-                <TrendingDown className="h-4 w-4 text-red-500" />
-              </div>
-            )}
-            <p className="text-sm text-muted-foreground">Net change</p>
-          </div>
-          <p className={`mt-2 text-3xl font-bold ${periodCashFlow.net.projected >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {periodCashFlow.net.projected >= 0 ? '+' : ''}{formatCents(periodCashFlow.net.projected)}
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {isPastPeriod
-              ? 'Actual'
-              : isFuturePeriod
-                ? 'Projected'
-                : periodCashFlow.net.forecasted !== 0
-                  ? `Includes ${formatCents(Math.abs(periodCashFlow.net.forecasted))} forecast`
-                  : 'Actual to date'}
-          </p>
-        </div>
-
+      {/* Pace & Projection Row */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {/* Mini Pace Chart */}
         <div className="rounded-xl border bg-card p-5">
           <div className="flex items-center gap-2">
@@ -489,41 +460,58 @@ export function BudgetPage() {
           </div>
         </div>
 
-        {/* Spending Speed */}
+        {/* Month End Projection */}
         {(() => {
-          // Calculate severity based on percentage of budgets affected
-          const overPercent = summary.trackedCount > 0 ? summary.overCount / summary.trackedCount : 0;
-          const isCritical = overPercent > 0.25; // More than 25% exceeded
-          const hasExceeded = summary.overCount > 0;
-          const hasOverspending = summary.overspendingCount > 0;
+          // Plan = what you'd have left if you spent exactly your budgets
+          // This matches the "available" shown in the unbudgeted card
+          const planned = periodCashFlow.unbudgeted.unallocated;
 
-          let label: string;
+          let leftover: number;
           let description: string;
+
+          if (isPastPeriod) {
+            // Past: show actual result
+            leftover = periodCashFlow.income.actual - periodCashFlow.expenses.actual - periodCashFlow.savings.actual;
+            description = leftover >= 0 ? 'Actual surplus' : 'Actual shortfall';
+          } else if (isFuturePeriod) {
+            // Future: show planned outcome
+            leftover = planned;
+            description = leftover >= 0 ? 'Planned surplus' : 'Planned shortfall';
+          } else {
+            // Current: project based on current spending pace
+            const periodProgress = periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod;
+            const projectedSpending = periodProgress > 0 ? Math.round(periodCashFlow.expenses.actual / periodProgress) : 0;
+            const availableToSpend = periodCashFlow.income.expected - periodCashFlow.savings.expected;
+            leftover = availableToSpend - projectedSpending;
+
+            // Compare to plan
+            const diffFromPlan = leftover - planned;
+            if (diffFromPlan >= 0) {
+              description = `${formatCents(Math.abs(diffFromPlan))} above your ${formatCents(planned)} plan`;
+            } else {
+              description = `${formatCents(Math.abs(diffFromPlan))} below your ${formatCents(planned)} plan`;
+            }
+          }
+
+          const isShortfall = leftover < 0;
+
+          // Threshold for "comfortable" = 10% of planned buffer
+          const comfortableThreshold = planned * 0.1;
+          const isTight = !isPastPeriod && !isFuturePeriod && leftover >= 0 && leftover < comfortableThreshold;
+
           let iconBg: string;
           let iconColor: string;
           let textColor: string;
 
-          if (isCritical) {
-            label = 'Too Fast';
-            description = `${summary.overCount} of ${summary.trackedCount} budgets exceeded`;
+          if (isShortfall) {
             iconBg = 'bg-red-500/10';
             iconColor = 'text-red-500';
             textColor = 'text-red-600';
-          } else if (hasExceeded) {
-            label = 'Over Budget';
-            description = `${summary.overCount} of ${summary.trackedCount} budgets exceeded`;
-            iconBg = 'bg-amber-500/10';
-            iconColor = 'text-amber-500';
-            textColor = 'text-amber-600';
-          } else if (hasOverspending) {
-            label = 'Speeding Up';
-            description = `${summary.overspendingCount} of ${summary.trackedCount} budgets overspending`;
+          } else if (isTight) {
             iconBg = 'bg-amber-500/10';
             iconColor = 'text-amber-500';
             textColor = 'text-amber-600';
           } else {
-            label = 'On Track';
-            description = `${summary.goodCount} of ${summary.trackedCount} budgets on pace`;
             iconBg = 'bg-green-500/10';
             iconColor = 'text-green-500';
             textColor = 'text-green-600';
@@ -533,12 +521,16 @@ export function BudgetPage() {
             <div className="rounded-xl border bg-card p-5">
               <div className="flex items-center gap-2">
                 <div className={`flex h-8 w-8 items-center justify-center rounded-full ${iconBg}`}>
-                  <CircleGauge className={`h-4 w-4 ${iconColor}`} />
+                  {isShortfall ? (
+                    <TrendingDown className={`h-4 w-4 ${iconColor}`} />
+                  ) : (
+                    <TrendingUp className={`h-4 w-4 ${iconColor}`} />
+                  )}
                 </div>
-                <p className="text-sm text-muted-foreground">Spending speed</p>
+                <p className="text-sm text-muted-foreground">{viewMode === 'year' ? 'Year' : 'Month'} end</p>
               </div>
               <p className={`mt-2 text-3xl font-bold ${textColor}`}>
-                {label}
+                {isShortfall ? '' : '+'}{formatCents(leftover)}
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
                 {description}
