@@ -268,93 +268,6 @@ export function SettingsPage() {
       )}
 
       <div className="space-y-8">
-        {/* Appearance Section */}
-        <section className="section">
-          <div className="section-header">
-            <h2>Appearance</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Customize how the app looks.
-            </p>
-          </div>
-          <div className="section-content">
-            <div className="panel">
-              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h3>Theme</h3>
-                  <p className="text-sm text-muted-foreground">Choose light, dark, or system theme.</p>
-                </div>
-                <ThemeToggle />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <Separator />
-
-        {/* Data Management Section */}
-        <section className="section">
-          <div className="section-header">
-            <h2>Data Management</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Export, import, or delete your budget data.
-            </p>
-          </div>
-          <div className="section-content space-y-3">
-            <div className="panel">
-              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h3>Export Data</h3>
-                  <p className="text-sm text-muted-foreground">Download all your budget data as JSON.</p>
-                </div>
-                <Button variant="outline" onClick={handleExportClick} className="w-full sm:w-auto">
-                  <Upload className="h-4 w-4" />
-                  Export
-                </Button>
-              </div>
-              <Separator />
-              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h3>Import Data</h3>
-                  <p className="text-sm text-muted-foreground">Restore from a JSON backup file.</p>
-                </div>
-                <Button variant="outline" onClick={handleImportClick} className="w-full sm:w-auto">
-                  <Download className="h-4 w-4" />
-                  Import
-                </Button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".json"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-              </div>
-            </div>
-
-            <div className="panel border-destructive/50">
-              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h3 className="text-destructive">Delete All Data</h3>
-                  <p className="text-sm text-muted-foreground">Permanently delete all data and start fresh.</p>
-                </div>
-                <div className="flex gap-2">
-                  {confirmingDelete && (
-                    <Button variant="outline" onClick={() => setConfirmingDelete(false)}>
-                      Cancel
-                    </Button>
-                  )}
-                  <Button variant="destructive" onClick={handleDeleteAll} className="w-full sm:w-auto">
-                    <Trash2 className="h-4 w-4" />
-                    {confirmingDelete ? 'Confirm Delete' : 'Delete All'}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <Separator />
-
         {/* Initial Cash Section */}
         <section className="section">
           <div className="section-header">
@@ -427,6 +340,93 @@ export function SettingsPage() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </section>
+
+        <Separator />
+
+        {/* Data Management Section */}
+        <section className="section">
+          <div className="section-header">
+            <h2>Data Management</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Export, import, or delete your budget data.
+            </p>
+          </div>
+          <div className="section-content space-y-3">
+            <div className="panel">
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3>Export Data</h3>
+                  <p className="text-sm text-muted-foreground">Download all your budget data as JSON.</p>
+                </div>
+                <Button variant="outline" onClick={handleExportClick} className="w-full sm:w-auto">
+                  <Upload className="h-4 w-4" />
+                  Export
+                </Button>
+              </div>
+              <Separator />
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3>Import Data</h3>
+                  <p className="text-sm text-muted-foreground">Restore from a JSON backup file.</p>
+                </div>
+                <Button variant="outline" onClick={handleImportClick} className="w-full sm:w-auto">
+                  <Download className="h-4 w-4" />
+                  Import
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </div>
+            </div>
+
+            <div className="panel border-destructive/50">
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-destructive">Delete All Data</h3>
+                  <p className="text-sm text-muted-foreground">Permanently delete all data and start fresh.</p>
+                </div>
+                <div className="flex gap-2">
+                  {confirmingDelete && (
+                    <Button variant="outline" onClick={() => setConfirmingDelete(false)}>
+                      Cancel
+                    </Button>
+                  )}
+                  <Button variant="destructive" onClick={handleDeleteAll} className="w-full sm:w-auto">
+                    <Trash2 className="h-4 w-4" />
+                    {confirmingDelete ? 'Confirm Delete' : 'Delete All'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <Separator />
+
+        {/* Appearance Section */}
+        <section className="section">
+          <div className="section-header">
+            <h2>Appearance</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Customize how the app looks.
+            </p>
+          </div>
+          <div className="section-content">
+            <div className="panel">
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3>Theme</h3>
+                  <p className="text-sm text-muted-foreground">Choose light, dark, or system theme.</p>
+                </div>
+                <ThemeToggle />
+              </div>
             </div>
           </div>
         </section>
