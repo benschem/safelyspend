@@ -249,13 +249,15 @@ export function BudgetComparisonChart({
             />
           )}
 
-          {sortedCategories.map((cat) => {
+          {sortedCategories.flatMap((cat) => {
             const isHidden = hiddenCategories.has(cat.id);
             const color = colorMap[cat.id] ?? '#9ca3af';
             const hasBudget = categoryStats[cat.id]?.hasBudget ?? false;
-            return [
-              // Budget line (dashed) - only show if toggle is on AND category has a budget
-              showBudget && hasBudget && (
+            const lines = [];
+
+            // Budget line (dashed) - only show if toggle is on AND category has a budget
+            if (showBudget && hasBudget) {
+              lines.push(
                 <Line
                   key={`${cat.id}_budget`}
                   type="monotone"
@@ -266,9 +268,12 @@ export function BudgetComparisonChart({
                   strokeDasharray="6 4"
                   dot={false}
                   hide={isHidden}
-                />
-              ),
-              // Actual line (solid)
+                />,
+              );
+            }
+
+            // Actual line (solid)
+            lines.push(
               <Line
                 key={`${cat.id}_actual`}
                 type="monotone"
@@ -280,7 +285,9 @@ export function BudgetComparisonChart({
                 activeDot={{ r: 6 }}
                 hide={isHidden}
               />,
-            ];
+            );
+
+            return lines;
           })}
         </LineChart>
       </ResponsiveContainer>
