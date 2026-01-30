@@ -195,6 +195,9 @@ export function BudgetComparisonChart({
     });
   };
 
+  // Check if all categories are hidden
+  const allHidden = hiddenCategories.size === sortedCategories.length && sortedCategories.length > 0;
+
   if (budgetCategories.length === 0) {
     return (
       <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
@@ -205,6 +208,11 @@ export function BudgetComparisonChart({
 
   return (
     <div className="w-full">
+      {allHidden ? (
+        <div className="flex h-[350px] items-center justify-center text-sm text-muted-foreground">
+          All categories hidden. Click a category to show it.
+        </div>
+      ) : (
       <ResponsiveContainer width="100%" height={350}>
         <LineChart data={chartData} margin={{ top: 20, right: 55, bottom: 20, left: 20 }}>
           <XAxis
@@ -276,6 +284,7 @@ export function BudgetComparisonChart({
           })}
         </LineChart>
       </ResponsiveContainer>
+      )}
 
       {/* Controls row */}
       <div className="mt-4 flex items-center justify-center gap-2">
@@ -342,7 +351,7 @@ export function BudgetComparisonChart({
 
       {hasFutureData && (
         <p className="mt-3 text-center text-xs text-muted-foreground">
-          Data after "Now" is forecast.
+          Data after &quot;Now&quot; is forecast.
         </p>
       )}
     </div>

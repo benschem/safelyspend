@@ -238,6 +238,14 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
     (m) => m.income.actual > 0 || m.expenses.actual > 0 || m.income.forecast > 0 || m.expenses.forecast > 0,
   );
 
+  // Check if all legend items are hidden
+  const allHidden =
+    hiddenLegends.has('income') &&
+    hiddenLegends.has('expenses') &&
+    hiddenLegends.has('savings') &&
+    hiddenLegends.has('totalSaved') &&
+    (!hasBalance || hiddenLegends.has('balance'));
+
   if (!hasData) {
     return (
       <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
@@ -248,6 +256,11 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
 
   return (
     <div className="w-full">
+      {allHidden ? (
+        <div className="flex h-[350px] items-center justify-center text-sm text-muted-foreground">
+          All data hidden. Click a legend item to show it.
+        </div>
+      ) : (
       <ResponsiveContainer width="100%" height={350}>
         <ComposedChart data={chartData} margin={{ top: 20, right: 55, bottom: 20, left: 20 }}>
           <XAxis
@@ -343,6 +356,7 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
           )}
         </ComposedChart>
       </ResponsiveContainer>
+      )}
 
       {/* Legend */}
       <div className="mt-4 flex flex-wrap justify-center gap-2">

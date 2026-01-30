@@ -142,12 +142,20 @@ export function SpendingBreakdownChart({
     return [dataPoint];
   }, [segments, hiddenSegments]);
 
+  // Check if all segments are hidden
+  const allHidden = hiddenSegments.size === segments.length && segments.length > 0;
+
   if (total === 0 || segments.length === 0) {
     return null;
   }
 
   return (
     <div className="w-full">
+      {allHidden ? (
+        <div className="flex h-10 items-center justify-center text-sm text-muted-foreground">
+          All categories hidden. Click a category to show it.
+        </div>
+      ) : (
       <div
         ref={containerRef}
         className="relative"
@@ -194,6 +202,7 @@ export function SpendingBreakdownChart({
           </div>
         )}
       </div>
+      )}
 
       {/* Interactive Legend */}
       <div className="mt-3 flex flex-wrap gap-2">

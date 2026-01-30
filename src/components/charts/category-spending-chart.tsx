@@ -178,6 +178,10 @@ export function CategorySpendingChart({
     });
   };
 
+  // Check if all categories are hidden
+  const totalCategories = sortedCategories.length + (hasUncategorized ? 1 : 0);
+  const allHidden = hiddenCategories.size === totalCategories && totalCategories > 0;
+
   if (!hasData) {
     return (
       <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
@@ -188,8 +192,13 @@ export function CategorySpendingChart({
 
   return (
     <div className="w-full">
+      {allHidden ? (
+        <div className="flex h-[350px] items-center justify-center text-sm text-muted-foreground">
+          All categories hidden. Click a category to show it.
+        </div>
+      ) : (
       <ResponsiveContainer width="100%" height={350}>
-        <LineChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+        <LineChart data={chartData} margin={{ top: 20, right: 55, bottom: 20, left: 20 }}>
           <XAxis
             dataKey="month"
             tickFormatter={(value) => formatMonth(value)}
@@ -261,6 +270,7 @@ export function CategorySpendingChart({
           )}
         </LineChart>
       </ResponsiveContainer>
+      )}
 
       {/* Legend Controls */}
       <div className="mt-4 flex justify-center gap-2">

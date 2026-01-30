@@ -162,6 +162,10 @@ export function SavingsOverTimeChart({ monthlySavings, deadline, targetAmount, s
   const expectedColor = getExpectedColor();
 
   const hasSavings = monthlySavings.some((m) => m.actual > 0 || m.forecast > 0);
+  const hasForecast = monthlySavings.some((m) => m.forecast > 0);
+
+  // Check if all legend items are hidden
+  const allHidden = hiddenLegends.has('actual') && (!hasForecast || hiddenLegends.has('forecast'));
 
   if (!hasSavings) {
     return (
@@ -183,10 +187,13 @@ export function SavingsOverTimeChart({ monthlySavings, deadline, targetAmount, s
     cumulativeTotal: startingBalance + m.cumulativeActual + m.cumulativeForecast,
   }));
 
-  const hasForecast = monthlySavings.some((m) => m.forecast > 0);
-
   return (
     <div className="w-full">
+      {allHidden ? (
+        <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
+          All data hidden. Click a legend item to show it.
+        </div>
+      ) : (
       <ResponsiveContainer width="100%" height={250}>
         <AreaChart data={chartData} margin={{ top: 20, right: 55, bottom: 20, left: 10 }}>
           <defs>
@@ -300,6 +307,7 @@ export function SavingsOverTimeChart({ monthlySavings, deadline, targetAmount, s
           )}
         </AreaChart>
       </ResponsiveContainer>
+      )}
 
       {/* Legend */}
       <div className="mt-3 flex justify-center gap-2">
