@@ -1,15 +1,14 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useOutletContext } from 'react-router';
-import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
-import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus, Pencil, Trash2, PiggyBank, Ambulance } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useTransactions } from '@/hooks/use-transactions';
+import { useReportsData } from '@/hooks/use-reports-data';
 import { SavingsGoalDialog } from '@/components/dialogs/savings-goal-dialog';
-import { formatCents, formatDate } from '@/lib/utils';
+import { SavingsGoalProgressCard } from '@/components/charts';
 import type { SavingsGoal } from '@/lib/types';
 
 interface OutletContext {
@@ -18,58 +17,39 @@ interface OutletContext {
   endDate: string;
 }
 
-interface SavingsGoalRow extends SavingsGoal {
-  savedAmount: number;
-  progress: number;
-}
-
 export function SavingsIndexPage() {
-  const { startDate, endDate } = useOutletContext<OutletContext>();
+  const { activeScenarioId, startDate, endDate } = useOutletContext<OutletContext>();
   const { savingsGoals, isLoading: savingsLoading, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal } = useSavingsGoals();
   const { savingsTransactions, isLoading: transactionsLoading, addTransaction } = useTransactions(startDate, endDate);
+  const { savingsByGoal, isLoading: reportsLoading } = useReportsData(activeScenarioId, startDate, endDate);
 
-  // Combined loading state from all data hooks
-  const isLoading = savingsLoading || transactionsLoading;
+  const isLoading = savingsLoading || transactionsLoading || reportsLoading;
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const getSavedAmount = useCallback(
-    (goalId: string) =>
-      savingsTransactions
-        .filter((t) => t.savingsGoalId === goalId)
-        .reduce((sum, t) => sum + t.amountCents, 0),
-    [savingsTransactions],
-  );
-
-  const getProgress = (current: number, target: number) => {
-    if (target === 0) return 100;
-    return Math.min(Math.round((current / target) * 100), 100);
-  };
-
-  const goalRows: SavingsGoalRow[] = useMemo(
-    () =>
-      savingsGoals.map((goal) => {
-        const savedAmount = getSavedAmount(goal.id);
-        return {
-          ...goal,
-          savedAmount,
-          progress: getProgress(savedAmount, goal.targetAmountCents),
-        };
-      }),
-    [savingsGoals, getSavedAmount],
-  );
+  // Map goalId to SavingsGoal for editing
+  const goalMap = useMemo(() => {
+    const map: Record<string, SavingsGoal> = {};
+    for (const goal of savingsGoals) {
+      map[goal.id] = goal;
+    }
+    return map;
+  }, [savingsGoals]);
 
   const openAddDialog = useCallback(() => {
     setEditingGoal(null);
     setDialogOpen(true);
   }, []);
 
-  const openEditDialog = useCallback((goal: SavingsGoal) => {
-    setEditingGoal(goal);
-    setDialogOpen(true);
-  }, []);
+  const openEditDialog = useCallback((goalId: string) => {
+    const goal = goalMap[goalId];
+    if (goal) {
+      setEditingGoal(goal);
+      setDialogOpen(true);
+    }
+  }, [goalMap]);
 
   const handleDialogClose = useCallback((open: boolean) => {
     setDialogOpen(open);
@@ -79,7 +59,8 @@ export function SavingsIndexPage() {
   }, []);
 
   const handleDelete = useCallback(
-    (id: string) => {
+    (id: string, e: React.MouseEvent) => {
+      e.stopPropagation();
       if (deletingId === id) {
         deleteSavingsGoal(id);
         setDeletingId(null);
@@ -88,6 +69,14 @@ export function SavingsIndexPage() {
       }
     },
     [deletingId, deleteSavingsGoal],
+  );
+
+  const handleSetEmergencyFund = useCallback(
+    (id: string, isEmergencyFund: boolean, e: React.MouseEvent) => {
+      e.stopPropagation();
+      updateSavingsGoal(id, { isEmergencyFund });
+    },
+    [updateSavingsGoal],
   );
 
   // Check if savings goal has transactions
@@ -99,140 +88,6 @@ export function SavingsIndexPage() {
   const hasTransactions = useCallback(
     (goalId: string) => getTransactionCount(goalId) > 0,
     [getTransactionCount],
-  );
-
-  const handleSetEmergencyFund = useCallback(
-    (id: string, isEmergencyFund: boolean) => {
-      updateSavingsGoal(id, { isEmergencyFund });
-    },
-    [updateSavingsGoal],
-  );
-
-  const columns: ColumnDef<SavingsGoalRow>[] = useMemo(
-    () => [
-      {
-        accessorKey: 'name',
-        header: ({ column }) => <SortableHeader column={column}>Name</SortableHeader>,
-        cell: ({ row }) => {
-          const goal = row.original;
-          return (
-            <button
-              type="button"
-              onClick={() => openEditDialog(goal)}
-              className="cursor-pointer text-left font-medium hover:underline"
-            >
-              {goal.name}
-            </button>
-          );
-        },
-      },
-      {
-        accessorKey: 'deadline',
-        header: ({ column }) => <SortableHeader column={column}>Deadline</SortableHeader>,
-        cell: ({ row }) => {
-          const deadline = row.getValue('deadline') as string | undefined;
-          return deadline ? formatDate(deadline) : '-';
-        },
-        sortingFn: 'datetime',
-      },
-      {
-        accessorKey: 'annualInterestRate',
-        header: ({ column }) => (
-          <SortableHeader column={column} className="justify-end">
-            Interest
-          </SortableHeader>
-        ),
-        cell: ({ row }) => {
-          const rate = row.original.annualInterestRate;
-          return (
-            <div className="text-right text-muted-foreground">
-              {rate ? `${rate}%` : '-'}
-            </div>
-          );
-        },
-      },
-      {
-        accessorKey: 'progress',
-        header: ({ column }) => <SortableHeader column={column}>Progress</SortableHeader>,
-        cell: ({ row }) => {
-          const progress = row.getValue('progress') as number;
-          return (
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-                <div
-                  className="h-2 rounded-full bg-blue-600"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <span className="w-10 text-right text-sm text-muted-foreground">{progress}%</span>
-            </div>
-          );
-        },
-      },
-      {
-        accessorKey: 'savedAmount',
-        header: ({ column }) => (
-          <SortableHeader column={column} className="justify-end">
-            Saved
-          </SortableHeader>
-        ),
-        cell: ({ row }) => (
-          <div className="text-right font-mono">{formatCents(row.getValue('savedAmount'))}</div>
-        ),
-      },
-      {
-        accessorKey: 'targetAmountCents',
-        header: ({ column }) => (
-          <SortableHeader column={column} className="justify-end">
-            Goal
-          </SortableHeader>
-        ),
-        cell: ({ row }) => (
-          <div className="text-right font-mono">
-            {formatCents(row.getValue('targetAmountCents'))}
-          </div>
-        ),
-      },
-      {
-        id: 'actions',
-        cell: ({ row }) => {
-          const goal = row.original;
-          const isDeleting = deletingId === goal.id;
-
-          return (
-            <div className="flex justify-end gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleSetEmergencyFund(goal.id, !goal.isEmergencyFund)}
-                aria-label={goal.isEmergencyFund ? 'Remove as emergency fund' : 'Set as emergency fund'}
-              >
-                <Ambulance className={`h-4 w-4 ${goal.isEmergencyFund ? 'text-blue-600' : ''}`} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => openEditDialog(goal)}
-                aria-label="Edit goal"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={isDeleting ? 'destructive' : 'ghost'}
-                size="sm"
-                onClick={() => handleDelete(goal.id)}
-                onBlur={() => setTimeout(() => setDeletingId(null), 200)}
-                aria-label={isDeleting ? 'Confirm delete' : 'Delete goal'}
-                title={isDeleting && hasTransactions(goal.id) ? `Warning: Has ${getTransactionCount(goal.id)} transaction(s)` : undefined}
-              >
-                {isDeleting ? (hasTransactions(goal.id) ? 'Delete anyway?' : 'Confirm') : <Trash2 className="h-4 w-4" />}
-              </Button>
-            </div>
-          );
-        },
-      },
-    ],
-    [deletingId, openEditDialog, handleDelete, handleSetEmergencyFund, hasTransactions, getTransactionCount],
   );
 
   return (
@@ -268,14 +123,70 @@ export function SavingsIndexPage() {
           </div>
         </div>
       ) : (
-        <div className="mt-6">
-          <DataTable
-            columns={columns}
-            data={goalRows}
-            searchKey="name"
-            searchPlaceholder="Search goals..."
-            showPagination={false}
-          />
+        <div className="grid gap-4 md:grid-cols-2">
+          {savingsByGoal.map((goal) => {
+            const savingsGoal = goalMap[goal.goalId];
+            const isDeleting = deletingId === goal.goalId;
+
+            return (
+              <div key={goal.goalId} className="group relative">
+                <button
+                  type="button"
+                  onClick={() => openEditDialog(goal.goalId)}
+                  className="w-full cursor-pointer text-left transition-shadow hover:ring-2 hover:ring-primary/20 focus:outline-none focus:ring-2 focus:ring-primary rounded-lg"
+                >
+                  <SavingsGoalProgressCard
+                    goalName={goal.goalName}
+                    targetAmount={goal.targetAmount}
+                    currentBalance={goal.currentBalance}
+                    deadline={goal.deadline}
+                    annualInterestRate={goal.annualInterestRate}
+                    monthlySavings={goal.monthlySavings}
+                  />
+                </button>
+
+                {/* Action buttons overlay */}
+                <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={(e) => handleSetEmergencyFund(goal.goalId, !savingsGoal?.isEmergencyFund, e)}
+                    aria-label={savingsGoal?.isEmergencyFund ? 'Remove as emergency fund' : 'Set as emergency fund'}
+                  >
+                    <Ambulance className={`h-3.5 w-3.5 ${savingsGoal?.isEmergencyFund ? 'text-blue-600' : ''}`} />
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEditDialog(goal.goalId);
+                    }}
+                    aria-label="Edit goal"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant={isDeleting ? 'destructive' : 'secondary'}
+                    size="sm"
+                    className="h-7 p-0 px-2"
+                    onClick={(e) => handleDelete(goal.goalId, e)}
+                    onBlur={() => setTimeout(() => setDeletingId(null), 200)}
+                    aria-label={isDeleting ? 'Confirm delete' : 'Delete goal'}
+                    title={isDeleting && hasTransactions(goal.goalId) ? `Warning: Has ${getTransactionCount(goal.goalId)} transaction(s)` : undefined}
+                  >
+                    {isDeleting ? (
+                      <span className="text-xs">{hasTransactions(goal.goalId) ? 'Delete?' : 'Confirm'}</span>
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

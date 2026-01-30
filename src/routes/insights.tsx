@@ -23,7 +23,6 @@ import {
   BudgetComparisonChart,
   CashFlowChart,
   SavingsOverTimeChart,
-  SavingsGoalProgressCard,
 } from '@/components/charts';
 import { ScenarioSelector } from '@/components/scenario-selector';
 
@@ -337,28 +336,6 @@ export function InsightsPage() {
               targetAmount={savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.targetAmount}
               startingBalance={savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.startingBalance}
             />
-          )}
-
-          {savingsByGoal.length > 0 && (
-            <div className="mt-4 border-t pt-6">
-              <h3 className="text-base font-semibold">Progress by Goal</h3>
-              <p className="mb-4 text-sm text-muted-foreground">
-                Track progress towards each savings goal
-              </p>
-              <div className="grid gap-4 md:grid-cols-2">
-                {savingsByGoal.map((goal) => (
-                  <SavingsGoalProgressCard
-                    key={goal.goalId}
-                    goalName={goal.goalName}
-                    targetAmount={goal.targetAmount}
-                    currentBalance={goal.currentBalance}
-                    deadline={goal.deadline}
-                    annualInterestRate={goal.annualInterestRate}
-                    monthlySavings={goal.monthlySavings}
-                  />
-                ))}
-              </div>
-            </div>
           )}
         </div>
       ) : null}
