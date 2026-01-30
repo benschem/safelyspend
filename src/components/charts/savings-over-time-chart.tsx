@@ -116,7 +116,6 @@ function CustomTooltip({
 export function SavingsOverTimeChart({ monthlySavings, deadline, targetAmount, startingBalance = 0 }: SavingsOverTimeChartProps) {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const hasCurrentMonth = monthlySavings.some((m) => m.month === currentMonth);
-  const hasFutureData = monthlySavings.some((m) => m.month > currentMonth);
 
   // Legend visibility state
   const [hiddenLegends, setHiddenLegends] = useState<Set<LegendKey>>(new Set());

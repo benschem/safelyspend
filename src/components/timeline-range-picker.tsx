@@ -151,10 +151,10 @@ export function TimelineRangePicker({
       <PopoverContent className="w-fit min-w-72" align="start">
         <div className="space-y-4">
           {/* Preset controls */}
-          <div className="flex items-center gap-2">
-            <Select value={amount.toString()} onValueChange={handleAmountChange}>
+          <div className={cn('flex items-center gap-2', isCustomActive && 'opacity-50')}>
+            <Select value={isCustomActive ? '' : amount.toString()} onValueChange={handleAmountChange}>
               <SelectTrigger className="w-16 cursor-pointer">
-                <SelectValue />
+                <SelectValue placeholder="—" />
               </SelectTrigger>
               <SelectContent className="max-h-60">
                 {amountOptions.map((n) => (
@@ -165,11 +165,11 @@ export function TimelineRangePicker({
               </SelectContent>
             </Select>
             <Select
-              value={unit}
+              value={isCustomActive ? '' : unit}
               onValueChange={(v) => handleUnitChange(v as TimelineUnit)}
             >
               <SelectTrigger className="w-24 cursor-pointer">
-                <SelectValue />
+                <SelectValue placeholder="—" />
               </SelectTrigger>
               <SelectContent>
                 {UNITS.map((u) => (
@@ -208,7 +208,7 @@ export function TimelineRangePicker({
           </div>
 
           {/* Date inputs - always visible, synced with current range */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className={cn('grid grid-cols-2 gap-2', !isCustomActive && 'opacity-50')}>
             <div className="grid gap-1">
               <Label htmlFor="timeline-range-start" className="text-xs text-muted-foreground">
                 Start
