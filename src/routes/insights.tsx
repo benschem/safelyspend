@@ -275,7 +275,7 @@ export function InsightsPage() {
           <p className="text-sm text-muted-foreground">
             {isPastOnly
               ? 'How your spending compared to your budget'
-              : 'Actual spending vs budget, plus forecasted expenses'}
+              : 'Actual and forecast spending vs budget'}
           </p>
           <BudgetComparisonChart
             monthlyBudgetComparison={monthlyBudgetComparison}
@@ -299,7 +299,7 @@ export function InsightsPage() {
           <p className="text-sm text-muted-foreground">
             {isPastOnly
               ? 'Your bank balance and monthly income vs expenses'
-              : 'Cash and savings over time, with forecasted earnings, spending and saving'}
+              : 'Cash and savings over time, including planned income, spending and saving'}
           </p>
           <CashFlowChart
             monthlyNetFlow={monthlyNetFlow}

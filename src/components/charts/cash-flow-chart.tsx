@@ -364,7 +364,7 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
           }`}
         >
           <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS.expense }} />
-          <span className={hiddenLegends.has('expenses') ? 'line-through' : ''}>Expenses</span>
+          <span className={hiddenLegends.has('expenses') ? 'line-through' : ''}>Spending</span>
         </button>
         <button
           type="button"
@@ -401,7 +401,7 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
               className="h-2.5 w-2.5 rounded-sm"
               style={{ backgroundColor: CHART_COLORS.income, opacity: 0.25 }}
             />
-            <span className={hiddenLegends.has('balance') ? 'line-through' : ''}>Bank Balance</span>
+            <span className={hiddenLegends.has('balance') ? 'line-through' : ''}>Cash</span>
           </button>
         )}
       </div>
