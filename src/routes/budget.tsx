@@ -70,9 +70,9 @@ const CADENCE_FULL_LABELS: Record<Cadence, string> = {
   yearly: 'Yearly',
 };
 
-type BudgetTab = 'categories' | 'recurring-expenses' | 'income' | 'savings-contributions' | 'scenarios';
+type BudgetTab = 'categories' | 'income' | 'fixed-expenses' | 'savings-contributions' | 'scenarios';
 
-const VALID_TABS: BudgetTab[] = ['categories', 'recurring-expenses', 'income', 'savings-contributions', 'scenarios'];
+const VALID_TABS: BudgetTab[] = ['categories', 'income', 'fixed-expenses', 'savings-contributions', 'scenarios'];
 
 export function BudgetPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1353,8 +1353,8 @@ export function BudgetPage() {
       <div className="mb-6 inline-flex flex-wrap gap-1 rounded-lg bg-muted p-1 text-muted-foreground">
         {[
           { value: 'categories' as BudgetTab, label: 'Categories' },
-          { value: 'recurring-expenses' as BudgetTab, label: 'Recurring Expenses' },
           { value: 'income' as BudgetTab, label: 'Income' },
+          { value: 'fixed-expenses' as BudgetTab, label: 'Fixed Expenses' },
           { value: 'savings-contributions' as BudgetTab, label: 'Savings Contributions' },
           { value: 'scenarios' as BudgetTab, label: 'Scenarios' },
         ].map((tab) => (
@@ -1423,60 +1423,6 @@ export function BudgetPage() {
         </>
       )}
 
-      {/* Recurring Expenses tab */}
-      {activeTab === 'recurring-expenses' && (
-        <>
-          <Alert variant="info" className="mb-6">
-            Expected recurring expenses. They vary by scenario.
-          </Alert>
-
-          {expenseRules.length === 0 && expenseFilterCategory === 'all' ? (
-            <div className="empty-state">
-              <p className="empty-state-text">No expected expenses yet.</p>
-              <Button className="empty-state-action" onClick={openAddRuleDialog}>
-                <Plus className="h-4 w-4" />
-                Add expected expense
-              </Button>
-            </div>
-          ) : (
-            <DataTable
-              columns={expenseColumns}
-              data={expenseRules}
-              searchKey="description"
-              searchPlaceholder="Search expenses..."
-              showPagination={false}
-              emptyMessage="No expected expenses found matching your filters."
-              filterSlot={
-                <div className="flex flex-1 flex-wrap items-center gap-2">
-                  <ScenarioSelector hideLabel />
-                  <Select value={expenseFilterCategory} onValueChange={setExpenseFilterCategory}>
-                    <SelectTrigger className={`w-44 ${expenseFilterCategory === 'all' ? 'text-muted-foreground' : ''}`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      {activeCategories
-                        .sort((a, b) => a.name.localeCompare(b.name))
-                        .map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="flex flex-1 items-center justify-end">
-                    <Button onClick={openAddRuleDialog}>
-                      <Plus className="h-4 w-4" />
-                      <span className="hidden sm:inline">Add Expense</span>
-                    </Button>
-                  </div>
-                </div>
-              }
-            />
-          )}
-        </>
-      )}
-
       {/* Income tab */}
       {activeTab === 'income' && (
         <>
@@ -1506,6 +1452,60 @@ export function BudgetPage() {
                     <Button onClick={openAddRuleDialog}>
                       <Plus className="h-4 w-4" />
                       <span className="hidden sm:inline">Add Income</span>
+                    </Button>
+                  </div>
+                </div>
+              }
+            />
+          )}
+        </>
+      )}
+
+      {/* Fixed Expenses tab */}
+      {activeTab === 'fixed-expenses' && (
+        <>
+          <Alert variant="info" className="mb-6">
+            Expected fixed expenses. They vary by scenario.
+          </Alert>
+
+          {expenseRules.length === 0 && expenseFilterCategory === 'all' ? (
+            <div className="empty-state">
+              <p className="empty-state-text">No fixed expenses yet.</p>
+              <Button className="empty-state-action" onClick={openAddRuleDialog}>
+                <Plus className="h-4 w-4" />
+                Add fixed expense
+              </Button>
+            </div>
+          ) : (
+            <DataTable
+              columns={expenseColumns}
+              data={expenseRules}
+              searchKey="description"
+              searchPlaceholder="Search expenses..."
+              showPagination={false}
+              emptyMessage="No fixed expenses found matching your filters."
+              filterSlot={
+                <div className="flex flex-1 flex-wrap items-center gap-2">
+                  <ScenarioSelector hideLabel />
+                  <Select value={expenseFilterCategory} onValueChange={setExpenseFilterCategory}>
+                    <SelectTrigger className={`w-44 ${expenseFilterCategory === 'all' ? 'text-muted-foreground' : ''}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {activeCategories
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex flex-1 items-center justify-end">
+                    <Button onClick={openAddRuleDialog}>
+                      <Plus className="h-4 w-4" />
+                      <span className="hidden sm:inline">Add Expense</span>
                     </Button>
                   </div>
                 </div>
@@ -1620,9 +1620,9 @@ export function BudgetPage() {
         rule={editingRule}
         addRule={addRule}
         updateRule={updateRule}
-        {...(activeTab === 'recurring-expenses' && { onRuleCreated: handleRuleCreated })}
+        {...(activeTab === 'fixed-expenses' && { onRuleCreated: handleRuleCreated })}
         restrictType={
-          activeTab === 'recurring-expenses' ? 'expense' :
+          activeTab === 'fixed-expenses' ? 'expense' :
           activeTab === 'income' ? 'income' :
           activeTab === 'savings-contributions' ? 'savings' :
           null
