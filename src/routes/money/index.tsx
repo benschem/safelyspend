@@ -1102,8 +1102,7 @@ export function MoneyIndexPage() {
         event={editingEvent}
         addEvent={addEvent}
         updateEvent={updateEvent}
-        addRule={addRule}
-        onRuleCreated={handleRuleCreated}
+        onAddRecurring={() => setRecurringDialogOpen(true)}
       />
 
       <ForecastRuleDialog

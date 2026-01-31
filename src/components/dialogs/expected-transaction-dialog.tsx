@@ -18,10 +18,8 @@ import {
 } from '@/components/ui/select';
 import { CategorySelect } from '@/components/category-select';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
-import { today, parseCentsFromInput, cn } from '@/lib/utils';
-import type { ForecastEvent, ForecastRule, ForecastType, Cadence, CreateEntity } from '@/lib/types';
-
-type Mode = 'one-time' | 'recurring';
+import { today, parseCentsFromInput } from '@/lib/utils';
+import type { ForecastEvent, ForecastType, CreateEntity } from '@/lib/types';
 
 interface ExpectedTransactionDialogProps {
   open: boolean;
@@ -31,17 +29,9 @@ interface ExpectedTransactionDialogProps {
   event?: ForecastEvent | null;
   addEvent: (data: CreateEntity<ForecastEvent>) => Promise<ForecastEvent>;
   updateEvent: (id: string, updates: Partial<Omit<ForecastEvent, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
-  addRule: (data: CreateEntity<ForecastRule>) => Promise<ForecastRule>;
-  /** Called after a new rule is created (not on edit) */
-  onRuleCreated?: (rule: ForecastRule) => void;
+  /** Called when user wants to add recurring instead */
+  onAddRecurring?: () => void;
 }
-
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export function ExpectedTransactionDialog({
   open,
@@ -50,62 +40,38 @@ export function ExpectedTransactionDialog({
   event,
   addEvent,
   updateEvent,
-  addRule,
-  onRuleCreated,
+  onAddRecurring,
 }: ExpectedTransactionDialogProps) {
   const isEditing = !!event;
   const todayDate = today();
 
   // Form state
-  const [mode, setMode] = useState<Mode>('one-time');
   const [type, setType] = useState<ForecastType>('expense');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [savingsGoalId, setSavingsGoalId] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
-
-  // One-time specific
   const [date, setDate] = useState(todayDate);
-
-  // Recurring specific
-  const [cadence, setCadence] = useState<Cadence>('monthly');
-  const [dayOfMonth, setDayOfMonth] = useState('1');
-  const [dayOfWeek, setDayOfWeek] = useState('1');
-  const [monthOfYear, setMonthOfYear] = useState('0');
-  const [monthOfQuarter, setMonthOfQuarter] = useState('0');
 
   useEffect(() => {
     if (open) {
       if (event) {
-        // Editing existing event - set to one-time mode
-        setMode('one-time');
+        // Editing existing event
         setType(event.type);
         setDescription(event.description);
         setAmount((event.amountCents / 100).toFixed(2));
         setCategoryId(event.categoryId ?? '');
         setSavingsGoalId(event.savingsGoalId ?? '');
         setDate(event.date);
-        // Reset recurring fields
-        setCadence('monthly');
-        setDayOfMonth('1');
-        setDayOfWeek('1');
-        setMonthOfYear('0');
-        setMonthOfQuarter('0');
       } else {
-        // New - default to one-time
-        setMode('one-time');
+        // New one-time event
         setType('expense');
         setDescription('');
         setAmount('');
         setCategoryId('');
         setSavingsGoalId('');
         setDate(todayDate);
-        setCadence('monthly');
-        setDayOfMonth('1');
-        setDayOfWeek('1');
-        setMonthOfYear('0');
-        setMonthOfQuarter('0');
       }
       setFormError(null);
     }
@@ -136,51 +102,20 @@ export function ExpectedTransactionDialog({
     }
 
     try {
-      if (mode === 'one-time') {
-        const eventData = {
-          scenarioId,
-          type,
-          date,
-          description: description.trim(),
-          amountCents,
-          categoryId: type === 'savings' ? null : categoryId || null,
-          savingsGoalId: type === 'savings' ? savingsGoalId : null,
-        };
+      const eventData = {
+        scenarioId,
+        type,
+        date,
+        description: description.trim(),
+        amountCents,
+        categoryId: type === 'savings' ? null : categoryId || null,
+        savingsGoalId: type === 'savings' ? savingsGoalId : null,
+      };
 
-        if (isEditing && event) {
-          await updateEvent(event.id, eventData);
-        } else {
-          await addEvent(eventData);
-        }
+      if (isEditing && event) {
+        await updateEvent(event.id, eventData);
       } else {
-        // Recurring mode
-        const ruleData: Parameters<typeof addRule>[0] = {
-          scenarioId,
-          type,
-          description: description.trim(),
-          amountCents,
-          cadence,
-          categoryId: type === 'savings' ? null : categoryId || null,
-          savingsGoalId: type === 'savings' ? savingsGoalId : null,
-        };
-
-        // Add schedule fields based on cadence
-        if (cadence === 'weekly' || cadence === 'fortnightly') {
-          ruleData.dayOfWeek = parseInt(dayOfWeek, 10);
-        } else {
-          ruleData.dayOfMonth = parseInt(dayOfMonth, 10);
-        }
-
-        if (cadence === 'yearly') {
-          ruleData.monthOfYear = parseInt(monthOfYear, 10);
-        }
-
-        if (cadence === 'quarterly') {
-          ruleData.monthOfQuarter = parseInt(monthOfQuarter, 10);
-        }
-
-        const newRule = await addRule(ruleData);
-        onRuleCreated?.(newRule);
+        await addEvent(eventData);
       }
       onOpenChange(false);
     } catch (error) {
@@ -188,28 +123,21 @@ export function ExpectedTransactionDialog({
     }
   };
 
-  const showDayOfWeek = cadence === 'weekly' || cadence === 'fortnightly';
-  const showMonthOfYear = cadence === 'yearly';
-  const showMonthOfQuarter = cadence === 'quarterly';
-  const showDayOfMonth = cadence === 'monthly' || cadence === 'quarterly' || cadence === 'yearly';
-
-  // Determine dialog title and description
-  const getTitle = () => {
-    if (isEditing) return 'Edit Expected Transaction';
-    return 'Add Expected Transaction';
-  };
-
-  const getDescription = () => {
-    if (isEditing) return 'Update this expected transaction.';
-    return 'Add a future expected transaction, either one-time or recurring.';
+  const handleAddRecurring = () => {
+    onOpenChange(false);
+    onAddRecurring?.();
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{getTitle()}</DialogTitle>
-          <DialogDescription>{getDescription()}</DialogDescription>
+          <DialogTitle>
+            {isEditing ? 'Edit One-Time Transaction' : 'Add One-Time Transaction'}
+          </DialogTitle>
+          <DialogDescription>
+            {isEditing ? 'Update this one-time expected transaction.' : 'Add a future one-time expected transaction.'}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -219,41 +147,11 @@ export function ExpectedTransactionDialog({
             </div>
           )}
 
-          {/* Mode toggle - only show when creating new (not editing) */}
-          {!isEditing && (
-            <div className="inline-flex h-10 w-full items-center rounded-lg bg-muted p-1 text-muted-foreground">
-              <button
-                type="button"
-                onClick={() => setMode('one-time')}
-                className={cn(
-                  'inline-flex h-8 flex-1 cursor-pointer items-center justify-center rounded-md text-sm font-medium transition-all',
-                  mode === 'one-time'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'hover:text-foreground',
-                )}
-              >
-                One-time
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('recurring')}
-                className={cn(
-                  'inline-flex h-8 flex-1 cursor-pointer items-center justify-center rounded-md text-sm font-medium transition-all',
-                  mode === 'recurring'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'hover:text-foreground',
-                )}
-              >
-                Recurring
-              </button>
-            </div>
-          )}
-
           <div className="space-y-2">
             <Label htmlFor="expected-description" className="select-none">Description</Label>
             <Input
               id="expected-description"
-              placeholder={mode === 'recurring' ? 'e.g., Salary, Rent, Car payment' : 'e.g., Car service, Tax return'}
+              placeholder="e.g., Car service, Tax return"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -273,167 +171,30 @@ export function ExpectedTransactionDialog({
             </Select>
           </div>
 
-          {mode === 'one-time' ? (
-            // One-time fields
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="expected-date" className="select-none">Date</Label>
-                <Input
-                  id="expected-date"
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="expected-amount" className="select-none">Amount ($)</Label>
-                <Input
-                  id="expected-amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
-              </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="expected-date" className="select-none">Date</Label>
+              <Input
+                id="expected-date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
             </div>
-          ) : (
-            // Recurring fields
-            <>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="expected-amount-recurring" className="select-none">Amount ($)</Label>
-                  <Input
-                    id="expected-amount-recurring"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                  />
-                </div>
 
-                <div className="space-y-2">
-                  <Label className="select-none">Frequency</Label>
-                  <Select value={cadence} onValueChange={(v) => setCadence(v as Cadence)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="fortnightly">Fortnightly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                      <SelectItem value="quarterly">Quarterly</SelectItem>
-                      <SelectItem value="yearly">Yearly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Schedule fields based on cadence */}
-              {showMonthOfYear && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="select-none">Month</Label>
-                    <Select value={monthOfYear} onValueChange={setMonthOfYear}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MONTH_NAMES.map((name, i) => (
-                          <SelectItem key={i} value={String(i)}>{name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="select-none">Day</Label>
-                    <Select value={dayOfMonth} onValueChange={setDayOfMonth}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                          <SelectItem key={day} value={String(day)}>{day}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              )}
-
-              {showMonthOfQuarter && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="select-none">Month of Quarter</Label>
-                    <Select value={monthOfQuarter} onValueChange={setMonthOfQuarter}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">1st month</SelectItem>
-                        <SelectItem value="1">2nd month</SelectItem>
-                        <SelectItem value="2">3rd month</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="select-none">Day</Label>
-                    <Select value={dayOfMonth} onValueChange={setDayOfMonth}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                          <SelectItem key={day} value={String(day)}>{day}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              )}
-
-              {cadence === 'monthly' && showDayOfMonth && !showMonthOfYear && !showMonthOfQuarter && (
-                <div className="space-y-2">
-                  <Label className="select-none">Day of Month</Label>
-                  <Select value={dayOfMonth} onValueChange={setDayOfMonth}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                        <SelectItem key={day} value={String(day)}>{day}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {parseInt(dayOfMonth, 10) > 28 && (
-                    <p className="text-xs text-muted-foreground">
-                      For shorter months, uses last day of month
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {showDayOfWeek && (
-                <div className="space-y-2">
-                  <Label className="select-none">Day of Week</Label>
-                  <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DAY_NAMES.map((name, i) => (
-                        <SelectItem key={i} value={String(i)}>{name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </>
-          )}
+            <div className="space-y-2">
+              <Label htmlFor="expected-amount" className="select-none">Amount ($)</Label>
+              <Input
+                id="expected-amount"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            </div>
+          </div>
 
           {type === 'savings' ? (
             <div className="space-y-2">
@@ -457,13 +218,22 @@ export function ExpectedTransactionDialog({
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave}>
-              {isEditing ? 'Save' : 'Add'}
-            </Button>
+          <div className="flex items-center justify-between pt-2">
+            {!isEditing && onAddRecurring ? (
+              <Button variant="link" className="px-0" onClick={handleAddRecurring}>
+                Add recurring instead
+              </Button>
+            ) : (
+              <div />
+            )}
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSave}>
+                {isEditing ? 'Save' : 'Add'}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
