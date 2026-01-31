@@ -3,7 +3,8 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Button } from '@/components/ui/button';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Pencil, Trash2, Star, Layers, Check, Play } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Plus, Pencil, Trash2, Star, Layers, Play } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { Alert } from '@/components/ui/alert';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -168,24 +169,19 @@ export function ScenariosIndexPage() {
 
           return (
             <div className="flex justify-end gap-1">
-              <Button
-                variant={isActive ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => !isActive && setActiveScenarioId(scenario.id)}
-                className={`w-24 ${isActive ? 'pointer-events-none' : ''}`}
-              >
-                {isActive ? (
-                  <>
-                    <Check className="h-4 w-4" />
-                    Active
-                  </>
-                ) : (
-                  <>
-                    <Play className="h-4 w-4" />
-                    Activate
-                  </>
-                )}
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => !isActive && setActiveScenarioId(scenario.id)}
+                    className={`cursor-pointer rounded p-1.5 transition-colors ${isActive ? '' : 'hover:bg-muted'}`}
+                    aria-label={isActive ? 'Active scenario' : 'Activate scenario'}
+                  >
+                    <Play className={`h-4 w-4 ${isActive ? 'text-blue-500' : 'text-muted-foreground'}`} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{isActive ? 'Active' : 'Activate'}</TooltipContent>
+              </Tooltip>
               <Button
                 variant="ghost"
                 size="sm"
