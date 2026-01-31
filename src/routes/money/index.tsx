@@ -51,7 +51,8 @@ interface OutletContext {
   activeScenarioId: string | null;
 }
 
-type TabValue = 'past' | 'expected';
+type TabValue = 'past' | 'expected' | 'averages';
+type AveragePeriod = 'fortnightly' | 'monthly' | 'yearly';
 type FilterType = 'all' | 'income' | 'expense' | 'savings' | 'adjustment';
 type ExpectedFilterType = 'all' | 'income' | 'expense' | 'savings';
 type CategoryFilter = 'all' | 'uncategorized' | string;
@@ -71,8 +72,12 @@ export function MoneyIndexPage() {
   const [activeTab, setActiveTab] = useState<TabValue>(() => {
     const tabParam = searchParams.get('tab');
     if (tabParam === 'expected') return 'expected';
+    if (tabParam === 'averages') return 'averages';
     return 'past';
   });
+
+  // Average period state
+  const [averagePeriod, setAveragePeriod] = useState<AveragePeriod>('monthly');
 
   // Check if user came from budget page
   const fromBudget = searchParams.get('from') === 'budget' || searchParams.get('from') === 'categories';
@@ -80,10 +85,10 @@ export function MoneyIndexPage() {
   // Update URL when tab changes
   useEffect(() => {
     const currentTab = searchParams.get('tab');
-    if (activeTab === 'expected' && currentTab !== 'expected') {
-      setSearchParams({ tab: 'expected' }, { replace: true });
-    } else if (activeTab === 'past' && currentTab === 'expected') {
+    if (activeTab === 'past' && currentTab) {
       setSearchParams({}, { replace: true });
+    } else if (activeTab !== 'past' && currentTab !== activeTab) {
+      setSearchParams({ tab: activeTab }, { replace: true });
     }
   }, [activeTab, searchParams, setSearchParams]);
 
@@ -388,6 +393,71 @@ export function MoneyIndexPage() {
     }),
     [expandedForecasts, expectedFilterType, filterCategory],
   );
+
+  // Period averages calculation
+  const periodAverages = useMemo(() => {
+    if (allTransactions.length === 0) {
+      return { income: 0, expenses: 0, savings: 0, net: 0 };
+    }
+
+    // Find date range from transactions
+    const dates = allTransactions.map((t) => new Date(t.date));
+    const firstDate = new Date(Math.min(...dates.map((d) => d.getTime())));
+    const lastDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+
+    // Calculate days between first and last transaction
+    const daysDiff = Math.max(
+      1,
+      Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+    );
+
+    // Calculate periods based on selected period type
+    let periods: number;
+    switch (averagePeriod) {
+      case 'fortnightly':
+        periods = Math.max(1, daysDiff / 14);
+        break;
+      case 'monthly':
+        periods = Math.max(
+          1,
+          (lastDate.getFullYear() - firstDate.getFullYear()) * 12 +
+            (lastDate.getMonth() - firstDate.getMonth()) + 1,
+        );
+        break;
+      case 'yearly':
+        periods = Math.max(1, daysDiff / 365);
+        break;
+    }
+
+    const totalIncome = allTransactions
+      .filter((t) => t.type === 'income')
+      .reduce((sum, t) => sum + t.amountCents, 0);
+
+    const totalExpenses = allTransactions
+      .filter((t) => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amountCents, 0);
+
+    const totalSavingsAmount = allTransactions
+      .filter((t) => t.type === 'savings')
+      .reduce((sum, t) => sum + t.amountCents, 0);
+
+    const income = Math.round(totalIncome / periods);
+    const expenses = Math.round(totalExpenses / periods);
+    const savings = Math.round(totalSavingsAmount / periods);
+
+    return {
+      income,
+      expenses,
+      savings,
+      net: income - expenses - savings,
+    };
+  }, [allTransactions, averagePeriod]);
+
+  const periodLabels: Record<AveragePeriod, { title: string; net: string }> = {
+    fortnightly: { title: 'Fortnightly Average', net: 'Net per fortnight' },
+    monthly: { title: 'Monthly Average', net: 'Net per month' },
+    yearly: { title: 'Yearly Average', net: 'Net per year' },
+  };
 
   // Past transactions columns
   const transactionColumns: ColumnDef<Transaction>[] = useMemo(
@@ -863,6 +933,7 @@ export function MoneyIndexPage() {
           <p className="page-description">
             {activeTab === 'past' && 'Actual income, expenses, and savings.'}
             {activeTab === 'expected' && `Expected income, expenses, and savings${activeScenario ? ` for ${activeScenario.name}` : ''}.`}
+            {activeTab === 'averages' && 'Average income, expenses, and savings based on your transaction history.'}
           </p>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
@@ -895,6 +966,18 @@ export function MoneyIndexPage() {
           )}
         >
           Expected
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('averages')}
+          className={cn(
+            'inline-flex h-8 cursor-pointer items-center justify-center rounded-md px-4 text-sm font-medium transition-all',
+            activeTab === 'averages'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'hover:text-foreground',
+          )}
+        >
+          Averages
         </button>
       </div>
 
@@ -974,7 +1057,7 @@ export function MoneyIndexPage() {
             />
           </>
         )
-      ) : (
+      ) : activeTab === 'expected' ? (
         // Expected tab content
         !activeScenarioId || !activeScenario ? (
           <div className="empty-state">
@@ -1054,7 +1137,84 @@ export function MoneyIndexPage() {
             />
           </>
         )
-      )}
+      ) : activeTab === 'averages' ? (
+        // Averages tab content
+        !hasAnyTransactions ? (
+          <div className="empty-state">
+            <p className="empty-state-text">No transactions yet to calculate averages.</p>
+            <Button onClick={openAddTransactionDialog} className="empty-state-action">
+              Add a transaction
+            </Button>
+          </div>
+        ) : (
+          <div className="rounded-xl border bg-card p-6">
+            {/* Header - centered */}
+            <div className="flex flex-col items-center gap-3">
+              <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+                {periodLabels[averagePeriod].title}
+              </h2>
+              <div className="flex rounded-lg bg-muted p-1">
+                {(['fortnightly', 'monthly', 'yearly'] as const).map((period) => (
+                  <button
+                    key={period}
+                    type="button"
+                    onClick={() => setAveragePeriod(period)}
+                    className={cn(
+                      'cursor-pointer rounded-md px-3 py-1 text-xs font-medium transition-colors',
+                      averagePeriod === period
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {period.charAt(0).toUpperCase() + period.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Metrics - stacked on mobile, centered grid on larger */}
+            <div className="mx-auto mt-6 flex max-w-md flex-col gap-4 sm:grid sm:grid-cols-3 sm:gap-2">
+              {/* Earned */}
+              <div className="flex items-center justify-between sm:flex-col sm:items-center sm:justify-start sm:text-center">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-green-500" />
+                  <span className="text-sm text-muted-foreground">Earned</span>
+                </div>
+                <p className="text-lg font-semibold sm:mt-1 sm:text-2xl">{formatCents(periodAverages.income)}</p>
+              </div>
+
+              {/* Spent */}
+              <div className="flex items-center justify-between sm:flex-col sm:items-center sm:justify-start sm:text-center">
+                <div className="flex items-center gap-2">
+                  <TrendingDown className="h-4 w-4 text-red-500" />
+                  <span className="text-sm text-muted-foreground">Spent</span>
+                </div>
+                <p className="text-lg font-semibold sm:mt-1 sm:text-2xl">{formatCents(periodAverages.expenses)}</p>
+              </div>
+
+              {/* Saved */}
+              <div className="flex items-center justify-between sm:flex-col sm:items-center sm:justify-start sm:text-center">
+                <div className="flex items-center gap-2">
+                  <PiggyBank className="h-4 w-4 text-blue-500" />
+                  <span className="text-sm text-muted-foreground">Saved</span>
+                </div>
+                <p className="text-lg font-semibold sm:mt-1 sm:text-2xl">{formatCents(periodAverages.savings)}</p>
+              </div>
+            </div>
+
+            {/* Net per period */}
+            <div className="mt-5 border-t pt-5 text-center">
+              <span className="text-sm text-muted-foreground">{periodLabels[averagePeriod].net}</span>
+              <p className={cn(
+                'mt-1 text-2xl font-bold',
+                periodAverages.net >= 0 ? 'text-green-600' : 'text-red-600',
+              )}>
+                {periodAverages.net >= 0 ? '+' : ''}{formatCents(periodAverages.net)}
+              </p>
+            </div>
+          </div>
+        )
+      ) : null}
 
       {/* Past tab dialogs */}
       <TransactionDialog
