@@ -326,6 +326,11 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
                   ))}
                 </SelectContent>
               </Select>
+              {parseInt(dayOfMonth, 10) > 28 && (
+                <p className="text-xs text-muted-foreground">
+                  For shorter months, uses last day of month
+                </p>
+              )}
             </div>
           )}
 

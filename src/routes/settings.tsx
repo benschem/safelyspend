@@ -201,8 +201,17 @@ export function SettingsPage() {
   const handleSaveAnchor = async () => {
     setAnchorError(null);
 
-    const amount = parseFloat(anchorAmount);
+    // Clean input: remove $ signs, commas, and whitespace
+    const cleanedAmount = anchorAmount.replace(/[$,\s]/g, '');
+    const amount = parseFloat(cleanedAmount);
+
     if (isNaN(amount)) {
+      setAnchorError('Please enter a valid amount');
+      return;
+    }
+
+    // Warn if zero (but allow it)
+    if (amount === 0 && !anchorAmount.includes('0')) {
       setAnchorError('Please enter a valid amount');
       return;
     }

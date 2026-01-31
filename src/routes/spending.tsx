@@ -403,6 +403,9 @@ export function SpendingPage() {
           // This matches the "available" shown in the unbudgeted card
           const planned = periodCashFlow.unbudgeted.unallocated;
 
+          // Check if there's actually a plan set (budgets and/or forecasts exist)
+          const hasPlan = periodCashFlow.income.expected > 0 || periodCashFlow.budgeted.expected > 0;
+
           let leftover: number;
           let description: string;
 
@@ -413,40 +416,61 @@ export function SpendingPage() {
             leftover = periodCashFlow.income.actual - periodCashFlow.expenses.actual - periodCashFlow.savings.actual;
             description = leftover > 0 ? 'Actual surplus' : leftover < 0 ? 'Actual shortfall' : 'Broke even';
           } else if (isFuturePeriod) {
-            // Future: show planned outcome
-            leftover = planned;
-            description = leftover > 0 ? 'Planned surplus' : leftover < 0 ? 'Planned shortfall' : 'Fully allocated';
+            // Future: show planned outcome (only if there's a plan)
+            if (!hasPlan) {
+              leftover = 0;
+              description = 'No forecast set';
+            } else {
+              leftover = planned;
+              description = leftover > 0 ? 'Planned surplus' : leftover < 0 ? 'Planned shortfall' : 'Fully allocated';
+            }
           } else {
             // Current: project based on current spending pace
             const periodProgress = periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod;
             const projectedSpending = periodProgress > 0 ? Math.round(periodCashFlow.expenses.actual / periodProgress) : 0;
-            const availableToSpend = periodCashFlow.income.expected - periodCashFlow.savings.expected;
+
+            // Use actual income if no forecast, otherwise use expected
+            const incomeToUse = periodCashFlow.income.expected > 0
+              ? periodCashFlow.income.expected
+              : periodCashFlow.income.actual;
+            const availableToSpend = incomeToUse - periodCashFlow.savings.expected;
             leftover = availableToSpend - projectedSpending;
 
             // Label for projected outcome
-            description = leftover > 0 ? 'Projected surplus' : leftover < 0 ? 'Projected shortfall' : 'On track';
-
-            // Compare to plan as secondary info
-            const diffFromPlan = leftover - planned;
-            if (diffFromPlan >= 0) {
-              secondaryDescription = `${formatCents(Math.abs(diffFromPlan))} above ${formatCents(planned)} plan`;
+            if (!hasPlan) {
+              description = 'No plan set';
             } else {
-              secondaryDescription = `${formatCents(Math.abs(diffFromPlan))} below ${formatCents(planned)} plan`;
+              description = leftover > 0 ? 'Projected surplus' : leftover < 0 ? 'Projected shortfall' : 'On track';
+            }
+
+            // Compare to plan as secondary info (only if there's a meaningful plan)
+            if (hasPlan && planned !== 0) {
+              const diffFromPlan = leftover - planned;
+              if (diffFromPlan >= 0) {
+                secondaryDescription = `${formatCents(Math.abs(diffFromPlan))} above ${formatCents(planned)} plan`;
+              } else {
+                secondaryDescription = `${formatCents(Math.abs(diffFromPlan))} below ${formatCents(planned)} plan`;
+              }
             }
           }
 
-          const isShortfall = leftover < 0;
+          const isShortfall = leftover < 0 && hasPlan;
           const isZero = leftover === 0;
+          const isNoPlan = !hasPlan;
 
-          // Threshold for "comfortable" = 10% of planned buffer
-          const comfortableThreshold = planned * 0.1;
-          const isTight = !isPastPeriod && !isFuturePeriod && leftover > 0 && leftover < comfortableThreshold;
+          // Threshold for "comfortable" = 10% of planned buffer (only if plan exists)
+          const comfortableThreshold = hasPlan ? planned * 0.1 : 0;
+          const isTight = !isPastPeriod && !isFuturePeriod && hasPlan && leftover > 0 && leftover < comfortableThreshold;
 
           let iconBg: string;
           let iconColor: string;
           let textColor: string;
 
-          if (isShortfall) {
+          if (isNoPlan) {
+            iconBg = 'bg-slate-500/10';
+            iconColor = 'text-slate-500';
+            textColor = 'text-muted-foreground';
+          } else if (isShortfall) {
             iconBg = 'bg-red-500/10';
             iconColor = 'text-red-500';
             textColor = 'text-red-600';
@@ -526,12 +550,14 @@ export function SpendingPage() {
       <div className="rounded-xl border bg-card p-6">
         {(() => {
           // Use income as the baseline for all bars (100% = full income)
+          // Prefer expected, but fall back to actual if no forecast
           const incomeAmount = periodCashFlow.income.expected || periodCashFlow.income.actual || 1;
 
           // Income values
           const actualIncome = periodCashFlow.income.actual;
           const expectedIncome = periodCashFlow.income.expected;
-          const incomePct = expectedIncome > 0 ? Math.round((actualIncome / expectedIncome) * 100) : 0;
+          const hasIncomeForecast = expectedIncome > 0;
+          const incomePct = hasIncomeForecast ? Math.round((actualIncome / expectedIncome) * 100) : 100;
 
           // Spending values
           const totalSpent = isFuturePeriod ? periodCashFlow.budgeted.expected : periodCashFlow.expenses.actual;
@@ -567,8 +593,10 @@ export function SpendingPage() {
                   <span className="font-mono text-right text-muted-foreground">
                     {isFuturePeriod ? (
                       formatCents(expectedIncome)
-                    ) : (
+                    ) : hasIncomeForecast ? (
                       <>{incomePct}% of {formatCents(expectedIncome)} forecast</>
+                    ) : (
+                      <>{formatCents(actualIncome)} earned</>
                     )}
                   </span>
                 </div>

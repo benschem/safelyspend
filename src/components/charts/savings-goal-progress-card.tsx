@@ -89,7 +89,7 @@ export function SavingsGoalProgressCard({
   // Calculate timeframe relative to deadline
   const timeframeInfo = useMemo((): {
     label: string;
-    status: 'early' | 'on-time' | 'slightly-late' | 'late';
+    status: 'early' | 'on-time' | 'slightly-late' | 'late' | 'unknown';
   } | null => {
     if (!expectedCompletion || expectedCompletion.month === 'reached' || !deadline) return null;
 
@@ -97,12 +97,22 @@ export function SavingsGoalProgressCard({
     const [expectedYear, expectedMonthNum] = expectedCompletion.month.split('-').map(Number);
     const [deadlineYear, deadlineMonthNum] = deadlineMonth.split('-').map(Number);
 
+    // Validate parsed values
+    if (!expectedYear || !expectedMonthNum || !deadlineYear || !deadlineMonthNum) {
+      return null;
+    }
+
     // Calculate difference in days for more precision
-    const expectedDate = new Date(expectedYear!, expectedMonthNum! - 1, 1);
-    const deadlineDate = new Date(deadlineYear!, deadlineMonthNum! - 1, 1);
+    const expectedDate = new Date(expectedYear, expectedMonthNum - 1, 1);
+    const deadlineDate = new Date(deadlineYear, deadlineMonthNum - 1, 1);
     const diffMs = expectedDate.getTime() - deadlineDate.getTime();
     const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
     const absDays = Math.abs(diffDays);
+
+    // If the estimate is more than 5 years out, it's unreliable
+    if (absDays > 365 * 5) {
+      return { label: 'Unable to estimate', status: 'unknown' };
+    }
 
     // Format the time difference
     const formatDiff = (days: number): string => {
@@ -213,7 +223,9 @@ export function SavingsGoalProgressCard({
                   ? 'text-green-600 dark:text-green-400'
                   : timeframeInfo.status === 'slightly-late'
                     ? 'text-amber-600 dark:text-amber-400'
-                    : 'text-red-600 dark:text-red-400'
+                    : timeframeInfo.status === 'unknown'
+                      ? 'text-muted-foreground'
+                      : 'text-red-600 dark:text-red-400'
               }`}
             >
               <Calendar className="h-3.5 w-3.5" />
