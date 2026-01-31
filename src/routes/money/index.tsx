@@ -259,8 +259,12 @@ export function MoneyIndexPage() {
   // Expected tab handlers
   const openAddExpectedDialog = useCallback(() => {
     setEditingEvent(null);
-    setEditingRule(null);
     setExpectedDialogOpen(true);
+  }, []);
+
+  const openAddRecurringDialog = useCallback(() => {
+    setEditingRule(null);
+    setRecurringDialogOpen(true);
   }, []);
 
   const openEditExpectedDialog = useCallback((forecast: ExpandedForecast) => {
@@ -823,10 +827,16 @@ export function MoneyIndexPage() {
             Add Past
           </Button>
         ) : (
-          <Button onClick={openAddExpectedDialog}>
-            <Plus className="h-4 w-4" />
-            Add Expected
-          </Button>
+          <>
+            <Button variant="secondary" onClick={openAddRecurringDialog}>
+              <Repeat className="h-4 w-4" />
+              Add Recurring
+            </Button>
+            <Button onClick={openAddExpectedDialog}>
+              <Plus className="h-4 w-4" />
+              Add Expected
+            </Button>
+          </>
         )}
       </div>
     );
@@ -1102,7 +1112,6 @@ export function MoneyIndexPage() {
         event={editingEvent}
         addEvent={addEvent}
         updateEvent={updateEvent}
-        onAddRecurring={() => setRecurringDialogOpen(true)}
       />
 
       <ForecastRuleDialog

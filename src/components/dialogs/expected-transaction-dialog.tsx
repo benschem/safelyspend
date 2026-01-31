@@ -29,8 +29,6 @@ interface ExpectedTransactionDialogProps {
   event?: ForecastEvent | null;
   addEvent: (data: CreateEntity<ForecastEvent>) => Promise<ForecastEvent>;
   updateEvent: (id: string, updates: Partial<Omit<ForecastEvent, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
-  /** Called when user wants to add recurring instead */
-  onAddRecurring?: () => void;
 }
 
 export function ExpectedTransactionDialog({
@@ -40,7 +38,6 @@ export function ExpectedTransactionDialog({
   event,
   addEvent,
   updateEvent,
-  onAddRecurring,
 }: ExpectedTransactionDialogProps) {
   const isEditing = !!event;
   const todayDate = today();
@@ -121,11 +118,6 @@ export function ExpectedTransactionDialog({
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Failed to save. Please try again.');
     }
-  };
-
-  const handleAddRecurring = () => {
-    onOpenChange(false);
-    onAddRecurring?.();
   };
 
   return (
@@ -218,22 +210,13 @@ export function ExpectedTransactionDialog({
             </div>
           )}
 
-          <div className="flex items-center justify-between pt-2">
-            {!isEditing && onAddRecurring ? (
-              <Button variant="link" className="px-0" onClick={handleAddRecurring}>
-                Add recurring instead
-              </Button>
-            ) : (
-              <div />
-            )}
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSave}>
-                {isEditing ? 'Save' : 'Add'}
-              </Button>
-            </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave}>
+              {isEditing ? 'Save' : 'Add'}
+            </Button>
           </div>
         </div>
       </DialogContent>
