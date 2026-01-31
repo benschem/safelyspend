@@ -230,8 +230,10 @@ this.version(2).stores({
 
 ### Versioning and Changelog
 
-The app uses **semantic versioning** (MAJOR.MINOR.PATCH):
-- **MAJOR**: Breaking changes or major redesigns
+The app is currently in **beta** (0.x.x versions). Version 1.0.0 will mark the stable release.
+
+Uses **semantic versioning** (MAJOR.MINOR.PATCH):
+- **MAJOR**: Breaking changes or major redesigns (1.0.0 = stable release)
 - **MINOR**: New features (backwards compatible)
 - **PATCH**: Bug fixes and minor improvements
 

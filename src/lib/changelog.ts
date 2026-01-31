@@ -21,7 +21,7 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.2.0',
+    version: '0.3.0',
     date: '2026-01-31',
     changes: [
       'Convert one-time forecasts to recurring with the new "Make Recurring" button',
@@ -29,7 +29,7 @@ export const changelog: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.1.2',
+    version: '0.2.2',
     date: '2026-01-31',
     changes: [
       'Fixed search not finding items in tables',
@@ -37,14 +37,14 @@ export const changelog: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.1.1',
+    version: '0.2.1',
     date: '2026-01-31',
     changes: [
       'Fixed tables jumping back to page 1 after editing items',
     ],
   },
   {
-    version: '1.1.0',
+    version: '0.2.0',
     date: '2026-01-31',
     changes: [
       'Added budget suggestions when creating recurring expenses',
@@ -53,10 +53,10 @@ export const changelog: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.0.0',
+    version: '0.1.0',
     date: '2026-01-31',
     changes: [
-      'Initial release',
+      'Initial beta release',
       'Track income, expenses, and savings',
       'Create budgets with flexible frequencies',
       'Plan future finances with forecasts',
