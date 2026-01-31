@@ -25,7 +25,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Plus, Pencil, Trash2, Download, AlertTriangle, Receipt, RotateCcw, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, Settings2, ChevronUp, ChevronDown, Target, Info } from 'lucide-react';
+import { Plus, Pencil, Trash2, Download, AlertTriangle, Receipt, RotateCcw, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, Settings2, ChevronUp, ChevronDown, Target } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
@@ -352,9 +352,8 @@ export function TransactionsIndexPage() {
                       {formatCents(Math.abs(amount))}
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="flex items-center gap-2 border-blue-500/50 bg-blue-500/10 text-blue-800 dark:text-blue-200">
-                    <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <p>{isWithdrawal ? 'Withdrawn from savings' : 'Contributed to savings'}</p>
+                  <TooltipContent side="top">
+                    {isWithdrawal ? 'Withdrawn from savings' : 'Contributed to savings'}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -364,7 +363,7 @@ export function TransactionsIndexPage() {
           // Other types: income/adjustment positive, expense negative
           const isPositive = type === 'income' || type === 'adjustment';
           const colorClass = isPositive ? 'text-green-600' : 'text-red-600';
-          const tooltipText = type === 'income' ? 'Income earned' : type === 'adjustment' ? 'Balance adjustment' : 'Amount spent';
+          const tooltipText = type === 'income' ? 'Earned' : type === 'adjustment' ? 'Adjustment' : 'Spent';
           return (
             <TooltipProvider>
               <Tooltip>
@@ -376,9 +375,8 @@ export function TransactionsIndexPage() {
                     </span>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent side="top" className="flex items-center gap-2 border-blue-500/50 bg-blue-500/10 text-blue-800 dark:text-blue-200">
-                  <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  <p>{tooltipText}</p>
+                <TooltipContent side="top">
+                  {tooltipText}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
