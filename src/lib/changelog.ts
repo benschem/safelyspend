@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.1.2',
+    date: '2026-01-31',
+    changes: [
+      'Fixed search not finding items in tables',
+      'Search now correctly resets to page 1 when typing',
+    ],
+  },
+  {
     version: '1.1.1',
     date: '2026-01-31',
     changes: [
