@@ -305,8 +305,12 @@ export function BudgetPage() {
         },
       },
       {
-        id: 'transactions',
-        header: () => <div className="text-center">Past</div>,
+        accessorKey: 'transactionCount',
+        header: ({ column }) => (
+          <SortableHeader column={column} className="justify-center">
+            Past Transactions
+          </SortableHeader>
+        ),
         cell: ({ row }) => {
           const budgetRow = row.original;
           const count = budgetRow.transactionCount;
@@ -334,8 +338,12 @@ export function BudgetPage() {
         },
       },
       {
-        id: 'expected',
-        header: () => <div className="text-center">Expected</div>,
+        accessorKey: 'forecastCount',
+        header: ({ column }) => (
+          <SortableHeader column={column} className="justify-center">
+            Expected Transactions
+          </SortableHeader>
+        ),
         cell: ({ row }) => {
           const budgetRow = row.original;
           const count = budgetRow.forecastCount;
