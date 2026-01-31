@@ -46,8 +46,8 @@ const router = createBrowserRouter([
       // Legacy redirects
       { path: 'transactions', element: <Navigate to="/money" replace /> },
       { path: 'forecasts', element: <Navigate to="/money?tab=expected" replace /> },
-      { path: 'forecasts/recurring', element: <Navigate to="/budget?tab=expected-expenses" replace /> },
-      { path: 'recurring', element: <Navigate to="/budget?tab=expected-expenses" replace /> },
+      { path: 'forecasts/recurring', element: <Navigate to="/budget?tab=recurring-expenses" replace /> },
+      { path: 'recurring', element: <Navigate to="/budget?tab=recurring-expenses" replace /> },
 
       // Budget - spending limits (plan)
       { path: 'budget', element: <BudgetPage /> },

@@ -60,9 +60,9 @@ const CADENCE_FULL_LABELS: Record<Cadence, string> = {
   yearly: 'Yearly',
 };
 
-type BudgetTab = 'status' | 'manage-budget' | 'expected-expenses' | 'expected-income' | 'expected-savings' | 'manage-scenarios';
+type BudgetTab = 'status' | 'manage-budget' | 'recurring-expenses' | 'expected-income' | 'expected-savings' | 'manage-scenarios';
 
-const VALID_TABS: BudgetTab[] = ['status', 'manage-budget', 'expected-expenses', 'expected-income', 'expected-savings', 'manage-scenarios'];
+const VALID_TABS: BudgetTab[] = ['status', 'manage-budget', 'recurring-expenses', 'expected-income', 'expected-savings', 'manage-scenarios'];
 
 export function BudgetPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -971,10 +971,10 @@ export function BudgetPage() {
                 Add Expected Income
               </Button>
             )}
-            {activeTab === 'expected-expenses' && (
+            {activeTab === 'recurring-expenses' && (
               <Button onClick={openAddRuleDialog}>
                 <Plus className="h-4 w-4" />
-                Add Expected Expense
+                Add Recurring Expense
               </Button>
             )}
             {activeTab === 'expected-savings' && (
@@ -1004,7 +1004,7 @@ export function BudgetPage() {
         {[
           { value: 'status' as BudgetTab, label: 'Status' },
           { value: 'manage-budget' as BudgetTab, label: 'Manage Budget' },
-          { value: 'expected-expenses' as BudgetTab, label: 'Expected Expenses' },
+          { value: 'recurring-expenses' as BudgetTab, label: 'Recurring Expenses' },
           { value: 'expected-income' as BudgetTab, label: 'Expected Income' },
           { value: 'expected-savings' as BudgetTab, label: 'Expected Savings Contributions' },
           { value: 'manage-scenarios' as BudgetTab, label: 'Manage Scenarios' },
@@ -1205,11 +1205,11 @@ export function BudgetPage() {
         </>
       )}
 
-      {/* Expected Expenses tab */}
-      {activeTab === 'expected-expenses' && (
+      {/* Recurring Expenses tab */}
+      {activeTab === 'recurring-expenses' && (
         <>
           <Alert variant="info" className="mb-6">
-            Expected expenses are recurring costs that repeat on a schedule. They vary by scenario.
+            Recurring expenses are expected costs that repeat on a schedule. They vary by scenario.
           </Alert>
 
           {expenseRules.length === 0 && expenseFilterCategory === 'all' ? (
