@@ -1029,7 +1029,7 @@ export function BudgetPage() {
       {activeTab === 'health' && (
         <div className="space-y-6">
           {/* Period dropdown */}
-          <div className="flex justify-end">
+          <div>
             <Select value={breakdownPeriod} onValueChange={(v) => setBreakdownPeriod(v as BudgetPeriod)}>
               <SelectTrigger className="w-36">
                 <SelectValue />
@@ -1066,6 +1066,7 @@ export function BudgetPage() {
               <p className="mt-2 text-2xl font-bold">
                 {formatCents(budgetBreakdownSegments.find((s) => s.id === 'savings')?.amount ?? 0)}
               </p>
+              <p className="text-sm text-muted-foreground">placeholder</p>
             </div>
 
             {/* Budget status card */}
@@ -1097,7 +1098,7 @@ export function BudgetPage() {
                       <span className="text-sm text-muted-foreground">Budgeted</span>
                     </div>
                     <p className="mt-2 text-2xl font-bold text-green-600 dark:text-green-400">100%</p>
-                    <p className="text-sm text-muted-foreground">of {formatCents(periodIncome)} income</p>
+                    <p className="text-sm text-muted-foreground">of planned {formatCents(periodIncome)} income</p>
                   </div>
                 );
               }
@@ -1112,7 +1113,7 @@ export function BudgetPage() {
                     <p className="mt-2 text-2xl font-bold text-amber-600 dark:text-amber-400">
                       {formatCents(overBudgetAmount)}
                     </p>
-                    <p className="text-sm text-muted-foreground">over {formatCents(periodIncome)} income</p>
+                    <p className="text-sm text-muted-foreground">above planned {formatCents(periodIncome)} income</p>
                   </div>
                 );
               }
@@ -1126,7 +1127,7 @@ export function BudgetPage() {
                   <p className="mt-2 text-2xl font-bold text-green-600 dark:text-green-400">
                     {formatCents(unbudgetedAmount)}
                   </p>
-                  <p className="text-sm text-muted-foreground">of {formatCents(periodIncome)} income</p>
+                  <p className="text-sm text-muted-foreground">of planned {formatCents(periodIncome)} income</p>
                 </div>
               );
             })()}

@@ -467,6 +467,19 @@ export function MoneyIndexPage() {
     yearly: 'Yearly',
   };
 
+  // Get date range for averages display
+  const transactionDateRange = useMemo(() => {
+    if (allTransactions.length === 0) return null;
+    const dates = allTransactions.map((t) => new Date(t.date));
+    const firstDate = new Date(Math.min(...dates.map((d) => d.getTime())));
+    const lastDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+    return {
+      from: formatDate(firstDate.toISOString().slice(0, 10)),
+      to: formatDate(lastDate.toISOString().slice(0, 10)),
+      count: allTransactions.length,
+    };
+  }, [allTransactions]);
+
   // Past transactions columns
   const transactionColumns: ColumnDef<Transaction>[] = useMemo(
     () => [
@@ -1156,8 +1169,8 @@ export function MoneyIndexPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Period dropdown */}
-            <div className="flex justify-end">
+            {/* Period dropdown and explanation */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <Select value={averagePeriod} onValueChange={(v) => setAveragePeriod(v as AveragePeriod)}>
                 <SelectTrigger className="w-36">
                   <SelectValue />
@@ -1170,6 +1183,11 @@ export function MoneyIndexPage() {
                   <SelectItem value="yearly">Yearly</SelectItem>
                 </SelectContent>
               </Select>
+              {transactionDateRange && (
+                <p className="text-sm text-muted-foreground">
+                  Based on {transactionDateRange.count.toLocaleString()} transactions from {transactionDateRange.from} to {transactionDateRange.to}
+                </p>
+              )}
             </div>
 
             {/* Stats cards */}
