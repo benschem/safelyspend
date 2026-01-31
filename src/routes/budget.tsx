@@ -60,9 +60,9 @@ const CADENCE_FULL_LABELS: Record<Cadence, string> = {
   yearly: 'Yearly',
 };
 
-type BudgetTab = 'status' | 'manage-budget' | 'recurring-expenses' | 'expected-income' | 'expected-savings' | 'manage-scenarios';
+type BudgetTab = 'health' | 'manage' | 'recurring-expenses' | 'income' | 'savings-contributions' | 'scenarios';
 
-const VALID_TABS: BudgetTab[] = ['status', 'manage-budget', 'recurring-expenses', 'expected-income', 'expected-savings', 'manage-scenarios'];
+const VALID_TABS: BudgetTab[] = ['health', 'manage', 'recurring-expenses', 'income', 'savings-contributions', 'scenarios'];
 
 export function BudgetPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -96,16 +96,16 @@ export function BudgetPage() {
     if (tabParam && VALID_TABS.includes(tabParam as BudgetTab)) {
       return tabParam as BudgetTab;
     }
-    return 'status';
+    return 'health';
   });
 
   // Sync tab state to URL
   useEffect(() => {
     const currentTab = searchParams.get('tab');
-    if (activeTab === 'status' && currentTab) {
+    if (activeTab === 'health' && currentTab) {
       // Remove tab param when on default tab
       setSearchParams({}, { replace: true });
-    } else if (activeTab !== 'status' && currentTab !== activeTab) {
+    } else if (activeTab !== 'health' && currentTab !== activeTab) {
       setSearchParams({ tab: activeTab }, { replace: true });
     }
   }, [activeTab, searchParams, setSearchParams]);
@@ -959,28 +959,28 @@ export function BudgetPage() {
         <div className="flex flex-col items-stretch gap-1 sm:items-end">
           <div className="flex flex-wrap items-center gap-2">
             <ScenarioSelector />
-            {activeTab === 'manage-budget' && (
+            {activeTab === 'manage' && (
               <Button onClick={() => setAddDialogOpen(true)}>
                 <Plus className="h-4 w-4" />
                 Add Category
               </Button>
             )}
-            {activeTab === 'expected-income' && (
+            {activeTab === 'income' && (
               <Button onClick={openAddRuleDialog}>
                 <Plus className="h-4 w-4" />
-                Add Expected Income
+                Add Income
               </Button>
             )}
             {activeTab === 'recurring-expenses' && (
               <Button onClick={openAddRuleDialog}>
                 <Plus className="h-4 w-4" />
-                Add Recurring Expense
+                Add Expense
               </Button>
             )}
-            {activeTab === 'expected-savings' && (
+            {activeTab === 'savings-contributions' && (
               <Button onClick={openAddRuleDialog}>
                 <Plus className="h-4 w-4" />
-                Add Expected Savings
+                Add Contribution
               </Button>
             )}
           </div>
@@ -989,7 +989,7 @@ export function BudgetPage() {
             variant="ghost"
             size="sm"
             asChild
-            className={cn('text-muted-foreground', activeTab !== 'manage-budget' && 'invisible')}
+            className={cn('text-muted-foreground', activeTab !== 'manage' && 'invisible')}
           >
             <Link to="/categories/import-rules">
               <Settings2 className="h-4 w-4" />
@@ -1002,12 +1002,12 @@ export function BudgetPage() {
       {/* Main tabs */}
       <div className="mb-6 flex flex-wrap gap-1 rounded-lg bg-muted p-1 text-muted-foreground">
         {[
-          { value: 'status' as BudgetTab, label: 'Status' },
-          { value: 'manage-budget' as BudgetTab, label: 'Manage Budget' },
+          { value: 'health' as BudgetTab, label: 'Health' },
+          { value: 'manage' as BudgetTab, label: 'Manage' },
           { value: 'recurring-expenses' as BudgetTab, label: 'Recurring Expenses' },
-          { value: 'expected-income' as BudgetTab, label: 'Expected Income' },
-          { value: 'expected-savings' as BudgetTab, label: 'Expected Savings Contributions' },
-          { value: 'manage-scenarios' as BudgetTab, label: 'Manage Scenarios' },
+          { value: 'income' as BudgetTab, label: 'Income' },
+          { value: 'savings-contributions' as BudgetTab, label: 'Savings Contributions' },
+          { value: 'scenarios' as BudgetTab, label: 'Scenarios' },
         ].map((tab) => (
           <button
             key={tab.value}
@@ -1025,8 +1025,8 @@ export function BudgetPage() {
         ))}
       </div>
 
-      {/* Status tab - Breakdown Chart */}
-      {activeTab === 'status' && (
+      {/* Health tab - Breakdown Chart */}
+      {activeTab === 'health' && (
         <div className="rounded-xl border bg-card p-5">
         {/* Period tabs - top */}
         <div className="flex justify-center">
@@ -1173,8 +1173,8 @@ export function BudgetPage() {
         </div>
       )}
 
-      {/* Budget tab - table with categories and limits */}
-      {activeTab === 'manage-budget' && (
+      {/* Manage tab - table with categories and limits */}
+      {activeTab === 'manage' && (
         <>
           <Alert variant="info" className="mb-6">
             Budgets set spending expectations for each category. They vary by scenario.
@@ -1250,8 +1250,8 @@ export function BudgetPage() {
         </>
       )}
 
-      {/* Expected Income tab */}
-      {activeTab === 'expected-income' && (
+      {/* Income tab */}
+      {activeTab === 'income' && (
         <>
           <Alert variant="info" className="mb-6">
             Expected income is recurring income that repeats on a schedule. It varies by scenario.
@@ -1277,8 +1277,8 @@ export function BudgetPage() {
         </>
       )}
 
-      {/* Expected Savings Contributions tab */}
-      {activeTab === 'expected-savings' && (
+      {/* Savings Contributions tab */}
+      {activeTab === 'savings-contributions' && (
         <>
           <Alert variant="info" className="mb-6">
             Expected savings contributions are recurring transfers to savings goals. They vary by scenario.
@@ -1304,8 +1304,8 @@ export function BudgetPage() {
         </>
       )}
 
-      {/* Manage Scenarios tab - placeholder */}
-      {activeTab === 'manage-scenarios' && (
+      {/* Scenarios tab - placeholder */}
+      {activeTab === 'scenarios' && (
         <div className="empty-state">
           <p className="empty-state-text">Manage scenarios coming soon.</p>
           <Button asChild className="empty-state-action">
@@ -1349,8 +1349,8 @@ export function BudgetPage() {
         updateRule={updateRule}
         restrictType={
           activeTab === 'recurring-expenses' ? 'expense' :
-          activeTab === 'expected-income' ? 'income' :
-          activeTab === 'expected-savings' ? 'savings' :
+          activeTab === 'income' ? 'income' :
+          activeTab === 'savings-contributions' ? 'savings' :
           null
         }
       />
