@@ -67,6 +67,7 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
+    autoResetPageIndex: false, // Preserve page position when data changes
     state: {
       sorting,
       columnFilters,
