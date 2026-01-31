@@ -22,7 +22,7 @@ export const strugglingSanjay: PersonaConfig = {
   income: {
     primary: {
       description: 'Pay - Warehouse Co',
-      amountCents: 172000, // $1,720 fortnightly after tax (~$3,730/month)
+      amountCents: 156000, // $1,560 fortnightly after tax (~$3,380/month) - lower base rate
       cadence: 'fortnightly',
       variance: 0.05,
     },
@@ -31,7 +31,7 @@ export const strugglingSanjay: PersonaConfig = {
         description: 'Overtime Pay',
         amountCents: 28000, // $280
         frequency: 'occasional',
-        probability: 0.15,
+        probability: 0.1, // Rarely gets overtime
       },
     ],
   },
@@ -224,20 +224,19 @@ export const strugglingSanjay: PersonaConfig = {
     },
   ],
 
-  // Budgets are what Sanjay WANTS to spend (aspirational)
-  // But his actual spending patterns above regularly exceed these - he's paycheck to paycheck
-  // Income: ~$3,730/month. Actual spending: ~$3,500/month (leaves almost nothing)
-  // Expected actual: Groceries ~$364, Transport ~$227, Dining ~$297, Entertainment ~$519, Shopping ~$277
+  // Budgets reflect what Sanjay actually allocates (not aspirational - he knows his habits)
+  // Income: ~$3,380/month. Total budgeted: ~$3,500/month = overcommitted by ~$120
+  // This is realistic for someone living paycheck to paycheck
   budgets: [
     { category: 'Rent', amountCents: 140000, cadence: 'monthly' },
-    { category: 'Groceries', amountCents: 30000, cadence: 'monthly' }, // Wants $300, spends ~$364 (21% over)
-    { category: 'Transport', amountCents: 20000, cadence: 'monthly' }, // Wants $200, spends ~$227 (14% over)
-    { category: 'Utilities', amountCents: 13000, cadence: 'monthly' },
-    { category: 'Dining Out', amountCents: 15000, cadence: 'monthly' }, // Wants $150, spends ~$297 (98% over!)
-    { category: 'Entertainment', amountCents: 15000, cadence: 'monthly' }, // Wants $150, spends ~$519 (246% over!)
-    { category: 'Shopping', amountCents: 10000, cadence: 'monthly' }, // Wants $100, spends ~$277 (177% over)
-    { category: 'Subscriptions', amountCents: 6200, cadence: 'monthly' },
-    { category: 'Health', amountCents: 2000, cadence: 'monthly' },
+    { category: 'Groceries', amountCents: 38000, cadence: 'monthly' }, // $380 - realistic for his shopping habits
+    { category: 'Transport', amountCents: 25000, cadence: 'monthly' }, // $250 - Opal + occasional Uber
+    { category: 'Utilities', amountCents: 15000, cadence: 'monthly' }, // $150
+    { category: 'Dining Out', amountCents: 35000, cadence: 'monthly' }, // $350 - delivery apps and takeaway
+    { category: 'Entertainment', amountCents: 55000, cadence: 'monthly' }, // $550 - nights out and gambling
+    { category: 'Shopping', amountCents: 30000, cadence: 'monthly' }, // $300 - impulse buys and alcohol
+    { category: 'Subscriptions', amountCents: 6200, cadence: 'monthly' }, // $62
+    { category: 'Health', amountCents: 3000, cadence: 'monthly' }, // $30
   ],
 
   savingsGoals: [
@@ -246,47 +245,50 @@ export const strugglingSanjay: PersonaConfig = {
       targetAmountCents: 500000, // $5,000 starter emergency fund
       isEmergencyFund: true,
       startingBalanceCents: 0,
-      monthlyContributionCents: 5000, // Trying to save $50/month, often fails
+      monthlyContributionCents: 0, // Can't afford to save right now
     },
   ],
 
   scenarios: [
     {
-      name: 'Current Situation',
+      name: 'Current Reality',
       description:
-        'Living paycheck to paycheck. Regularly over budget on food and entertainment. Trying to save but usually ends up spending it.',
+        'Overcommitted by $120/month. No savings, credit card debt growing. Something has to change.',
       isDefault: true,
     },
     {
-      name: 'Get Back on Track',
+      name: 'Getting Serious',
       description:
-        'Time to get serious. Cancel extra streaming services, cook at home more, limit nights out to once a fortnight.',
+        'Cut the gambling, cook at home, one night out per fortnight max. Finally building an emergency fund.',
       isDefault: false,
       budgetOverrides: [
-        { category: 'Groceries', amountCents: 32000 },
-        { category: 'Dining Out', amountCents: 12000 },
-        { category: 'Entertainment', amountCents: 8000 },
-        { category: 'Shopping', amountCents: 6000 },
-        { category: 'Subscriptions', amountCents: 3100 }, // Keep Netflix and Spotify only
+        { category: 'Groceries', amountCents: 30000 }, // $300 - meal prep
+        { category: 'Transport', amountCents: 20000 }, // $200 - no Ubers
+        { category: 'Dining Out', amountCents: 12000 }, // $120 - rare treats only
+        { category: 'Entertainment', amountCents: 15000 }, // $150 - one night out, no gambling
+        { category: 'Shopping', amountCents: 8000 }, // $80 - essentials only
+        { category: 'Subscriptions', amountCents: 3100 }, // $31 - Netflix + Spotify only
       ],
       savingsOverrides: [
-        { goalName: 'Emergency Buffer', monthlyContributionCents: 15000 },
+        { goalName: 'Emergency Buffer', monthlyContributionCents: 20000 }, // $200/month finally
       ],
     },
     {
-      name: 'Hours Get Cut',
+      name: 'Hours Slashed',
       description:
-        'Warehouse slowdown means 20% fewer shifts. Need to cut everything to essentials.',
+        'Warehouse cut shifts by 30%. Even cutting everything, still $400/month in the red. Crisis mode.',
       isDefault: false,
-      incomeMultiplier: 0.8,
+      incomeMultiplier: 0.7,
       budgetOverrides: [
-        { category: 'Groceries', amountCents: 25000 },
-        { category: 'Transport', amountCents: 18000 },
-        { category: 'Dining Out', amountCents: 5000 },
-        { category: 'Entertainment', amountCents: 4000 },
-        { category: 'Shopping', amountCents: 3000 },
-        { category: 'Subscriptions', amountCents: 1300 },
-        { category: 'Health', amountCents: 2000 },
+        { category: 'Rent', amountCents: 140000 }, // Can't change this
+        { category: 'Groceries', amountCents: 22000 }, // $220 - bare minimum
+        { category: 'Transport', amountCents: 15000 }, // $150 - only for work
+        { category: 'Utilities', amountCents: 12000 }, // $120 - conserving
+        { category: 'Dining Out', amountCents: 0 }, // $0 - can't afford it
+        { category: 'Entertainment', amountCents: 0 }, // $0 - staying home
+        { category: 'Shopping', amountCents: 0 }, // $0 - nothing extra
+        { category: 'Subscriptions', amountCents: 1300 }, // $13 - Spotify only
+        { category: 'Health', amountCents: 2000 }, // $20
       ],
       savingsOverrides: [
         { goalName: 'Emergency Buffer', monthlyContributionCents: 0 },
