@@ -34,14 +34,12 @@ import { useCategoryRules } from '@/hooks/use-category-rules';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useScenarios } from '@/hooks/use-scenarios';
-import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { DateRangeFilter } from '@/components/date-range-filter';
 import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { UpImportDialog } from '@/components/up-import-dialog';
 import { AddToBudgetDialog } from '@/components/dialogs/add-to-budget-dialog';
 import { ExpectedTransactionDialog } from '@/components/dialogs/expected-transaction-dialog';
-import { ForecastRuleDialog } from '@/components/dialogs/forecast-rule-dialog';
 import { DeleteForecastDialog } from '@/components/dialogs/delete-forecast-dialog';
 import { BudgetPromptDialog } from '@/components/dialogs/budget-prompt-dialog';
 import { ScenarioSelector } from '@/components/scenario-selector';
@@ -52,19 +50,10 @@ interface OutletContext {
   activeScenarioId: string | null;
 }
 
-type TabValue = 'past' | 'expected' | 'recurring';
-type RecurringSubTab = 'income' | 'expenses' | 'savings';
+type TabValue = 'past' | 'expected';
 type FilterType = 'all' | 'income' | 'expense' | 'savings' | 'adjustment';
 type ExpectedFilterType = 'all' | 'income' | 'expense' | 'savings';
 type CategoryFilter = 'all' | 'uncategorized' | string;
-
-const CADENCE_LABELS: Record<string, string> = {
-  weekly: 'Weekly',
-  fortnightly: 'Fortnightly',
-  monthly: 'Monthly',
-  quarterly: 'Quarterly',
-  yearly: 'Yearly',
-};
 
 // Default date ranges
 const getPastDefaultStartDate = () => '';
@@ -81,12 +70,8 @@ export function MoneyIndexPage() {
   const [activeTab, setActiveTab] = useState<TabValue>(() => {
     const tabParam = searchParams.get('tab');
     if (tabParam === 'expected') return 'expected';
-    if (tabParam === 'recurring') return 'recurring';
     return 'past';
   });
-
-  // Recurring sub-tab state
-  const [recurringSubTab, setRecurringSubTab] = useState<RecurringSubTab | null>(null);
 
   // Check if user came from budget page
   const fromBudget = searchParams.get('from') === 'budget' || searchParams.get('from') === 'categories';
@@ -96,9 +81,7 @@ export function MoneyIndexPage() {
     const currentTab = searchParams.get('tab');
     if (activeTab === 'expected' && currentTab !== 'expected') {
       setSearchParams({ tab: 'expected' }, { replace: true });
-    } else if (activeTab === 'recurring' && currentTab !== 'recurring') {
-      setSearchParams({ tab: 'recurring' }, { replace: true });
-    } else if (activeTab === 'past' && (currentTab === 'expected' || currentTab === 'recurring')) {
+    } else if (activeTab === 'past' && currentTab === 'expected') {
       setSearchParams({}, { replace: true });
     }
   }, [activeTab, searchParams, setSearchParams]);
@@ -120,7 +103,6 @@ export function MoneyIndexPage() {
     const categoryParam = searchParams.get('category');
     return categoryParam ?? 'all';
   });
-  const [recurringFilterCategory, setRecurringFilterCategory] = useState<CategoryFilter>('all');
 
   // Data hooks - Past transactions
   const pastQueryStartDate = pastFilterStartDate || undefined;
@@ -129,7 +111,6 @@ export function MoneyIndexPage() {
   const { categories, activeCategories, isLoading: categoriesLoading } = useCategories();
   const { rules: categoryRules } = useCategoryRules();
   const { getRuleForCategory, setBudgetForCategory } = useBudgetRules(activeScenarioId);
-  const { savingsGoals, isLoading: savingsLoading } = useSavingsGoals();
 
   // Data hooks - Expected forecasts
   const defaultStart = '2020-01-01';
@@ -143,7 +124,7 @@ export function MoneyIndexPage() {
 
   // Combined loading state
   const isLoading = transactionsLoading || categoriesLoading ||
-    ((activeTab === 'expected' || activeTab === 'recurring') && (scenariosLoading || forecastsLoading || savingsLoading));
+    (activeTab === 'expected' && (scenariosLoading || forecastsLoading));
 
   // Check if any data exists
   const hasAnyTransactions = allTransactions.length > 0;
@@ -165,11 +146,6 @@ export function MoneyIndexPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingForecast, setDeletingForecast] = useState<ExpandedForecast | null>(null);
 
-  // Dialog states - Recurring
-  const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
-  const [editingRecurringRule, setEditingRecurringRule] = useState<ForecastRule | null>(null);
-  const [deletingRuleId, setDeletingRuleId] = useState<string | null>(null);
-
   // Budget prompt dialog state (for expected)
   const [budgetPromptOpen, setBudgetPromptOpen] = useState(false);
   const [createdRule, setCreatedRule] = useState<ForecastRule | null>(null);
@@ -177,11 +153,6 @@ export function MoneyIndexPage() {
   const getCategoryName = useCallback(
     (id: string | null) => (id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-'),
     [categories],
-  );
-
-  const getSavingsGoalName = useCallback(
-    (id: string | null) => (id ? (savingsGoals.find((g) => g.id === id)?.name ?? 'Unknown') : '-'),
-    [savingsGoals],
   );
 
   // Past tab handlers
@@ -385,33 +356,6 @@ export function MoneyIndexPage() {
     setCreatedRule(null);
   }, [setSkipBudgetPrompt]);
 
-  // Recurring tab handlers
-  const openAddRecurringDialog = useCallback(() => {
-    setEditingRecurringRule(null);
-    setRecurringDialogOpen(true);
-  }, []);
-
-  const openEditRecurringDialog = useCallback((rule: ForecastRule) => {
-    setEditingRecurringRule(rule);
-    setRecurringDialogOpen(true);
-  }, []);
-
-  const handleRecurringDialogClose = useCallback((open: boolean) => {
-    setRecurringDialogOpen(open);
-    if (!open) {
-      setEditingRecurringRule(null);
-    }
-  }, []);
-
-  const handleDeleteRule = useCallback((id: string) => {
-    if (deletingRuleId === id) {
-      deleteRule(id);
-      setDeletingRuleId(null);
-    } else {
-      setDeletingRuleId(id);
-    }
-  }, [deletingRuleId, deleteRule]);
-
   // Filtered data
   const filteredTransactions = useMemo(
     () =>
@@ -432,26 +376,6 @@ export function MoneyIndexPage() {
     }),
     [expandedForecasts, expectedFilterType, filterCategory],
   );
-
-  // Recurring rules filtered by category
-  const filteredRecurringRules = useMemo(() => {
-    if (recurringFilterCategory === 'all') return rules;
-    return rules.filter((r) => r.categoryId === recurringFilterCategory || r.type !== 'expense');
-  }, [rules, recurringFilterCategory]);
-
-  const incomeRules = useMemo(() => filteredRecurringRules.filter((r) => r.type === 'income'), [filteredRecurringRules]);
-  const expenseRules = useMemo(() => {
-    const expenses = filteredRecurringRules.filter((r) => r.type === 'expense');
-    if (recurringFilterCategory !== 'all') {
-      return expenses.filter((r) => r.categoryId === recurringFilterCategory);
-    }
-    return expenses;
-  }, [filteredRecurringRules, recurringFilterCategory]);
-  const savingsRules = useMemo(() => filteredRecurringRules.filter((r) => r.type === 'savings'), [filteredRecurringRules]);
-
-  // Determine effective recurring sub-tab
-  const defaultRecurringSubTab: RecurringSubTab = incomeRules.length > 0 ? 'income' : expenseRules.length > 0 ? 'expenses' : 'savings';
-  const effectiveRecurringSubTab = recurringSubTab ?? defaultRecurringSubTab;
 
   // Past transactions columns
   const transactionColumns: ColumnDef<Transaction>[] = useMemo(
@@ -866,274 +790,6 @@ export function MoneyIndexPage() {
     [openEditExpectedDialog, openDeleteForecastDialog, getCategoryName],
   );
 
-  // Recurring columns
-  const incomeColumns: ColumnDef<ForecastRule>[] = useMemo(
-    () => [
-      {
-        accessorKey: 'description',
-        header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
-        cell: ({ row }) => (
-          <button
-            type="button"
-            onClick={() => openEditRecurringDialog(row.original)}
-            className="cursor-pointer font-medium hover:underline text-left"
-          >
-            {row.getValue('description')}
-          </button>
-        ),
-      },
-      {
-        accessorKey: 'cadence',
-        header: 'Cadence',
-        cell: ({ row }) => (
-          <Badge variant="outline">{CADENCE_LABELS[row.getValue('cadence') as string]}</Badge>
-        ),
-      },
-      {
-        accessorKey: 'amountCents',
-        header: ({ column }) => (
-          <SortableHeader column={column} className="justify-end">
-            Amount
-          </SortableHeader>
-        ),
-        cell: ({ row }) => (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="cursor-default text-right font-mono text-green-600">
-                  +{formatCents(row.getValue('amountCents'))}
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>Recurring income</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ),
-      },
-      {
-        id: 'actions',
-        cell: ({ row }) => {
-          const rule = row.original;
-          const isDeleting = deletingRuleId === rule.id;
-          return (
-            <TooltipProvider>
-              <div className="flex justify-end gap-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="sm" onClick={() => openEditRecurringDialog(rule)} aria-label="Edit">
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Edit</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={isDeleting ? 'destructive' : 'ghost'}
-                      size="sm"
-                      onClick={() => handleDeleteRule(rule.id)}
-                      onBlur={() => setTimeout(() => setDeletingRuleId(null), 200)}
-                      aria-label={isDeleting ? 'Confirm delete' : 'Delete'}
-                    >
-                      {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{isDeleting ? 'Click to confirm' : 'Delete'}</TooltipContent>
-                </Tooltip>
-              </div>
-            </TooltipProvider>
-          );
-        },
-      },
-    ],
-    [deletingRuleId, openEditRecurringDialog, handleDeleteRule],
-  );
-
-  const expenseColumns: ColumnDef<ForecastRule>[] = useMemo(
-    () => [
-      {
-        accessorKey: 'description',
-        header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
-        cell: ({ row }) => (
-          <button
-            type="button"
-            onClick={() => openEditRecurringDialog(row.original)}
-            className="cursor-pointer font-medium hover:underline text-left"
-          >
-            {row.getValue('description')}
-          </button>
-        ),
-      },
-      {
-        accessorKey: 'categoryId',
-        header: 'Category',
-        cell: ({ row }) => {
-          const categoryId = row.getValue('categoryId') as string | null;
-          const categoryName = getCategoryName(categoryId);
-          if (!categoryId) {
-            return <span className="text-muted-foreground">—</span>;
-          }
-          return (
-            <Link
-              to={`/categories/${categoryId}`}
-              className="hover:underline"
-            >
-              {categoryName}
-            </Link>
-          );
-        },
-      },
-      {
-        accessorKey: 'cadence',
-        header: 'Cadence',
-        cell: ({ row }) => (
-          <Badge variant="outline">{CADENCE_LABELS[row.getValue('cadence') as string]}</Badge>
-        ),
-      },
-      {
-        accessorKey: 'amountCents',
-        header: ({ column }) => (
-          <SortableHeader column={column} className="justify-end">
-            Amount
-          </SortableHeader>
-        ),
-        cell: ({ row }) => (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="cursor-default text-right font-mono text-red-600">
-                  -{formatCents(row.getValue('amountCents'))}
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>Recurring expense</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ),
-      },
-      {
-        id: 'actions',
-        cell: ({ row }) => {
-          const rule = row.original;
-          const isDeleting = deletingRuleId === rule.id;
-          return (
-            <TooltipProvider>
-              <div className="flex justify-end gap-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="sm" onClick={() => openEditRecurringDialog(rule)} aria-label="Edit">
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Edit</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={isDeleting ? 'destructive' : 'ghost'}
-                      size="sm"
-                      onClick={() => handleDeleteRule(rule.id)}
-                      onBlur={() => setTimeout(() => setDeletingRuleId(null), 200)}
-                      aria-label={isDeleting ? 'Confirm delete' : 'Delete'}
-                    >
-                      {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{isDeleting ? 'Click to confirm' : 'Delete'}</TooltipContent>
-                </Tooltip>
-              </div>
-            </TooltipProvider>
-          );
-        },
-      },
-    ],
-    [deletingRuleId, openEditRecurringDialog, handleDeleteRule, getCategoryName],
-  );
-
-  const savingsColumns: ColumnDef<ForecastRule>[] = useMemo(
-    () => [
-      {
-        accessorKey: 'description',
-        header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
-        cell: ({ row }) => (
-          <button
-            type="button"
-            onClick={() => openEditRecurringDialog(row.original)}
-            className="cursor-pointer font-medium hover:underline text-left"
-          >
-            {row.getValue('description')}
-          </button>
-        ),
-      },
-      {
-        accessorKey: 'savingsGoalId',
-        header: 'Savings Goal',
-        cell: ({ row }) => getSavingsGoalName(row.getValue('savingsGoalId')),
-      },
-      {
-        accessorKey: 'cadence',
-        header: 'Cadence',
-        cell: ({ row }) => (
-          <Badge variant="outline">{CADENCE_LABELS[row.getValue('cadence') as string]}</Badge>
-        ),
-      },
-      {
-        accessorKey: 'amountCents',
-        header: ({ column }) => (
-          <SortableHeader column={column} className="justify-end">
-            Amount
-          </SortableHeader>
-        ),
-        cell: ({ row }) => (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="cursor-default text-right font-mono text-blue-600">
-                  -{formatCents(row.getValue('amountCents'))}
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>Recurring savings contribution</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ),
-      },
-      {
-        id: 'actions',
-        cell: ({ row }) => {
-          const rule = row.original;
-          const isDeleting = deletingRuleId === rule.id;
-          return (
-            <TooltipProvider>
-              <div className="flex justify-end gap-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="sm" onClick={() => openEditRecurringDialog(rule)} aria-label="Edit">
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Edit</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={isDeleting ? 'destructive' : 'ghost'}
-                      size="sm"
-                      onClick={() => handleDeleteRule(rule.id)}
-                      onBlur={() => setTimeout(() => setDeletingRuleId(null), 200)}
-                      aria-label={isDeleting ? 'Confirm delete' : 'Delete'}
-                    >
-                      {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{isDeleting ? 'Click to confirm' : 'Delete'}</TooltipContent>
-                </Tooltip>
-              </div>
-            </TooltipProvider>
-          );
-        },
-      },
-    ],
-    [deletingRuleId, openEditRecurringDialog, handleDeleteRule, getSavingsGoalName],
-  );
-
   // Get the right action button based on tab
   const getActionButton = () => {
     if (activeTab === 'past') {
@@ -1158,19 +814,11 @@ export function MoneyIndexPage() {
         </>
       );
     }
-    if (activeTab === 'expected') {
-      return (
-        <Button onClick={openAddExpectedDialog}>
-          <Plus className="h-4 w-4" />
-          Add Expected
-        </Button>
-      );
-    }
-    // recurring
+    // expected
     return (
-      <Button onClick={openAddRecurringDialog}>
+      <Button onClick={openAddExpectedDialog}>
         <Plus className="h-4 w-4" />
-        Add Recurring
+        Add Expected
       </Button>
     );
   };
@@ -1196,7 +844,6 @@ export function MoneyIndexPage() {
           <p className="page-description">
             {activeTab === 'past' && 'Actual income, expenses, and savings.'}
             {activeTab === 'expected' && `Expected income, expenses, and savings${activeScenario ? ` for ${activeScenario.name}` : ''}.`}
-            {activeTab === 'recurring' && `Recurring income, expenses, and savings${activeScenario ? ` for ${activeScenario.name}` : ''}.`}
           </p>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
@@ -1229,18 +876,6 @@ export function MoneyIndexPage() {
           )}
         >
           Expected
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('recurring')}
-          className={cn(
-            'inline-flex h-8 cursor-pointer items-center justify-center rounded-md px-4 text-sm font-medium transition-all',
-            activeTab === 'recurring'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'hover:text-foreground',
-          )}
-        >
-          Recurring
         </button>
       </div>
 
@@ -1320,7 +955,7 @@ export function MoneyIndexPage() {
             />
           </>
         )
-      ) : activeTab === 'expected' ? (
+      ) : (
         // Expected tab content
         !activeScenarioId || !activeScenario ? (
           <div className="empty-state">
@@ -1398,134 +1033,6 @@ export function MoneyIndexPage() {
                 </>
               }
             />
-          </>
-        )
-      ) : (
-        // Recurring tab content
-        !activeScenarioId || !activeScenario ? (
-          <div className="empty-state">
-            <p className="empty-state-text">Select a scenario to manage recurring items.</p>
-            <Button asChild className="empty-state-action">
-              <Link to="/scenarios">Manage Scenarios</Link>
-            </Button>
-          </div>
-        ) : rules.length === 0 ? (
-          <div className="space-y-4">
-            <Alert variant="info">
-              Recurring items repeat on a schedule (weekly, monthly, etc.) and automatically generate expected transactions.
-            </Alert>
-            <div className="empty-state">
-              <p className="empty-state-text">No recurring items yet.</p>
-              <Button onClick={openAddRecurringDialog} className="empty-state-action">
-                Add recurring item
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <Alert variant="info" className="mb-6">
-              Recurring items repeat on a schedule (weekly, monthly, etc.) and automatically generate expected transactions.
-            </Alert>
-            <div className="space-y-4">
-              {/* Recurring sub-tabs */}
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="inline-flex h-9 items-center rounded-lg bg-muted p-1 text-muted-foreground">
-                  {[
-                    { value: 'income' as RecurringSubTab, label: 'Income', count: incomeRules.length },
-                    { value: 'expenses' as RecurringSubTab, label: 'Expenses', count: expenseRules.length },
-                    { value: 'savings' as RecurringSubTab, label: 'Savings', count: savingsRules.length },
-                  ].map((tab) => (
-                    <button
-                      key={tab.value}
-                      type="button"
-                      onClick={() => setRecurringSubTab(tab.value)}
-                      className={cn(
-                        'inline-flex cursor-pointer items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all',
-                        effectiveRecurringSubTab === tab.value
-                          ? 'bg-background text-foreground shadow-sm'
-                          : 'hover:text-foreground',
-                      )}
-                    >
-                      {tab.label} {tab.count > 0 && `(${tab.count})`}
-                    </button>
-                  ))}
-                </div>
-
-                <Select value={recurringFilterCategory} onValueChange={setRecurringFilterCategory}>
-                  <SelectTrigger className="w-44">
-                    <SelectValue placeholder="Filter by category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {activeCategories
-                      .sort((a, b) => a.name.localeCompare(b.name))
-                      .map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Recurring content */}
-              {effectiveRecurringSubTab === 'income' && (
-                incomeRules.length === 0 ? (
-                  <div className="empty-state">
-                    <p className="empty-state-text">No recurring income yet.</p>
-                    <Button className="empty-state-action" onClick={openAddRecurringDialog}>
-                      Add recurring income
-                    </Button>
-                  </div>
-                ) : (
-                  <DataTable
-                    columns={incomeColumns}
-                    data={incomeRules}
-                    searchKey="description"
-                    searchPlaceholder="Search income..."
-                    showPagination={false}
-                  />
-                )
-              )}
-
-              {effectiveRecurringSubTab === 'expenses' && (
-                expenseRules.length === 0 ? (
-                  <div className="empty-state">
-                    <p className="empty-state-text">No recurring expenses yet.</p>
-                    <Button className="empty-state-action" onClick={openAddRecurringDialog}>
-                      Add recurring expense
-                    </Button>
-                  </div>
-                ) : (
-                  <DataTable
-                    columns={expenseColumns}
-                    data={expenseRules}
-                    searchKey="description"
-                    searchPlaceholder="Search expenses..."
-                    showPagination={false}
-                  />
-                )
-              )}
-
-              {effectiveRecurringSubTab === 'savings' && (
-                savingsRules.length === 0 ? (
-                  <div className="empty-state">
-                    <p className="empty-state-text">No recurring savings yet.</p>
-                    <Button className="empty-state-action" onClick={openAddRecurringDialog}>
-                      Add recurring savings
-                    </Button>
-                  </div>
-                ) : (
-                  <DataTable
-                    columns={savingsColumns}
-                    data={savingsRules}
-                    searchKey="description"
-                    searchPlaceholder="Search savings..."
-                    showPagination={false}
-                  />
-                )
-              )}
-            </div>
           </>
         )
       )}
@@ -1614,17 +1121,6 @@ export function MoneyIndexPage() {
           onSkip={handleSkipBudget}
         />
       )}
-
-      {/* Recurring tab dialog */}
-      <ForecastRuleDialog
-        open={recurringDialogOpen}
-        onOpenChange={handleRecurringDialogClose}
-        scenarioId={activeScenarioId}
-        rule={editingRecurringRule}
-        addRule={addRule}
-        updateRule={updateRule}
-        onRuleCreated={handleRuleCreated}
-      />
     </div>
   );
 }
