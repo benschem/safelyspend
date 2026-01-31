@@ -63,8 +63,8 @@
   --color-secondary-foreground: hsl(40 15% 95%);
   --color-accent: hsl(20 8% 18%);
   --color-accent-foreground: hsl(40 15% 95%);
-  --color-destructive: #7f1d1d;
-  --color-destructive-foreground: #fafafa;
+  --color-destructive: #f87171;
+  --color-destructive-foreground: #1a1a1a;
   --color-ring: hsl(40 10% 70%);
 
   --color-sidebar-background: hsl(20 10% 8%);
