@@ -41,6 +41,9 @@ const budgetRuleSchema = baseEntitySchema.extend({
   categoryId: z.string().min(1),
   amountCents: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
   cadence: cadenceSchema,
+  dayOfWeek: z.number().int().min(0).max(6).optional(),
+  dayOfMonth: z.number().int().min(1).max(31).optional(),
+  monthOfQuarter: z.number().int().min(0).max(2).optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
 });
@@ -61,6 +64,7 @@ const forecastRuleSchema = baseEntitySchema.extend({
   categoryId: z.string().nullable(),
   savingsGoalId: z.string().nullable(),
   notes: z.string().max(1000).optional(),
+  excludedDates: z.array(z.string()).optional(), // v1.0: Dates to skip when expanding
 });
 
 // Forecast Event
@@ -95,6 +99,9 @@ const savingsGoalSchema = baseEntitySchema.extend({
   name: z.string().min(1).max(100),
   targetAmountCents: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
   deadline: z.string().optional(),
+  annualInterestRate: z.number().min(0).max(100).optional(),
+  compoundingFrequency: z.enum(['daily', 'monthly', 'yearly']).optional(),
+  isEmergencyFund: z.boolean().optional(),
 });
 
 // Balance Anchor
@@ -167,6 +174,38 @@ export function sanitizeObject(obj: unknown): unknown {
 }
 
 /**
+ * Migrate imported data from older versions to current format.
+ * This ensures backward compatibility with exports from older app versions.
+ */
+function migrateImportData(data: ValidatedBudgetData): ValidatedBudgetData {
+  const version = data.version ?? 1;
+
+  // Already at current version, no migration needed
+  if (version >= CURRENT_DATA_VERSION) {
+    return data;
+  }
+
+  debug.info('import', `Migrating import data from version ${version} to ${CURRENT_DATA_VERSION}`);
+
+  // Clone to avoid mutating input
+  const migrated = { ...data };
+
+  // Future migrations go here, example:
+  // if (version < 2) {
+  //   // Migrate from v1 to v2
+  //   migrated.forecastRules = migrated.forecastRules.map(rule => ({
+  //     ...rule,
+  //     newField: rule.newField ?? 'defaultValue',
+  //   }));
+  // }
+
+  // Update version to current
+  migrated.version = CURRENT_DATA_VERSION;
+
+  return migrated;
+}
+
+/**
  * Validate imported JSON data against schema.
  * Returns validated data or throws ZodError.
  */
@@ -175,7 +214,10 @@ export function validateImport(rawData: unknown): ValidatedBudgetData {
   const sanitized = sanitizeObject(rawData);
 
   // Then validate against schema
-  return budgetDataSchema.parse(sanitized);
+  const validated = budgetDataSchema.parse(sanitized);
+
+  // Migrate to current version if needed
+  return migrateImportData(validated);
 }
 
 /**

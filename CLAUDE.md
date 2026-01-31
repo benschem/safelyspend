@@ -193,6 +193,41 @@ Exception: shadcn `<Button>` component and `<Link>` elements already have proper
 - Storage keys prefixed with `budget:`
 - Australian financial year default (July 1 - June 30)
 
+### Schema Versioning
+
+The app uses Dexie (IndexedDB) with versioned schema migrations. **Always consider data migration when making changes.**
+
+**Version numbers:**
+- `CURRENT_SCHEMA_VERSION` in `src/lib/db.ts` - IndexedDB schema version
+- `CURRENT_DATA_VERSION` in `src/lib/db.ts` - Export/import format version
+- `package.json` version - App version for users
+
+**When adding new fields to entities:**
+
+1. **Non-indexed fields** (most cases): Just add to `types.ts` and `import-schema.ts`. No schema version bump needed - Dexie stores full objects.
+
+2. **New indexed fields**: Bump `CURRENT_SCHEMA_VERSION` and add a new `this.version(N)` block in db.ts.
+
+3. **Breaking changes to existing fields**: Requires migration. Add `.upgrade()` function to the new version block.
+
+**Example - Adding a new schema version:**
+```typescript
+// In db.ts constructor
+this.version(2).stores({
+  // Only specify tables/indexes that changed
+  forecastRules: 'id, scenarioId, newIndexedField',
+}).upgrade(tx => {
+  return tx.table('forecastRules').toCollection().modify(rule => {
+    rule.newField = rule.newField ?? 'default';
+  });
+});
+```
+
+**For import compatibility:**
+- Add new optional fields to schemas in `import-schema.ts`
+- Add migration logic in `migrateImportData()` if format changes
+- Bump `CURRENT_DATA_VERSION` if export format changes
+
 ### Git Commit Messages
 
 Prefix all commits with `claude:` followed by a conventional commit type:

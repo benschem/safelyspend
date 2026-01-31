@@ -13,6 +13,26 @@ import type {
 } from './types';
 import { STORAGE_KEYS } from './storage-keys';
 
+// =============================================================================
+// Schema Version History
+// =============================================================================
+// Version 1 (App v1.0.0): Initial schema
+//   - All core tables: scenarios, categories, transactions, budgetRules,
+//     forecastRules, forecastEvents, savingsGoals, balanceAnchors, categoryRules
+//   - Config tables: appConfig, activeScenario
+//
+// IMPORTANT: When adding schema changes:
+// 1. Add a new version() call with the next version number
+// 2. Only define indexes that changed (Dexie merges with previous)
+// 3. Add .upgrade() if data migration is needed
+// 4. Update CURRENT_SCHEMA_VERSION constant
+// 5. Update CURRENT_DATA_VERSION if export format changed
+// 6. Document the change in this header
+// =============================================================================
+
+/** Current schema version - increment when IndexedDB structure changes */
+export const CURRENT_SCHEMA_VERSION = 1;
+
 // App config stored in IndexedDB
 export interface AppConfig {
   id: 'singleton';
@@ -41,6 +61,8 @@ export class BudgetDatabase extends Dexie {
 
   constructor() {
     super('BudgetApp');
+
+    // Version 1: Initial schema (App v1.0.0)
     this.version(1).stores({
       scenarios: 'id, isDefault',
       categories: 'id, isArchived',
@@ -56,13 +78,24 @@ export class BudgetDatabase extends Dexie {
       appConfig: 'id',
       activeScenario: 'id',
     });
+
+    // Future versions go here. Example:
+    // this.version(2).stores({
+    //   // Only specify tables/indexes that changed
+    //   newTable: 'id, someIndex',
+    // }).upgrade(tx => {
+    //   // Migrate existing data if needed
+    //   return tx.table('existingTable').toCollection().modify(item => {
+    //     item.newField = item.newField ?? 'default';
+    //   });
+    // });
   }
 }
 
 export const db = new BudgetDatabase();
 
-// Current data version for export/import
-export const CURRENT_DATA_VERSION = 2;
+/** Current data export version - increment when export format changes */
+export const CURRENT_DATA_VERSION = 1;
 
 // Budget backup type for export/import
 export interface BudgetBackup extends BudgetData {
