@@ -21,6 +21,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.3.1',
+    date: '2026-01-31',
+    changes: [
+      'Fixed Spending page showing incorrect data when no budget or forecast is set',
+      'Fixed savings goal showing unrealistic completion estimates',
+      'Balance inputs now accept commas and dollar signs',
+      'Added helper text when selecting day 29-31 for recurring items',
+    ],
+  },
+  {
     version: '0.3.0',
     date: '2026-01-31',
     changes: [
