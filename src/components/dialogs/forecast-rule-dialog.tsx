@@ -21,6 +21,17 @@ import { SavingsGoalSelect } from '@/components/savings-goal-select';
 import { parseCentsFromInput } from '@/lib/utils';
 import type { ForecastRule, ForecastType, Cadence, CreateEntity } from '@/lib/types';
 
+/** Pre-fill data for creating a rule from a one-time event */
+interface PrefillData {
+  type: ForecastType;
+  description: string;
+  amountCents: number;
+  categoryId: string | null;
+  savingsGoalId: string | null;
+  /** Day of month extracted from event date */
+  dayOfMonth?: number;
+}
+
 interface ForecastRuleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,6 +41,8 @@ interface ForecastRuleDialogProps {
   updateRule: (id: string, updates: Partial<Omit<ForecastRule, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
   /** Called after a new rule is created (not on edit) */
   onRuleCreated?: (rule: ForecastRule) => void;
+  /** Pre-fill data when converting from a one-time event */
+  prefill?: PrefillData | null;
 }
 
 const MONTH_NAMES = [
@@ -39,7 +52,7 @@ const MONTH_NAMES = [
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRule, updateRule, onRuleCreated }: ForecastRuleDialogProps) {
+export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRule, updateRule, onRuleCreated, prefill }: ForecastRuleDialogProps) {
   const isEditing = !!rule;
 
   // Form state
@@ -58,6 +71,7 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
   useEffect(() => {
     if (open) {
       if (rule) {
+        // Editing existing rule
         setType(rule.type);
         setDescription(rule.description);
         setAmount((rule.amountCents / 100).toFixed(2));
@@ -68,7 +82,20 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
         setMonthOfQuarter(String(rule.monthOfQuarter ?? 0));
         setCategoryId(rule.categoryId ?? '');
         setSavingsGoalId(rule.savingsGoalId ?? '');
+      } else if (prefill) {
+        // Pre-filling from a one-time event
+        setType(prefill.type);
+        setDescription(prefill.description);
+        setAmount((prefill.amountCents / 100).toFixed(2));
+        setCadence('monthly'); // Default to monthly
+        setDayOfMonth(String(prefill.dayOfMonth ?? 1));
+        setDayOfWeek('1');
+        setMonthOfYear('0');
+        setMonthOfQuarter('0');
+        setCategoryId(prefill.categoryId ?? '');
+        setSavingsGoalId(prefill.savingsGoalId ?? '');
       } else {
+        // New rule from scratch
         setType('expense');
         setDescription('');
         setAmount('');
@@ -82,7 +109,7 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
       }
       setFormError(null);
     }
-  }, [open, rule]);
+  }, [open, rule, prefill]);
 
   const handleSave = async () => {
     setFormError(null);

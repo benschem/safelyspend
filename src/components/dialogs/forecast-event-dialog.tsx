@@ -19,6 +19,7 @@ import {
 import { CategorySelect } from '@/components/category-select';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
 import { today, parseCentsFromInput } from '@/lib/utils';
+import { Repeat } from 'lucide-react';
 import type { ForecastEvent, ForecastType, CreateEntity } from '@/lib/types';
 
 interface ForecastEventDialogProps {
@@ -28,9 +29,11 @@ interface ForecastEventDialogProps {
   event?: ForecastEvent | null;
   addEvent: (data: CreateEntity<ForecastEvent>) => Promise<ForecastEvent>;
   updateEvent: (id: string, updates: Partial<Omit<ForecastEvent, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
+  /** Called when user wants to convert this event to a recurring rule */
+  onConvertToRecurring?: (event: ForecastEvent) => void;
 }
 
-export function ForecastEventDialog({ open, onOpenChange, scenarioId, event, addEvent, updateEvent }: ForecastEventDialogProps) {
+export function ForecastEventDialog({ open, onOpenChange, scenarioId, event, addEvent, updateEvent, onConvertToRecurring }: ForecastEventDialogProps) {
   const isEditing = !!event;
   const todayDate = today();
 
@@ -198,13 +201,26 @@ export function ForecastEventDialog({ open, onOpenChange, scenarioId, event, add
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave}>
-              {isEditing ? 'Save' : 'Add'} Event
-            </Button>
+          <div className="flex justify-between gap-3 pt-2">
+            <div>
+              {isEditing && event && onConvertToRecurring && (
+                <Button
+                  variant="outline"
+                  onClick={() => onConvertToRecurring(event)}
+                >
+                  <Repeat className="h-4 w-4" />
+                  Make Recurring
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSave}>
+                {isEditing ? 'Save' : 'Add'} Event
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

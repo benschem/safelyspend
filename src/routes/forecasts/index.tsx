@@ -11,6 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus, Repeat, Settings2, Pencil, Trash2, Telescope, RotateCcw, TrendingUp, TrendingDown, PiggyBank, ChevronUp, ChevronDown } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
@@ -94,6 +102,10 @@ export function ForecastIndexPage() {
   const [budgetPromptOpen, setBudgetPromptOpen] = useState(false);
   const [createdRule, setCreatedRule] = useState<ForecastRule | null>(null);
 
+  // Convert to recurring state
+  const [convertingEvent, setConvertingEvent] = useState<ForecastEvent | null>(null);
+  const [deleteEventAfterConvert, setDeleteEventAfterConvert] = useState(false);
+
   const getCategoryName = useCallback(
     (id: string | null) => (id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-'),
     [categories],
@@ -145,7 +157,74 @@ export function ForecastIndexPage() {
     setRuleDialogOpen(open);
     if (!open) {
       setEditingRule(null);
+      // If we were converting and dialog was cancelled, clear the converting state
+      if (!open && convertingEvent) {
+        setConvertingEvent(null);
+      }
     }
+  }, [convertingEvent]);
+
+  // Handle converting a one-time event to recurring
+  const handleConvertToRecurring = useCallback((event: ForecastEvent) => {
+    setConvertingEvent(event);
+    setEventDialogOpen(false);
+    setEditingEvent(null);
+    setEditingRule(null);
+    setRuleDialogOpen(true);
+  }, []);
+
+  // Prefill data for rule dialog when converting
+  const rulePrefillData = useMemo(() => {
+    if (!convertingEvent) return null;
+    const eventDate = new Date(convertingEvent.date);
+    return {
+      type: convertingEvent.type,
+      description: convertingEvent.description,
+      amountCents: convertingEvent.amountCents,
+      categoryId: convertingEvent.categoryId,
+      savingsGoalId: convertingEvent.savingsGoalId,
+      dayOfMonth: eventDate.getDate(),
+    };
+  }, [convertingEvent]);
+
+  // Handle when rule is created (including from conversion)
+  const handleRuleCreatedWithConversion = useCallback((rule: ForecastRule) => {
+    if (convertingEvent) {
+      // Check if original event date is in the past
+      const eventDate = new Date(convertingEvent.date);
+      const today = new Date(getToday());
+      const isEventInPast = eventDate < today;
+
+      if (isEventInPast) {
+        // Event already happened, delete it automatically
+        deleteEvent(convertingEvent.id);
+        setConvertingEvent(null);
+      } else {
+        // Event is in future, ask user if they want to delete it
+        setDeleteEventAfterConvert(true);
+      }
+    }
+
+    // Also trigger budget prompt if applicable
+    if (rule.type === 'expense' && rule.categoryId && !skipBudgetPrompt) {
+      setCreatedRule(rule);
+      setBudgetPromptOpen(true);
+    }
+  }, [convertingEvent, deleteEvent, skipBudgetPrompt]);
+
+  // Handle deleting the original event after conversion
+  const handleDeleteOriginalEvent = useCallback(() => {
+    if (convertingEvent) {
+      deleteEvent(convertingEvent.id);
+    }
+    setConvertingEvent(null);
+    setDeleteEventAfterConvert(false);
+  }, [convertingEvent, deleteEvent]);
+
+  // Handle keeping the original event after conversion
+  const handleKeepOriginalEvent = useCallback(() => {
+    setConvertingEvent(null);
+    setDeleteEventAfterConvert(false);
   }, []);
 
   const openDeleteDialog = useCallback((forecast: ExpandedForecast) => {
@@ -170,15 +249,6 @@ export function ForecastIndexPage() {
     setDeleteDialogOpen(false);
     setDeletingForecast(null);
   }, [deletingForecast, deleteRule, deleteEvent]);
-
-  // Handle when a new forecast rule is created
-  const handleRuleCreated = useCallback((rule: ForecastRule) => {
-    // Only prompt for expenses with a category
-    if (rule.type === 'expense' && rule.categoryId && !skipBudgetPrompt) {
-      setCreatedRule(rule);
-      setBudgetPromptOpen(true);
-    }
-  }, [skipBudgetPrompt]);
 
   // Get category name for the created rule
   const createdRuleCategoryName = useMemo(() => {
@@ -527,6 +597,7 @@ export function ForecastIndexPage() {
         event={editingEvent}
         addEvent={addEvent}
         updateEvent={updateEvent}
+        onConvertToRecurring={handleConvertToRecurring}
       />
 
       <ForecastRuleDialog
@@ -536,7 +607,8 @@ export function ForecastIndexPage() {
         rule={editingRule}
         addRule={addRule}
         updateRule={updateRule}
-        onRuleCreated={handleRuleCreated}
+        onRuleCreated={handleRuleCreatedWithConversion}
+        prefill={rulePrefillData}
       />
 
       <DeleteForecastDialog
@@ -561,6 +633,26 @@ export function ForecastIndexPage() {
           onSkip={handleSkipBudget}
         />
       )}
+
+      {/* Confirmation dialog for deleting original event after conversion */}
+      <Dialog open={deleteEventAfterConvert} onOpenChange={(open) => !open && handleKeepOriginalEvent()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Original Event?</DialogTitle>
+            <DialogDescription>
+              The recurring rule has been created. Would you like to delete the original one-time event?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={handleKeepOriginalEvent}>
+              Keep It
+            </Button>
+            <Button onClick={handleDeleteOriginalEvent}>
+              Delete It
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
