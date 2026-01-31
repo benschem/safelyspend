@@ -4,7 +4,6 @@ import {
   Receipt,
   Target,
   PiggyBank,
-  Layers,
   Settings,
   ChartSpline,
   Menu,
@@ -96,16 +95,13 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         <NavItem to="/budget" icon={<Target className="h-4 w-4" />} onClick={onNavigate}>
           Budget
         </NavItem>
-        <NavItem to="/scenarios" icon={<Layers className="h-4 w-4" />} onClick={onNavigate}>
-          Scenarios
-        </NavItem>
       </NavSection>
 
       <Separator className="my-2" />
 
       <NavSection title="Track">
         <NavItem to="/money" icon={<Receipt className="h-4 w-4" />} onClick={onNavigate}>
-          Money In/Out
+          Money
         </NavItem>
       </NavSection>
 

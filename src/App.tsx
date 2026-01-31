@@ -14,7 +14,6 @@ import { CategoryDetailPage } from '@/routes/categories/detail';
 import { CategoryImportRulesPage } from '@/routes/categories/import-rules';
 import { SavingsIndexPage } from '@/routes/savings/index';
 import { InsightsPage } from '@/routes/insights';
-import { ScenariosIndexPage } from '@/routes/scenarios/index';
 import { SettingsPage } from '@/routes/settings';
 import { ChangelogPage } from '@/routes/changelog';
 
@@ -40,7 +39,7 @@ const router = createBrowserRouter([
       // Snapshot (current position)
       { path: 'snapshot', element: <SnapshotPage /> },
 
-      // Money In/Out (combined transactions + forecasts + recurring)
+      // Money (combined transactions + forecasts + recurring)
       { path: 'money', element: <MoneyIndexPage /> },
 
       // Legacy redirects
@@ -69,8 +68,8 @@ const router = createBrowserRouter([
       // Insights (track)
       { path: 'insights', element: <InsightsPage /> },
 
-      // Scenarios (plan)
-      { path: 'scenarios', element: <ScenariosIndexPage /> },
+      // Scenarios - redirect to budget
+      { path: 'scenarios', element: <Navigate to="/budget?tab=scenarios" replace /> },
 
 
       // Settings
