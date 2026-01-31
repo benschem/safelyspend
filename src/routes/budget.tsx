@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Link, useOutletContext, useSearchParams } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert } from '@/components/ui/alert';
@@ -19,7 +18,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Pencil, Trash2, Plus, Target, Archive, ArchiveRestore, Settings2, PiggyBank, Star, Play } from 'lucide-react';
+import { Pencil, Trash2, Plus, Target, Archive, ArchiveRestore, Settings2, PiggyBank } from 'lucide-react';
 import { cn, formatCents, toMonthlyCents, type CadenceType } from '@/lib/utils';
 import { CHART_COLORS } from '@/lib/chart-colors';
 import { PageLoading } from '@/components/page-loading';
@@ -32,11 +31,9 @@ import { useForecasts } from '@/hooks/use-forecasts';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { CategoryBudgetDialog } from '@/components/dialogs/category-budget-dialog';
 import { ForecastRuleDialog } from '@/components/dialogs/forecast-rule-dialog';
-import { ScenarioDialog } from '@/components/dialogs/scenario-dialog';
 import { BudgetPromptDialog } from '@/components/dialogs/budget-prompt-dialog';
 import { useLocalStorage } from '@/hooks/use-local-storage';
-import { db } from '@/lib/db';
-import type { Cadence, BudgetRule, Category, ForecastRule, Scenario } from '@/lib/types';
+import type { Cadence, BudgetRule, Category, ForecastRule } from '@/lib/types';
 import { SpendingBreakdownChart } from '@/components/charts/spending-breakdown-chart';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 
@@ -57,11 +54,6 @@ interface BudgetRow {
   forecastCount: number;
 }
 
-interface ScenarioRow extends Scenario {
-  budgetRuleCount: number;
-  forecastRuleCount: number;
-}
-
 const CADENCE_FULL_LABELS: Record<Cadence, string> = {
   weekly: 'Weekly',
   fortnightly: 'Fortnightly',
@@ -70,16 +62,14 @@ const CADENCE_FULL_LABELS: Record<Cadence, string> = {
   yearly: 'Yearly',
 };
 
-type BudgetTab = 'categories' | 'income' | 'fixed-expenses' | 'savings-contributions' | 'scenarios';
+type BudgetTab = 'categories' | 'income' | 'fixed-expenses' | 'savings-contributions';
 
-const VALID_TABS: BudgetTab[] = ['categories', 'income', 'fixed-expenses', 'savings-contributions', 'scenarios'];
+const VALID_TABS: BudgetTab[] = ['categories', 'income', 'fixed-expenses', 'savings-contributions'];
 
 export function BudgetPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { activeScenarioId } = useOutletContext<OutletContext>();
-  const { scenarios, activeScenario, isLoading: scenariosLoading, setActiveScenarioId, addScenario, updateScenario, deleteScenario } = useScenarios();
-  const { duplicateToScenario: duplicateForecastsToScenario } = useForecasts(null);
-  const { duplicateToScenario: duplicateBudgetsToScenario } = useBudgetRules(null);
+  const { activeScenario } = useScenarios();
   const { categories, activeCategories, isLoading: categoriesLoading, addCategory, updateCategory, deleteCategory } = useCategories();
   const { getRuleForCategory, isLoading: budgetLoading, setBudgetForCategory, deleteBudgetRule } =
     useBudgetRules(activeScenarioId);
@@ -100,13 +90,7 @@ export function BudgetPage() {
     forecastDateRange.endDate,
   );
 
-  // Scenario rule counts
-  const rawAllBudgetRules = useLiveQuery(() => db.budgetRules.toArray(), []);
-  const rawAllForecastRules = useLiveQuery(() => db.forecastRules.toArray(), []);
-  const allBudgetRules = useMemo(() => rawAllBudgetRules ?? [], [rawAllBudgetRules]);
-  const allForecastRules = useMemo(() => rawAllForecastRules ?? [], [rawAllForecastRules]);
-
-  const isLoading = categoriesLoading || budgetLoading || transactionsLoading || forecastsLoading || savingsLoading || scenariosLoading || rawAllBudgetRules === undefined || rawAllForecastRules === undefined;
+  const isLoading = categoriesLoading || budgetLoading || transactionsLoading || forecastsLoading || savingsLoading;
 
   // Tab state from URL
   const [activeTab, setActiveTab] = useState<BudgetTab>(() => {
@@ -146,11 +130,6 @@ export function BudgetPage() {
 
   // Filter state for expected expenses
   const [expenseFilterCategory, setExpenseFilterCategory] = useState<string>('all');
-
-  // Scenario dialog state
-  const [scenarioDialogOpen, setScenarioDialogOpen] = useState(false);
-  const [editingScenario, setEditingScenario] = useState<Scenario | null>(null);
-  const [deletingScenarioId, setDeletingScenarioId] = useState<string | null>(null);
 
   // Budget prompt dialog state
   const [skipBudgetPrompt, setSkipBudgetPrompt] = useLocalStorage('budget:skipBudgetPrompt', false);
@@ -237,32 +216,6 @@ export function BudgetPage() {
     return expenses;
   }, [forecastRules, expenseFilterCategory]);
   const savingsRules = useMemo(() => forecastRules.filter(r => r.type === 'savings'), [forecastRules]);
-
-  // Build scenario rows with rule counts
-  const scenarioRows: ScenarioRow[] = useMemo(() => {
-    const budgetCountByScenario = new Map<string, number>();
-    const forecastCountByScenario = new Map<string, number>();
-
-    for (const rule of allBudgetRules) {
-      budgetCountByScenario.set(
-        rule.scenarioId,
-        (budgetCountByScenario.get(rule.scenarioId) ?? 0) + 1,
-      );
-    }
-
-    for (const rule of allForecastRules) {
-      forecastCountByScenario.set(
-        rule.scenarioId,
-        (forecastCountByScenario.get(rule.scenarioId) ?? 0) + 1,
-      );
-    }
-
-    return scenarios.map((scenario) => ({
-      ...scenario,
-      budgetRuleCount: budgetCountByScenario.get(scenario.id) ?? 0,
-      forecastRuleCount: forecastCountByScenario.get(scenario.id) ?? 0,
-    }));
-  }, [scenarios, allBudgetRules, allForecastRules]);
 
   // Helper to get category name
   const getCategoryName = useCallback(
@@ -438,41 +391,6 @@ export function BudgetPage() {
     }
   }, [deletingRuleId, deleteRule]);
 
-  // Scenario handlers
-  const openAddScenarioDialog = useCallback(() => {
-    setEditingScenario(null);
-    setScenarioDialogOpen(true);
-  }, []);
-
-  const openEditScenarioDialog = useCallback((scenario: Scenario) => {
-    setEditingScenario(scenario);
-    setScenarioDialogOpen(true);
-  }, []);
-
-  const handleScenarioDialogClose = useCallback((open: boolean) => {
-    setScenarioDialogOpen(open);
-    if (!open) setEditingScenario(null);
-  }, []);
-
-  const handleDeleteScenario = useCallback(
-    (id: string) => {
-      if (deletingScenarioId === id) {
-        deleteScenario(id);
-        setDeletingScenarioId(null);
-      } else {
-        setDeletingScenarioId(id);
-      }
-    },
-    [deletingScenarioId, deleteScenario],
-  );
-
-  const handleSetDefault = useCallback(
-    (id: string) => {
-      updateScenario(id, { isDefault: true });
-    },
-    [updateScenario],
-  );
-
   // Handle when rule is created - show budget prompt for expenses
   const handleRuleCreated = useCallback((rule: ForecastRule) => {
     if (rule.type === 'expense' && rule.categoryId && !skipBudgetPrompt) {
@@ -527,12 +445,11 @@ export function BudgetPage() {
       if (e.key === 'Escape') {
         if (deletingId) setDeletingId(null);
         if (deletingRuleId) setDeletingRuleId(null);
-        if (deletingScenarioId) setDeletingScenarioId(null);
       }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [deletingId, deletingRuleId, deletingScenarioId]);
+  }, [deletingId, deletingRuleId]);
 
   const columns: ColumnDef<BudgetRow>[] = useMemo(
     () => [
@@ -1051,119 +968,6 @@ export function BudgetPage() {
     [deletingRuleId, openEditRuleDialog, handleDeleteRule, getSavingsGoalName],
   );
 
-  // Scenario columns
-  const scenarioColumns: ColumnDef<ScenarioRow>[] = useMemo(
-    () => [
-      {
-        accessorKey: 'name',
-        header: ({ column }) => <SortableHeader column={column}>Name</SortableHeader>,
-        cell: ({ row }) => {
-          const scenario = row.original;
-          return (
-            <button
-              type="button"
-              onClick={() => openEditScenarioDialog(scenario)}
-              className="cursor-pointer text-left font-medium hover:underline"
-            >
-              {scenario.name}
-            </button>
-          );
-        },
-      },
-      {
-        accessorKey: 'description',
-        header: 'Description',
-        cell: ({ row }) => (
-          <span className="text-muted-foreground">
-            {row.getValue('description') || '-'}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'budgetRuleCount',
-        header: ({ column }) => (
-          <SortableHeader column={column} className="justify-center">
-            Budgeted Expenses
-          </SortableHeader>
-        ),
-        cell: ({ row }) => (
-          <div className="text-center tabular-nums">{row.getValue('budgetRuleCount')}</div>
-        ),
-      },
-      {
-        accessorKey: 'forecastRuleCount',
-        header: ({ column }) => (
-          <SortableHeader column={column} className="justify-center">
-            Expected Expenses
-          </SortableHeader>
-        ),
-        cell: ({ row }) => (
-          <div className="text-center tabular-nums">{row.getValue('forecastRuleCount')}</div>
-        ),
-      },
-      {
-        id: 'actions',
-        cell: ({ row }) => {
-          const scenario = row.original;
-          const isDeleting = deletingScenarioId === scenario.id;
-          const isActive = scenario.id === activeScenarioId;
-
-          return (
-            <div className="flex justify-end gap-1">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => !isActive && setActiveScenarioId(scenario.id)}
-                    className={`cursor-pointer rounded p-1.5 transition-colors ${isActive ? '' : 'hover:bg-muted'}`}
-                    aria-label={isActive ? 'Active scenario' : 'Activate scenario'}
-                  >
-                    <Play className={`h-4 w-4 ${isActive ? 'text-blue-500' : 'text-muted-foreground'}`} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{isActive ? 'Active' : 'Activate'}</TooltipContent>
-              </Tooltip>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => !scenario.isDefault && handleSetDefault(scenario.id)}
-                aria-label={scenario.isDefault ? 'Default scenario' : 'Set as default'}
-                className={scenario.isDefault ? 'cursor-default' : ''}
-              >
-                <Star className={`h-4 w-4 ${scenario.isDefault ? 'text-amber-500' : ''}`} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => openEditScenarioDialog(scenario)}
-                aria-label="Edit scenario"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={isDeleting ? 'destructive' : 'ghost'}
-                size="sm"
-                onClick={() => handleDeleteScenario(scenario.id)}
-                onBlur={() => setTimeout(() => setDeletingScenarioId(null), 200)}
-                disabled={scenario.isDefault}
-                aria-label={
-                  scenario.isDefault
-                    ? 'Cannot delete default scenario'
-                    : isDeleting
-                      ? 'Confirm delete'
-                      : 'Delete scenario'
-                }
-              >
-                {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
-              </Button>
-            </div>
-          );
-        },
-      },
-    ],
-    [deletingScenarioId, openEditScenarioDialog, handleDeleteScenario, handleSetDefault, activeScenarioId, setActiveScenarioId],
-  );
-
   // Show loading spinner while data is being fetched
   if (isLoading) {
     return (
@@ -1188,7 +992,7 @@ export function BudgetPage() {
         <div className="empty-state">
           <p className="empty-state-text">Select a scenario to configure spending expectations.</p>
           <Button asChild className="empty-state-action">
-            <Link to="/budget?tab=scenarios">Manage Scenarios</Link>
+            <Link to="/scenarios">Manage Scenarios</Link>
           </Button>
         </div>
       </div>
@@ -1356,7 +1160,6 @@ export function BudgetPage() {
           { value: 'income' as BudgetTab, label: 'Income' },
           { value: 'fixed-expenses' as BudgetTab, label: 'Fixed Expenses' },
           { value: 'savings-contributions' as BudgetTab, label: 'Savings Contributions' },
-          { value: 'scenarios' as BudgetTab, label: 'Scenarios' },
         ].map((tab) => (
           <button
             key={tab.value}
@@ -1553,40 +1356,6 @@ export function BudgetPage() {
         </>
       )}
 
-      {/* Scenarios tab */}
-      {activeTab === 'scenarios' && (
-        <>
-          <Alert variant="info" className="mb-6">
-            Switching scenarios changes your budget and forecasts. Your past transactions and categories stay the same.
-          </Alert>
-
-          {scenarios.length === 0 ? (
-            <div className="empty-state">
-              <p className="empty-state-text">No scenarios yet.</p>
-              <Button className="empty-state-action" onClick={openAddScenarioDialog}>
-                Create your first scenario
-              </Button>
-            </div>
-          ) : (
-            <DataTable
-              columns={scenarioColumns}
-              data={scenarioRows}
-              searchKey="name"
-              searchPlaceholder="Search scenarios..."
-              showPagination={false}
-              filterSlot={
-                <div className="flex flex-1 items-center justify-end">
-                  <Button onClick={openAddScenarioDialog}>
-                    <Plus className="h-4 w-4" />
-                    <span className="hidden sm:inline">Add Scenario</span>
-                  </Button>
-                </div>
-              }
-            />
-          )}
-        </>
-      )}
-
       {/* Add Category Dialog */}
       <CategoryBudgetDialog
         open={addDialogOpen}
@@ -1627,18 +1396,6 @@ export function BudgetPage() {
           activeTab === 'savings-contributions' ? 'savings' :
           null
         }
-      />
-
-      {/* Scenario Dialog */}
-      <ScenarioDialog
-        open={scenarioDialogOpen}
-        onOpenChange={handleScenarioDialogClose}
-        scenario={editingScenario}
-        scenarios={scenarios}
-        addScenario={addScenario}
-        updateScenario={updateScenario}
-        duplicateForecastsToScenario={duplicateForecastsToScenario}
-        duplicateBudgetsToScenario={duplicateBudgetsToScenario}
       />
 
       {/* Budget Prompt Dialog */}
