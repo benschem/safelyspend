@@ -142,7 +142,7 @@ export function ScenariosIndexPage() {
         accessorKey: 'budgetRuleCount',
         header: ({ column }) => (
           <SortableHeader column={column} className="justify-center">
-            Budgets
+            Budgeted Expenses
           </SortableHeader>
         ),
         cell: ({ row }) => (
@@ -153,7 +153,7 @@ export function ScenariosIndexPage() {
         accessorKey: 'forecastRuleCount',
         header: ({ column }) => (
           <SortableHeader column={column} className="justify-center">
-            Forecasts
+            Expected Expenses
           </SortableHeader>
         ),
         cell: ({ row }) => (
