@@ -44,7 +44,7 @@ export const changelog: ChangelogEntry[] = [
     version: '0.4.0',
     date: '2026-02-01',
     changes: [
-      'New unified "Money In/Out" page with Past, Expected, and Recurring tabs',
+      'New unified "Money" page with Past, Expected, and Recurring tabs',
       'Track actual transactions, expected future items, and recurring expectations in one place',
       'Add expected items (one-time or recurring) from a single dialog',
       'Clearer terminology: "Forecast" is now "Expected" throughout the app',

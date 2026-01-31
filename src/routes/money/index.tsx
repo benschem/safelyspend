@@ -949,7 +949,7 @@ export function MoneyIndexPage() {
             <div className="page-title-icon bg-slate-500/10">
               <Receipt className="h-5 w-5 text-slate-500" />
             </div>
-            Money In/Out
+            Money
           </h1>
           <p className="page-description">
             {activeTab === 'past' && 'Actual income, expenses, and savings.'}
@@ -986,7 +986,7 @@ export function MoneyIndexPage() {
               : 'hover:text-foreground',
           )}
         >
-          Past
+          Past Transactions
         </button>
         <button
           type="button"
@@ -998,7 +998,7 @@ export function MoneyIndexPage() {
               : 'hover:text-foreground',
           )}
         >
-          Expected
+          Expected Transactions
         </button>
       </div>
 
