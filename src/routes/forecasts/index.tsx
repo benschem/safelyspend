@@ -18,6 +18,8 @@ import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
+import { useBudgetRules } from '@/hooks/use-budget-rules';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 
 type FilterType = 'all' | 'income' | 'expense' | 'savings';
 type CategoryFilter = 'all' | string;
@@ -25,7 +27,8 @@ import { DateRangeFilter } from '@/components/date-range-filter';
 import { ForecastEventDialog } from '@/components/dialogs/forecast-event-dialog';
 import { ForecastRuleDialog } from '@/components/dialogs/forecast-rule-dialog';
 import { DeleteForecastDialog } from '@/components/dialogs/delete-forecast-dialog';
-import { formatCents, formatDate, today as getToday } from '@/lib/utils';
+import { BudgetPromptDialog } from '@/components/dialogs/budget-prompt-dialog';
+import { formatCents, formatDate, today as getToday, toMonthlyCents, type CadenceType } from '@/lib/utils';
 import type { ExpandedForecast, ForecastEvent, ForecastRule } from '@/lib/types';
 
 interface OutletContext {
@@ -41,6 +44,10 @@ export function ForecastIndexPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario, isLoading: scenariosLoading } = useScenarios();
   const { categories, activeCategories, isLoading: categoriesLoading } = useCategories();
+  const { getRuleForCategory, setBudgetForCategory } = useBudgetRules(activeScenarioId);
+
+  // Budget prompt preference
+  const [skipBudgetPrompt, setSkipBudgetPrompt] = useLocalStorage('budget:skipBudgetPrompt', false);
 
   // Date filter - defaults to today onwards
   const [filterStartDate, setFilterStartDate] = useState(getDefaultStartDate);
@@ -82,6 +89,10 @@ export function ForecastIndexPage() {
   const [editingRule, setEditingRule] = useState<ForecastRule | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingForecast, setDeletingForecast] = useState<ExpandedForecast | null>(null);
+
+  // Budget prompt dialog state
+  const [budgetPromptOpen, setBudgetPromptOpen] = useState(false);
+  const [createdRule, setCreatedRule] = useState<ForecastRule | null>(null);
 
   const getCategoryName = useCallback(
     (id: string | null) => (id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-'),
@@ -159,6 +170,61 @@ export function ForecastIndexPage() {
     setDeleteDialogOpen(false);
     setDeletingForecast(null);
   }, [deletingForecast, deleteRule, deleteEvent]);
+
+  // Handle when a new forecast rule is created
+  const handleRuleCreated = useCallback((rule: ForecastRule) => {
+    // Only prompt for expenses with a category
+    if (rule.type === 'expense' && rule.categoryId && !skipBudgetPrompt) {
+      setCreatedRule(rule);
+      setBudgetPromptOpen(true);
+    }
+  }, [skipBudgetPrompt]);
+
+  // Get category name for the created rule
+  const createdRuleCategoryName = useMemo(() => {
+    if (!createdRule?.categoryId) return '';
+    return categories.find((c) => c.id === createdRule.categoryId)?.name ?? 'Unknown';
+  }, [createdRule, categories]);
+
+  // Get existing budget for the category
+  const existingBudgetForCreatedRule = useMemo(() => {
+    if (!createdRule?.categoryId) return null;
+    return getRuleForCategory(createdRule.categoryId);
+  }, [createdRule, getRuleForCategory]);
+
+  // Handle adding to existing budget
+  const handleAddToBudget = useCallback(async (dontAskAgain: boolean) => {
+    if (!createdRule?.categoryId) return;
+
+    const existingBudget = getRuleForCategory(createdRule.categoryId);
+    const newMonthly = toMonthlyCents(createdRule.amountCents, createdRule.cadence as CadenceType);
+    const existingMonthly = existingBudget
+      ? toMonthlyCents(existingBudget.amountCents, existingBudget.cadence as CadenceType)
+      : 0;
+
+    // Add to existing (or create new with this amount)
+    await setBudgetForCategory(createdRule.categoryId, existingMonthly + newMonthly, 'monthly');
+
+    if (dontAskAgain) setSkipBudgetPrompt(true);
+    setCreatedRule(null);
+  }, [createdRule, getRuleForCategory, setBudgetForCategory, setSkipBudgetPrompt]);
+
+  // Handle replacing budget
+  const handleReplaceBudget = useCallback(async (dontAskAgain: boolean) => {
+    if (!createdRule?.categoryId) return;
+
+    const newMonthly = toMonthlyCents(createdRule.amountCents, createdRule.cadence as CadenceType);
+    await setBudgetForCategory(createdRule.categoryId, newMonthly, 'monthly');
+
+    if (dontAskAgain) setSkipBudgetPrompt(true);
+    setCreatedRule(null);
+  }, [createdRule, setBudgetForCategory, setSkipBudgetPrompt]);
+
+  // Handle skipping budget prompt
+  const handleSkipBudget = useCallback((dontAskAgain: boolean) => {
+    if (dontAskAgain) setSkipBudgetPrompt(true);
+    setCreatedRule(null);
+  }, [setSkipBudgetPrompt]);
 
   const columns: ColumnDef<ExpandedForecast>[] = useMemo(
     () => [
@@ -470,6 +536,7 @@ export function ForecastIndexPage() {
         rule={editingRule}
         addRule={addRule}
         updateRule={updateRule}
+        onRuleCreated={handleRuleCreated}
       />
 
       <DeleteForecastDialog
@@ -479,6 +546,21 @@ export function ForecastIndexPage() {
         onDeleteOccurrence={handleDeleteOccurrence}
         onDeleteAll={handleDeleteAll}
       />
+
+      {createdRule && (
+        <BudgetPromptDialog
+          open={budgetPromptOpen}
+          onOpenChange={setBudgetPromptOpen}
+          categoryId={createdRule.categoryId ?? ''}
+          categoryName={createdRuleCategoryName}
+          forecastAmountCents={createdRule.amountCents}
+          forecastCadence={createdRule.cadence as CadenceType}
+          existingBudget={existingBudgetForCreatedRule}
+          onAddToBudget={handleAddToBudget}
+          onReplaceBudget={handleReplaceBudget}
+          onSkip={handleSkipBudget}
+        />
+      )}
     </div>
   );
 }

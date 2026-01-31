@@ -172,6 +172,66 @@ export function formatCentsShort(cents: number): string {
 }
 
 /**
+ * Cadence type for recurring rules
+ */
+export type CadenceType = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly';
+
+/**
+ * Convert amount from any cadence to monthly equivalent
+ */
+export function toMonthlyCents(amountCents: number, cadence: CadenceType): number {
+  switch (cadence) {
+    case 'weekly':
+      return Math.round(amountCents * 52 / 12);
+    case 'fortnightly':
+      return Math.round(amountCents * 26 / 12);
+    case 'monthly':
+      return amountCents;
+    case 'quarterly':
+      return Math.round(amountCents / 3);
+    case 'yearly':
+      return Math.round(amountCents / 12);
+  }
+}
+
+/**
+ * Convert amount from monthly to target cadence
+ */
+export function fromMonthlyCents(monthlyAmountCents: number, targetCadence: CadenceType): number {
+  switch (targetCadence) {
+    case 'weekly':
+      return Math.round(monthlyAmountCents * 12 / 52);
+    case 'fortnightly':
+      return Math.round(monthlyAmountCents * 12 / 26);
+    case 'monthly':
+      return monthlyAmountCents;
+    case 'quarterly':
+      return Math.round(monthlyAmountCents * 3);
+    case 'yearly':
+      return Math.round(monthlyAmountCents * 12);
+  }
+}
+
+/**
+ * Cadence display labels
+ */
+export const CADENCE_LABELS: Record<CadenceType, string> = {
+  weekly: 'weekly',
+  fortnightly: 'fortnightly',
+  monthly: 'monthly',
+  quarterly: 'quarterly',
+  yearly: 'yearly',
+};
+
+export const CADENCE_SHORT_LABELS: Record<CadenceType, string> = {
+  weekly: '/wk',
+  fortnightly: '/fn',
+  monthly: '/mo',
+  quarterly: '/qtr',
+  yearly: '/yr',
+};
+
+/**
  * Format a date range for compact display
  * e.g., "1 Jul 2025 – 30 Jun 2026" or "Jul 2025 – Jun 2026" if full months
  */

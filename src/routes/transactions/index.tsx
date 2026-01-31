@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useSearchParams, useOutletContext } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
@@ -25,16 +25,23 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Plus, Pencil, Trash2, Download, AlertTriangle, Receipt, RotateCcw, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, Settings2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, Download, AlertTriangle, Receipt, RotateCcw, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, Settings2, ChevronUp, ChevronDown, Target } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
 import { useCategoryRules } from '@/hooks/use-category-rules';
+import { useBudgetRules } from '@/hooks/use-budget-rules';
+import { useForecasts } from '@/hooks/use-forecasts';
 import { DateRangeFilter } from '@/components/date-range-filter';
 import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { UpImportDialog } from '@/components/up-import-dialog';
-import { formatCents, formatDate, today as getToday } from '@/lib/utils';
-import type { Transaction } from '@/lib/types';
+import { AddToBudgetDialog } from '@/components/dialogs/add-to-budget-dialog';
+import { formatCents, formatDate, today as getToday, toMonthlyCents, type CadenceType } from '@/lib/utils';
+import type { Transaction, Cadence } from '@/lib/types';
+
+interface OutletContext {
+  activeScenarioId: string | null;
+}
 
 type FilterType = 'all' | 'income' | 'expense' | 'savings' | 'adjustment';
 type CategoryFilter = 'all' | 'uncategorized' | string;
@@ -45,6 +52,7 @@ const getDefaultEndDate = () => getToday();
 
 export function TransactionsIndexPage() {
   const [searchParams] = useSearchParams();
+  const { activeScenarioId } = useOutletContext<OutletContext>();
 
   // Date filter state - defaults to past transactions (up to today)
   const [filterStartDate, setFilterStartDate] = useState(getDefaultStartDate);
@@ -60,6 +68,8 @@ export function TransactionsIndexPage() {
   const { transactions, allTransactions, isLoading: transactionsLoading, addTransaction, updateTransaction, deleteTransaction } = useTransactions(queryStartDate, queryEndDate);
   const { categories, activeCategories, isLoading: categoriesLoading } = useCategories();
   const { rules: categoryRules } = useCategoryRules();
+  const { getRuleForCategory, setBudgetForCategory } = useBudgetRules(activeScenarioId);
+  const { addEvent: addForecastEvent } = useForecasts(activeScenarioId, getToday(), getToday());
 
   // Combined loading state from all data hooks
   const isLoading = transactionsLoading || categoriesLoading;
@@ -84,6 +94,10 @@ export function TransactionsIndexPage() {
 
   // Delete confirmation state
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Add to budget dialog state
+  const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
+  const [budgetTransaction, setBudgetTransaction] = useState<Transaction | null>(null);
 
   const handleImportClick = useCallback(() => {
     if (categoryRules.length === 0) {
@@ -146,6 +160,59 @@ export function TransactionsIndexPage() {
       }),
     [transactions, filterType, filterCategory],
   );
+
+  // Open add to budget dialog
+  const openBudgetDialog = useCallback((transaction: Transaction) => {
+    setBudgetTransaction(transaction);
+    setBudgetDialogOpen(true);
+  }, []);
+
+  // Get category name for budget transaction
+  const budgetTransactionCategoryName = useMemo(() => {
+    if (!budgetTransaction?.categoryId) return '';
+    return categories.find((c) => c.id === budgetTransaction.categoryId)?.name ?? 'Unknown';
+  }, [budgetTransaction, categories]);
+
+  // Get existing budget for the transaction's category
+  const existingBudgetForTransaction = useMemo(() => {
+    if (!budgetTransaction?.categoryId) return null;
+    return getRuleForCategory(budgetTransaction.categoryId);
+  }, [budgetTransaction, getRuleForCategory]);
+
+  // Handle creating a recurring budget from transaction
+  const handleCreateRecurringBudget = useCallback(async (amountCents: number, cadence: Cadence, updateMode: 'add' | 'replace') => {
+    if (!budgetTransaction?.categoryId) return;
+
+    const existingBudget = getRuleForCategory(budgetTransaction.categoryId);
+    const newMonthly = toMonthlyCents(amountCents, cadence);
+
+    if (updateMode === 'add' && existingBudget) {
+      const existingMonthly = toMonthlyCents(existingBudget.amountCents, existingBudget.cadence as CadenceType);
+      await setBudgetForCategory(budgetTransaction.categoryId, existingMonthly + newMonthly, 'monthly');
+    } else {
+      await setBudgetForCategory(budgetTransaction.categoryId, newMonthly, 'monthly');
+    }
+
+    setBudgetTransaction(null);
+  }, [budgetTransaction, getRuleForCategory, setBudgetForCategory]);
+
+  // Handle creating a one-time forecast from transaction
+  const handleCreateOneTimeForecast = useCallback(async (amountCents: number) => {
+    if (!budgetTransaction?.categoryId || !activeScenarioId) return;
+
+    // Create a one-time forecast event for this month
+    await addForecastEvent({
+      scenarioId: activeScenarioId,
+      type: 'expense',
+      description: `Budget allowance: ${budgetTransaction.description}`,
+      amountCents,
+      date: getToday(),
+      categoryId: budgetTransaction.categoryId,
+      savingsGoalId: null,
+    });
+
+    setBudgetTransaction(null);
+  }, [budgetTransaction, activeScenarioId, addForecastEvent]);
 
   const columns: ColumnDef<Transaction>[] = useMemo(
     () => [
@@ -302,9 +369,20 @@ export function TransactionsIndexPage() {
         cell: ({ row }) => {
           const transaction = row.original;
           const isDeleting = deletingId === transaction.id;
+          const canAddToBudget = transaction.type === 'expense' && transaction.categoryId && activeScenarioId;
 
           return (
             <div className="flex justify-end gap-1">
+              {canAddToBudget && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openBudgetDialog(transaction)}
+                  aria-label="Add to budget"
+                >
+                  <Target className="h-4 w-4" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -327,7 +405,7 @@ export function TransactionsIndexPage() {
         },
       },
     ],
-    [deletingId, openEditDialog, handleDelete, getCategoryName],
+    [deletingId, openEditDialog, handleDelete, getCategoryName, openBudgetDialog, activeScenarioId],
   );
 
   return (
@@ -441,6 +519,16 @@ export function TransactionsIndexPage() {
       />
 
       <UpImportDialog open={upImportOpen} onOpenChange={setUpImportOpen} />
+
+      <AddToBudgetDialog
+        open={budgetDialogOpen}
+        onOpenChange={setBudgetDialogOpen}
+        transaction={budgetTransaction}
+        categoryName={budgetTransactionCategoryName}
+        existingBudget={existingBudgetForTransaction}
+        onCreateRecurringBudget={handleCreateRecurringBudget}
+        onCreateOneTimeForecast={handleCreateOneTimeForecast}
+      />
 
       {/* Warning dialog for no category rules */}
       <Dialog open={importWarningOpen} onOpenChange={setImportWarningOpen}>

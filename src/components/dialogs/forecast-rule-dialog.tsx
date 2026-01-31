@@ -28,6 +28,8 @@ interface ForecastRuleDialogProps {
   rule?: ForecastRule | null;
   addRule: (data: CreateEntity<ForecastRule>) => Promise<ForecastRule>;
   updateRule: (id: string, updates: Partial<Omit<ForecastRule, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
+  /** Called after a new rule is created (not on edit) */
+  onRuleCreated?: (rule: ForecastRule) => void;
 }
 
 const MONTH_NAMES = [
@@ -37,7 +39,7 @@ const MONTH_NAMES = [
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRule, updateRule }: ForecastRuleDialogProps) {
+export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRule, updateRule, onRuleCreated }: ForecastRuleDialogProps) {
   const isEditing = !!rule;
 
   // Form state
@@ -135,7 +137,8 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
       if (isEditing && rule) {
         await updateRule(rule.id, data);
       } else {
-        await addRule(data);
+        const newRule = await addRule(data);
+        onRuleCreated?.(newRule);
       }
       onOpenChange(false);
     } catch (error) {
