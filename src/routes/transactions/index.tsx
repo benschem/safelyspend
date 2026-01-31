@@ -456,22 +456,22 @@ export function TransactionsIndexPage() {
           </h1>
           <p className="page-description">Past income, expenses, and savings.</p>
         </div>
-        <div className="flex flex-col items-stretch gap-2 sm:items-end">
-          <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="flex gap-2">
+          <div className="flex flex-col gap-1">
             <Button variant="secondary" onClick={handleImportClick}>
               <Download className="h-4 w-4" />
               Import CSV
             </Button>
-            <Button onClick={openAddDialog}>
-              <Plus className="h-4 w-4" />
-              Add Transaction
+            <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
+              <Link to="/categories/import-rules?from=transactions">
+                <Settings2 className="h-4 w-4" />
+                Import Rules
+              </Link>
             </Button>
           </div>
-          <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
-            <Link to="/categories/import-rules?from=transactions">
-              <Settings2 className="h-4 w-4" />
-              Import Rules
-            </Link>
+          <Button onClick={openAddDialog}>
+            <Plus className="h-4 w-4" />
+            Add Transaction
           </Button>
         </div>
       </div>

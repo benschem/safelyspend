@@ -956,7 +956,7 @@ export function BudgetPage() {
           </h1>
           <p className="page-description">Manage spending categories and set budget limits</p>
         </div>
-        <div className="flex flex-col items-stretch gap-2 sm:items-end">
+        <div className="flex flex-col items-stretch gap-1 sm:items-end">
           <div className="flex flex-wrap items-center gap-2">
             <ScenarioSelector />
             {activeTab === 'manage-budget' && (
@@ -984,14 +984,18 @@ export function BudgetPage() {
               </Button>
             )}
           </div>
-          {activeTab === 'manage-budget' && (
-            <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
-              <Link to="/categories/import-rules">
-                <Settings2 className="h-4 w-4" />
-                Manage Import Rules
-              </Link>
-            </Button>
-          )}
+          {/* Always render to maintain consistent height, hide on non-manage tabs */}
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className={cn('text-muted-foreground', activeTab !== 'manage-budget' && 'invisible')}
+          >
+            <Link to="/categories/import-rules">
+              <Settings2 className="h-4 w-4" />
+              Manage Import Rules
+            </Link>
+          </Button>
         </div>
       </div>
 
