@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert } from '@/components/ui/alert';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Switch } from '@/components/ui/switch';
 import {
   Tooltip,
   TooltipContent,
@@ -23,8 +22,6 @@ import { useForecasts } from '@/hooks/use-forecasts';
 import { CategoryBudgetDialog } from '@/components/dialogs/category-budget-dialog';
 import { formatCents } from '@/lib/utils';
 import type { Cadence, BudgetRule, Category } from '@/lib/types';
-import { SpendingBreakdownChart } from '@/components/charts/spending-breakdown-chart';
-import { buildCategoryColorMap } from '@/lib/chart-colors';
 
 interface OutletContext {
   activeScenarioId: string | null;
@@ -52,11 +49,11 @@ const CADENCE_LABELS: Record<Cadence, string> = {
 export function BudgetPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
-  const { categories, activeCategories, isLoading: categoriesLoading, addCategory, updateCategory, deleteCategory } = useCategories();
+  const { categories, isLoading: categoriesLoading, addCategory, updateCategory, deleteCategory } = useCategories();
   const { getRuleForCategory, isLoading: budgetLoading, setBudgetForCategory, deleteBudgetRule } =
     useBudgetRules(activeScenarioId);
   const { allTransactions, isLoading: transactionsLoading } = useTransactions();
-  const { rules: forecastRules, savingsForecasts, isLoading: forecastsLoading } = useForecasts(activeScenarioId,
+  const { rules: forecastRules, isLoading: forecastsLoading } = useForecasts(activeScenarioId,
     new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10),
     new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10),
   );
@@ -69,7 +66,6 @@ export function BudgetPage() {
   const [editingRow, setEditingRow] = useState<BudgetRow | null>(null);
   const [focusLimit, setFocusLimit] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [hiddenSegments, setHiddenSegments] = useState<Set<string>>(new Set());
 
   // Compute transaction counts per category
   const transactionCounts = useMemo(() => {
@@ -133,77 +129,6 @@ export function BudgetPage() {
         };
       });
   }, [categories, getRuleForCategory, transactionCounts, forecastCounts]);
-
-  const categoryColorMap = useMemo(() => {
-    const map = buildCategoryColorMap(activeCategories.map((c) => c.id));
-    map['savings'] = '#3b82f6';
-    return map;
-  }, [activeCategories]);
-
-  // Normalize amounts to monthly equivalents for accurate comparison
-  const toMonthly = (amount: number, cadence: Cadence): number => {
-    switch (cadence) {
-      case 'weekly': return Math.round(amount * 52 / 12);
-      case 'fortnightly': return Math.round(amount * 26 / 12);
-      case 'monthly': return amount;
-      case 'quarterly': return Math.round(amount / 3);
-      case 'yearly': return Math.round(amount / 12);
-    }
-  };
-
-  const budgetBreakdownSegments = useMemo(() => {
-    const tracked = allRows.filter((r) => r.rule && r.budgetAmount > 0 && !r.category.isArchived);
-    const categorySegments = tracked
-      .map((row) => ({
-        id: row.id,
-        name: row.categoryName,
-        amount: toMonthly(row.budgetAmount, row.cadence!),
-      }))
-      .sort((a, b) => b.amount - a.amount);
-
-    // Always include savings if there are any
-    const monthlySavings = savingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
-    if (monthlySavings > 0) {
-      categorySegments.push({
-        id: 'savings',
-        name: 'Savings',
-        amount: monthlySavings,
-      });
-    }
-
-    return categorySegments;
-  }, [allRows, savingsForecasts]);
-
-  const hasSavingsSegment = budgetBreakdownSegments.some((s) => s.id === 'savings');
-  const showSavingsInChart = !hiddenSegments.has('savings');
-
-  const handleSegmentToggle = useCallback((id: string) => {
-    setHiddenSegments((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
-
-  const handleSavingsToggle = useCallback((checked: boolean) => {
-    setHiddenSegments((prev) => {
-      const next = new Set(prev);
-      if (checked) {
-        next.delete('savings');
-      } else {
-        next.add('savings');
-      }
-      return next;
-    });
-  }, []);
-
-  const budgetBreakdownTotal = useMemo(() => {
-    return budgetBreakdownSegments.reduce((sum, s) => sum + s.amount, 0);
-  }, [budgetBreakdownSegments]);
 
   const openEditDialog = useCallback((row: BudgetRow, shouldFocusLimit = false) => {
     setEditingRow(row);
@@ -534,53 +459,6 @@ export function BudgetPage() {
       <Alert variant="info" className="mb-6">
         Budgets set spending limits for each category. They vary by scenario.
       </Alert>
-
-      {/* Breakdown Chart */}
-      {budgetBreakdownSegments.length > 0 && (
-        <div className="rounded-xl border bg-card p-5">
-          <div>
-            <h2 className="text-lg font-semibold">Breakdown</h2>
-            <p className="text-sm text-muted-foreground">How your budget is split across categories</p>
-          </div>
-          <div className="mt-4">
-            <SpendingBreakdownChart
-              segments={budgetBreakdownSegments}
-              total={budgetBreakdownTotal}
-              colorMap={categoryColorMap}
-              hiddenSegmentIds={hiddenSegments}
-              onSegmentToggle={handleSegmentToggle}
-            />
-          </div>
-          <div className="mt-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setHiddenSegments(new Set())}
-                className="cursor-pointer rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                Show All
-              </button>
-              <button
-                type="button"
-                onClick={() => setHiddenSegments(new Set(budgetBreakdownSegments.map((s) => s.id)))}
-                className="cursor-pointer rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                Hide All
-              </button>
-            </div>
-            {hasSavingsSegment && (
-              <label htmlFor="compare-savings" className="flex items-center gap-2 text-sm">
-                <Switch
-                  id="compare-savings"
-                  checked={showSavingsInChart}
-                  onCheckedChange={handleSavingsToggle}
-                />
-                <span className="text-muted-foreground">Include Savings</span>
-              </label>
-            )}
-          </div>
-        </div>
-      )}
 
       {categories.length === 0 ? (
         <div className="mt-8 space-y-4">

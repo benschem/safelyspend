@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { Link, useOutletContext, useSearchParams } from 'react-router';
 import { ChartSpline } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
@@ -12,6 +12,9 @@ import { useViewState } from '@/hooks/use-view-state';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
+import { useBudgetRules } from '@/hooks/use-budget-rules';
+import { useForecasts } from '@/hooks/use-forecasts';
+import { useCategories } from '@/hooks/use-categories';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 import { formatCompactDate, TIMELINE_UNIT_BOUNDS } from '@/lib/utils';
 import {
@@ -26,15 +29,16 @@ import {
   BudgetComparisonChart,
   CashFlowChart,
   SavingsOverTimeChart,
+  SpendingBreakdownChart,
 } from '@/components/charts';
 import { ScenarioSelector } from '@/components/scenario-selector';
-import type { TimelineMode, TimelineUnit } from '@/lib/types';
+import type { TimelineMode, TimelineUnit, Cadence } from '@/lib/types';
 
 interface OutletContext {
   activeScenarioId: string | null;
 }
 
-const VALID_TABS = ['cashflow', 'spending', 'savings'] as const;
+const VALID_TABS = ['cashflow', 'budget', 'spending', 'savings'] as const;
 type TabValue = (typeof VALID_TABS)[number];
 const STORAGE_KEY = 'budget:reportsTab';
 const SAVINGS_VIEW_KEY = 'budget:savingsChartView';
@@ -204,6 +208,12 @@ export function InsightsPage() {
     savingsByGoal,
   } = useReportsData(activeScenarioId, startDate, endDate);
 
+  // Budget breakdown data
+  const { budgetRules } = useBudgetRules(activeScenarioId);
+  const { savingsForecasts } = useForecasts(activeScenarioId, startDate, endDate);
+  const { activeCategories } = useCategories();
+  const [budgetHiddenSegments, setBudgetHiddenSegments] = useState<Set<string>>(new Set());
+
   // Validate savingsView - must be 'total', 'dedicated', or a valid goal ID
   const validGoalIds = useMemo(() => savingsByGoal.map((g) => g.goalId), [savingsByGoal]);
   const effectiveSavingsView = useMemo(() => {
@@ -238,6 +248,92 @@ export function InsightsPage() {
       };
     });
   }, [monthlySavings, savingsByGoal, emergencyFund]);
+
+  // Budget breakdown chart data
+  const toMonthly = useCallback((amount: number, cadence: Cadence): number => {
+    switch (cadence) {
+      case 'weekly': return Math.round(amount * 52 / 12);
+      case 'fortnightly': return Math.round(amount * 26 / 12);
+      case 'monthly': return amount;
+      case 'quarterly': return Math.round(amount / 3);
+      case 'yearly': return Math.round(amount / 12);
+    }
+  }, []);
+
+  // Calculate average monthly income from the date range
+  const averageMonthlyIncome = useMemo(() => {
+    if (monthlyNetFlow.length === 0) return 0;
+    const totalIncome = monthlyNetFlow.reduce(
+      (sum, m) => sum + m.income.actual + m.income.forecast,
+      0,
+    );
+    return Math.round(totalIncome / monthlyNetFlow.length);
+  }, [monthlyNetFlow]);
+
+  // Build category map for names
+  const categoryNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const cat of activeCategories) {
+      map[cat.id] = cat.name;
+    }
+    return map;
+  }, [activeCategories]);
+
+  // Budget breakdown segments relative to income
+  const budgetBreakdownSegments = useMemo(() => {
+    // Get budget rules with monthly amounts
+    const categorySegments = budgetRules
+      .filter((rule) => rule.amountCents > 0)
+      .map((rule) => ({
+        id: rule.categoryId,
+        name: categoryNameMap[rule.categoryId] ?? 'Unknown',
+        amount: toMonthly(rule.amountCents, rule.cadence),
+      }))
+      .sort((a, b) => b.amount - a.amount);
+
+    // Add savings
+    const monthlySavingsAmount = savingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
+    if (monthlySavingsAmount > 0) {
+      categorySegments.push({
+        id: 'savings',
+        name: 'Savings',
+        amount: monthlySavingsAmount,
+      });
+    }
+
+    // Calculate total budgeted
+    const totalBudgeted = categorySegments.reduce((sum, s) => sum + s.amount, 0);
+
+    // Add unbudgeted segment if income > budgeted
+    if (averageMonthlyIncome > totalBudgeted) {
+      categorySegments.push({
+        id: 'unbudgeted',
+        name: 'Unbudgeted',
+        amount: averageMonthlyIncome - totalBudgeted,
+      });
+    }
+
+    return categorySegments;
+  }, [budgetRules, categoryNameMap, toMonthly, savingsForecasts, averageMonthlyIncome]);
+
+  const budgetBreakdownColorMap = useMemo(() => {
+    const map = buildCategoryColorMap(activeCategories.map((c) => c.id));
+    map['savings'] = '#3b82f6';
+    map['unbudgeted'] = '#d1d5db'; // Gray for unbudgeted
+    return map;
+  }, [activeCategories]);
+
+  const handleBudgetSegmentToggle = useCallback((id: string) => {
+    setBudgetHiddenSegments((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
 
   // Build a shared colour map so categories have consistent colours across all charts
   const allCategoryIds = useMemo(() => {
@@ -460,6 +556,7 @@ export function InsightsPage() {
         <div className="inline-flex h-9 items-center rounded-lg bg-muted p-1 text-muted-foreground">
           {[
             { value: 'cashflow', label: 'Cash Flow' },
+            { value: 'budget', label: 'Budget' },
             { value: 'spending', label: 'Spending' },
             { value: 'savings', label: 'Savings' },
           ].map((tab) => (
@@ -486,6 +583,45 @@ export function InsightsPage() {
       {/* Content sections */}
       {isLoading ? (
         <PageLoading />
+      ) : activeTab === 'budget' ? (
+        <div className="rounded-xl border bg-card p-5">
+          <div className="mb-4 flex min-h-9 items-center">
+            <p className="text-sm text-muted-foreground">
+              How your income is budgeted
+            </p>
+          </div>
+          {averageMonthlyIncome > 0 ? (
+            <>
+              <SpendingBreakdownChart
+                segments={budgetBreakdownSegments}
+                total={averageMonthlyIncome}
+                colorMap={budgetBreakdownColorMap}
+                hiddenSegmentIds={budgetHiddenSegments}
+                onSegmentToggle={handleBudgetSegmentToggle}
+              />
+              <div className="mt-4 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBudgetHiddenSegments(new Set())}
+                  className="cursor-pointer rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  Show All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBudgetHiddenSegments(new Set(budgetBreakdownSegments.map((s) => s.id)))}
+                  className="cursor-pointer rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  Hide All
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
+              No income data available for this period
+            </div>
+          )}
+        </div>
       ) : activeTab === 'spending' ? (
         <div className="rounded-xl border bg-card p-5">
           <div className="mb-4 flex min-h-9 items-center">
