@@ -76,6 +76,7 @@ export interface ForecastRule extends BaseEntity {
   categoryId: string | null; // Required if type === 'expense'
   savingsGoalId: string | null; // Required if type === 'savings'
   notes?: string;
+  excludedDates?: string[]; // ISO dates to skip when expanding (for "delete this occurrence")
 }
 
 // -----------------------------------------------------------------------------

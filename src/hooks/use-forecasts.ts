@@ -41,6 +41,9 @@ function expandRule(
   const start = parseLocalDate(effectiveStart);
   const end = parseLocalDate(effectiveEnd);
 
+  // Build a Set of excluded dates for fast lookup
+  const excludedSet = new Set(rule.excludedDates ?? []);
+
   switch (rule.cadence) {
     case 'weekly': {
       const targetDay = rule.dayOfWeek ?? 0;
@@ -186,7 +189,8 @@ function expandRule(
     }
   }
 
-  return results;
+  // Filter out excluded dates
+  return results.filter((forecast) => !excludedSet.has(forecast.date));
 }
 
 /**
@@ -442,6 +446,15 @@ export function useForecasts(scenarioId: string | null, startDate?: string, endD
     await db.forecastRules.delete(id);
   }, []);
 
+  // Exclude a single occurrence of a recurring rule by adding the date to excludedDates
+  const excludeOccurrence = useCallback(async (ruleId: string, date: string) => {
+    const rule = allRules.find((r) => r.id === ruleId);
+    if (!rule) return;
+
+    const excludedDates = [...(rule.excludedDates ?? []), date];
+    await db.forecastRules.update(ruleId, { excludedDates, updatedAt: now() });
+  }, [allRules]);
+
   // CRUD for events
   const addEvent = useCallback(async (data: CreateEntity<ForecastEvent>) => {
     const timestamp = now();
@@ -515,6 +528,7 @@ export function useForecasts(scenarioId: string | null, startDate?: string, endD
     addRule,
     updateRule,
     deleteRule,
+    excludeOccurrence,
     // Event CRUD
     addEvent,
     updateEvent,

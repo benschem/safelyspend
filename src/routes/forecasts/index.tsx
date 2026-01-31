@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useOutletContext, Link, useSearchParams } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ type CategoryFilter = 'all' | string;
 import { DateRangeFilter } from '@/components/date-range-filter';
 import { ForecastEventDialog } from '@/components/dialogs/forecast-event-dialog';
 import { ForecastRuleDialog } from '@/components/dialogs/forecast-rule-dialog';
+import { DeleteForecastDialog } from '@/components/dialogs/delete-forecast-dialog';
 import { formatCents, formatDate, today as getToday } from '@/lib/utils';
 import type { ExpandedForecast, ForecastEvent, ForecastRule } from '@/lib/types';
 
@@ -59,7 +60,7 @@ export function ForecastIndexPage() {
   const queryStartDate = filterStartDate || defaultStart;
   const queryEndDate = filterEndDate || defaultEnd;
 
-  const { expandedForecasts, rules, events, isLoading: forecastsLoading, addRule, updateRule, deleteRule, addEvent, updateEvent, deleteEvent } = useForecasts(activeScenarioId, queryStartDate, queryEndDate);
+  const { expandedForecasts, rules, events, isLoading: forecastsLoading, addRule, updateRule, deleteRule, excludeOccurrence, addEvent, updateEvent, deleteEvent } = useForecasts(activeScenarioId, queryStartDate, queryEndDate);
 
   // Combined loading state from all data hooks
   const isLoading = scenariosLoading || categoriesLoading || forecastsLoading;
@@ -79,7 +80,8 @@ export function ForecastIndexPage() {
   const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<ForecastEvent | null>(null);
   const [editingRule, setEditingRule] = useState<ForecastRule | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingForecast, setDeletingForecast] = useState<ExpandedForecast | null>(null);
 
   const getCategoryName = useCallback(
     (id: string | null) => (id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-'),
@@ -135,30 +137,28 @@ export function ForecastIndexPage() {
     }
   }, []);
 
-  const handleDelete = useCallback((forecast: ExpandedForecast) => {
-    const id = forecast.sourceId;
-    if (deletingId === id) {
-      if (forecast.sourceType === 'rule') {
-        deleteRule(id);
-      } else {
-        deleteEvent(id);
-      }
-      setDeletingId(null);
-    } else {
-      setDeletingId(id);
-    }
-  }, [deletingId, deleteRule, deleteEvent]);
+  const openDeleteDialog = useCallback((forecast: ExpandedForecast) => {
+    setDeletingForecast(forecast);
+    setDeleteDialogOpen(true);
+  }, []);
 
-  // Close delete confirmation on Escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && deletingId) {
-        setDeletingId(null);
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [deletingId]);
+  const handleDeleteOccurrence = useCallback(() => {
+    if (!deletingForecast) return;
+    excludeOccurrence(deletingForecast.sourceId, deletingForecast.date);
+    setDeleteDialogOpen(false);
+    setDeletingForecast(null);
+  }, [deletingForecast, excludeOccurrence]);
+
+  const handleDeleteAll = useCallback(() => {
+    if (!deletingForecast) return;
+    if (deletingForecast.sourceType === 'rule') {
+      deleteRule(deletingForecast.sourceId);
+    } else {
+      deleteEvent(deletingForecast.sourceId);
+    }
+    setDeleteDialogOpen(false);
+    setDeletingForecast(null);
+  }, [deletingForecast, deleteRule, deleteEvent]);
 
   const columns: ColumnDef<ExpandedForecast>[] = useMemo(
     () => [
@@ -287,7 +287,6 @@ export function ForecastIndexPage() {
         id: 'actions',
         cell: ({ row }) => {
           const forecast = row.original;
-          const isDeleting = deletingId === forecast.sourceId;
 
           return (
             <div className="flex justify-end gap-1">
@@ -300,20 +299,19 @@ export function ForecastIndexPage() {
                 <Pencil className="h-4 w-4" />
               </Button>
               <Button
-                variant={isDeleting ? 'destructive' : 'ghost'}
+                variant="ghost"
                 size="sm"
-                onClick={() => handleDelete(forecast)}
-                onBlur={() => setTimeout(() => setDeletingId(null), 200)}
-                aria-label={isDeleting ? 'Confirm delete' : 'Delete forecast'}
+                onClick={() => openDeleteDialog(forecast)}
+                aria-label="Delete forecast"
               >
-                {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+                <Trash2 className="h-4 w-4" />
               </Button>
             </div>
           );
         },
       },
     ],
-    [deletingId, openEditDialog, handleDelete, getCategoryName],
+    [openEditDialog, openDeleteDialog, getCategoryName],
   );
 
   // Show loading spinner while data is being fetched
@@ -333,7 +331,7 @@ export function ForecastIndexPage() {
             <div className="page-title-icon bg-slate-500/10">
               <Telescope className="h-5 w-5 text-slate-500" />
             </div>
-            Forecasts
+            Forecast Transactions
           </h1>
           <p className="page-description">
             Projected income, expenses, and savings for a scenario.
@@ -357,14 +355,14 @@ export function ForecastIndexPage() {
             <div className="page-title-icon bg-slate-500/10">
               <Telescope className="h-5 w-5 text-slate-500" />
             </div>
-            Forecasts
+            Forecast Transactions
           </h1>
           <p className="page-description">
             Projected income, expenses, and savings for {activeScenario.name}.
           </p>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <div className="flex gap-2">
+        <div className="flex flex-col items-stretch gap-2 sm:items-end">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Button variant="secondary" onClick={openAddEventDialog}>
               <Plus className="h-4 w-4" />
               Add One-Time
@@ -383,11 +381,12 @@ export function ForecastIndexPage() {
         </div>
       </div>
 
+      <Alert variant="info" className="mb-6">
+        Forecast transactions are planned future income, expenses, and savings. They vary by scenario.
+      </Alert>
+
       {!hasAnyForecasts ? (
         <div className="mt-6 space-y-4">
-          <Alert variant="info">
-            Add your salary, rent, subscriptions, and other regular income and expenses to predict future cash flow.
-          </Alert>
           <div className="empty-state">
             <p className="empty-state-text">No forecasts yet.</p>
             <div className="empty-state-action flex justify-center gap-2">
@@ -471,6 +470,14 @@ export function ForecastIndexPage() {
         rule={editingRule}
         addRule={addRule}
         updateRule={updateRule}
+      />
+
+      <DeleteForecastDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        forecast={deletingForecast}
+        onDeleteOccurrence={handleDeleteOccurrence}
+        onDeleteAll={handleDeleteAll}
       />
     </div>
   );
