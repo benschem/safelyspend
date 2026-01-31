@@ -1197,63 +1197,14 @@ export function BudgetPage() {
 
   return (
     <div className="page-shell">
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="page-title">
-            <div className="page-title-icon bg-slate-500/10">
-              <Target className="h-5 w-5 text-slate-500" />
-            </div>
-            Budget
-          </h1>
-          <p className="page-description">Manage budgets and expected </p>
-        </div>
-        <div className="flex flex-col items-stretch gap-1 sm:items-end">
-          <div className="flex flex-wrap items-center gap-2">
-            <ScenarioSelector />
-            {activeTab === 'categories' && (
-              <Button onClick={() => setAddDialogOpen(true)}>
-                <Plus className="h-4 w-4" />
-                Add Category
-              </Button>
-            )}
-            {activeTab === 'income' && (
-              <Button onClick={openAddRuleDialog}>
-                <Plus className="h-4 w-4" />
-                Add Income
-              </Button>
-            )}
-            {activeTab === 'recurring-expenses' && (
-              <Button onClick={openAddRuleDialog}>
-                <Plus className="h-4 w-4" />
-                Add Expense
-              </Button>
-            )}
-            {activeTab === 'savings-contributions' && (
-              <Button onClick={openAddRuleDialog}>
-                <Plus className="h-4 w-4" />
-                Add Contribution
-              </Button>
-            )}
-            {activeTab === 'scenarios' && (
-              <Button onClick={openAddScenarioDialog}>
-                <Plus className="h-4 w-4" />
-                Add Scenario
-              </Button>
-            )}
+      <div className="page-header mb-8">
+        <h1 className="page-title">
+          <div className="page-title-icon bg-slate-500/10">
+            <Target className="h-5 w-5 text-slate-500" />
           </div>
-          {/* Always render to maintain consistent height, hide on non-categories tabs */}
-          <Button
-            variant="ghost"
-            size="sm"
-            asChild
-            className={cn('text-muted-foreground', activeTab !== 'categories' && 'invisible')}
-          >
-            <Link to="/categories/import-rules">
-              <Settings2 className="h-4 w-4" />
-              Manage Import Rules
-            </Link>
-          </Button>
-        </div>
+          Budget
+        </h1>
+        <p className="page-description">Manage budgets and expected transactions</p>
       </div>
 
       {/* Budget health summary - always shown */}
@@ -1450,6 +1401,21 @@ export function BudgetPage() {
               searchKey="categoryName"
               searchPlaceholder="Search categories..."
               showPagination={false}
+              filterSlot={
+                <>
+                  <ScenarioSelector />
+                  <Button onClick={() => setAddDialogOpen(true)}>
+                    <Plus className="h-4 w-4" />
+                    Add Category
+                  </Button>
+                  <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
+                    <Link to="/categories/import-rules">
+                      <Settings2 className="h-4 w-4" />
+                      Import Rules
+                    </Link>
+                  </Button>
+                </>
+              }
             />
           )}
         </>
@@ -1479,21 +1445,28 @@ export function BudgetPage() {
               showPagination={false}
               emptyMessage="No expected expenses found matching your filters."
               filterSlot={
-                <Select value={expenseFilterCategory} onValueChange={setExpenseFilterCategory}>
-                  <SelectTrigger className={`w-44 ${expenseFilterCategory === 'all' ? 'text-muted-foreground' : ''}`}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {activeCategories
-                      .sort((a, b) => a.name.localeCompare(b.name))
-                      .map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+                <>
+                  <Select value={expenseFilterCategory} onValueChange={setExpenseFilterCategory}>
+                    <SelectTrigger className={`w-44 ${expenseFilterCategory === 'all' ? 'text-muted-foreground' : ''}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {activeCategories
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <ScenarioSelector />
+                  <Button onClick={openAddRuleDialog}>
+                    <Plus className="h-4 w-4" />
+                    Add Expense
+                  </Button>
+                </>
               }
             />
           )}
@@ -1522,6 +1495,15 @@ export function BudgetPage() {
               searchKey="description"
               searchPlaceholder="Search income..."
               showPagination={false}
+              filterSlot={
+                <>
+                  <ScenarioSelector />
+                  <Button onClick={openAddRuleDialog}>
+                    <Plus className="h-4 w-4" />
+                    Add Income
+                  </Button>
+                </>
+              }
             />
           )}
         </>
@@ -1549,6 +1531,15 @@ export function BudgetPage() {
               searchKey="description"
               searchPlaceholder="Search savings..."
               showPagination={false}
+              filterSlot={
+                <>
+                  <ScenarioSelector />
+                  <Button onClick={openAddRuleDialog}>
+                    <Plus className="h-4 w-4" />
+                    Add Contribution
+                  </Button>
+                </>
+              }
             />
           )}
         </>
@@ -1575,6 +1566,12 @@ export function BudgetPage() {
               searchKey="name"
               searchPlaceholder="Search scenarios..."
               showPagination={false}
+              filterSlot={
+                <Button onClick={openAddScenarioDialog}>
+                  <Plus className="h-4 w-4" />
+                  Add Scenario
+                </Button>
+              }
             />
           )}
         </>
