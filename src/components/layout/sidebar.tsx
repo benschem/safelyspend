@@ -1,10 +1,8 @@
 import { NavLink, useLocation } from 'react-router';
 import {
   Camera,
-  Telescope,
   Receipt,
   Target,
-  Tags,
   PiggyBank,
   Layers,
   Settings,
@@ -98,9 +96,6 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         <NavItem to="/budget" icon={<Target className="h-4 w-4" />} onClick={onNavigate}>
           Budget
         </NavItem>
-        <NavItem to="/forecasts" icon={<Telescope className="h-4 w-4" />} onClick={onNavigate}>
-          Forecast Transactions
-        </NavItem>
         <NavItem to="/scenarios" icon={<Layers className="h-4 w-4" />} onClick={onNavigate}>
           Scenarios
         </NavItem>
@@ -109,16 +104,8 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       <Separator className="my-2" />
 
       <NavSection title="Track">
-        <NavItem to="/transactions" icon={<Receipt className="h-4 w-4" />} onClick={onNavigate}>
-          Transactions
-        </NavItem>
-      </NavSection>
-
-      <Separator className="my-2" />
-
-      <NavSection title="Manage">
-        <NavItem to="/categories" icon={<Tags className="h-4 w-4" />} onClick={onNavigate}>
-          Categories
+        <NavItem to="/money" icon={<Receipt className="h-4 w-4" />} onClick={onNavigate}>
+          Money In/Out
         </NavItem>
       </NavSection>
 

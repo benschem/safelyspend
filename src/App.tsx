@@ -6,13 +6,10 @@ import { ErrorBoundary } from '@/components/error-boundary';
 
 // Route components
 import { SnapshotPage } from '@/routes/overview';
-import { ForecastIndexPage } from '@/routes/forecasts/index';
-import { RecurringIndexPage } from '@/routes/forecasts/recurring/index';
+import { MoneyIndexPage } from '@/routes/money/index';
 import { BudgetPage } from '@/routes/budget';
 import { SpendingPage } from '@/routes/spending';
-import { TransactionsIndexPage } from '@/routes/transactions/index';
 import { TransactionNewPage } from '@/routes/transactions/new';
-import { CategoriesIndexPage } from '@/routes/categories/index';
 import { CategoryDetailPage } from '@/routes/categories/detail';
 import { CategoryImportRulesPage } from '@/routes/categories/import-rules';
 import { SavingsIndexPage } from '@/routes/savings/index';
@@ -43,9 +40,14 @@ const router = createBrowserRouter([
       // Snapshot (current position)
       { path: 'snapshot', element: <SnapshotPage /> },
 
-      // Forecasts (plan)
-      { path: 'forecasts', element: <ForecastIndexPage /> },
-      { path: 'forecasts/recurring', element: <RecurringIndexPage /> },
+      // Money In/Out (combined transactions + forecasts + recurring)
+      { path: 'money', element: <MoneyIndexPage /> },
+
+      // Legacy redirects
+      { path: 'transactions', element: <Navigate to="/money" replace /> },
+      { path: 'forecasts', element: <Navigate to="/money?tab=expected" replace /> },
+      { path: 'forecasts/recurring', element: <Navigate to="/money?tab=recurring" replace /> },
+      { path: 'recurring', element: <Navigate to="/money?tab=recurring" replace /> },
 
       // Budget - spending limits (plan)
       { path: 'budget', element: <BudgetPage /> },
@@ -53,12 +55,11 @@ const router = createBrowserRouter([
       // Spending - period view (track)
       { path: 'spending', element: <SpendingPage /> },
 
-      // Transactions (track)
-      { path: 'transactions', element: <TransactionsIndexPage /> },
+      // Transactions new page (still needed for direct navigation)
       { path: 'transactions/new', element: <TransactionNewPage /> },
 
-      // Categories (track)
-      { path: 'categories', element: <CategoriesIndexPage /> },
+      // Categories - redirect to budget, keep detail page
+      { path: 'categories', element: <Navigate to="/budget" replace /> },
       { path: 'categories/:id', element: <CategoryDetailPage /> },
       { path: 'categories/import-rules', element: <CategoryImportRulesPage /> },
 

@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Link, useOutletContext } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Alert } from '@/components/ui/alert';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Switch } from '@/components/ui/switch';
@@ -11,17 +12,17 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Pencil, Trash2, Plus, Target } from 'lucide-react';
+import { Pencil, Trash2, Plus, Target, Archive, ArchiveRestore, Settings2 } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useCategories } from '@/hooks/use-categories';
+import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { CategoryBudgetDialog } from '@/components/dialogs/category-budget-dialog';
-import { BudgetRuleDialog } from '@/components/dialogs/budget-rule-dialog';
 import { formatCents } from '@/lib/utils';
-import type { Cadence, BudgetRule } from '@/lib/types';
+import type { Cadence, BudgetRule, Category } from '@/lib/types';
 import { SpendingBreakdownChart } from '@/components/charts/spending-breakdown-chart';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 
@@ -31,11 +32,13 @@ interface OutletContext {
 
 interface BudgetRow {
   id: string;
-  categoryId: string;
+  category: Category;
   categoryName: string;
   budgetAmount: number;
   cadence: Cadence | null;
   rule: BudgetRule | null;
+  transactionCount: number;
+  forecastCount: number;
 }
 
 const CADENCE_LABELS: Record<Cadence, string> = {
@@ -49,18 +52,16 @@ const CADENCE_LABELS: Record<Cadence, string> = {
 export function BudgetPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
-  const { activeCategories, isLoading: categoriesLoading, addCategory } = useCategories();
+  const { categories, activeCategories, isLoading: categoriesLoading, addCategory, updateCategory, deleteCategory } = useCategories();
   const { getRuleForCategory, isLoading: budgetLoading, setBudgetForCategory, deleteBudgetRule } =
     useBudgetRules(activeScenarioId);
+  const { allTransactions, isLoading: transactionsLoading } = useTransactions();
+  const { rules: forecastRules, savingsForecasts, isLoading: forecastsLoading } = useForecasts(activeScenarioId,
+    new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10),
+    new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10),
+  );
 
-  const isLoading = categoriesLoading || budgetLoading;
-
-  // Get current month range for savings forecasts in breakdown chart
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
-
-  const { savingsForecasts } = useForecasts(activeScenarioId, monthStart, monthEnd);
+  const isLoading = categoriesLoading || budgetLoading || transactionsLoading || forecastsLoading;
 
   // Dialog state
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -69,21 +70,68 @@ export function BudgetPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [hiddenSegments, setHiddenSegments] = useState<Set<string>>(new Set());
 
+  // Compute transaction counts per category
+  const transactionCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const t of allTransactions) {
+      if (t.categoryId) {
+        counts[t.categoryId] = (counts[t.categoryId] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }, [allTransactions]);
+
+  // Compute forecast rule counts per category
+  const forecastCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const r of forecastRules) {
+      if (r.categoryId) {
+        counts[r.categoryId] = (counts[r.categoryId] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }, [forecastRules]);
+
+  // Check if category has references (transactions or forecasts)
+  const hasReferences = useCallback((id: string) => {
+    return (transactionCounts[id] ?? 0) > 0 || (forecastCounts[id] ?? 0) > 0;
+  }, [transactionCounts, forecastCounts]);
+
+  // Get reference count text for warning
+  const getReferenceText = useCallback((id: string) => {
+    const txCount = transactionCounts[id] ?? 0;
+    const fcCount = forecastCounts[id] ?? 0;
+    const parts: string[] = [];
+    if (txCount > 0) parts.push(`${txCount} transaction${txCount !== 1 ? 's' : ''}`);
+    if (fcCount > 0) parts.push(`${fcCount} expected transaction${fcCount !== 1 ? 's' : ''}`);
+    return parts.join(' and ');
+  }, [transactionCounts, forecastCounts]);
+
+  // Build rows from all categories (active first, then archived)
   const allRows: BudgetRow[] = useMemo(() => {
-    return activeCategories
+    return [...categories]
+      .sort((a, b) => {
+        // First sort by archived status
+        if (a.isArchived !== b.isArchived) {
+          return a.isArchived ? 1 : -1;
+        }
+        // Then by name
+        return a.name.localeCompare(b.name);
+      })
       .map((category) => {
         const rule = getRuleForCategory(category.id);
         return {
           id: category.id,
-          categoryId: category.id,
+          category,
           categoryName: category.name,
           budgetAmount: rule?.amountCents ?? 0,
           cadence: rule?.cadence ?? null,
           rule,
+          transactionCount: transactionCounts[category.id] ?? 0,
+          forecastCount: forecastCounts[category.id] ?? 0,
         };
-      })
-      .sort((a, b) => a.categoryName.localeCompare(b.categoryName));
-  }, [activeCategories, getRuleForCategory]);
+      });
+  }, [categories, getRuleForCategory, transactionCounts, forecastCounts]);
 
   const categoryColorMap = useMemo(() => {
     const map = buildCategoryColorMap(activeCategories.map((c) => c.id));
@@ -103,10 +151,10 @@ export function BudgetPage() {
   };
 
   const budgetBreakdownSegments = useMemo(() => {
-    const tracked = allRows.filter((r) => r.rule && r.budgetAmount > 0);
+    const tracked = allRows.filter((r) => r.rule && r.budgetAmount > 0 && !r.category.isArchived);
     const categorySegments = tracked
       .map((row) => ({
-        id: row.categoryId,
+        id: row.id,
         name: row.categoryName,
         amount: toMonthly(row.budgetAmount, row.cadence!),
       }))
@@ -171,16 +219,13 @@ export function BudgetPage() {
   const handleDelete = useCallback(
     (categoryId: string) => {
       if (deletingId === categoryId) {
-        const rule = getRuleForCategory(categoryId);
-        if (rule) {
-          deleteBudgetRule(rule.id);
-        }
+        deleteCategory(categoryId);
         setDeletingId(null);
       } else {
         setDeletingId(categoryId);
       }
     },
-    [deletingId, getRuleForCategory, deleteBudgetRule],
+    [deletingId, deleteCategory],
   );
 
   // Close delete confirmation on Escape key
@@ -201,15 +246,32 @@ export function BudgetPage() {
         header: ({ column }) => <SortableHeader column={column}>Category</SortableHeader>,
         cell: ({ row }) => {
           const budgetRow = row.original;
+          const isArchived = budgetRow.category.isArchived;
           return (
-            <Link
-              to={`/categories/${budgetRow.categoryId}`}
-              className="font-medium hover:underline"
-            >
-              {budgetRow.categoryName}
-            </Link>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    to={`/categories/${budgetRow.id}`}
+                    className={`font-medium hover:underline ${isArchived ? 'text-muted-foreground' : ''}`}
+                  >
+                    {budgetRow.categoryName}
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>View category details</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           );
         },
+      },
+      {
+        accessorKey: 'isArchived',
+        header: ({ column }) => <SortableHeader column={column}>Status</SortableHeader>,
+        accessorFn: (row) => row.category.isArchived,
+        cell: ({ row }) =>
+          row.original.category.isArchived ? (
+            <Badge variant="secondary">Archived</Badge>
+          ) : null,
       },
       {
         accessorKey: 'budgetAmount',
@@ -220,13 +282,14 @@ export function BudgetPage() {
         ),
         cell: ({ row }) => {
           const budgetRow = row.original;
+          const isArchived = budgetRow.category.isArchived;
 
           if (!budgetRow.rule) {
             return (
               <button
                 type="button"
                 onClick={() => openEditDialog(budgetRow)}
-                className="cursor-pointer text-right text-sm text-muted-foreground hover:text-foreground"
+                className={`cursor-pointer text-right text-sm hover:text-foreground ${isArchived ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}
               >
                 Set limit
               </button>
@@ -234,9 +297,67 @@ export function BudgetPage() {
           }
 
           return (
-            <div className="text-right font-mono">
+            <div className={`text-right font-mono ${isArchived ? 'text-muted-foreground' : ''}`}>
               {formatCents(budgetRow.budgetAmount)}
               <span className="text-muted-foreground">{CADENCE_LABELS[budgetRow.cadence!]}</span>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'transactions',
+        header: () => <div className="text-center">Past</div>,
+        cell: ({ row }) => {
+          const budgetRow = row.original;
+          const count = budgetRow.transactionCount;
+          const isArchived = budgetRow.category.isArchived;
+          if (count === 0) {
+            return <div className={`text-center ${isArchived ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>—</div>;
+          }
+          return (
+            <div className="text-center">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to={`/money?category=${budgetRow.id}&from=budget`}
+                      className={`hover:underline ${isArchived ? 'text-muted-foreground' : ''}`}
+                    >
+                      {count}
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent>View past transactions in this category</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'expected',
+        header: () => <div className="text-center">Expected</div>,
+        cell: ({ row }) => {
+          const budgetRow = row.original;
+          const count = budgetRow.forecastCount;
+          const isArchived = budgetRow.category.isArchived;
+          if (count === 0) {
+            return <div className={`text-center ${isArchived ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>—</div>;
+          }
+          return (
+            <div className="text-center">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to={`/money?tab=expected&category=${budgetRow.id}&from=budget`}
+                      className={`hover:underline ${isArchived ? 'text-muted-foreground' : ''}`}
+                    >
+                      {count}
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent>View expected transactions in this category</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           );
         },
@@ -246,6 +367,7 @@ export function BudgetPage() {
         cell: ({ row }) => {
           const budgetRow = row.original;
           const isDeleting = deletingId === budgetRow.id;
+          const isArchived = budgetRow.category.isArchived;
 
           return (
             <TooltipProvider>
@@ -263,7 +385,39 @@ export function BudgetPage() {
                   </TooltipTrigger>
                   <TooltipContent>Edit</TooltipContent>
                 </Tooltip>
-                {budgetRow.rule && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => updateCategory(budgetRow.id, { isArchived: !isArchived })}
+                      aria-label={isArchived ? 'Restore' : 'Archive'}
+                    >
+                      {isArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{isArchived ? 'Restore' : 'Archive'}</TooltipContent>
+                </Tooltip>
+                {hasReferences(budgetRow.id) ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-block">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled
+                          className="pointer-events-none"
+                          aria-label="Delete (disabled)"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Archive instead — used by {getReferenceText(budgetRow.id)}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -285,7 +439,7 @@ export function BudgetPage() {
         },
       },
     ],
-    [deletingId, openEditDialog, handleDelete],
+    [deletingId, openEditDialog, handleDelete, updateCategory, hasReferences, getReferenceText],
   );
 
   // Show loading spinner while data is being fetched
@@ -307,7 +461,7 @@ export function BudgetPage() {
             </div>
             Budget
           </h1>
-          <p className="page-description">Set spending limits by category</p>
+          <p className="page-description">Manage spending categories and set budget limits</p>
         </div>
         <div className="empty-state">
           <p className="empty-state-text">Select a scenario to configure spending limits.</p>
@@ -329,13 +483,21 @@ export function BudgetPage() {
             </div>
             Budget
           </h1>
-          <p className="page-description">Set spending limits by category</p>
+          <p className="page-description">Manage spending categories and set budget limits</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <ScenarioSelector />
-          <Button onClick={() => setAddDialogOpen(true)}>
-            <Plus className="h-4 w-4" />
-            Add Category
+        <div className="flex flex-col items-stretch gap-2 sm:items-end">
+          <div className="flex flex-wrap items-center gap-2">
+            <ScenarioSelector />
+            <Button onClick={() => setAddDialogOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Add Category
+            </Button>
+          </div>
+          <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
+            <Link to="/categories/import-rules">
+              <Settings2 className="h-4 w-4" />
+              Manage Import Rules
+            </Link>
           </Button>
         </div>
       </div>
@@ -375,16 +537,16 @@ export function BudgetPage() {
         </div>
       )}
 
-      {activeCategories.length === 0 ? (
+      {categories.length === 0 ? (
         <div className="mt-8 space-y-4">
           <Alert variant="info">
-            Spending limits help you control how much you spend in each category. Create categories first.
+            Create categories like groceries, transport, or entertainment to see where your money goes.
           </Alert>
           <div className="empty-state">
-            <p className="empty-state-text">No categories found.</p>
+            <p className="empty-state-text">No categories yet.</p>
             <Button className="empty-state-action" onClick={() => setAddDialogOpen(true)}>
               <Plus className="h-4 w-4" />
-              Add Category
+              Add your first category
             </Button>
           </div>
         </div>
@@ -400,6 +562,7 @@ export function BudgetPage() {
         </div>
       )}
 
+      {/* Add Category Dialog */}
       <CategoryBudgetDialog
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
@@ -408,13 +571,16 @@ export function BudgetPage() {
         setBudgetForCategory={setBudgetForCategory}
       />
 
+      {/* Edit Category Dialog */}
       {editingRow && (
-        <BudgetRuleDialog
+        <CategoryBudgetDialog
           open={editDialogOpen}
           onOpenChange={handleEditDialogClose}
-          categoryId={editingRow.categoryId}
-          categoryName={editingRow.categoryName}
-          rule={editingRow.rule}
+          scenarioId={activeScenarioId}
+          category={editingRow.category}
+          existingRule={editingRow.rule}
+          addCategory={addCategory}
+          updateCategory={updateCategory}
           setBudgetForCategory={setBudgetForCategory}
           deleteBudgetRule={deleteBudgetRule}
         />

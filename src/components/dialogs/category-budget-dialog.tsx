@@ -17,13 +17,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { parseCentsFromInput } from '@/lib/utils';
-import type { Cadence, Category, CreateEntity } from '@/lib/types';
+import type { Cadence, Category, CreateEntity, BudgetRule } from '@/lib/types';
 
 interface CategoryBudgetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   scenarioId: string | null;
+  // For edit mode
+  category?: Category | null;
+  existingRule?: BudgetRule | null;
+  // Callbacks
   addCategory: (data: CreateEntity<Category>) => Promise<Category>;
+  updateCategory?: (id: string, updates: Partial<Omit<Category, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
   setBudgetForCategory: (
     categoryId: string,
     amountCents: number,
@@ -32,12 +37,24 @@ interface CategoryBudgetDialogProps {
     dayOfMonth?: number,
     monthOfQuarter?: number
   ) => Promise<void>;
+  deleteBudgetRule?: (id: string) => Promise<void>;
 }
 
 const DAY_OF_WEEK_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_OF_QUARTER_LABELS = ['1st month', '2nd month', '3rd month'];
 
-export function CategoryBudgetDialog({ open, onOpenChange, scenarioId, addCategory, setBudgetForCategory }: CategoryBudgetDialogProps) {
+export function CategoryBudgetDialog({
+  open,
+  onOpenChange,
+  scenarioId,
+  category,
+  existingRule,
+  addCategory,
+  updateCategory,
+  setBudgetForCategory,
+  deleteBudgetRule,
+}: CategoryBudgetDialogProps) {
+  const isEditing = !!category;
 
   // Form state
   const [name, setName] = useState('');
@@ -49,14 +66,35 @@ export function CategoryBudgetDialog({ open, onOpenChange, scenarioId, addCatego
 
   useEffect(() => {
     if (open) {
-      setName('');
-      setAmount('');
-      setCadence('monthly');
-      setDay('1');
-      setMonthOfQuarter('0');
+      if (category) {
+        // Edit mode - pre-fill with existing values
+        setName(category.name);
+        if (existingRule) {
+          setAmount((existingRule.amountCents / 100).toFixed(2));
+          setCadence(existingRule.cadence);
+          if (existingRule.cadence === 'weekly' || existingRule.cadence === 'fortnightly') {
+            setDay(String(existingRule.dayOfWeek ?? 1));
+          } else {
+            setDay(String(existingRule.dayOfMonth ?? 1));
+          }
+          setMonthOfQuarter(String(existingRule.monthOfQuarter ?? 0));
+        } else {
+          setAmount('');
+          setCadence('monthly');
+          setDay('1');
+          setMonthOfQuarter('0');
+        }
+      } else {
+        // Create mode - reset to defaults
+        setName('');
+        setAmount('');
+        setCadence('monthly');
+        setDay('1');
+        setMonthOfQuarter('0');
+      }
       setFormError(null);
     }
-  }, [open]);
+  }, [open, category, existingRule]);
 
   const handleSave = async () => {
     setFormError(null);
@@ -67,26 +105,48 @@ export function CategoryBudgetDialog({ open, onOpenChange, scenarioId, addCatego
     }
 
     try {
-      // Create the category first
-      const newCategory = await addCategory({ name: name.trim(), isArchived: false });
-
-      // If amount is provided, create the budget rule
       const amountCents = parseCentsFromInput(amount);
-      if (amountCents > 0 && scenarioId) {
-        const isWeekly = cadence === 'weekly' || cadence === 'fortnightly';
-        const isQuarterly = cadence === 'quarterly';
-        await setBudgetForCategory(
-          newCategory.id,
-          amountCents,
-          cadence,
-          isWeekly ? parseInt(day) : undefined,
-          isWeekly ? undefined : parseInt(day),
-          isQuarterly ? parseInt(monthOfQuarter) : undefined,
-        );
+      const isWeekly = cadence === 'weekly' || cadence === 'fortnightly';
+      const isQuarterly = cadence === 'quarterly';
+
+      if (isEditing && category && updateCategory) {
+        // Update existing category name
+        await updateCategory(category.id, { name: name.trim() });
+
+        // Handle budget rule changes
+        if (amountCents > 0 && scenarioId) {
+          // Set or update budget
+          await setBudgetForCategory(
+            category.id,
+            amountCents,
+            cadence,
+            isWeekly ? parseInt(day) : undefined,
+            isWeekly ? undefined : parseInt(day),
+            isQuarterly ? parseInt(monthOfQuarter) : undefined,
+          );
+        } else if (amountCents === 0 && existingRule && deleteBudgetRule) {
+          // Remove budget if amount is cleared
+          await deleteBudgetRule(existingRule.id);
+        }
+      } else {
+        // Create new category
+        const newCategory = await addCategory({ name: name.trim(), isArchived: false });
+
+        // If amount is provided, create the budget rule
+        if (amountCents > 0 && scenarioId) {
+          await setBudgetForCategory(
+            newCategory.id,
+            amountCents,
+            cadence,
+            isWeekly ? parseInt(day) : undefined,
+            isWeekly ? undefined : parseInt(day),
+            isQuarterly ? parseInt(monthOfQuarter) : undefined,
+          );
+        }
       }
       onOpenChange(false);
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Failed to create category. Please try again.');
+      setFormError(error instanceof Error ? error.message : `Failed to ${isEditing ? 'update' : 'create'} category. Please try again.`);
     }
   };
 
@@ -97,9 +157,11 @@ export function CategoryBudgetDialog({ open, onOpenChange, scenarioId, addCatego
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Category with Budget</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit Category' : 'Add Category'}</DialogTitle>
           <DialogDescription>
-            Create a new category and optionally set a budget limit for it.
+            {isEditing
+              ? 'Update the category name and budget limit.'
+              : 'Create a new category and optionally set a budget limit.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -117,14 +179,20 @@ export function CategoryBudgetDialog({ open, onOpenChange, scenarioId, addCatego
               placeholder="e.g., Groceries, Transport"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSave();
+                }
+              }}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="budget-amount" className="select-none">
-                Budget Amount ($)
-                <span className="ml-1 font-normal text-muted-foreground">(opt.)</span>
+                Budget Limit ($)
+                {!isEditing && <span className="ml-1 font-normal text-muted-foreground">(opt.)</span>}
               </Label>
               <Input
                 id="budget-amount"
@@ -135,6 +203,9 @@ export function CategoryBudgetDialog({ open, onOpenChange, scenarioId, addCatego
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
               />
+              {!isEditing && (
+                <p className="text-xs text-muted-foreground">Leave blank for no limit</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -239,7 +310,9 @@ export function CategoryBudgetDialog({ open, onOpenChange, scenarioId, addCatego
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>Add Category</Button>
+            <Button onClick={handleSave}>
+              {isEditing ? 'Save Changes' : 'Add Category'}
+            </Button>
           </div>
         </div>
       </DialogContent>

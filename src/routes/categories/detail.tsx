@@ -56,6 +56,10 @@ export function CategoryDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { activeScenarioId } = useOutletContext<OutletContext>();
 
+  // Always link back to budget page
+  const backLink = '/budget';
+  const backLabel = 'Back to Budget';
+
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -211,9 +215,9 @@ export function CategoryDetailPage() {
       <div className="page-shell">
         <div className="mb-6">
           <Button variant="ghost" size="sm" asChild>
-            <Link to="/categories">
+            <Link to={backLink}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Categories
+              {backLabel}
             </Link>
           </Button>
         </div>
@@ -233,9 +237,9 @@ export function CategoryDetailPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
-            <Link to="/categories">
+            <Link to={backLink}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Categories
+              {backLabel}
             </Link>
           </Button>
           <div className="flex items-center gap-3">

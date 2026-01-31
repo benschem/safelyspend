@@ -21,6 +21,26 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.5.0',
+    date: '2026-02-01',
+    changes: [
+      'Categories and Budget pages combined into a single Budget page',
+      'Add categories with optional budget limits in one step',
+      'See transaction and expected counts for each category at a glance',
+      'Archive, restore, or delete categories directly from the Budget page',
+    ],
+  },
+  {
+    version: '0.4.0',
+    date: '2026-02-01',
+    changes: [
+      'New unified "Money In/Out" page with Past, Expected, and Recurring tabs',
+      'Track actual transactions, expected future items, and recurring rules in one place',
+      'Add expected items (one-time or recurring) from a single dialog',
+      'Clearer terminology: "Forecast" is now "Expected" throughout the app',
+    ],
+  },
+  {
     version: '0.3.2',
     date: '2026-01-31',
     changes: [
@@ -78,7 +98,7 @@ export const changelog: ChangelogEntry[] = [
       'Initial beta release',
       'Track income, expenses, and savings',
       'Create budgets with flexible frequencies',
-      'Plan future finances with forecasts',
+      'Plan future finances with expected transactions',
       'Set and track savings goals',
       'Import transactions from CSV',
       'Export and backup your data',
