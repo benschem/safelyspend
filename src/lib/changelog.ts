@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.2.0',
+    date: '2026-01-31',
+    changes: [
+      'Convert one-time forecasts to recurring with the new "Make Recurring" button',
+      'Pre-fills recurring rule with details from the one-time event',
+    ],
+  },
+  {
     version: '1.1.2',
     date: '2026-01-31',
     changes: [
