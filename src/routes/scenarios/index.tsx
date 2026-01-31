@@ -172,8 +172,7 @@ export function ScenariosIndexPage() {
                 variant={isActive ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => !isActive && setActiveScenarioId(scenario.id)}
-                disabled={isActive}
-                className={`w-24 ${isActive ? 'cursor-default' : ''}`}
+                className={`w-24 ${isActive ? 'pointer-events-none' : ''}`}
               >
                 {isActive ? (
                   <>
