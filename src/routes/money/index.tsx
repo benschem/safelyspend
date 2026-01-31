@@ -71,9 +71,9 @@ export function MoneyIndexPage() {
   // Tab state from URL param
   const [activeTab, setActiveTab] = useState<TabValue>(() => {
     const tabParam = searchParams.get('tab');
+    if (tabParam === 'past') return 'past';
     if (tabParam === 'expected') return 'expected';
-    if (tabParam === 'averages') return 'averages';
-    return 'past';
+    return 'averages';
   });
 
   // Average period state
@@ -85,9 +85,9 @@ export function MoneyIndexPage() {
   // Update URL when tab changes
   useEffect(() => {
     const currentTab = searchParams.get('tab');
-    if (activeTab === 'past' && currentTab) {
+    if (activeTab === 'averages' && currentTab) {
       setSearchParams({}, { replace: true });
-    } else if (activeTab !== 'past' && currentTab !== activeTab) {
+    } else if (activeTab !== 'averages' && currentTab !== activeTab) {
       setSearchParams({ tab: activeTab }, { replace: true });
     }
   }, [activeTab, searchParams, setSearchParams]);
@@ -966,6 +966,18 @@ export function MoneyIndexPage() {
       <div className="mb-6 inline-flex h-10 items-center rounded-lg bg-muted p-1 text-muted-foreground">
         <button
           type="button"
+          onClick={() => setActiveTab('averages')}
+          className={cn(
+            'inline-flex h-8 cursor-pointer items-center justify-center rounded-md px-4 text-sm font-medium transition-all',
+            activeTab === 'averages'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'hover:text-foreground',
+          )}
+        >
+          Averages
+        </button>
+        <button
+          type="button"
           onClick={() => setActiveTab('past')}
           className={cn(
             'inline-flex h-8 cursor-pointer items-center justify-center rounded-md px-4 text-sm font-medium transition-all',
@@ -987,18 +999,6 @@ export function MoneyIndexPage() {
           )}
         >
           Expected
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('averages')}
-          className={cn(
-            'inline-flex h-8 cursor-pointer items-center justify-center rounded-md px-4 text-sm font-medium transition-all',
-            activeTab === 'averages'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'hover:text-foreground',
-          )}
-        >
-          Averages
         </button>
       </div>
 
