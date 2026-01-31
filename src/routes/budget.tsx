@@ -51,9 +51,9 @@ const CADENCE_FULL_LABELS: Record<Cadence, string> = {
   yearly: 'Yearly',
 };
 
-type BudgetTab = 'status' | 'budget' | 'expected-expenses' | 'expected-income' | 'expected-savings' | 'manage-scenarios';
+type BudgetTab = 'status' | 'manage-budget' | 'expected-expenses' | 'expected-income' | 'expected-savings' | 'manage-scenarios';
 
-const VALID_TABS: BudgetTab[] = ['status', 'budget', 'expected-expenses', 'expected-income', 'expected-savings', 'manage-scenarios'];
+const VALID_TABS: BudgetTab[] = ['status', 'manage-budget', 'expected-expenses', 'expected-income', 'expected-savings', 'manage-scenarios'];
 
 export function BudgetPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -604,14 +604,14 @@ export function BudgetPage() {
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
           <div className="flex flex-wrap items-center gap-2">
             <ScenarioSelector />
-            {activeTab === 'budget' && (
+            {activeTab === 'manage-budget' && (
               <Button onClick={() => setAddDialogOpen(true)}>
                 <Plus className="h-4 w-4" />
                 Add Category
               </Button>
             )}
           </div>
-          {activeTab === 'budget' && (
+          {activeTab === 'manage-budget' && (
             <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
               <Link to="/categories/import-rules">
                 <Settings2 className="h-4 w-4" />
@@ -626,7 +626,7 @@ export function BudgetPage() {
       <div className="mb-6 flex flex-wrap gap-1 rounded-lg bg-muted p-1 text-muted-foreground">
         {[
           { value: 'status' as BudgetTab, label: 'Status' },
-          { value: 'budget' as BudgetTab, label: 'Budget' },
+          { value: 'manage-budget' as BudgetTab, label: 'Manage Budget' },
           { value: 'expected-expenses' as BudgetTab, label: 'Expected Expenses' },
           { value: 'expected-income' as BudgetTab, label: 'Expected Income' },
           { value: 'expected-savings' as BudgetTab, label: 'Expected Savings Contributions' },
@@ -797,7 +797,7 @@ export function BudgetPage() {
       )}
 
       {/* Budget tab - table with categories and limits */}
-      {activeTab === 'budget' && (
+      {activeTab === 'manage-budget' && (
         <>
           <Alert variant="info" className="mb-6">
             Budgets set spending limits for each category. They vary by scenario.
