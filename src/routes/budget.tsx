@@ -18,7 +18,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Pencil, Trash2, Plus, Target, Archive, ArchiveRestore, Settings2, TrendingUp, PiggyBank } from 'lucide-react';
+import { Pencil, Trash2, Plus, Target, Archive, ArchiveRestore, Settings2, PiggyBank } from 'lucide-react';
 import { cn, formatCents } from '@/lib/utils';
 import { CHART_COLORS } from '@/lib/chart-colors';
 import { PageLoading } from '@/components/page-loading';
@@ -1045,30 +1045,7 @@ export function BudgetPage() {
           </div>
 
           {/* Stats cards */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            {/* Income card */}
-            <div className="rounded-xl border bg-card p-5">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-green-500" />
-                <span className="text-sm text-muted-foreground">Expected Income</span>
-              </div>
-              <p className="mt-2 text-2xl font-bold">
-                {expectedIncome ? formatCents(expectedIncome[breakdownPeriod]) : '—'}
-              </p>
-            </div>
-
-            {/* Savings card */}
-            <div className="rounded-xl border bg-card p-5">
-              <div className="flex items-center gap-2">
-                <PiggyBank className="h-4 w-4 text-blue-500" />
-                <span className="text-sm text-muted-foreground">Planned Savings</span>
-              </div>
-              <p className="mt-2 text-2xl font-bold">
-                {formatCents(budgetBreakdownSegments.find((s) => s.id === 'savings')?.amount ?? 0)}
-              </p>
-              <p className="text-sm text-muted-foreground">placeholder</p>
-            </div>
-
+          <div className="grid gap-4 sm:grid-cols-2">
             {/* Budget status card */}
             {(() => {
               const unbudgetedAmount = budgetBreakdownSegments.find((s) => s.id === 'unbudgeted')?.amount ?? 0;
@@ -1131,6 +1108,17 @@ export function BudgetPage() {
                 </div>
               );
             })()}
+
+            {/* Savings card */}
+            <div className="rounded-xl border bg-card p-5">
+              <div className="flex items-center gap-2">
+                <PiggyBank className="h-4 w-4 text-blue-500" />
+                <span className="text-sm text-muted-foreground">Planned Savings</span>
+              </div>
+              <p className="mt-2 text-2xl font-bold">
+                {formatCents(budgetBreakdownSegments.find((s) => s.id === 'savings')?.amount ?? 0)}
+              </p>
+            </div>
           </div>
 
           {/* Income Breakdown chart */}
