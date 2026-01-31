@@ -377,7 +377,7 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
               Cancel
             </Button>
             <Button onClick={handleSave}>
-              {isEditing ? 'Save' : 'Add'} Rule
+              {isEditing ? 'Save' : 'Add'}
             </Button>
           </div>
         </div>

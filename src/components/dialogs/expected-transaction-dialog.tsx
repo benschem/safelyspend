@@ -222,13 +222,13 @@ export function ExpectedTransactionDialog({
   // Determine dialog title and description
   const getTitle = () => {
     if (isEditingEvent) return 'Edit Expected Transaction';
-    if (isEditingRule) return 'Edit Recurring Rule';
+    if (isEditingRule) return 'Edit Recurring Expectation';
     return 'Add Expected Transaction';
   };
 
   const getDescription = () => {
     if (isEditingEvent) return 'Update this expected transaction.';
-    if (isEditingRule) return 'Update this recurring rule.';
+    if (isEditingRule) return 'Update this recurring expectation.';
     return 'Add a future expected transaction, either one-time or recurring.';
   };
 

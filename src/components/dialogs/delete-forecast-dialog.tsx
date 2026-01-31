@@ -96,7 +96,7 @@ export function DeleteForecastDialog({
               <div>
                 <div className="font-medium text-destructive">Delete all occurrences</div>
                 <div className="text-sm text-muted-foreground">
-                  Remove the recurring rule entirely. All past and future occurrences will be deleted.
+                  Remove the recurring expectation entirely. All past and future occurrences will be deleted.
                 </div>
               </div>
             </div>

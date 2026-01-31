@@ -119,7 +119,7 @@ export function BudgetRuleDialog({
         await deleteBudgetRule(rule.id);
         onOpenChange(false);
       } catch (error) {
-        setFormError(error instanceof Error ? error.message : 'Failed to remove limit. Please try again.');
+        setFormError(error instanceof Error ? error.message : 'Failed to remove expectation. Please try again.');
       }
     }
   };
@@ -131,9 +131,9 @@ export function BudgetRuleDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit' : 'Set'} Spending Limit</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit' : 'Set'} Spending Expectation</DialogTitle>
           <DialogDescription>
-            {isEditing ? 'Update the spending limit for' : 'Set a spending limit for'} {categoryName}.
+            {isEditing ? 'Update the spending expectation for' : 'Set a spending expectation for'} {categoryName}.
           </DialogDescription>
         </DialogHeader>
 
@@ -146,7 +146,7 @@ export function BudgetRuleDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="budget-amount" className="select-none">Limit Amount ($)</Label>
+              <Label htmlFor="budget-amount" className="select-none">Expected Amount ($)</Label>
               <Input
                 id="budget-amount"
                 type="number"
@@ -260,7 +260,7 @@ export function BudgetRuleDialog({
             <div>
               {isEditing && (
                 <Button variant="destructive" onClick={handleDelete}>
-                  Remove Limit
+                  Remove
                 </Button>
               )}
             </div>
@@ -269,7 +269,7 @@ export function BudgetRuleDialog({
                 Cancel
               </Button>
               <Button onClick={handleSave}>
-                {isEditing ? 'Save' : 'Set'} Limit
+                {isEditing ? 'Save' : 'Set'}
               </Button>
             </div>
           </div>

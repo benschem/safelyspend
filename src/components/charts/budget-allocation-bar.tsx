@@ -115,7 +115,7 @@ export function BudgetAllocationBar({
       {/* No budget rules hint */}
       {spending === 0 && savings === 0 && (
         <p className="mt-2 text-xs text-muted-foreground">
-          No spending limits or savings goals set for this scenario
+          No spending expectations or savings goals set for this scenario
         </p>
       )}
     </div>

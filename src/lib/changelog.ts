@@ -45,7 +45,7 @@ export const changelog: ChangelogEntry[] = [
     date: '2026-02-01',
     changes: [
       'New unified "Money In/Out" page with Past, Expected, and Recurring tabs',
-      'Track actual transactions, expected future items, and recurring rules in one place',
+      'Track actual transactions, expected future items, and recurring expectations in one place',
       'Add expected items (one-time or recurring) from a single dialog',
       'Clearer terminology: "Forecast" is now "Expected" throughout the app',
     ],
@@ -74,7 +74,7 @@ export const changelog: ChangelogEntry[] = [
     date: '2026-01-31',
     changes: [
       'Convert one-time forecasts to recurring with the new "Make Recurring" button',
-      'Pre-fills recurring rule with details from the one-time event',
+      'Pre-fills recurring expectation with details from the one-time event',
     ],
   },
   {
