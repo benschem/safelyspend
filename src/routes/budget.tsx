@@ -60,9 +60,9 @@ const CADENCE_FULL_LABELS: Record<Cadence, string> = {
   yearly: 'Yearly',
 };
 
-type BudgetTab = 'health' | 'manage' | 'recurring-expenses' | 'income' | 'savings-contributions' | 'scenarios';
+type BudgetTab = 'health' | 'categories' | 'recurring-expenses' | 'income' | 'savings-contributions' | 'scenarios';
 
-const VALID_TABS: BudgetTab[] = ['health', 'manage', 'recurring-expenses', 'income', 'savings-contributions', 'scenarios'];
+const VALID_TABS: BudgetTab[] = ['health', 'categories', 'recurring-expenses', 'income', 'savings-contributions', 'scenarios'];
 
 export function BudgetPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -959,7 +959,7 @@ export function BudgetPage() {
         <div className="flex flex-col items-stretch gap-1 sm:items-end">
           <div className="flex flex-wrap items-center gap-2">
             <ScenarioSelector />
-            {activeTab === 'manage' && (
+            {activeTab === 'categories' && (
               <Button onClick={() => setAddDialogOpen(true)}>
                 <Plus className="h-4 w-4" />
                 Add Category
@@ -984,12 +984,12 @@ export function BudgetPage() {
               </Button>
             )}
           </div>
-          {/* Always render to maintain consistent height, hide on non-manage tabs */}
+          {/* Always render to maintain consistent height, hide on non-categories tabs */}
           <Button
             variant="ghost"
             size="sm"
             asChild
-            className={cn('text-muted-foreground', activeTab !== 'manage' && 'invisible')}
+            className={cn('text-muted-foreground', activeTab !== 'categories' && 'invisible')}
           >
             <Link to="/categories/import-rules">
               <Settings2 className="h-4 w-4" />
@@ -1003,7 +1003,7 @@ export function BudgetPage() {
       <div className="mb-6 flex flex-wrap gap-1 rounded-lg bg-muted p-1 text-muted-foreground">
         {[
           { value: 'health' as BudgetTab, label: 'Health' },
-          { value: 'manage' as BudgetTab, label: 'Manage' },
+          { value: 'categories' as BudgetTab, label: 'Categories' },
           { value: 'recurring-expenses' as BudgetTab, label: 'Recurring Expenses' },
           { value: 'income' as BudgetTab, label: 'Income' },
           { value: 'savings-contributions' as BudgetTab, label: 'Savings Contributions' },
@@ -1133,7 +1133,7 @@ export function BudgetPage() {
           <div className="rounded-xl border bg-card p-5">
             <div className="mb-4">
               <h3 className="text-lg font-semibold">Income Breakdown</h3>
-              <p className="text-sm text-muted-foreground">How your expected income is allocated across categories and savings.</p>
+              <p className="text-sm text-muted-foreground">How your expected income is allocated across categories.</p>
             </div>
 
             {!expectedIncome ? (
@@ -1177,8 +1177,8 @@ export function BudgetPage() {
         </div>
       )}
 
-      {/* Manage tab - table with categories and limits */}
-      {activeTab === 'manage' && (
+      {/* Categories tab - table with categories and limits */}
+      {activeTab === 'categories' && (
         <>
           <Alert variant="info" className="mb-6">
             Budgets for each category. They vary by scenario.
