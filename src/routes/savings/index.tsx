@@ -2,30 +2,33 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
-import { Plus, PiggyBank, TrendingUp, Target, Clock } from 'lucide-react';
+import { Plus, PiggyBank, TrendingUp, Target, BadgePercent } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useReportsData } from '@/hooks/use-reports-data';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
+
+// Wide date range to capture all savings data
+const ALL_DATA_START = '2020-01-01';
+const ALL_DATA_END = '2099-12-31';
 import { SavingsGoalDialog } from '@/components/dialogs/savings-goal-dialog';
 import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { SavingsGoalProgressCard } from '@/components/charts';
-import { formatCents } from '@/lib/utils';
+import { ScenarioSelector } from '@/components/scenario-selector';
+import { formatCents, today as getToday } from '@/lib/utils';
 import type { SavingsGoal } from '@/lib/types';
 
 interface OutletContext {
   activeScenarioId: string | null;
-  startDate: string;
-  endDate: string;
 }
 
 export function SavingsIndexPage() {
-  const { activeScenarioId, startDate, endDate } = useOutletContext<OutletContext>();
+  const { activeScenarioId } = useOutletContext<OutletContext>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { savingsGoals, isLoading: savingsLoading, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal } = useSavingsGoals();
-  const { savingsTransactions, isLoading: transactionsLoading, addTransaction, updateTransaction } = useTransactions(startDate, endDate);
-  const { savingsByGoal, isLoading: reportsLoading } = useReportsData(activeScenarioId, startDate, endDate);
+  const { savingsTransactions, isLoading: transactionsLoading, addTransaction, updateTransaction } = useTransactions(ALL_DATA_START, ALL_DATA_END);
+  const { savingsByGoal, savingsContributions, isLoading: reportsLoading } = useReportsData(activeScenarioId, ALL_DATA_START, ALL_DATA_END);
   const { anchors } = useBalanceAnchors();
 
   // Get the earliest anchor date (for determining if starting balances should be backdated)
@@ -68,94 +71,57 @@ export function SavingsIndexPage() {
   // Calculate summary stats
   const summaryStats = useMemo(() => {
     const totalSaved = savingsByGoal.reduce((sum, g) => sum + g.currentBalance, 0);
+    const totalTarget = savingsByGoal.reduce((sum, g) => sum + g.targetAmount, 0);
 
-    // Count goals that are on track (early or on-time based on expected vs deadline)
-    let onTrackCount = 0;
-    let totalWithDeadline = 0;
+    // Count goals reached (all goals with a target where current >= target)
+    const goalsWithTarget = savingsByGoal.filter((g) => g.targetAmount > 0);
+    const goalsReached = goalsWithTarget.filter((g) => g.currentBalance >= g.targetAmount).length;
+    const totalGoals = goalsWithTarget.length;
 
-    for (const goal of savingsByGoal) {
-      if (!goal.deadline || goal.targetAmount <= 0) continue;
-      if (goal.currentBalance >= goal.targetAmount) {
-        onTrackCount++;
-        totalWithDeadline++;
-        continue;
-      }
+    // Actual monthly rate: from first contribution to today
+    const today = getToday();
+    const contributions = savingsTransactions.filter(
+      (t) => !t.description.toLowerCase().includes('opening balance') &&
+             !t.description.toLowerCase().includes('starting balance'),
+    );
+    const totalActualSavings = contributions.reduce((sum, t) => sum + t.amountCents, 0);
 
-      totalWithDeadline++;
-
-      // Calculate expected completion
-      const totalContributions = goal.monthlySavings.reduce(
-        (sum, m) => sum + m.actual + m.forecast,
-        0,
-      );
-      const monthCount = goal.monthlySavings.length || 1;
-      const avgMonthlyContribution = totalContributions / monthCount;
-
-      if (avgMonthlyContribution <= 0 && (!goal.annualInterestRate || goal.annualInterestRate <= 0)) {
-        continue; // Can't determine if on track
-      }
-
-      const monthlyRate = goal.annualInterestRate ? goal.annualInterestRate / 100 / 12 : 0;
-      let balance = goal.currentBalance;
-      let months = 0;
-      const maxMonths = 600;
-
-      while (balance < goal.targetAmount && months < maxMonths) {
-        balance += avgMonthlyContribution;
-        balance += balance * monthlyRate;
-        months++;
-      }
-
-      if (months < maxMonths) {
-        const now = new Date();
-        const expectedDate = new Date(now.getFullYear(), now.getMonth() + months, 1);
-        const deadlineDate = new Date(goal.deadline);
-        if (expectedDate <= deadlineDate) {
-          onTrackCount++;
-        }
-      }
+    // Calculate months from first contribution to today
+    let actualMonthlyRate = 0;
+    if (contributions.length > 0) {
+      const firstDate = contributions.reduce((earliest, t) => t.date < earliest ? t.date : earliest, contributions[0]!.date);
+      const [firstYear, firstMonth] = firstDate.split('-').map(Number);
+      const [todayYear, todayMonth] = today.split('-').map(Number);
+      const actualMonthCount = Math.max(1, (todayYear! - firstYear!) * 12 + (todayMonth! - firstMonth!) + 1);
+      actualMonthlyRate = Math.round(totalActualSavings / actualMonthCount);
     }
 
-    // Find next goal to complete (closest expected completion)
-    let nextGoal: { name: string; monthsAway: number } | null = null;
+    // Planned monthly rate: next 12 months of forecasts
+    const totalPlannedSavings = savingsContributions.filter((c) => {
+      const contributionDate = new Date(c.date);
+      const todayDate = new Date(today);
+      const monthsDiff = (contributionDate.getFullYear() - todayDate.getFullYear()) * 12 +
+                         (contributionDate.getMonth() - todayDate.getMonth());
+      return c.date >= today && monthsDiff < 12;
+    }).reduce((sum, c) => sum + c.amountCents, 0);
+    const plannedMonthlyRate = Math.round(totalPlannedSavings / 12);
 
-    for (const goal of savingsByGoal) {
-      if (goal.targetAmount <= 0 || goal.currentBalance >= goal.targetAmount) continue;
-
-      const totalContributions = goal.monthlySavings.reduce(
-        (sum, m) => sum + m.actual + m.forecast,
-        0,
-      );
-      const monthCount = goal.monthlySavings.length || 1;
-      const avgMonthlyContribution = totalContributions / monthCount;
-
-      if (avgMonthlyContribution <= 0 && (!goal.annualInterestRate || goal.annualInterestRate <= 0)) {
-        continue;
-      }
-
-      const monthlyRate = goal.annualInterestRate ? goal.annualInterestRate / 100 / 12 : 0;
-      let balance = goal.currentBalance;
-      let months = 0;
-      const maxMonths = 600;
-
-      while (balance < goal.targetAmount && months < maxMonths) {
-        balance += avgMonthlyContribution;
-        balance += balance * monthlyRate;
-        months++;
-      }
-
-      if (months < maxMonths && (!nextGoal || months < nextGoal.monthsAway)) {
-        nextGoal = { name: goal.goalName, monthsAway: months };
-      }
-    }
+    // Annual interest (based on current balances and interest rates)
+    const annualInterest = savingsByGoal.reduce((sum, g) => {
+      if (!g.annualInterestRate || g.annualInterestRate <= 0) return sum;
+      return sum + Math.round(g.currentBalance * (g.annualInterestRate / 100));
+    }, 0);
 
     return {
       totalSaved,
-      onTrackCount,
-      totalWithDeadline,
-      nextGoal,
+      totalTarget,
+      goalsReached,
+      totalGoals,
+      actualMonthlyRate,
+      plannedMonthlyRate,
+      annualInterest,
     };
-  }, [savingsByGoal]);
+  }, [savingsByGoal, savingsTransactions, savingsContributions, savingsGoals]);
 
   // Get transaction count per goal for delete warning
   const transactionCountByGoal = useMemo(() => {
@@ -188,15 +154,6 @@ export function SavingsIndexPage() {
     }
   }, []);
 
-  const formatMonthsAway = (months: number): string => {
-    if (months <= 1) return '1 month';
-    if (months < 12) return `${months} months`;
-    const years = Math.floor(months / 12);
-    const remainingMonths = months % 12;
-    if (remainingMonths === 0) return `${years} year${years > 1 ? 's' : ''}`;
-    return `${years}y ${remainingMonths}m`;
-  };
-
   return (
     <div className="page-shell">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
@@ -208,13 +165,16 @@ export function SavingsIndexPage() {
             Savings
           </h1>
           <p className="page-description">Track progress toward your savings targets.</p>
+          <div className="mt-2">
+            <ScenarioSelector />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" className="h-10 w-40" onClick={() => setContributionDialogOpen(true)}>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button variant="outline" className="h-10" onClick={() => setContributionDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             Add Contribution
           </Button>
-          <Button className="h-10 w-40" onClick={openAddDialog}>
+          <Button className="h-10" onClick={openAddDialog}>
             <Plus className="h-4 w-4" />
             Add Goal
           </Button>
@@ -238,7 +198,7 @@ export function SavingsIndexPage() {
       ) : (
         <div className="space-y-6">
           {/* Summary Stats */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <div className="rounded-lg border bg-card p-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <TrendingUp className="h-4 w-4" />
@@ -247,46 +207,59 @@ export function SavingsIndexPage() {
               <div className="mt-1 font-mono text-2xl font-semibold">
                 {formatCents(summaryStats.totalSaved)}
               </div>
+              {summaryStats.totalTarget > 0 && (
+                <div className="mt-0.5 text-sm text-muted-foreground">
+                  of <span className="font-mono">{formatCents(summaryStats.totalTarget)}</span> target
+                </div>
+              )}
             </div>
 
             <div className="rounded-lg border bg-card p-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Target className="h-4 w-4" />
-                On Track
+                Goals Reached
               </div>
               <div className="mt-1 text-2xl font-semibold">
-                {summaryStats.totalWithDeadline > 0 ? (
+                {summaryStats.totalGoals > 0 ? (
                   <>
-                    {summaryStats.onTrackCount}
+                    {summaryStats.goalsReached}
                     <span className="text-base font-normal text-muted-foreground">
-                      {' '}of {summaryStats.totalWithDeadline}
+                      {' '}of {summaryStats.totalGoals}
                     </span>
                   </>
                 ) : (
-                  <span className="text-base font-normal text-muted-foreground">No deadlines set</span>
+                  <span className="text-base font-normal text-muted-foreground">No goals set</span>
                 )}
               </div>
             </div>
 
             <div className="rounded-lg border bg-card p-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="h-4 w-4" />
-                Next Goal
+                <PiggyBank className="h-4 w-4" />
+                Savings Rate
               </div>
               <div className="mt-1">
-                {summaryStats.nextGoal ? (
-                  <>
-                    <div className="truncate text-lg font-semibold">{summaryStats.nextGoal.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {formatMonthsAway(summaryStats.nextGoal.monthsAway)}
-                    </div>
-                  </>
-                ) : (
-                  <span className="text-base text-muted-foreground">-</span>
-                )}
+                <span className="font-mono text-2xl font-semibold">{formatCents(summaryStats.actualMonthlyRate)}</span>
+                <span className="ml-1 text-sm text-muted-foreground">/mo avg</span>
+              </div>
+              <div className="mt-0.5 text-sm text-muted-foreground">
+                <span className="font-mono">{formatCents(summaryStats.plannedMonthlyRate)}</span>/mo planned (next 12mo)
               </div>
             </div>
+
+            <div className="rounded-lg border bg-card p-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <BadgePercent className="h-4 w-4" />
+                Annual Interest
+              </div>
+              <div className="mt-1 font-mono text-2xl font-semibold">
+                {formatCents(summaryStats.annualInterest)}
+              </div>
+              <div className="mt-0.5 text-sm text-muted-foreground">per year</div>
+            </div>
           </div>
+
+          <hr className="border-border" />
 
           {/* Progress Cards */}
           <div className="grid gap-4 md:grid-cols-2">
