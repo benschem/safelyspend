@@ -530,8 +530,24 @@ export function BudgetPage() {
               onSegmentToggle={handleSegmentToggle}
             />
           </div>
-          {hasSavingsSegment && (
-            <div className="mt-4 flex items-center justify-end">
+          <div className="mt-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setHiddenSegments(new Set())}
+                className="cursor-pointer rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                Show All
+              </button>
+              <button
+                type="button"
+                onClick={() => setHiddenSegments(new Set(budgetBreakdownSegments.map((s) => s.id)))}
+                className="cursor-pointer rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                Hide All
+              </button>
+            </div>
+            {hasSavingsSegment && (
               <label htmlFor="compare-savings" className="flex items-center gap-2 text-sm">
                 <Switch
                   id="compare-savings"
@@ -540,8 +556,8 @@ export function BudgetPage() {
                 />
                 <span className="text-muted-foreground">Include Savings</span>
               </label>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
