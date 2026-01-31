@@ -228,6 +228,39 @@ this.version(2).stores({
 - Add migration logic in `migrateImportData()` if format changes
 - Bump `CURRENT_DATA_VERSION` if export format changes
 
+### Versioning and Changelog
+
+The app uses **semantic versioning** (MAJOR.MINOR.PATCH):
+- **MAJOR**: Breaking changes or major redesigns
+- **MINOR**: New features (backwards compatible)
+- **PATCH**: Bug fixes and minor improvements
+
+**After each commit, you must:**
+1. Update `package.json` version appropriately
+2. Add an entry to `src/lib/changelog.ts`
+3. The `currentVersion` export auto-reads from the changelog
+
+**Changelog guidelines:**
+- Write for non-technical users (no code jargon)
+- Focus on what users can do, not implementation details
+- Keep descriptions to one sentence each
+- Never include security-sensitive information
+- Don't add to changelog until changes are committed
+
+**Example changelog entry:**
+```typescript
+{
+  version: '1.2.0',
+  date: '2026-02-01',
+  changes: [
+    'Added ability to set recurring reminders for bills',
+    'Improved loading speed on the transactions page',
+  ],
+}
+```
+
+Users can view the changelog via Settings > "View Changelog".
+
 ### Git Commit Messages
 
 Prefix all commits with `claude:` followed by a conventional commit type:

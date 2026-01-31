@@ -19,6 +19,7 @@ import { SavingsIndexPage } from '@/routes/savings/index';
 import { InsightsPage } from '@/routes/insights';
 import { ScenariosIndexPage } from '@/routes/scenarios/index';
 import { SettingsPage } from '@/routes/settings';
+import { ChangelogPage } from '@/routes/changelog';
 
 // Dev-only: style guide and error preview not bundled in production
 const devOnlyRoutes = import.meta.env.DEV
@@ -73,6 +74,7 @@ const router = createBrowserRouter([
 
       // Settings
       { path: 'settings', element: <SettingsPage /> },
+      { path: 'changelog', element: <ChangelogPage /> },
 
       // Dev-only routes
       ...devOnlyRoutes,

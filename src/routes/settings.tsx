@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, Link } from 'react-router';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,11 +14,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Pencil, Trash2, Plus, AlertTriangle, Download, Upload, Check, Settings, Bug, Info } from 'lucide-react';
+import { Pencil, Trash2, Plus, AlertTriangle, Download, Upload, Check, Settings, Bug, Info, Sparkles } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { exportAllData, importAllData, fullReset, CURRENT_SCHEMA_VERSION, CURRENT_DATA_VERSION } from '@/lib/db';
 import { formatCents, formatDate, today } from '@/lib/utils';
+import { currentVersion } from '@/lib/changelog';
 import {
   validateImport,
   getImportErrorMessage,
@@ -479,7 +480,16 @@ export function SettingsPage() {
             <div className="panel p-4">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">App Version</span>
-                <span className="font-mono">1.0.0</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono">{currentVersion}</span>
+                  <Link
+                    to="/changelog"
+                    className="inline-flex items-center gap-1 text-xs text-purple-600 hover:underline dark:text-purple-400"
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    View Changelog
+                  </Link>
+                </div>
               </div>
               <div className="mt-2 flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Schema Version</span>
