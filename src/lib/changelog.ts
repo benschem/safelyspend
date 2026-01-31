@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.1.1',
+    date: '2026-01-31',
+    changes: [
+      'Fixed tables jumping back to page 1 after editing items',
+    ],
+  },
+  {
     version: '1.1.0',
     date: '2026-01-31',
     changes: [
