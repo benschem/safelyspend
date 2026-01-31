@@ -52,7 +52,7 @@ interface OutletContext {
 }
 
 type TabValue = 'past' | 'expected' | 'averages';
-type AveragePeriod = 'fortnightly' | 'monthly' | 'yearly';
+type AveragePeriod = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly';
 type FilterType = 'all' | 'income' | 'expense' | 'savings' | 'adjustment';
 type ExpectedFilterType = 'all' | 'income' | 'expense' | 'savings';
 type CategoryFilter = 'all' | 'uncategorized' | string;
@@ -414,6 +414,9 @@ export function MoneyIndexPage() {
     // Calculate periods based on selected period type
     let periods: number;
     switch (averagePeriod) {
+      case 'weekly':
+        periods = Math.max(1, daysDiff / 7);
+        break;
       case 'fortnightly':
         periods = Math.max(1, daysDiff / 14);
         break;
@@ -423,6 +426,9 @@ export function MoneyIndexPage() {
           (lastDate.getFullYear() - firstDate.getFullYear()) * 12 +
             (lastDate.getMonth() - firstDate.getMonth()) + 1,
         );
+        break;
+      case 'quarterly':
+        periods = Math.max(1, daysDiff / 91);
         break;
       case 'yearly':
         periods = Math.max(1, daysDiff / 365);
@@ -453,10 +459,12 @@ export function MoneyIndexPage() {
     };
   }, [allTransactions, averagePeriod]);
 
-  const periodLabels: Record<AveragePeriod, { title: string; net: string }> = {
-    fortnightly: { title: 'Fortnightly Average', net: 'Net per fortnight' },
-    monthly: { title: 'Monthly Average', net: 'Net per month' },
-    yearly: { title: 'Yearly Average', net: 'Net per year' },
+  const periodLabels: Record<AveragePeriod, string> = {
+    weekly: 'Weekly',
+    fortnightly: 'Fortnightly',
+    monthly: 'Monthly',
+    quarterly: 'Quarterly',
+    yearly: 'Yearly',
   };
 
   // Past transactions columns
@@ -1147,70 +1155,65 @@ export function MoneyIndexPage() {
             </Button>
           </div>
         ) : (
-          <div className="rounded-xl border bg-card p-6">
-            {/* Header - centered */}
-            <div className="flex flex-col items-center gap-3">
-              <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                {periodLabels[averagePeriod].title}
-              </h2>
-              <div className="flex rounded-lg bg-muted p-1">
-                {(['fortnightly', 'monthly', 'yearly'] as const).map((period) => (
-                  <button
-                    key={period}
-                    type="button"
-                    onClick={() => setAveragePeriod(period)}
-                    className={cn(
-                      'cursor-pointer rounded-md px-3 py-1 text-xs font-medium transition-colors',
-                      averagePeriod === period
-                        ? 'bg-background text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground',
-                    )}
-                  >
-                    {period.charAt(0).toUpperCase() + period.slice(1)}
-                  </button>
-                ))}
-              </div>
+          <div className="space-y-6">
+            {/* Period dropdown */}
+            <div className="flex justify-end">
+              <Select value={averagePeriod} onValueChange={(v) => setAveragePeriod(v as AveragePeriod)}>
+                <SelectTrigger className="w-36">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="fortnightly">Fortnightly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                  <SelectItem value="yearly">Yearly</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Metrics - stacked on mobile, centered grid on larger */}
-            <div className="mx-auto mt-6 flex max-w-md flex-col gap-4 sm:grid sm:grid-cols-3 sm:gap-2">
-              {/* Earned */}
-              <div className="flex items-center justify-between sm:flex-col sm:items-center sm:justify-start sm:text-center">
+            {/* Stats cards */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {/* Earned card */}
+              <div className="rounded-xl border bg-card p-5">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-green-500" />
-                  <span className="text-sm text-muted-foreground">Earned</span>
+                  <span className="text-sm text-muted-foreground">{periodLabels[averagePeriod]} Earned</span>
                 </div>
-                <p className="text-lg font-semibold sm:mt-1 sm:text-2xl">{formatCents(periodAverages.income)}</p>
+                <p className="mt-2 text-2xl font-bold">{formatCents(periodAverages.income)}</p>
               </div>
 
-              {/* Spent */}
-              <div className="flex items-center justify-between sm:flex-col sm:items-center sm:justify-start sm:text-center">
+              {/* Spent card */}
+              <div className="rounded-xl border bg-card p-5">
                 <div className="flex items-center gap-2">
                   <TrendingDown className="h-4 w-4 text-red-500" />
-                  <span className="text-sm text-muted-foreground">Spent</span>
+                  <span className="text-sm text-muted-foreground">{periodLabels[averagePeriod]} Spent</span>
                 </div>
-                <p className="text-lg font-semibold sm:mt-1 sm:text-2xl">{formatCents(periodAverages.expenses)}</p>
+                <p className="mt-2 text-2xl font-bold">{formatCents(periodAverages.expenses)}</p>
               </div>
 
-              {/* Saved */}
-              <div className="flex items-center justify-between sm:flex-col sm:items-center sm:justify-start sm:text-center">
+              {/* Saved card */}
+              <div className="rounded-xl border bg-card p-5">
                 <div className="flex items-center gap-2">
                   <PiggyBank className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm text-muted-foreground">Saved</span>
+                  <span className="text-sm text-muted-foreground">{periodLabels[averagePeriod]} Saved</span>
                 </div>
-                <p className="text-lg font-semibold sm:mt-1 sm:text-2xl">{formatCents(periodAverages.savings)}</p>
+                <p className="mt-2 text-2xl font-bold">{formatCents(periodAverages.savings)}</p>
               </div>
-            </div>
 
-            {/* Net per period */}
-            <div className="mt-5 border-t pt-5 text-center">
-              <span className="text-sm text-muted-foreground">{periodLabels[averagePeriod].net}</span>
-              <p className={cn(
-                'mt-1 text-2xl font-bold',
-                periodAverages.net >= 0 ? 'text-green-600' : 'text-red-600',
-              )}>
-                {periodAverages.net >= 0 ? '+' : ''}{formatCents(periodAverages.net)}
-              </p>
+              {/* Net card */}
+              <div className="rounded-xl border bg-card p-5">
+                <div className="flex items-center gap-2">
+                  <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">{periodLabels[averagePeriod]} Net</span>
+                </div>
+                <p className={cn(
+                  'mt-2 text-2xl font-bold',
+                  periodAverages.net >= 0 ? 'text-green-600' : 'text-red-600',
+                )}>
+                  {periodAverages.net >= 0 ? '+' : ''}{formatCents(periodAverages.net)}
+                </p>
+              </div>
             </div>
           </div>
         )
