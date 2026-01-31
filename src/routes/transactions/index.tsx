@@ -352,7 +352,7 @@ export function TransactionsIndexPage() {
                       {formatCents(Math.abs(amount))}
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent side="top">
+                  <TooltipContent>
                     {isWithdrawal ? 'Withdrawn from savings' : 'Contributed to savings'}
                   </TooltipContent>
                 </Tooltip>
@@ -375,7 +375,7 @@ export function TransactionsIndexPage() {
                     </span>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent side="top">
+                <TooltipContent>
                   {tooltipText}
                 </TooltipContent>
               </Tooltip>
