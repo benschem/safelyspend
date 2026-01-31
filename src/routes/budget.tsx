@@ -70,9 +70,9 @@ const CADENCE_FULL_LABELS: Record<Cadence, string> = {
   yearly: 'Yearly',
 };
 
-type BudgetTab = 'health' | 'categories' | 'recurring-expenses' | 'income' | 'savings-contributions' | 'scenarios';
+type BudgetTab = 'categories' | 'recurring-expenses' | 'income' | 'savings-contributions' | 'scenarios';
 
-const VALID_TABS: BudgetTab[] = ['health', 'categories', 'recurring-expenses', 'income', 'savings-contributions', 'scenarios'];
+const VALID_TABS: BudgetTab[] = ['categories', 'recurring-expenses', 'income', 'savings-contributions', 'scenarios'];
 
 export function BudgetPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -114,16 +114,16 @@ export function BudgetPage() {
     if (tabParam && VALID_TABS.includes(tabParam as BudgetTab)) {
       return tabParam as BudgetTab;
     }
-    return 'health';
+    return 'categories';
   });
 
   // Sync tab state to URL
   useEffect(() => {
     const currentTab = searchParams.get('tab');
-    if (activeTab === 'health' && currentTab) {
+    if (activeTab === 'categories' && currentTab) {
       // Remove tab param when on default tab
       setSearchParams({}, { replace: true });
-    } else if (activeTab !== 'health' && currentTab !== activeTab) {
+    } else if (activeTab !== 'categories' && currentTab !== activeTab) {
       setSearchParams({ tab: activeTab }, { replace: true });
     }
   }, [activeTab, searchParams, setSearchParams]);
@@ -1256,10 +1256,151 @@ export function BudgetPage() {
         </div>
       </div>
 
+      {/* Budget health summary - always shown */}
+      <div className="mb-6 space-y-6">
+        {/* Period dropdown */}
+        <div>
+          <Select value={breakdownPeriod} onValueChange={(v) => setBreakdownPeriod(v as BudgetPeriod)}>
+            <SelectTrigger className="w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="fortnightly">Fortnightly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="quarterly">Quarterly</SelectItem>
+              <SelectItem value="yearly">Yearly</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Stats cards */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          {/* Budget status card */}
+          {(() => {
+            const unbudgetedAmount = budgetBreakdownSegments.find((s) => s.id === 'unbudgeted')?.amount ?? 0;
+            const isOverBudget = incomeMarkerPercent !== undefined;
+            const overBudgetAmount = isOverBudget && expectedIncome ? chartTotal - expectedIncome[breakdownPeriod] : 0;
+            const periodIncome = expectedIncome?.[breakdownPeriod] ?? 0;
+            const unbudgetedPercent = periodIncome > 0 ? (unbudgetedAmount / periodIncome) * 100 : 0;
+            const isFullyBudgeted = !isOverBudget && unbudgetedPercent < 2;
+
+            if (!expectedIncome || budgetBreakdownSegments.length === 0) {
+              return (
+                <div className="rounded-xl border bg-card p-5">
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Budgeted</span>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-muted-foreground">—</p>
+                </div>
+              );
+            }
+
+            if (isFullyBudgeted) {
+              return (
+                <div className="rounded-xl border bg-card p-5">
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-green-500" />
+                    <span className="text-sm text-muted-foreground">Budgeted</span>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-green-600 dark:text-green-400">100%</p>
+                  <p className="text-sm text-muted-foreground">of planned {formatCents(periodIncome)} income</p>
+                </div>
+              );
+            }
+
+            if (isOverBudget) {
+              return (
+                <div className="rounded-xl border border-amber-500/50 bg-amber-500/5 p-5">
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-amber-500" />
+                    <span className="text-sm text-muted-foreground">Overcommitted</span>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-amber-600 dark:text-amber-400">
+                    {formatCents(overBudgetAmount)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">above planned {formatCents(periodIncome)} income</p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="rounded-xl border bg-card p-5">
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-green-500" />
+                  <span className="text-sm text-muted-foreground">Unbudgeted</span>
+                </div>
+                <p className="mt-2 text-2xl font-bold text-green-600 dark:text-green-400">
+                  {formatCents(unbudgetedAmount)}
+                </p>
+                <p className="text-sm text-muted-foreground">of planned {formatCents(periodIncome)} income</p>
+              </div>
+            );
+          })()}
+
+          {/* Savings card */}
+          <div className="rounded-xl border bg-card p-5">
+            <div className="flex items-center gap-2">
+              <PiggyBank className="h-4 w-4 text-blue-500" />
+              <span className="text-sm text-muted-foreground">Planned Savings</span>
+            </div>
+            <p className="mt-2 text-2xl font-bold">
+              {formatCents(budgetBreakdownSegments.find((s) => s.id === 'savings')?.amount ?? 0)}
+            </p>
+          </div>
+        </div>
+
+        {/* Income Breakdown chart */}
+        <div className="rounded-xl border bg-card p-5">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold">Income Breakdown</h3>
+            <p className="text-sm text-muted-foreground">How your expected income is allocated across categories.</p>
+          </div>
+
+          {!expectedIncome ? (
+            budgetBreakdownSegments.length > 0 ? (
+              <>
+                <SpendingBreakdownChart
+                  segments={budgetBreakdownSegments}
+                  total={chartTotal}
+                  colorMap={categoryColorMap}
+                  disableToggle
+                  toggleableIds={['unbudgeted']}
+                  hiddenSegmentIds={hiddenSegments}
+                  onSegmentToggle={handleSegmentToggle}
+                />
+                <p className="mt-4 text-center text-sm text-muted-foreground">
+                  Add expected income to see budget relative to income.
+                </p>
+              </>
+            ) : (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                No budgets set yet. Set spending expectations in the Categories tab to see your allocation.
+              </p>
+            )
+          ) : budgetBreakdownSegments.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No budgets set yet. Set spending expectations in the Categories tab to see your allocation.
+            </p>
+          ) : (
+            <SpendingBreakdownChart
+              segments={budgetBreakdownSegments}
+              total={chartTotal}
+              colorMap={categoryColorMap}
+              disableToggle
+              toggleableIds={['unbudgeted']}
+              hiddenSegmentIds={hiddenSegments}
+              onSegmentToggle={handleSegmentToggle}
+              {...(incomeMarkerPercent !== undefined && { incomeMarker: incomeMarkerPercent })}
+            />
+          )}
+        </div>
+      </div>
+
       {/* Main tabs */}
       <div className="mb-6 inline-flex flex-wrap gap-1 rounded-lg bg-muted p-1 text-muted-foreground">
         {[
-          { value: 'health' as BudgetTab, label: 'Health' },
           { value: 'categories' as BudgetTab, label: 'Categories' },
           { value: 'recurring-expenses' as BudgetTab, label: 'Recurring Expenses' },
           { value: 'income' as BudgetTab, label: 'Income' },
@@ -1281,150 +1422,6 @@ export function BudgetPage() {
           </button>
         ))}
       </div>
-
-      {/* Health tab - Breakdown Chart */}
-      {activeTab === 'health' && (
-        <div className="space-y-6">
-          {/* Period dropdown */}
-          <div>
-            <Select value={breakdownPeriod} onValueChange={(v) => setBreakdownPeriod(v as BudgetPeriod)}>
-              <SelectTrigger className="w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="fortnightly">Fortnightly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-                <SelectItem value="quarterly">Quarterly</SelectItem>
-                <SelectItem value="yearly">Yearly</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Stats cards */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            {/* Budget status card */}
-            {(() => {
-              const unbudgetedAmount = budgetBreakdownSegments.find((s) => s.id === 'unbudgeted')?.amount ?? 0;
-              const isOverBudget = incomeMarkerPercent !== undefined;
-              const overBudgetAmount = isOverBudget && expectedIncome ? chartTotal - expectedIncome[breakdownPeriod] : 0;
-              const periodIncome = expectedIncome?.[breakdownPeriod] ?? 0;
-              const unbudgetedPercent = periodIncome > 0 ? (unbudgetedAmount / periodIncome) * 100 : 0;
-              const isFullyBudgeted = !isOverBudget && unbudgetedPercent < 2;
-
-              if (!expectedIncome || budgetBreakdownSegments.length === 0) {
-                return (
-                  <div className="rounded-xl border bg-card p-5">
-                    <div className="flex items-center gap-2">
-                      <Target className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Budgeted</span>
-                    </div>
-                    <p className="mt-2 text-2xl font-bold text-muted-foreground">—</p>
-                  </div>
-                );
-              }
-
-              if (isFullyBudgeted) {
-                return (
-                  <div className="rounded-xl border bg-card p-5">
-                    <div className="flex items-center gap-2">
-                      <Target className="h-4 w-4 text-green-500" />
-                      <span className="text-sm text-muted-foreground">Budgeted</span>
-                    </div>
-                    <p className="mt-2 text-2xl font-bold text-green-600 dark:text-green-400">100%</p>
-                    <p className="text-sm text-muted-foreground">of planned {formatCents(periodIncome)} income</p>
-                  </div>
-                );
-              }
-
-              if (isOverBudget) {
-                return (
-                  <div className="rounded-xl border border-amber-500/50 bg-amber-500/5 p-5">
-                    <div className="flex items-center gap-2">
-                      <Target className="h-4 w-4 text-amber-500" />
-                      <span className="text-sm text-muted-foreground">Overcommitted</span>
-                    </div>
-                    <p className="mt-2 text-2xl font-bold text-amber-600 dark:text-amber-400">
-                      {formatCents(overBudgetAmount)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">above planned {formatCents(periodIncome)} income</p>
-                  </div>
-                );
-              }
-
-              return (
-                <div className="rounded-xl border bg-card p-5">
-                  <div className="flex items-center gap-2">
-                    <Target className="h-4 w-4 text-green-500" />
-                    <span className="text-sm text-muted-foreground">Unbudgeted</span>
-                  </div>
-                  <p className="mt-2 text-2xl font-bold text-green-600 dark:text-green-400">
-                    {formatCents(unbudgetedAmount)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">of planned {formatCents(periodIncome)} income</p>
-                </div>
-              );
-            })()}
-
-            {/* Savings card */}
-            <div className="rounded-xl border bg-card p-5">
-              <div className="flex items-center gap-2">
-                <PiggyBank className="h-4 w-4 text-blue-500" />
-                <span className="text-sm text-muted-foreground">Planned Savings</span>
-              </div>
-              <p className="mt-2 text-2xl font-bold">
-                {formatCents(budgetBreakdownSegments.find((s) => s.id === 'savings')?.amount ?? 0)}
-              </p>
-            </div>
-          </div>
-
-          {/* Income Breakdown chart */}
-          <div className="rounded-xl border bg-card p-5">
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold">Income Breakdown</h3>
-              <p className="text-sm text-muted-foreground">How your expected income is allocated across categories.</p>
-            </div>
-
-            {!expectedIncome ? (
-              budgetBreakdownSegments.length > 0 ? (
-                <>
-                  <SpendingBreakdownChart
-                    segments={budgetBreakdownSegments}
-                    total={chartTotal}
-                    colorMap={categoryColorMap}
-                    disableToggle
-                    toggleableIds={['unbudgeted']}
-                    hiddenSegmentIds={hiddenSegments}
-                    onSegmentToggle={handleSegmentToggle}
-                  />
-                  <p className="mt-4 text-center text-sm text-muted-foreground">
-                    Add expected income to see budget relative to income.
-                  </p>
-                </>
-              ) : (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  No budgets set yet. Set spending expectations in the Manage tab to see your allocation.
-                </p>
-              )
-            ) : budgetBreakdownSegments.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                No budgets set yet. Set spending expectations in the Manage tab to see your allocation.
-              </p>
-            ) : (
-              <SpendingBreakdownChart
-                segments={budgetBreakdownSegments}
-                total={chartTotal}
-                colorMap={categoryColorMap}
-                disableToggle
-                toggleableIds={['unbudgeted']}
-                hiddenSegmentIds={hiddenSegments}
-                onSegmentToggle={handleSegmentToggle}
-                {...(incomeMarkerPercent !== undefined && { incomeMarker: incomeMarkerPercent })}
-              />
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Categories tab - table with categories and limits */}
       {activeTab === 'categories' && (
