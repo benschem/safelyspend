@@ -34,17 +34,17 @@ Organized feedback from early usage testing. Items marked ✅ are already implem
 ## 🟡 UX Improvements
 
 ### Terminology & Consistency
-- [ ] **App-wide**: Use "Spending" consistently (not "Expenses" in some places)
-  - *Idea: Global search for "expense" in UI text; create terminology guide in CLAUDE.md*
+- [x] **App-wide**: Use "Spending" consistently (not "Expenses" in some places) ✅ 0.3.2
+  - *Fixed: Cash flow chart legend uses "Spending", period averages use "Earned/Spent/Saved"*
 
-- [ ] **App-wide**: Expand shorthand labels (/fn → /fortnight, /wk → /week, etc.)
-  - *Idea: Update CADENCE_SHORT_LABELS in utils.ts; consider context - tables might need short, cards can be longer*
+- [x] **App-wide**: Expand shorthand labels (/fn → /fortnight, /wk → /week, etc.) ✅ 0.3.2
+  - *Fixed: CADENCE_SHORT_LABELS now uses /week, /fortnight, /month, /quarter, /year*
 
 - [ ] **Forecasts**: Use "Expected" not "Projected/Plan" (budget is the plan)
   - *Idea: Forecasts = "Expected" (known/fixed), Budgets = "Planned" (targets/limits)*
 
-- [ ] **Insights**: Cash flow terms should be "Earned, Spent, Saved"
-  - *Idea: Simple label changes on the cash flow chart*
+- [x] **Insights**: Cash flow terms should be "Earned, Spent, Saved" ✅ 0.3.2
+  - *Fixed: Updated chart tooltips, legends, and period averages card*
 
 - [ ] **Insights**: "Actual this month" → "Saved this month" on savings graph
   - *Idea: Label change on savings chart*
@@ -160,8 +160,8 @@ Organized feedback from early usage testing. Items marked ✅ are already implem
   - *Idea: Group related actions together; reduces cognitive load*
 
 ### Tooltips & Help
-- [ ] **Table badges**: Tooltips on +$50/-$70/^$120 explaining earned/spent/saved
-  - *Idea: Wrap badges in Tooltip component; "+$50" → "Income earned"*
+- [x] **Table badges**: Tooltips on +$50/-$70/^$120 explaining earned/spent/saved ✅ 0.3.2
+  - *Fixed: Amount badges now show tooltips like "Income earned", "Amount spent", "Contributed to savings"*
 
 - [ ] **Transaction notes**: Where are notes visible? Add tooltip or make more prominent
   - *Ideas:*
@@ -240,15 +240,15 @@ Organized feedback from early usage testing. Items marked ✅ are already implem
 
 ## Suggested Priority Order
 
-**Quick Wins (terminology, labels, tooltips):**
-1. Terminology consistency (Spending, Earned/Spent/Saved)
-2. Expand shorthand labels
-3. Add tooltips to table badges
+**Quick Wins (terminology, labels, tooltips):** ✅ All done in 0.3.2
+1. ~~Terminology consistency (Spending, Earned/Spent/Saved)~~
+2. ~~Expand shorthand labels~~
+3. ~~Add tooltips to table badges~~
 
-**Bug Fixes:**
-4. Month end card $0 income display
-5. Month end card with no plan
-6. Balance anchor input validation
+**Bug Fixes:** ✅ All done in 0.3.1
+4. ~~Month end card $0 income display~~
+5. ~~Month end card with no plan~~
+6. ~~Balance anchor input validation~~
 
 **High-Value Features:**
 7. Bulk category apply

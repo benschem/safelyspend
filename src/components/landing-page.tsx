@@ -163,19 +163,19 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
                 {/* Simplified Cash Flow Preview */}
                 <div className="rounded-xl border bg-card p-5">
                   <div className="grid grid-cols-4 gap-4">
-                    {/* Income/Expense Summary Cards */}
+                    {/* Earned/Spent Summary Cards */}
                     <div className="col-span-2 rounded-lg border p-4">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/10">
                         <TrendingUp className="h-4 w-4 text-green-500" />
                       </div>
-                      <p className="mt-3 text-sm text-muted-foreground">Income</p>
+                      <p className="mt-3 text-sm text-muted-foreground">Earned</p>
                       <p className="mt-1 text-lg font-semibold">{formatCents(725000)}</p>
                     </div>
                     <div className="col-span-2 rounded-lg border p-4">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10">
                         <TrendingDown className="h-4 w-4 text-red-500" />
                       </div>
-                      <p className="mt-3 text-sm text-muted-foreground">Expenses</p>
+                      <p className="mt-3 text-sm text-muted-foreground">Spent</p>
                       <p className="mt-1 text-lg font-semibold">{formatCents(489000)}</p>
                     </div>
                   </div>

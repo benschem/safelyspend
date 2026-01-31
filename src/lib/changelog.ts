@@ -21,6 +21,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.3.2',
+    date: '2026-01-31',
+    changes: [
+      'Clearer terminology: Cash flow now shows "Earned, Spent, Saved"',
+      'Expanded frequency labels: "/wk" is now "/week", "/fn" is now "/fortnight", etc.',
+      'Amount badges in tables now show tooltips explaining the transaction type',
+    ],
+  },
+  {
     version: '0.3.1',
     date: '2026-01-31',
     changes: [

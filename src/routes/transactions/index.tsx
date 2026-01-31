@@ -25,7 +25,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Plus, Pencil, Trash2, Download, AlertTriangle, Receipt, RotateCcw, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, Settings2, ChevronUp, ChevronDown, Target } from 'lucide-react';
+import { Plus, Pencil, Trash2, Download, AlertTriangle, Receipt, RotateCcw, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, Settings2, ChevronUp, ChevronDown, Target, Info } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
@@ -340,27 +340,48 @@ export function TransactionsIndexPage() {
           if (type === 'savings') {
             const isWithdrawal = amount < 0;
             return (
-              <div className="flex items-center justify-end gap-1 font-mono text-blue-600">
-                {isWithdrawal ? (
-                  <ChevronDown className="h-4 w-4 text-red-500" />
-                ) : (
-                  <ChevronUp className="h-4 w-4 text-green-500" />
-                )}
-                {formatCents(Math.abs(amount))}
-              </div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex cursor-default items-center justify-end gap-1 font-mono text-blue-600">
+                      {isWithdrawal ? (
+                        <ChevronDown className="h-4 w-4 text-red-500" />
+                      ) : (
+                        <ChevronUp className="h-4 w-4 text-green-500" />
+                      )}
+                      {formatCents(Math.abs(amount))}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="flex items-center gap-2 border-blue-500/50 bg-blue-500/10 text-blue-800 dark:text-blue-200">
+                    <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <p>{isWithdrawal ? 'Withdrawn from savings' : 'Contributed to savings'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             );
           }
 
           // Other types: income/adjustment positive, expense negative
           const isPositive = type === 'income' || type === 'adjustment';
           const colorClass = isPositive ? 'text-green-600' : 'text-red-600';
+          const tooltipText = type === 'income' ? 'Income earned' : type === 'adjustment' ? 'Balance adjustment' : 'Amount spent';
           return (
-            <div className="text-right font-mono">
-              <span className={colorClass}>
-                {isPositive ? '+' : '-'}
-                {formatCents(amount)}
-              </span>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="cursor-default text-right font-mono">
+                    <span className={colorClass}>
+                      {isPositive ? '+' : '-'}
+                      {formatCents(amount)}
+                    </span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="flex items-center gap-2 border-blue-500/50 bg-blue-500/10 text-blue-800 dark:text-blue-200">
+                  <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <p>{tooltipText}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           );
         },
       },

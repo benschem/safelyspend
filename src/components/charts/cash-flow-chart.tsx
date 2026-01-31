@@ -74,7 +74,7 @@ function CustomTooltip({
     <div className="rounded-lg border bg-background p-3 shadow-md">
       <p className="mb-2 font-semibold">{label ? formatMonth(label) : ''}</p>
       <div className="space-y-2 text-sm">
-        {/* Income */}
+        {/* Earned */}
         <div>
           <div className="flex items-center justify-between gap-6">
             <div className="flex items-center gap-2">
@@ -82,7 +82,7 @@ function CustomTooltip({
                 className="h-2.5 w-2.5 rounded-full"
                 style={{ backgroundColor: CHART_COLORS.income }}
               />
-              <span>Income</span>
+              <span>Earned</span>
             </div>
             <span className="font-mono text-green-600">+{formatCents(data.incomeTotal)}</span>
           </div>
@@ -93,7 +93,7 @@ function CustomTooltip({
           )}
         </div>
 
-        {/* Expenses */}
+        {/* Spent */}
         <div>
           <div className="flex items-center justify-between gap-6">
             <div className="flex items-center gap-2">
@@ -101,7 +101,7 @@ function CustomTooltip({
                 className="h-2.5 w-2.5 rounded-full"
                 style={{ backgroundColor: CHART_COLORS.expense }}
               />
-              <span>Expenses</span>
+              <span>Spent</span>
             </div>
             <span className="font-mono text-red-600">-{formatCents(data.expensesTotal)}</span>
           </div>
@@ -112,7 +112,7 @@ function CustomTooltip({
           )}
         </div>
 
-        {/* Savings */}
+        {/* Saved */}
         <div>
           <div className="flex items-center justify-between gap-6">
             <div className="flex items-center gap-2">
@@ -120,7 +120,7 @@ function CustomTooltip({
                 className="h-2.5 w-2.5 rounded-full"
                 style={{ backgroundColor: CHART_COLORS.savings }}
               />
-              <span>Savings</span>
+              <span>Saved</span>
             </div>
             <span className="font-mono text-blue-600">-{formatCents(data.savingsTotal)}</span>
           </div>
@@ -368,7 +368,7 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
           }`}
         >
           <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS.income }} />
-          <span className={hiddenLegends.has('income') ? 'line-through' : ''}>Income</span>
+          <span className={hiddenLegends.has('income') ? 'line-through' : ''}>Earned</span>
         </button>
         <button
           type="button"
@@ -388,7 +388,7 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
           }`}
         >
           <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS.savings }} />
-          <span className={hiddenLegends.has('savings') ? 'line-through' : ''}>Savings</span>
+          <span className={hiddenLegends.has('savings') ? 'line-through' : ''}>Saved</span>
         </button>
         <button
           type="button"

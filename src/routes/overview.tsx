@@ -397,29 +397,29 @@ export function SnapshotPage() {
 
         {/* Metrics - stacked on mobile, centered grid on larger */}
         <div className="mx-auto mt-6 flex max-w-md flex-col gap-4 sm:grid sm:grid-cols-3 sm:gap-2">
-          {/* Income */}
+          {/* Earned */}
           <div className="flex items-center justify-between sm:flex-col sm:items-center sm:justify-start sm:text-center">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-green-500" />
-              <span className="text-sm text-muted-foreground">Income</span>
+              <span className="text-sm text-muted-foreground">Earned</span>
             </div>
             <p className="text-lg font-semibold sm:mt-1 sm:text-2xl">{formatCents(periodAverages.income)}</p>
           </div>
 
-          {/* Expenses */}
+          {/* Spent */}
           <div className="flex items-center justify-between sm:flex-col sm:items-center sm:justify-start sm:text-center">
             <div className="flex items-center gap-2">
               <TrendingDown className="h-4 w-4 text-red-500" />
-              <span className="text-sm text-muted-foreground">Expenses</span>
+              <span className="text-sm text-muted-foreground">Spent</span>
             </div>
             <p className="text-lg font-semibold sm:mt-1 sm:text-2xl">{formatCents(periodAverages.expenses)}</p>
           </div>
 
-          {/* Savings */}
+          {/* Saved */}
           <div className="flex items-center justify-between sm:flex-col sm:items-center sm:justify-start sm:text-center">
             <div className="flex items-center gap-2">
               <PiggyBank className="h-4 w-4 text-blue-500" />
-              <span className="text-sm text-muted-foreground">Savings</span>
+              <span className="text-sm text-muted-foreground">Saved</span>
             </div>
             <p className="text-lg font-semibold sm:mt-1 sm:text-2xl">{formatCents(periodAverages.savings)}</p>
           </div>

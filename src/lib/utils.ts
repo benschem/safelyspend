@@ -224,11 +224,11 @@ export const CADENCE_LABELS: Record<CadenceType, string> = {
 };
 
 export const CADENCE_SHORT_LABELS: Record<CadenceType, string> = {
-  weekly: '/wk',
-  fortnightly: '/fn',
-  monthly: '/mo',
-  quarterly: '/qtr',
-  yearly: '/yr',
+  weekly: '/week',
+  fortnightly: '/fortnight',
+  monthly: '/month',
+  quarterly: '/quarter',
+  yearly: '/year',
 };
 
 /**
