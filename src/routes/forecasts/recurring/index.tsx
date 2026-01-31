@@ -12,6 +12,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Plus, ArrowLeft, Pencil, Trash2, RefreshCw } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -151,20 +157,32 @@ export function RecurringIndexPage() {
           const rule = row.original;
           const isDeleting = deletingId === rule.id;
           return (
-            <div className="flex justify-end gap-1">
-              <Button variant="ghost" size="sm" onClick={() => openEditDialog(rule)} aria-label="Edit rule">
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={isDeleting ? 'destructive' : 'ghost'}
-                size="sm"
-                onClick={() => handleDelete(rule.id)}
-                onBlur={() => setTimeout(() => setDeletingId(null), 200)}
-                aria-label={isDeleting ? 'Confirm delete' : 'Delete rule'}
-              >
-                {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
-              </Button>
-            </div>
+            <TooltipProvider>
+              <div className="flex justify-end gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="sm" onClick={() => openEditDialog(rule)} aria-label="Edit">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={isDeleting ? 'destructive' : 'ghost'}
+                      size="sm"
+                      onClick={() => handleDelete(rule.id)}
+                      onBlur={() => setTimeout(() => setDeletingId(null), 200)}
+                      aria-label={isDeleting ? 'Confirm delete' : 'Delete'}
+                    >
+                      {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{isDeleting ? 'Click to confirm' : 'Delete'}</TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
           );
         },
       },
@@ -232,20 +250,32 @@ export function RecurringIndexPage() {
           const rule = row.original;
           const isDeleting = deletingId === rule.id;
           return (
-            <div className="flex justify-end gap-1">
-              <Button variant="ghost" size="sm" onClick={() => openEditDialog(rule)} aria-label="Edit rule">
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={isDeleting ? 'destructive' : 'ghost'}
-                size="sm"
-                onClick={() => handleDelete(rule.id)}
-                onBlur={() => setTimeout(() => setDeletingId(null), 200)}
-                aria-label={isDeleting ? 'Confirm delete' : 'Delete rule'}
-              >
-                {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
-              </Button>
-            </div>
+            <TooltipProvider>
+              <div className="flex justify-end gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="sm" onClick={() => openEditDialog(rule)} aria-label="Edit">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={isDeleting ? 'destructive' : 'ghost'}
+                      size="sm"
+                      onClick={() => handleDelete(rule.id)}
+                      onBlur={() => setTimeout(() => setDeletingId(null), 200)}
+                      aria-label={isDeleting ? 'Confirm delete' : 'Delete'}
+                    >
+                      {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{isDeleting ? 'Click to confirm' : 'Delete'}</TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
           );
         },
       },
@@ -299,20 +329,32 @@ export function RecurringIndexPage() {
           const rule = row.original;
           const isDeleting = deletingId === rule.id;
           return (
-            <div className="flex justify-end gap-1">
-              <Button variant="ghost" size="sm" onClick={() => openEditDialog(rule)} aria-label="Edit rule">
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={isDeleting ? 'destructive' : 'ghost'}
-                size="sm"
-                onClick={() => handleDelete(rule.id)}
-                onBlur={() => setTimeout(() => setDeletingId(null), 200)}
-                aria-label={isDeleting ? 'Confirm delete' : 'Delete rule'}
-              >
-                {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
-              </Button>
-            </div>
+            <TooltipProvider>
+              <div className="flex justify-end gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="sm" onClick={() => openEditDialog(rule)} aria-label="Edit">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={isDeleting ? 'destructive' : 'ghost'}
+                      size="sm"
+                      onClick={() => handleDelete(rule.id)}
+                      onBlur={() => setTimeout(() => setDeletingId(null), 200)}
+                      aria-label={isDeleting ? 'Confirm delete' : 'Delete'}
+                    >
+                      {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{isDeleting ? 'Click to confirm' : 'Delete'}</TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
           );
         },
       },

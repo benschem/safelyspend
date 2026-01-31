@@ -393,35 +393,52 @@ export function TransactionsIndexPage() {
           const canAddToBudget = transaction.type === 'expense' && transaction.categoryId && activeScenarioId;
 
           return (
-            <div className="flex justify-end gap-1">
-              {canAddToBudget && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => openBudgetDialog(transaction)}
-                  aria-label="Add to budget"
-                >
-                  <Target className="h-4 w-4" />
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => openEditDialog(transaction)}
-                aria-label="Edit transaction"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={isDeleting ? 'destructive' : 'ghost'}
-                size="sm"
-                onClick={() => handleDelete(transaction.id)}
-                onBlur={() => setTimeout(() => setDeletingId(null), 200)}
-                aria-label={isDeleting ? 'Confirm delete' : 'Delete transaction'}
-              >
-                {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
-              </Button>
-            </div>
+            <TooltipProvider>
+              <div className="flex justify-end gap-1">
+                {canAddToBudget && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openBudgetDialog(transaction)}
+                        aria-label="Add to budget"
+                      >
+                        <Target className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Add to budget</TooltipContent>
+                  </Tooltip>
+                )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEditDialog(transaction)}
+                      aria-label="Edit"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={isDeleting ? 'destructive' : 'ghost'}
+                      size="sm"
+                      onClick={() => handleDelete(transaction.id)}
+                      onBlur={() => setTimeout(() => setDeletingId(null), 200)}
+                      aria-label={isDeleting ? 'Confirm delete' : 'Delete'}
+                    >
+                      {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{isDeleting ? 'Click to confirm' : 'Delete'}</TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
           );
         },
       },

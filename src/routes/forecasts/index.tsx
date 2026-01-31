@@ -20,6 +20,12 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Plus, Repeat, Settings2, Pencil, Trash2, Telescope, RotateCcw, TrendingUp, TrendingDown, PiggyBank, ChevronUp, ChevronDown } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -425,24 +431,36 @@ export function ForecastIndexPage() {
           const forecast = row.original;
 
           return (
-            <div className="flex justify-end gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => openEditDialog(forecast)}
-                aria-label="Edit forecast"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => openDeleteDialog(forecast)}
-                aria-label="Delete forecast"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+            <TooltipProvider>
+              <div className="flex justify-end gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEditDialog(forecast)}
+                      aria-label="Edit"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openDeleteDialog(forecast)}
+                      aria-label="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Delete</TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
           );
         },
       },

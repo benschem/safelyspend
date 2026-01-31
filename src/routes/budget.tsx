@@ -5,6 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Switch } from '@/components/ui/switch';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Pencil, Trash2, Plus, Target } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -242,27 +248,39 @@ export function BudgetPage() {
           const isDeleting = deletingId === budgetRow.id;
 
           return (
-            <div className="flex justify-end gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => openEditDialog(budgetRow)}
-                aria-label="Edit spending limit"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              {budgetRow.rule && (
-                <Button
-                  variant={isDeleting ? 'destructive' : 'ghost'}
-                  size="sm"
-                  onClick={() => handleDelete(budgetRow.id)}
-                  onBlur={() => setTimeout(() => setDeletingId(null), 200)}
-                  aria-label={isDeleting ? 'Confirm delete' : 'Delete spending limit'}
-                >
-                  {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
-                </Button>
-              )}
-            </div>
+            <TooltipProvider>
+              <div className="flex justify-end gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEditDialog(budgetRow)}
+                      aria-label="Edit"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit</TooltipContent>
+                </Tooltip>
+                {budgetRow.rule && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={isDeleting ? 'destructive' : 'ghost'}
+                        size="sm"
+                        onClick={() => handleDelete(budgetRow.id)}
+                        onBlur={() => setTimeout(() => setDeletingId(null), 200)}
+                        aria-label={isDeleting ? 'Confirm delete' : 'Delete'}
+                      >
+                        {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{isDeleting ? 'Click to confirm' : 'Delete'}</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            </TooltipProvider>
           );
         },
       },

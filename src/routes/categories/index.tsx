@@ -4,7 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert } from '@/components/ui/alert';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Plus, Pencil, Trash2, Archive, ArchiveRestore, Settings2, Tags } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
@@ -173,54 +173,71 @@ export function CategoriesIndexPage() {
           const isArchived = category.isArchived;
 
           return (
-            <div className="flex justify-end gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => openEditDialog(category)}
-                aria-label="Edit category"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => updateCategory(category.id, { isArchived: !isArchived })}
-                aria-label={isArchived ? 'Restore category' : 'Archive category'}
-              >
-                {isArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-              </Button>
-              {hasReferences(category.id) ? (
+            <TooltipProvider>
+              <div className="flex justify-end gap-1">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="inline-block">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled
-                        className="pointer-events-none"
-                        aria-label="Delete category (disabled)"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEditDialog(category)}
+                      aria-label="Edit"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Archive instead — used by {getReferenceText(category.id)}</p>
-                  </TooltipContent>
+                  <TooltipContent>Edit</TooltipContent>
                 </Tooltip>
-              ) : (
-                <Button
-                  variant={isDeleting ? 'destructive' : 'ghost'}
-                  size="sm"
-                  onClick={() => handleDelete(category.id)}
-                  onBlur={() => setTimeout(() => setDeletingId(null), 200)}
-                  aria-label={isDeleting ? 'Confirm delete' : 'Delete category'}
-                >
-                  {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
-                </Button>
-              )}
-            </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => updateCategory(category.id, { isArchived: !isArchived })}
+                      aria-label={isArchived ? 'Restore' : 'Archive'}
+                    >
+                      {isArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{isArchived ? 'Restore' : 'Archive'}</TooltipContent>
+                </Tooltip>
+                {hasReferences(category.id) ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-block">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled
+                          className="pointer-events-none"
+                          aria-label="Delete (disabled)"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Archive instead — used by {getReferenceText(category.id)}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={isDeleting ? 'destructive' : 'ghost'}
+                        size="sm"
+                        onClick={() => handleDelete(category.id)}
+                        onBlur={() => setTimeout(() => setDeletingId(null), 200)}
+                        aria-label={isDeleting ? 'Confirm delete' : 'Delete'}
+                      >
+                        {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{isDeleting ? 'Click to confirm' : 'Delete'}</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            </TooltipProvider>
           );
         },
       },
