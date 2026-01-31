@@ -794,32 +794,34 @@ export function MoneyIndexPage() {
   const getActionButton = () => {
     if (activeTab === 'past') {
       return (
-        <>
-          <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="flex gap-2">
+          <div className="flex flex-col gap-1">
             <Button variant="secondary" onClick={handleImportClick}>
               <Download className="h-4 w-4" />
               Import CSV
             </Button>
-            <Button onClick={openAddTransactionDialog}>
-              <Plus className="h-4 w-4" />
-              Add Past
+            <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
+              <Link to="/categories/import-rules?from=money">
+                <Settings2 className="h-4 w-4" />
+                Import Rules
+              </Link>
             </Button>
           </div>
-          <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
-            <Link to="/categories/import-rules?from=money">
-              <Settings2 className="h-4 w-4" />
-              Import Rules
-            </Link>
+          <Button onClick={openAddTransactionDialog}>
+            <Plus className="h-4 w-4" />
+            Add Past
           </Button>
-        </>
+        </div>
       );
     }
-    // expected
+    // expected - match height of past tab buttons
     return (
-      <Button onClick={openAddExpectedDialog}>
-        <Plus className="h-4 w-4" />
-        Add Expected
-      </Button>
+      <div className="flex items-start">
+        <Button onClick={openAddExpectedDialog}>
+          <Plus className="h-4 w-4" />
+          Add Expected
+        </Button>
+      </div>
     );
   };
 
