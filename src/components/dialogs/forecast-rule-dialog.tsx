@@ -43,6 +43,8 @@ interface ForecastRuleDialogProps {
   onRuleCreated?: (rule: ForecastRule) => void;
   /** Pre-fill data when converting from a one-time event */
   prefill?: PrefillData | null;
+  /** Restrict to a specific type (hides the type selector) */
+  restrictType?: ForecastType | null;
 }
 
 const MONTH_NAMES = [
@@ -52,7 +54,7 @@ const MONTH_NAMES = [
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRule, updateRule, onRuleCreated, prefill }: ForecastRuleDialogProps) {
+export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRule, updateRule, onRuleCreated, prefill, restrictType }: ForecastRuleDialogProps) {
   const isEditing = !!rule;
 
   // Form state
@@ -84,7 +86,7 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
         setSavingsGoalId(rule.savingsGoalId ?? '');
       } else if (prefill) {
         // Pre-filling from a one-time event
-        setType(prefill.type);
+        setType(restrictType ?? prefill.type);
         setDescription(prefill.description);
         setAmount((prefill.amountCents / 100).toFixed(2));
         setCadence('monthly'); // Default to monthly
@@ -96,7 +98,7 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
         setSavingsGoalId(prefill.savingsGoalId ?? '');
       } else {
         // New rule from scratch
-        setType('expense');
+        setType(restrictType ?? 'expense');
         setDescription('');
         setAmount('');
         setCadence('monthly');
@@ -109,7 +111,7 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
       }
       setFormError(null);
     }
-  }, [open, rule, prefill]);
+  }, [open, rule, prefill, restrictType]);
 
   const handleSave = async () => {
     setFormError(null);
@@ -182,9 +184,15 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit' : 'Add'} Recurring Forecast</DialogTitle>
+          <DialogTitle>
+            {isEditing ? 'Edit' : 'Add'} Recurring {restrictType ? (restrictType === 'savings' ? 'Savings Contribution' : restrictType.charAt(0).toUpperCase() + restrictType.slice(1)) : 'Forecast'}
+          </DialogTitle>
           <DialogDescription>
-            {isEditing ? 'Update the recurring forecast.' : 'Add a recurring income, expense, or savings pattern.'}
+            {isEditing
+              ? `Update this recurring ${restrictType ?? 'forecast'}.`
+              : restrictType
+                ? `Add a recurring ${restrictType === 'savings' ? 'savings contribution' : restrictType}.`
+                : 'Add a recurring income, expense, or savings pattern.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -205,19 +213,22 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
             />
           </div>
 
-          <div className="space-y-2">
-            <Label className="select-none">Type</Label>
-            <Select value={type} onValueChange={(v) => setType(v as ForecastType)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="expense">Expense</SelectItem>
-                <SelectItem value="income">Income</SelectItem>
-                <SelectItem value="savings">Savings</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Type selector - hidden when type is restricted */}
+          {!restrictType && (
+            <div className="space-y-2">
+              <Label className="select-none">Type</Label>
+              <Select value={type} onValueChange={(v) => setType(v as ForecastType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="expense">Expense</SelectItem>
+                  <SelectItem value="income">Income</SelectItem>
+                  <SelectItem value="savings">Savings</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

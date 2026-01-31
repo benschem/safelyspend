@@ -40,6 +40,7 @@ import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { UpImportDialog } from '@/components/up-import-dialog';
 import { AddToBudgetDialog } from '@/components/dialogs/add-to-budget-dialog';
 import { ExpectedTransactionDialog } from '@/components/dialogs/expected-transaction-dialog';
+import { ForecastRuleDialog } from '@/components/dialogs/forecast-rule-dialog';
 import { DeleteForecastDialog } from '@/components/dialogs/delete-forecast-dialog';
 import { BudgetPromptDialog } from '@/components/dialogs/budget-prompt-dialog';
 import { ScenarioSelector } from '@/components/scenario-selector';
@@ -139,12 +140,15 @@ export function MoneyIndexPage() {
   const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
   const [budgetTransaction, setBudgetTransaction] = useState<Transaction | null>(null);
 
-  // Dialog states - Expected
+  // Dialog states - Expected (one-time events)
   const [expectedDialogOpen, setExpectedDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<ForecastEvent | null>(null);
-  const [editingRule, setEditingRule] = useState<ForecastRule | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingForecast, setDeletingForecast] = useState<ExpandedForecast | null>(null);
+
+  // Dialog states - Recurring rules
+  const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
+  const [editingRule, setEditingRule] = useState<ForecastRule | null>(null);
 
   // Budget prompt dialog state (for expected)
   const [budgetPromptOpen, setBudgetPromptOpen] = useState(false);
@@ -264,14 +268,12 @@ export function MoneyIndexPage() {
       const rule = rules.find(r => r.id === forecast.sourceId);
       if (rule) {
         setEditingRule(rule);
-        setEditingEvent(null);
-        setExpectedDialogOpen(true);
+        setRecurringDialogOpen(true);
       }
     } else {
       const event = events.find(e => e.id === forecast.sourceId);
       if (event) {
         setEditingEvent(event);
-        setEditingRule(null);
         setExpectedDialogOpen(true);
       }
     }
@@ -281,6 +283,12 @@ export function MoneyIndexPage() {
     setExpectedDialogOpen(open);
     if (!open) {
       setEditingEvent(null);
+    }
+  }, []);
+
+  const handleRecurringDialogClose = useCallback((open: boolean) => {
+    setRecurringDialogOpen(open);
+    if (!open) {
       setEditingRule(null);
     }
   }, []);
@@ -1092,9 +1100,17 @@ export function MoneyIndexPage() {
         onOpenChange={handleExpectedDialogClose}
         scenarioId={activeScenarioId}
         event={editingEvent}
-        rule={editingRule}
         addEvent={addEvent}
         updateEvent={updateEvent}
+        addRule={addRule}
+        onRuleCreated={handleRuleCreated}
+      />
+
+      <ForecastRuleDialog
+        open={recurringDialogOpen}
+        onOpenChange={handleRecurringDialogClose}
+        scenarioId={activeScenarioId}
+        rule={editingRule}
         addRule={addRule}
         updateRule={updateRule}
         onRuleCreated={handleRuleCreated}

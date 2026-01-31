@@ -27,14 +27,11 @@ interface ExpectedTransactionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   scenarioId: string | null;
-  /** Event to edit (sets mode to one-time) */
+  /** Event to edit (one-time only) */
   event?: ForecastEvent | null;
-  /** Rule to edit (sets mode to recurring) */
-  rule?: ForecastRule | null;
   addEvent: (data: CreateEntity<ForecastEvent>) => Promise<ForecastEvent>;
   updateEvent: (id: string, updates: Partial<Omit<ForecastEvent, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
   addRule: (data: CreateEntity<ForecastRule>) => Promise<ForecastRule>;
-  updateRule: (id: string, updates: Partial<Omit<ForecastRule, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
   /** Called after a new rule is created (not on edit) */
   onRuleCreated?: (rule: ForecastRule) => void;
 }
@@ -51,16 +48,12 @@ export function ExpectedTransactionDialog({
   onOpenChange,
   scenarioId,
   event,
-  rule,
   addEvent,
   updateEvent,
   addRule,
-  updateRule,
   onRuleCreated,
 }: ExpectedTransactionDialogProps) {
-  const isEditingEvent = !!event;
-  const isEditingRule = !!rule;
-  const isEditing = isEditingEvent || isEditingRule;
+  const isEditing = !!event;
   const todayDate = today();
 
   // Form state
@@ -99,21 +92,6 @@ export function ExpectedTransactionDialog({
         setDayOfWeek('1');
         setMonthOfYear('0');
         setMonthOfQuarter('0');
-      } else if (rule) {
-        // Editing existing rule - set to recurring mode
-        setMode('recurring');
-        setType(rule.type);
-        setDescription(rule.description);
-        setAmount((rule.amountCents / 100).toFixed(2));
-        setCategoryId(rule.categoryId ?? '');
-        setSavingsGoalId(rule.savingsGoalId ?? '');
-        setCadence(rule.cadence);
-        setDayOfMonth(String(rule.dayOfMonth ?? 1));
-        setDayOfWeek(String(rule.dayOfWeek ?? 1));
-        setMonthOfYear(String(rule.monthOfYear ?? 0));
-        setMonthOfQuarter(String(rule.monthOfQuarter ?? 0));
-        // Reset one-time fields
-        setDate(todayDate);
       } else {
         // New - default to one-time
         setMode('one-time');
@@ -131,7 +109,7 @@ export function ExpectedTransactionDialog({
       }
       setFormError(null);
     }
-  }, [open, event, rule, todayDate]);
+  }, [open, event, todayDate]);
 
   const handleSave = async () => {
     setFormError(null);
@@ -169,7 +147,7 @@ export function ExpectedTransactionDialog({
           savingsGoalId: type === 'savings' ? savingsGoalId : null,
         };
 
-        if (isEditingEvent && event) {
+        if (isEditing && event) {
           await updateEvent(event.id, eventData);
         } else {
           await addEvent(eventData);
@@ -201,12 +179,8 @@ export function ExpectedTransactionDialog({
           ruleData.monthOfQuarter = parseInt(monthOfQuarter, 10);
         }
 
-        if (isEditingRule && rule) {
-          await updateRule(rule.id, ruleData);
-        } else {
-          const newRule = await addRule(ruleData);
-          onRuleCreated?.(newRule);
-        }
+        const newRule = await addRule(ruleData);
+        onRuleCreated?.(newRule);
       }
       onOpenChange(false);
     } catch (error) {
@@ -221,14 +195,12 @@ export function ExpectedTransactionDialog({
 
   // Determine dialog title and description
   const getTitle = () => {
-    if (isEditingEvent) return 'Edit Expected Transaction';
-    if (isEditingRule) return 'Edit Recurring Expectation';
+    if (isEditing) return 'Edit Expected Transaction';
     return 'Add Expected Transaction';
   };
 
   const getDescription = () => {
-    if (isEditingEvent) return 'Update this expected transaction.';
-    if (isEditingRule) return 'Update this recurring expectation.';
+    if (isEditing) return 'Update this expected transaction.';
     return 'Add a future expected transaction, either one-time or recurring.';
   };
 

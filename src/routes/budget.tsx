@@ -1347,6 +1347,12 @@ export function BudgetPage() {
         rule={editingRule}
         addRule={addRule}
         updateRule={updateRule}
+        restrictType={
+          activeTab === 'recurring-expenses' ? 'expense' :
+          activeTab === 'expected-income' ? 'income' :
+          activeTab === 'expected-savings' ? 'savings' :
+          null
+        }
       />
     </div>
   );
