@@ -1082,7 +1082,7 @@ export function BudgetPage() {
                   <div className="rounded-xl border bg-card p-5">
                     <div className="flex items-center gap-2">
                       <Target className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Budget Status</span>
+                      <span className="text-sm text-muted-foreground">Budgeted</span>
                     </div>
                     <p className="mt-2 text-2xl font-bold text-muted-foreground">—</p>
                   </div>
@@ -1094,9 +1094,10 @@ export function BudgetPage() {
                   <div className="rounded-xl border bg-card p-5">
                     <div className="flex items-center gap-2">
                       <Target className="h-4 w-4 text-green-500" />
-                      <span className="text-sm text-muted-foreground">Budget Status</span>
+                      <span className="text-sm text-muted-foreground">Budgeted</span>
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-green-600 dark:text-green-400">100% Allocated</p>
+                    <p className="mt-2 text-2xl font-bold text-green-600 dark:text-green-400">100%</p>
+                    <p className="text-sm text-muted-foreground">of {formatCents(periodIncome)} income</p>
                   </div>
                 );
               }
@@ -1109,8 +1110,9 @@ export function BudgetPage() {
                       <span className="text-sm text-muted-foreground">Overcommitted</span>
                     </div>
                     <p className="mt-2 text-2xl font-bold text-amber-600 dark:text-amber-400">
-                      -{formatCents(overBudgetAmount)}
+                      {formatCents(overBudgetAmount)}
                     </p>
+                    <p className="text-sm text-muted-foreground">over {formatCents(periodIncome)} income</p>
                   </div>
                 );
               }
@@ -1119,11 +1121,12 @@ export function BudgetPage() {
                 <div className="rounded-xl border bg-card p-5">
                   <div className="flex items-center gap-2">
                     <Target className="h-4 w-4 text-green-500" />
-                    <span className="text-sm text-muted-foreground">Unallocated</span>
+                    <span className="text-sm text-muted-foreground">Unbudgeted</span>
                   </div>
                   <p className="mt-2 text-2xl font-bold text-green-600 dark:text-green-400">
-                    +{formatCents(unbudgetedAmount)}
+                    {formatCents(unbudgetedAmount)}
                   </p>
+                  <p className="text-sm text-muted-foreground">of {formatCents(periodIncome)} income</p>
                 </div>
               );
             })()}
