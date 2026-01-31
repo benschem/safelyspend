@@ -246,9 +246,9 @@ export function SpendingPage() {
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button variant="outline" className="h-10" asChild>
-            <Link to="/forecasts">
+            <Link to="/money?tab=expected">
               <Plus className="h-4 w-4" />
-              Forecast Expense
+              Add Expected
             </Link>
           </Button>
           <Button className="h-10" onClick={() => setTransactionDialogOpen(true)}>
@@ -578,7 +578,7 @@ export function SpendingPage() {
           return (
             <>
               {/* Card Header */}
-              <h3 className="text-lg font-semibold">{isFuturePeriod ? 'Forecast Cash Flow' : 'Cash Flow'}</h3>
+              <h3 className="text-lg font-semibold">{isFuturePeriod ? 'Expected Cash Flow' : 'Cash Flow'}</h3>
               <p className="text-sm text-muted-foreground">All bars relative to {formatCents(incomeAmount)} income</p>
 
               {/* Income Section */}
@@ -594,7 +594,7 @@ export function SpendingPage() {
                     {isFuturePeriod ? (
                       formatCents(expectedIncome)
                     ) : hasIncomeForecast ? (
-                      <>{incomePct}% of {formatCents(expectedIncome)} forecast</>
+                      <>{incomePct}% of {formatCents(expectedIncome)} expected</>
                     ) : (
                       <>{formatCents(actualIncome)} earned</>
                     )}
@@ -735,7 +735,7 @@ export function SpendingPage() {
           return (
             <>
               {/* Card Header */}
-              <h3 className="text-lg font-semibold">{isFuturePeriod ? 'Forecast Spending by Category' : 'Spending by Category'}</h3>
+              <h3 className="text-lg font-semibold">{isFuturePeriod ? 'Expected Spending by Category' : 'Spending by Category'}</h3>
               <p className="text-sm text-muted-foreground">
                 {categories.length} {categories.length === 1 ? 'category' : 'categories'}
               </p>
@@ -744,7 +744,7 @@ export function SpendingPage() {
               {categories.length === 0 ? (
                 <div className="mt-4 flex h-24 items-center justify-center text-sm text-muted-foreground">
                   {isFuturePeriod
-                    ? `No expenses forecast for ${periodLabel}.`
+                    ? `No expenses expected for ${periodLabel}.`
                     : `No expenses recorded ${isCurrentPeriod ? (viewMode === 'year' ? 'this year' : 'this month') : `in ${periodLabel}`}.`}
                 </div>
               ) : allHidden ? (

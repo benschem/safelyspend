@@ -358,7 +358,7 @@ export function BudgetComparisonChart({
 
       <p className="mt-3 text-center text-xs text-muted-foreground">
         {hasFutureData
-          ? 'Data after the "Now" line is forecast. Hover for breakdown.'
+          ? 'Data after the "Now" line is expected. Hover for breakdown.'
           : 'Hover for breakdown.'}
       </p>
     </div>

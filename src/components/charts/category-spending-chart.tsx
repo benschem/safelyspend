@@ -341,7 +341,7 @@ export function CategorySpendingChart({
 
       <p className="mt-3 text-center text-xs text-muted-foreground">
         Click categories to show/hide.
-        {hasFutureData && ' Data after the "Now" line is forecast.'}
+        {hasFutureData && ' Data after the "Now" line is expected.'}
       </p>
     </div>
   );

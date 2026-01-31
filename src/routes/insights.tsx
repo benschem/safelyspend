@@ -492,7 +492,7 @@ export function InsightsPage() {
             <p className="text-sm text-muted-foreground">
               {isPastOnly
                 ? 'How your spending compared to your budget'
-                : 'Actual and forecast spending vs budget'}
+                : 'Actual and expected spending vs budget'}
             </p>
           </div>
           <BudgetComparisonChart

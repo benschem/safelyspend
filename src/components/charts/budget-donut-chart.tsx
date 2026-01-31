@@ -35,7 +35,7 @@ export function BudgetDonutChart({
     if (actual > 0 || forecasted > 0) {
       chartData = [
         { name: 'Spent', value: actual, color: spentColor },
-        { name: 'Forecast', value: forecasted, color: forecastColor },
+        { name: 'Expected', value: forecasted, color: forecastColor },
       ].filter((d) => d.value > 0);
     } else {
       chartData = [{ name: 'Empty', value: 1, color: '#e5e7eb' }];
@@ -43,7 +43,7 @@ export function BudgetDonutChart({
   } else {
     chartData = [
       { name: 'Spent', value: Math.min(actual, budgeted), color: spentColor },
-      { name: 'Forecast', value: Math.min(forecasted, Math.max(0, budgeted - actual)), color: forecastColor },
+      { name: 'Expected', value: Math.min(forecasted, Math.max(0, budgeted - actual)), color: forecastColor },
       { name: 'Remaining', value: remaining, color: '#e5e7eb' }, // gray-200
     ].filter((d) => d.value > 0);
 

@@ -18,7 +18,7 @@ export function BudgetAllocationBar({
   if (income <= 0) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-        No income forecasted for this period
+        No income expected for this period
       </div>
     );
   }

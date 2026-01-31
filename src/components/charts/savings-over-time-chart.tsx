@@ -80,7 +80,7 @@ function CustomTooltip({
               className="h-2.5 w-2.5 rounded-sm"
               style={{ backgroundColor: `${CHART_COLORS.savings}60` }}
             />
-            <span className="text-muted-foreground">Forecast this month:</span>
+            <span className="text-muted-foreground">Expected this month:</span>
             <span className="font-mono text-blue-400">+{formatCents(data.forecast)}</span>
           </div>
         )}
@@ -98,7 +98,7 @@ function CustomTooltip({
         </div>
         {data.cumulativeForecast > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">+ Forecast:</span>
+            <span className="text-muted-foreground">+ Expected:</span>
             <span className="font-mono text-blue-400">+{formatCents(data.cumulativeForecast)}</span>
           </div>
         )}

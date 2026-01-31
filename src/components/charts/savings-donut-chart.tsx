@@ -22,7 +22,7 @@ export function SavingsDonutChart({
 
   const chartData = [
     { name: 'Saved', value: savedAmount, color: '#2563eb' }, // blue-600
-    { name: 'Forecast', value: forecastedAmount, color: '#93c5fd' }, // blue-300
+    { name: 'Expected', value: forecastedAmount, color: '#93c5fd' }, // blue-300
     { name: 'Remaining', value: remaining, color: '#e5e7eb' }, // gray-200
   ].filter((d) => d.value > 0);
 

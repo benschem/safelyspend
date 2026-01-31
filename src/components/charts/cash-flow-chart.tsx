@@ -88,7 +88,7 @@ function CustomTooltip({
           </div>
           {hasForecast && data.incomeForecast > 0 && (
             <div className="ml-4 text-xs text-muted-foreground">
-              {formatCents(data.incomeActual)} actual + {formatCents(data.incomeForecast)} forecast
+              {formatCents(data.incomeActual)} actual + {formatCents(data.incomeForecast)} expected
             </div>
           )}
         </div>
@@ -107,7 +107,7 @@ function CustomTooltip({
           </div>
           {hasForecast && data.expenseForecast > 0 && (
             <div className="ml-4 text-xs text-muted-foreground">
-              {formatCents(data.expenseActual)} actual + {formatCents(data.expenseForecast)} forecast
+              {formatCents(data.expenseActual)} actual + {formatCents(data.expenseForecast)} expected
             </div>
           )}
         </div>
@@ -126,7 +126,7 @@ function CustomTooltip({
           </div>
           {hasForecast && data.savingsForecast > 0 && (
             <div className="ml-4 text-xs text-muted-foreground">
-              {formatCents(data.savingsActual)} actual + {formatCents(data.savingsForecast)} forecast
+              {formatCents(data.savingsActual)} actual + {formatCents(data.savingsForecast)} expected
             </div>
           )}
         </div>
@@ -422,7 +422,7 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
 
       <p className="mt-3 text-center text-xs text-muted-foreground">
         {hasFutureData
-          ? 'Data after the "Now" line is forecast. Hover for breakdown.'
+          ? 'Data after the "Now" line is expected. Hover for breakdown.'
           : 'Hover for breakdown.'}
       </p>
     </div>
