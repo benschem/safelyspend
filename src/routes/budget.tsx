@@ -6,6 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { Alert } from '@/components/ui/alert';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -21,8 +28,10 @@ import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
+import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { CategoryBudgetDialog } from '@/components/dialogs/category-budget-dialog';
-import type { Cadence, BudgetRule, Category } from '@/lib/types';
+import { ForecastRuleDialog } from '@/components/dialogs/forecast-rule-dialog';
+import type { Cadence, BudgetRule, Category, ForecastRule } from '@/lib/types';
 import { SpendingBreakdownChart } from '@/components/charts/spending-breakdown-chart';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 
@@ -63,6 +72,7 @@ export function BudgetPage() {
   const { getRuleForCategory, isLoading: budgetLoading, setBudgetForCategory, deleteBudgetRule } =
     useBudgetRules(activeScenarioId);
   const { allTransactions, isLoading: transactionsLoading } = useTransactions();
+  const { savingsGoals, isLoading: savingsLoading } = useSavingsGoals();
 
   // Calculate date range for next 12 months (for expected income)
   const forecastDateRange = useMemo(() => {
@@ -72,13 +82,13 @@ export function BudgetPage() {
     return { startDate, endDate };
   }, []);
 
-  const { rules: forecastRules, savingsForecasts, incomeForecasts, isLoading: forecastsLoading } = useForecasts(
+  const { rules: forecastRules, savingsForecasts, incomeForecasts, isLoading: forecastsLoading, addRule, updateRule, deleteRule } = useForecasts(
     activeScenarioId,
     forecastDateRange.startDate,
     forecastDateRange.endDate,
   );
 
-  const isLoading = categoriesLoading || budgetLoading || transactionsLoading || forecastsLoading;
+  const isLoading = categoriesLoading || budgetLoading || transactionsLoading || forecastsLoading || savingsLoading;
 
   // Tab state from URL
   const [activeTab, setActiveTab] = useState<BudgetTab>(() => {
@@ -110,6 +120,14 @@ export function BudgetPage() {
   const [focusLimit, setFocusLimit] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [hiddenSegments, setHiddenSegments] = useState<Set<string>>(new Set());
+
+  // Forecast rule dialog state
+  const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
+  const [editingRule, setEditingRule] = useState<ForecastRule | null>(null);
+  const [deletingRuleId, setDeletingRuleId] = useState<string | null>(null);
+
+  // Filter state for expected expenses
+  const [expenseFilterCategory, setExpenseFilterCategory] = useState<string>('all');
 
   // Compute transaction counts per category
   const transactionCounts = useMemo(() => {
@@ -180,6 +198,29 @@ export function BudgetPage() {
     map['unbudgeted'] = CHART_COLORS.available;
     return map;
   }, [activeCategories]);
+
+  // Filter forecast rules by type
+  const incomeRules = useMemo(() => forecastRules.filter(r => r.type === 'income'), [forecastRules]);
+  const expenseRules = useMemo(() => {
+    const expenses = forecastRules.filter(r => r.type === 'expense');
+    if (expenseFilterCategory !== 'all') {
+      return expenses.filter(r => r.categoryId === expenseFilterCategory);
+    }
+    return expenses;
+  }, [forecastRules, expenseFilterCategory]);
+  const savingsRules = useMemo(() => forecastRules.filter(r => r.type === 'savings'), [forecastRules]);
+
+  // Helper to get category name
+  const getCategoryName = useCallback(
+    (id: string | null) => (id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '—'),
+    [categories],
+  );
+
+  // Helper to get savings goal name
+  const getSavingsGoalName = useCallback(
+    (id: string | null) => (id ? (savingsGoals.find((g) => g.id === id)?.name ?? 'Unknown') : '—'),
+    [savingsGoals],
+  );
 
   // Normalize amounts to selected period
   const toPeriod = useCallback((amount: number, cadence: Cadence, period: BudgetPeriod): number => {
@@ -318,16 +359,42 @@ export function BudgetPage() {
     [deletingId, deleteCategory],
   );
 
+  // Forecast rule handlers
+  const openAddRuleDialog = useCallback(() => {
+    setEditingRule(null);
+    setRuleDialogOpen(true);
+  }, []);
+
+  const openEditRuleDialog = useCallback((rule: ForecastRule) => {
+    setEditingRule(rule);
+    setRuleDialogOpen(true);
+  }, []);
+
+  const handleRuleDialogClose = useCallback((open: boolean) => {
+    setRuleDialogOpen(open);
+    if (!open) setEditingRule(null);
+  }, []);
+
+  const handleDeleteRule = useCallback((id: string) => {
+    if (deletingRuleId === id) {
+      deleteRule(id);
+      setDeletingRuleId(null);
+    } else {
+      setDeletingRuleId(id);
+    }
+  }, [deletingRuleId, deleteRule]);
+
   // Close delete confirmation on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && deletingId) {
-        setDeletingId(null);
+      if (e.key === 'Escape') {
+        if (deletingId) setDeletingId(null);
+        if (deletingRuleId) setDeletingRuleId(null);
       }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [deletingId]);
+  }, [deletingId, deletingRuleId]);
 
   const columns: ColumnDef<BudgetRow>[] = useMemo(
     () => [
@@ -387,7 +454,7 @@ export function BudgetPage() {
                       Set budget
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>Set a spending limit for this category</TooltipContent>
+                  <TooltipContent>Set a spending expectation for this category</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             );
@@ -406,7 +473,7 @@ export function BudgetPage() {
                     <span className="ml-1 text-muted-foreground">{CADENCE_FULL_LABELS[budgetRow.cadence!]}</span>
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>Edit spending limit</TooltipContent>
+                <TooltipContent>Edit spending expectation</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           );
@@ -558,6 +625,294 @@ export function BudgetPage() {
     [deletingId, openEditDialog, handleDelete, updateCategory, hasReferences, getReferenceText],
   );
 
+  // Income rules columns
+  const incomeColumns: ColumnDef<ForecastRule>[] = useMemo(
+    () => [
+      {
+        accessorKey: 'description',
+        header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
+        cell: ({ row }) => (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => openEditRuleDialog(row.original)}
+                  className="cursor-pointer text-left font-medium hover:underline"
+                >
+                  {row.getValue('description')}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Edit</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ),
+      },
+      {
+        accessorKey: 'cadence',
+        header: 'Cadence',
+        cell: ({ row }) => (
+          <Badge variant="outline">{CADENCE_FULL_LABELS[row.getValue('cadence') as Cadence]}</Badge>
+        ),
+      },
+      {
+        accessorKey: 'amountCents',
+        header: ({ column }) => (
+          <SortableHeader column={column} className="justify-end">
+            Amount
+          </SortableHeader>
+        ),
+        cell: ({ row }) => (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="cursor-default text-right font-mono text-green-600">
+                  +{formatCents(row.getValue('amountCents'))}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>Recurring income</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ),
+      },
+      {
+        id: 'actions',
+        cell: ({ row }) => {
+          const rule = row.original;
+          const isDeleting = deletingRuleId === rule.id;
+          return (
+            <TooltipProvider>
+              <div className="flex justify-end gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="sm" onClick={() => openEditRuleDialog(rule)} aria-label="Edit">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={isDeleting ? 'destructive' : 'ghost'}
+                      size="sm"
+                      onClick={() => handleDeleteRule(rule.id)}
+                      onBlur={() => setTimeout(() => setDeletingRuleId(null), 200)}
+                      aria-label={isDeleting ? 'Confirm delete' : 'Delete'}
+                    >
+                      {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{isDeleting ? 'Click to confirm' : 'Delete'}</TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
+          );
+        },
+      },
+    ],
+    [deletingRuleId, openEditRuleDialog, handleDeleteRule],
+  );
+
+  // Expense rules columns
+  const expenseColumns: ColumnDef<ForecastRule>[] = useMemo(
+    () => [
+      {
+        accessorKey: 'description',
+        header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
+        cell: ({ row }) => (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => openEditRuleDialog(row.original)}
+                  className="cursor-pointer text-left font-medium hover:underline"
+                >
+                  {row.getValue('description')}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Edit</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ),
+      },
+      {
+        accessorKey: 'categoryId',
+        header: 'Category',
+        cell: ({ row }) => {
+          const categoryId = row.getValue('categoryId') as string | null;
+          const categoryName = getCategoryName(categoryId);
+          if (!categoryId) {
+            return <span className="text-muted-foreground">—</span>;
+          }
+          return (
+            <Link to={`/categories/${categoryId}`} className="hover:underline">
+              {categoryName}
+            </Link>
+          );
+        },
+      },
+      {
+        accessorKey: 'cadence',
+        header: 'Cadence',
+        cell: ({ row }) => (
+          <Badge variant="outline">{CADENCE_FULL_LABELS[row.getValue('cadence') as Cadence]}</Badge>
+        ),
+      },
+      {
+        accessorKey: 'amountCents',
+        header: ({ column }) => (
+          <SortableHeader column={column} className="justify-end">
+            Amount
+          </SortableHeader>
+        ),
+        cell: ({ row }) => (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="cursor-default text-right font-mono text-red-600">
+                  -{formatCents(row.getValue('amountCents'))}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>Recurring expense</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ),
+      },
+      {
+        id: 'actions',
+        cell: ({ row }) => {
+          const rule = row.original;
+          const isDeleting = deletingRuleId === rule.id;
+          return (
+            <TooltipProvider>
+              <div className="flex justify-end gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="sm" onClick={() => openEditRuleDialog(rule)} aria-label="Edit">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={isDeleting ? 'destructive' : 'ghost'}
+                      size="sm"
+                      onClick={() => handleDeleteRule(rule.id)}
+                      onBlur={() => setTimeout(() => setDeletingRuleId(null), 200)}
+                      aria-label={isDeleting ? 'Confirm delete' : 'Delete'}
+                    >
+                      {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{isDeleting ? 'Click to confirm' : 'Delete'}</TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
+          );
+        },
+      },
+    ],
+    [deletingRuleId, openEditRuleDialog, handleDeleteRule, getCategoryName],
+  );
+
+  // Savings rules columns
+  const savingsColumns: ColumnDef<ForecastRule>[] = useMemo(
+    () => [
+      {
+        accessorKey: 'description',
+        header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
+        cell: ({ row }) => (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => openEditRuleDialog(row.original)}
+                  className="cursor-pointer text-left font-medium hover:underline"
+                >
+                  {row.getValue('description')}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Edit</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ),
+      },
+      {
+        accessorKey: 'savingsGoalId',
+        header: 'Savings Goal',
+        cell: ({ row }) => getSavingsGoalName(row.getValue('savingsGoalId')),
+      },
+      {
+        accessorKey: 'cadence',
+        header: 'Cadence',
+        cell: ({ row }) => (
+          <Badge variant="outline">{CADENCE_FULL_LABELS[row.getValue('cadence') as Cadence]}</Badge>
+        ),
+      },
+      {
+        accessorKey: 'amountCents',
+        header: ({ column }) => (
+          <SortableHeader column={column} className="justify-end">
+            Amount
+          </SortableHeader>
+        ),
+        cell: ({ row }) => (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="cursor-default text-right font-mono text-blue-600">
+                  -{formatCents(row.getValue('amountCents'))}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>Recurring savings contribution</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ),
+      },
+      {
+        id: 'actions',
+        cell: ({ row }) => {
+          const rule = row.original;
+          const isDeleting = deletingRuleId === rule.id;
+          return (
+            <TooltipProvider>
+              <div className="flex justify-end gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="sm" onClick={() => openEditRuleDialog(rule)} aria-label="Edit">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={isDeleting ? 'destructive' : 'ghost'}
+                      size="sm"
+                      onClick={() => handleDeleteRule(rule.id)}
+                      onBlur={() => setTimeout(() => setDeletingRuleId(null), 200)}
+                      aria-label={isDeleting ? 'Confirm delete' : 'Delete'}
+                    >
+                      {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{isDeleting ? 'Click to confirm' : 'Delete'}</TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
+          );
+        },
+      },
+    ],
+    [deletingRuleId, openEditRuleDialog, handleDeleteRule, getSavingsGoalName],
+  );
+
   // Show loading spinner while data is being fetched
   if (isLoading) {
     return (
@@ -580,7 +935,7 @@ export function BudgetPage() {
           <p className="page-description">Manage spending categories and set budget limits</p>
         </div>
         <div className="empty-state">
-          <p className="empty-state-text">Select a scenario to configure spending limits.</p>
+          <p className="empty-state-text">Select a scenario to configure spending expectations.</p>
           <Button asChild className="empty-state-action">
             <Link to="/scenarios">Manage Scenarios</Link>
           </Button>
@@ -608,6 +963,24 @@ export function BudgetPage() {
               <Button onClick={() => setAddDialogOpen(true)}>
                 <Plus className="h-4 w-4" />
                 Add Category
+              </Button>
+            )}
+            {activeTab === 'expected-income' && (
+              <Button onClick={openAddRuleDialog}>
+                <Plus className="h-4 w-4" />
+                Add Expected Income
+              </Button>
+            )}
+            {activeTab === 'expected-expenses' && (
+              <Button onClick={openAddRuleDialog}>
+                <Plus className="h-4 w-4" />
+                Add Expected Expense
+              </Button>
+            )}
+            {activeTab === 'expected-savings' && (
+              <Button onClick={openAddRuleDialog}>
+                <Plus className="h-4 w-4" />
+                Add Expected Savings
               </Button>
             )}
           </div>
@@ -772,12 +1145,12 @@ export function BudgetPage() {
                 </p>
               </>
             ) : (
-              <p className="py-4 text-center">No budgets set yet. Set spending limits in the Budget tab to see your allocation.</p>
+              <p className="py-4 text-center">No budgets set yet. Set spending expectations in the Budget tab to see your allocation.</p>
             )}
           </div>
         ) : budgetBreakdownSegments.length === 0 ? (
           <p className="mt-4 py-4 text-center text-sm text-muted-foreground">
-            No budgets set yet. Set spending limits in the Budget tab to see your allocation.
+            No budgets set yet. Set spending expectations in the Budget tab to see your allocation.
           </p>
         ) : (
           <div className="mt-4">
@@ -800,7 +1173,7 @@ export function BudgetPage() {
       {activeTab === 'manage-budget' && (
         <>
           <Alert variant="info" className="mb-6">
-            Budgets set spending limits for each category. They vary by scenario.
+            Budgets set spending expectations for each category. They vary by scenario.
           </Alert>
 
           {categories.length === 0 ? (
@@ -828,25 +1201,103 @@ export function BudgetPage() {
         </>
       )}
 
-      {/* Expected Expenses tab - placeholder */}
+      {/* Expected Expenses tab */}
       {activeTab === 'expected-expenses' && (
-        <div className="empty-state">
-          <p className="empty-state-text">Expected expenses coming soon.</p>
-        </div>
+        <>
+          <Alert variant="info" className="mb-6">
+            Expected expenses are recurring costs that repeat on a schedule. They vary by scenario.
+          </Alert>
+
+          {expenseRules.length === 0 && expenseFilterCategory === 'all' ? (
+            <div className="empty-state">
+              <p className="empty-state-text">No expected expenses yet.</p>
+              <Button className="empty-state-action" onClick={openAddRuleDialog}>
+                <Plus className="h-4 w-4" />
+                Add expected expense
+              </Button>
+            </div>
+          ) : (
+            <DataTable
+              columns={expenseColumns}
+              data={expenseRules}
+              searchKey="description"
+              searchPlaceholder="Search expenses..."
+              showPagination={false}
+              emptyMessage="No expected expenses found matching your filters."
+              filterSlot={
+                <Select value={expenseFilterCategory} onValueChange={setExpenseFilterCategory}>
+                  <SelectTrigger className={`w-44 ${expenseFilterCategory === 'all' ? 'text-muted-foreground' : ''}`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {activeCategories
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              }
+            />
+          )}
+        </>
       )}
 
-      {/* Expected Income tab - placeholder */}
+      {/* Expected Income tab */}
       {activeTab === 'expected-income' && (
-        <div className="empty-state">
-          <p className="empty-state-text">Expected income coming soon.</p>
-        </div>
+        <>
+          <Alert variant="info" className="mb-6">
+            Expected income is recurring income that repeats on a schedule. It varies by scenario.
+          </Alert>
+
+          {incomeRules.length === 0 ? (
+            <div className="empty-state">
+              <p className="empty-state-text">No expected income yet.</p>
+              <Button className="empty-state-action" onClick={openAddRuleDialog}>
+                <Plus className="h-4 w-4" />
+                Add expected income
+              </Button>
+            </div>
+          ) : (
+            <DataTable
+              columns={incomeColumns}
+              data={incomeRules}
+              searchKey="description"
+              searchPlaceholder="Search income..."
+              showPagination={false}
+            />
+          )}
+        </>
       )}
 
-      {/* Expected Savings Contributions tab - placeholder */}
+      {/* Expected Savings Contributions tab */}
       {activeTab === 'expected-savings' && (
-        <div className="empty-state">
-          <p className="empty-state-text">Expected savings contributions coming soon.</p>
-        </div>
+        <>
+          <Alert variant="info" className="mb-6">
+            Expected savings contributions are recurring transfers to savings goals. They vary by scenario.
+          </Alert>
+
+          {savingsRules.length === 0 ? (
+            <div className="empty-state">
+              <p className="empty-state-text">No expected savings contributions yet.</p>
+              <Button className="empty-state-action" onClick={openAddRuleDialog}>
+                <Plus className="h-4 w-4" />
+                Add expected savings contribution
+              </Button>
+            </div>
+          ) : (
+            <DataTable
+              columns={savingsColumns}
+              data={savingsRules}
+              searchKey="description"
+              searchPlaceholder="Search savings..."
+              showPagination={false}
+            />
+          )}
+        </>
       )}
 
       {/* Manage Scenarios tab - placeholder */}
@@ -883,6 +1334,16 @@ export function BudgetPage() {
           deleteBudgetRule={deleteBudgetRule}
         />
       )}
+
+      {/* Forecast Rule Dialog */}
+      <ForecastRuleDialog
+        open={ruleDialogOpen}
+        onOpenChange={handleRuleDialogClose}
+        scenarioId={activeScenarioId}
+        rule={editingRule}
+        addRule={addRule}
+        updateRule={updateRule}
+      />
     </div>
   );
 }
