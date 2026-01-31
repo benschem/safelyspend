@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -57,6 +57,16 @@ export function DataTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: showPagination ? pageSize : 1000,
+  });
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, pageIndex: 0 }));
+  }, [globalFilter, columnFilters]);
 
   const table = useReactTable({
     data,
@@ -67,15 +77,15 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
-    autoResetPageIndex: false, // Preserve page position when data changes
+    onGlobalFilterChange: setGlobalFilter,
+    onPaginationChange: setPagination,
+    autoResetPageIndex: false, // Preserve page position when data changes (but we reset on filter change above)
+    globalFilterFn: 'includesString',
     state: {
       sorting,
       columnFilters,
-    },
-    initialState: {
-      pagination: {
-        pageSize: showPagination ? pageSize : data.length || 100,
-      },
+      globalFilter,
+      pagination,
     },
   });
 
@@ -88,10 +98,8 @@ export function DataTable<TData, TValue>({
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder={searchPlaceholder}
-                value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ''}
-                onChange={(event) =>
-                  table.getColumn(searchKey)?.setFilterValue(event.target.value)
-                }
+                value={globalFilter}
+                onChange={(event) => setGlobalFilter(event.target.value)}
                 className="pl-9"
               />
             </div>
