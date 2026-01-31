@@ -248,6 +248,7 @@ Uses **semantic versioning** (MAJOR.MINOR.PATCH):
 - Keep descriptions to one sentence each
 - Never include security-sensitive information
 - Don't add to changelog until changes are committed
+- **Do NOT** add changelog entries or bump version for demo persona changes or landing page updates
 
 **Example changelog entry:**
 ```typescript
