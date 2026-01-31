@@ -3,7 +3,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Button } from '@/components/ui/button';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Plus, Pencil, Trash2, Star, Layers } from 'lucide-react';
+import { Plus, Pencil, Trash2, Star, Layers, Check, Play } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { Alert } from '@/components/ui/alert';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -19,7 +19,7 @@ interface ScenarioRow extends Scenario {
 }
 
 export function ScenariosIndexPage() {
-  const { scenarios, isLoading: scenariosLoading, addScenario, updateScenario, deleteScenario } = useScenarios();
+  const { scenarios, activeScenarioId, isLoading: scenariosLoading, setActiveScenarioId, addScenario, updateScenario, deleteScenario } = useScenarios();
   const { duplicateToScenario: duplicateForecastsToScenario } = useForecasts(null);
   const { duplicateToScenario: duplicateBudgetsToScenario } = useBudgetRules(null);
 
@@ -140,23 +140,23 @@ export function ScenariosIndexPage() {
       {
         accessorKey: 'budgetRuleCount',
         header: ({ column }) => (
-          <SortableHeader column={column} className="justify-end">
+          <SortableHeader column={column} className="justify-center">
             Budgets
           </SortableHeader>
         ),
         cell: ({ row }) => (
-          <div className="text-right tabular-nums">{row.getValue('budgetRuleCount')}</div>
+          <div className="text-center tabular-nums">{row.getValue('budgetRuleCount')}</div>
         ),
       },
       {
         accessorKey: 'forecastRuleCount',
         header: ({ column }) => (
-          <SortableHeader column={column} className="justify-end">
+          <SortableHeader column={column} className="justify-center">
             Forecasts
           </SortableHeader>
         ),
         cell: ({ row }) => (
-          <div className="text-right tabular-nums">{row.getValue('forecastRuleCount')}</div>
+          <div className="text-center tabular-nums">{row.getValue('forecastRuleCount')}</div>
         ),
       },
       {
@@ -164,9 +164,29 @@ export function ScenariosIndexPage() {
         cell: ({ row }) => {
           const scenario = row.original;
           const isDeleting = deletingId === scenario.id;
+          const isActive = scenario.id === activeScenarioId;
 
           return (
             <div className="flex justify-end gap-1">
+              <Button
+                variant={isActive ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => !isActive && setActiveScenarioId(scenario.id)}
+                disabled={isActive}
+                className={`w-24 ${isActive ? 'cursor-default' : ''}`}
+              >
+                {isActive ? (
+                  <>
+                    <Check className="h-4 w-4" />
+                    Active
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4" />
+                    Activate
+                  </>
+                )}
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -174,7 +194,7 @@ export function ScenariosIndexPage() {
                 aria-label={scenario.isDefault ? 'Default scenario' : 'Set as default'}
                 className={scenario.isDefault ? 'cursor-default' : ''}
               >
-                <Star className={`h-4 w-4 ${scenario.isDefault ? 'text-blue-600' : ''}`} />
+                <Star className={`h-4 w-4 ${scenario.isDefault ? 'text-amber-500' : ''}`} />
               </Button>
               <Button
                 variant="ghost"
@@ -205,7 +225,7 @@ export function ScenariosIndexPage() {
         },
       },
     ],
-    [deletingId, openEditDialog, handleDelete, handleSetDefault],
+    [deletingId, openEditDialog, handleDelete, handleSetDefault, activeScenarioId, setActiveScenarioId],
   );
 
   return (

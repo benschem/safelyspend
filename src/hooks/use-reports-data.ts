@@ -537,6 +537,7 @@ export function useReportsData(
     savingsProgress,
     monthlySavings,
     savingsByGoal,
+    savingsContributions,
     usedCategories,
     categoryMap,
   };

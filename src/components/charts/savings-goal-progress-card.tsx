@@ -137,7 +137,7 @@ export function SavingsGoalProgressCard({
   }, [deadline, expectedCompletion]);
 
   return (
-    <div className="p-4">
+    <div className="min-h-40 p-4">
       {/* Header: Goal name + Interest rate */}
       <div className="flex items-center justify-between gap-3">
         <h4 className="flex items-center gap-2 truncate text-sm text-muted-foreground">

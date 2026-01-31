@@ -98,6 +98,9 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         <NavItem to="/budget" icon={<Target className="h-4 w-4" />} onClick={onNavigate}>
           Budget
         </NavItem>
+        <NavItem to="/forecasts" icon={<Telescope className="h-4 w-4" />} onClick={onNavigate}>
+          Forecast Transactions
+        </NavItem>
         <NavItem to="/scenarios" icon={<Layers className="h-4 w-4" />} onClick={onNavigate}>
           Scenarios
         </NavItem>
@@ -108,9 +111,6 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       <NavSection title="Track">
         <NavItem to="/transactions" icon={<Receipt className="h-4 w-4" />} onClick={onNavigate}>
           Transactions
-        </NavItem>
-        <NavItem to="/forecasts" icon={<Telescope className="h-4 w-4" />} onClick={onNavigate}>
-          Forecasts
         </NavItem>
       </NavSection>
 

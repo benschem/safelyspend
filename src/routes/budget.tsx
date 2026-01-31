@@ -322,6 +322,10 @@ export function BudgetPage() {
         </div>
       </div>
 
+      <Alert variant="info" className="mb-6">
+        Budgets set spending limits for each category. They vary by scenario.
+      </Alert>
+
       {/* Breakdown Chart */}
       {budgetBreakdownSegments.length > 0 && (
         <div className="rounded-xl border bg-card p-5">
