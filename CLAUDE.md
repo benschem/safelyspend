@@ -184,6 +184,13 @@ Exception: shadcn `<Button>` component and `<Link>` elements already have proper
 <Button onClick={handleClick}>Click me</Button>
 ```
 
+#### Data Tables
+
+All tables in the app should follow these conventions:
+- **Tooltips on clickable cells** - Any cell that performs an action on click should have a tooltip explaining what it does
+- **cursor-pointer on anything clickable** - All interactive elements in table cells must have `cursor-pointer`
+- Use icon-only action buttons where possible, with tooltips for labels
+
 ### Conventions
 
 - All money amounts stored as cents, displayed with `formatCents()`
