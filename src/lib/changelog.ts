@@ -21,6 +21,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.6.0',
+    date: '2026-02-01',
+    changes: [
+      'Budget breakdown chart now shows allocation relative to expected income',
+      'Switch between weekly, fortnightly, monthly, quarterly, and yearly views',
+      'New "Unbudgeted" card shows how much income remains after all budgets',
+      'Over-budget indicator shows when spending plans exceed income',
+    ],
+  },
+  {
     version: '0.5.0',
     date: '2026-02-01',
     changes: [

@@ -22,6 +22,12 @@ interface SpendingBreakdownChartProps {
   colorMap?: Record<string, string>;
   hiddenSegmentIds?: Set<string>;
   onSegmentToggle?: (id: string) => void;
+  /** When true, legend items are not clickable (except those in toggleableIds) */
+  disableToggle?: boolean;
+  /** Array of segment IDs that can still be toggled when disableToggle is true */
+  toggleableIds?: string[];
+  /** When set, shows a dashed vertical line at this percentage (0-100) to indicate income mark */
+  incomeMarker?: number;
 }
 
 export function SpendingBreakdownChart({
@@ -30,6 +36,9 @@ export function SpendingBreakdownChart({
   colorMap: externalColorMap,
   hiddenSegmentIds,
   onSegmentToggle,
+  disableToggle = false,
+  toggleableIds = [],
+  incomeMarker,
 }: SpendingBreakdownChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredSegment, setHoveredSegment] = useState<BreakdownSegment | null>(null);
@@ -185,6 +194,22 @@ export function SpendingBreakdownChart({
           </BarChart>
         </ResponsiveContainer>
 
+        {/* Income Marker Line (for over-budget indication) */}
+        {incomeMarker !== undefined && incomeMarker < 100 && (
+          <>
+            <div
+              className="pointer-events-none absolute w-0.5 bg-red-500"
+              style={{ left: `${incomeMarker}%`, top: '-20px', height: 'calc(100% + 20px)', transform: 'translateX(-50%)' }}
+            />
+            <span
+              className="pointer-events-none absolute whitespace-nowrap rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-medium text-white"
+              style={{ left: `${incomeMarker}%`, top: '-20px', transform: 'translateX(calc(-100% - 4px))' }}
+            >
+              Expected income
+            </span>
+          </>
+        )}
+
         {/* Custom Tooltip */}
         {hoveredSegment && (
           <div
@@ -210,7 +235,8 @@ export function SpendingBreakdownChart({
         {segments.map((segment) => {
           const percentage = ((segment.amount / total) * 100).toFixed(0);
           const isHidden = hiddenSegments.has(segment.id);
-          return (
+          const canToggle = !disableToggle || toggleableIds.includes(segment.id);
+          return canToggle ? (
             <button
               key={segment.id}
               type="button"
@@ -227,6 +253,17 @@ export function SpendingBreakdownChart({
                 {segment.name} ({percentage}%)
               </span>
             </button>
+          ) : (
+            <div
+              key={segment.id}
+              className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs"
+            >
+              <div
+                className="h-2.5 w-2.5 rounded-sm"
+                style={{ backgroundColor: colorMap[segment.id] ?? CHART_COLORS.uncategorized }}
+              />
+              <span>{segment.name} ({percentage}%)</span>
+            </div>
           );
         })}
       </div>
