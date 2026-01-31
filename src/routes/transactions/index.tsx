@@ -454,7 +454,7 @@ export function TransactionsIndexPage() {
             </div>
             Transactions
           </h1>
-          <p className="page-description">Actual income, expenses, and savings.</p>
+          <p className="page-description">Past income, expenses, and savings.</p>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
           <div className="flex flex-col gap-2 sm:flex-row">

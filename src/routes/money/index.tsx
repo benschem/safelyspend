@@ -791,36 +791,35 @@ export function MoneyIndexPage() {
   );
 
   // Get the right action button based on tab
+  // Both tabs use the same layout structure to prevent layout jump
   const getActionButton = () => {
-    if (activeTab === 'past') {
-      return (
-        <div className="flex gap-2">
-          <div className="flex flex-col gap-1">
-            <Button variant="secondary" onClick={handleImportClick}>
-              <Download className="h-4 w-4" />
-              Import CSV
-            </Button>
-            <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
-              <Link to="/categories/import-rules?from=money">
-                <Settings2 className="h-4 w-4" />
-                Import Rules
-              </Link>
-            </Button>
-          </div>
+    return (
+      <div className="flex gap-2">
+        {/* Import column - only visible on Past tab but takes space on both */}
+        <div className={cn('flex flex-col gap-1', activeTab !== 'past' && 'invisible')}>
+          <Button variant="secondary" onClick={handleImportClick}>
+            <Download className="h-4 w-4" />
+            Import CSV
+          </Button>
+          <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
+            <Link to="/categories/import-rules?from=money">
+              <Settings2 className="h-4 w-4" />
+              Import Rules
+            </Link>
+          </Button>
+        </div>
+        {/* Add button - changes based on tab */}
+        {activeTab === 'past' ? (
           <Button onClick={openAddTransactionDialog}>
             <Plus className="h-4 w-4" />
             Add Past
           </Button>
-        </div>
-      );
-    }
-    // expected - match height of past tab buttons
-    return (
-      <div className="flex items-start">
-        <Button onClick={openAddExpectedDialog}>
-          <Plus className="h-4 w-4" />
-          Add Expected
-        </Button>
+        ) : (
+          <Button onClick={openAddExpectedDialog}>
+            <Plus className="h-4 w-4" />
+            Add Expected
+          </Button>
+        )}
       </div>
     );
   };
