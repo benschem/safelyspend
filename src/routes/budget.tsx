@@ -67,6 +67,7 @@ export function BudgetPage() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<BudgetRow | null>(null);
+  const [focusLimit, setFocusLimit] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [hiddenSegments, setHiddenSegments] = useState<Set<string>>(new Set());
 
@@ -204,8 +205,9 @@ export function BudgetPage() {
     return budgetBreakdownSegments.reduce((sum, s) => sum + s.amount, 0);
   }, [budgetBreakdownSegments]);
 
-  const openEditDialog = useCallback((row: BudgetRow) => {
+  const openEditDialog = useCallback((row: BudgetRow, shouldFocusLimit = false) => {
     setEditingRow(row);
+    setFocusLimit(shouldFocusLimit);
     setEditDialogOpen(true);
   }, []);
 
@@ -213,6 +215,7 @@ export function BudgetPage() {
     setEditDialogOpen(open);
     if (!open) {
       setEditingRow(null);
+      setFocusLimit(false);
     }
   }, []);
 
@@ -286,21 +289,39 @@ export function BudgetPage() {
 
           if (!budgetRow.rule) {
             return (
-              <button
-                type="button"
-                onClick={() => openEditDialog(budgetRow)}
-                className={`cursor-pointer text-right text-sm hover:text-foreground ${isArchived ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}
-              >
-                Set limit
-              </button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => openEditDialog(budgetRow, true)}
+                      className={`cursor-pointer text-right text-sm hover:underline hover:text-foreground ${isArchived ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}
+                    >
+                      Set limit
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Set a spending limit for this category</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             );
           }
 
           return (
-            <div className={`text-right font-mono ${isArchived ? 'text-muted-foreground' : ''}`}>
-              {formatCents(budgetRow.budgetAmount)}
-              <span className="text-muted-foreground">{CADENCE_LABELS[budgetRow.cadence!]}</span>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => openEditDialog(budgetRow, true)}
+                    className={`cursor-pointer text-right font-mono hover:underline ${isArchived ? 'text-muted-foreground' : ''}`}
+                  >
+                    {formatCents(budgetRow.budgetAmount)}
+                    <span className="text-muted-foreground">{CADENCE_LABELS[budgetRow.cadence!]}</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Edit spending limit</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           );
         },
       },
@@ -603,6 +624,7 @@ export function BudgetPage() {
           scenarioId={activeScenarioId}
           category={editingRow.category}
           existingRule={editingRow.rule}
+          focusLimit={focusLimit}
           addCategory={addCategory}
           updateCategory={updateCategory}
           setBudgetForCategory={setBudgetForCategory}

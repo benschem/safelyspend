@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,6 +26,8 @@ interface CategoryBudgetDialogProps {
   // For edit mode
   category?: Category | null;
   existingRule?: BudgetRule | null;
+  // Focus the limit field when opening
+  focusLimit?: boolean;
   // Callbacks
   addCategory: (data: CreateEntity<Category>) => Promise<Category>;
   updateCategory?: (id: string, updates: Partial<Omit<Category, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
@@ -49,12 +51,14 @@ export function CategoryBudgetDialog({
   scenarioId,
   category,
   existingRule,
+  focusLimit,
   addCategory,
   updateCategory,
   setBudgetForCategory,
   deleteBudgetRule,
 }: CategoryBudgetDialogProps) {
   const isEditing = !!category;
+  const limitInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
   const [name, setName] = useState('');
@@ -95,6 +99,19 @@ export function CategoryBudgetDialog({
       setFormError(null);
     }
   }, [open, category, existingRule]);
+
+  // Focus the limit input when requested
+  useEffect(() => {
+    if (open && focusLimit) {
+      // Small delay to ensure dialog is rendered
+      const timer = setTimeout(() => {
+        limitInputRef.current?.focus();
+        limitInputRef.current?.select();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [open, focusLimit]);
 
   const handleSave = async () => {
     setFormError(null);
@@ -195,6 +212,7 @@ export function CategoryBudgetDialog({
                 {!isEditing && <span className="ml-1 font-normal text-muted-foreground">(opt.)</span>}
               </Label>
               <Input
+                ref={limitInputRef}
                 id="budget-amount"
                 type="number"
                 step="0.01"
