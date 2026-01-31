@@ -135,9 +135,9 @@ export function TransactionDialog({ open, onOpenChange, transaction, initialType
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit' : 'Add'} Transaction</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit' : 'Add'} Past Transaction</DialogTitle>
           <DialogDescription>
-            {isEditing ? 'Update the transaction details.' : 'Record a new income, expense, or savings transfer.'}
+            {isEditing ? 'Update the transaction details.' : 'Record a past income, expense, or savings transfer.'}
           </DialogDescription>
         </DialogHeader>
 

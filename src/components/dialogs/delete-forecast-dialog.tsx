@@ -35,7 +35,7 @@ export function DeleteForecastDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Delete Forecast</DialogTitle>
+            <DialogTitle>Delete Expected Transaction</DialogTitle>
             <DialogDescription>
               Are you sure you want to delete &quot;{forecast.description}&quot; on {formatDate(forecast.date)}?
             </DialogDescription>
@@ -62,10 +62,10 @@ export function DeleteForecastDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Repeat className="h-5 w-5" />
-            Delete Recurring Forecast
+            Delete Recurring Transaction
           </DialogTitle>
           <DialogDescription>
-            &quot;{forecast.description}&quot; is a recurring forecast. What would you like to delete?
+            &quot;{forecast.description}&quot; is a recurring transaction. What would you like to delete?
           </DialogDescription>
         </DialogHeader>
 
