@@ -1402,19 +1402,21 @@ export function BudgetPage() {
               searchPlaceholder="Search categories..."
               showPagination={false}
               filterSlot={
-                <>
-                  <ScenarioSelector />
-                  <Button onClick={() => setAddDialogOpen(true)}>
-                    <Plus className="h-4 w-4" />
-                    Add Category
-                  </Button>
-                  <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
-                    <Link to="/categories/import-rules">
-                      <Settings2 className="h-4 w-4" />
-                      Import Rules
-                    </Link>
-                  </Button>
-                </>
+                <div className="flex flex-1 flex-wrap items-center gap-2">
+                  <ScenarioSelector hideLabel />
+                  <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
+                    <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
+                      <Link to="/categories/import-rules">
+                        <Settings2 className="h-4 w-4" />
+                        <span className="hidden sm:inline">Import Rules</span>
+                      </Link>
+                    </Button>
+                    <Button onClick={() => setAddDialogOpen(true)}>
+                      <Plus className="h-4 w-4" />
+                      <span className="hidden sm:inline">Add Category</span>
+                    </Button>
+                  </div>
+                </div>
               }
             />
           )}
@@ -1445,7 +1447,8 @@ export function BudgetPage() {
               showPagination={false}
               emptyMessage="No expected expenses found matching your filters."
               filterSlot={
-                <>
+                <div className="flex flex-1 flex-wrap items-center gap-2">
+                  <ScenarioSelector hideLabel />
                   <Select value={expenseFilterCategory} onValueChange={setExpenseFilterCategory}>
                     <SelectTrigger className={`w-44 ${expenseFilterCategory === 'all' ? 'text-muted-foreground' : ''}`}>
                       <SelectValue />
@@ -1461,12 +1464,13 @@ export function BudgetPage() {
                         ))}
                     </SelectContent>
                   </Select>
-                  <ScenarioSelector />
-                  <Button onClick={openAddRuleDialog}>
-                    <Plus className="h-4 w-4" />
-                    Add Expense
-                  </Button>
-                </>
+                  <div className="flex flex-1 items-center justify-end">
+                    <Button onClick={openAddRuleDialog}>
+                      <Plus className="h-4 w-4" />
+                      <span className="hidden sm:inline">Add Expense</span>
+                    </Button>
+                  </div>
+                </div>
               }
             />
           )}
@@ -1496,13 +1500,15 @@ export function BudgetPage() {
               searchPlaceholder="Search income..."
               showPagination={false}
               filterSlot={
-                <>
-                  <ScenarioSelector />
-                  <Button onClick={openAddRuleDialog}>
-                    <Plus className="h-4 w-4" />
-                    Add Income
-                  </Button>
-                </>
+                <div className="flex flex-1 flex-wrap items-center gap-2">
+                  <ScenarioSelector hideLabel />
+                  <div className="flex flex-1 items-center justify-end">
+                    <Button onClick={openAddRuleDialog}>
+                      <Plus className="h-4 w-4" />
+                      <span className="hidden sm:inline">Add Income</span>
+                    </Button>
+                  </div>
+                </div>
               }
             />
           )}
@@ -1532,13 +1538,15 @@ export function BudgetPage() {
               searchPlaceholder="Search savings..."
               showPagination={false}
               filterSlot={
-                <>
-                  <ScenarioSelector />
-                  <Button onClick={openAddRuleDialog}>
-                    <Plus className="h-4 w-4" />
-                    Add Contribution
-                  </Button>
-                </>
+                <div className="flex flex-1 flex-wrap items-center gap-2">
+                  <ScenarioSelector hideLabel />
+                  <div className="flex flex-1 items-center justify-end">
+                    <Button onClick={openAddRuleDialog}>
+                      <Plus className="h-4 w-4" />
+                      <span className="hidden sm:inline">Add Contribution</span>
+                    </Button>
+                  </div>
+                </div>
               }
             />
           )}
@@ -1567,10 +1575,12 @@ export function BudgetPage() {
               searchPlaceholder="Search scenarios..."
               showPagination={false}
               filterSlot={
-                <Button onClick={openAddScenarioDialog}>
-                  <Plus className="h-4 w-4" />
-                  Add Scenario
-                </Button>
+                <div className="flex flex-1 items-center justify-end">
+                  <Button onClick={openAddScenarioDialog}>
+                    <Plus className="h-4 w-4" />
+                    <span className="hidden sm:inline">Add Scenario</span>
+                  </Button>
+                </div>
               }
             />
           )}
