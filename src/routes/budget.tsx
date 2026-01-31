@@ -43,13 +43,15 @@ interface BudgetRow {
   forecastCount: number;
 }
 
-const CADENCE_LABELS: Record<Cadence, string> = {
-  weekly: '/wk',
-  fortnightly: '/fn',
-  monthly: '/mo',
-  quarterly: '/qtr',
-  yearly: '/yr',
+const CADENCE_FULL_LABELS: Record<Cadence, string> = {
+  weekly: 'Weekly',
+  fortnightly: 'Fortnightly',
+  monthly: 'Monthly',
+  quarterly: 'Quarterly',
+  yearly: 'Yearly',
 };
+
+type BudgetTab = 'status' | 'budget' | 'expected-expenses' | 'expected-income' | 'expected-savings' | 'manage-scenarios';
 
 export function BudgetPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
@@ -74,6 +76,9 @@ export function BudgetPage() {
   );
 
   const isLoading = categoriesLoading || budgetLoading || transactionsLoading || forecastsLoading;
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<BudgetTab>('status');
 
   // Period state for breakdown chart
   const [breakdownPeriod, setBreakdownPeriod] = useState<BudgetPeriod>('monthly');
@@ -331,7 +336,7 @@ export function BudgetPage() {
       },
       {
         accessorKey: 'isArchived',
-        header: ({ column }) => <SortableHeader column={column}>Status</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>Archived?</SortableHeader>,
         accessorFn: (row) => row.category.isArchived,
         cell: ({ row }) =>
           row.original.category.isArchived ? (
@@ -342,7 +347,7 @@ export function BudgetPage() {
         accessorKey: 'budgetAmount',
         header: ({ column }) => (
           <SortableHeader column={column} className="justify-end">
-            Limit
+            Budget
           </SortableHeader>
         ),
         cell: ({ row }) => {
@@ -359,7 +364,7 @@ export function BudgetPage() {
                       onClick={() => openEditDialog(budgetRow, true)}
                       className={`cursor-pointer text-right text-sm hover:underline hover:text-foreground ${isArchived ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}
                     >
-                      Set limit
+                      Set budget
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>Set a spending limit for this category</TooltipContent>
@@ -375,10 +380,10 @@ export function BudgetPage() {
                   <button
                     type="button"
                     onClick={() => openEditDialog(budgetRow, true)}
-                    className={`cursor-pointer text-right font-mono hover:underline ${isArchived ? 'text-muted-foreground' : ''}`}
+                    className={`cursor-pointer text-right hover:underline ${isArchived ? 'text-muted-foreground' : ''}`}
                   >
-                    {formatCents(budgetRow.budgetAmount)}
-                    <span className="text-muted-foreground">{CADENCE_LABELS[budgetRow.cadence!]}</span>
+                    <span className="font-mono">{formatCents(budgetRow.budgetAmount)}</span>
+                    <span className="ml-1 text-muted-foreground">{CADENCE_FULL_LABELS[budgetRow.cadence!]}</span>
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>Edit spending limit</TooltipContent>
@@ -579,26 +584,53 @@ export function BudgetPage() {
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
           <div className="flex flex-wrap items-center gap-2">
             <ScenarioSelector />
-            <Button onClick={() => setAddDialogOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Add Category
-            </Button>
+            {activeTab === 'budget' && (
+              <Button onClick={() => setAddDialogOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Add Category
+              </Button>
+            )}
           </div>
-          <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
-            <Link to="/categories/import-rules">
-              <Settings2 className="h-4 w-4" />
-              Manage Import Rules
-            </Link>
-          </Button>
+          {activeTab === 'budget' && (
+            <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
+              <Link to="/categories/import-rules">
+                <Settings2 className="h-4 w-4" />
+                Manage Import Rules
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 
-      <Alert variant="info" className="mb-6">
-        Budgets set spending limits for each category. They vary by scenario.
-      </Alert>
+      {/* Main tabs */}
+      <div className="mb-6 flex flex-wrap gap-1 rounded-lg bg-muted p-1 text-muted-foreground">
+        {[
+          { value: 'status' as BudgetTab, label: 'Status' },
+          { value: 'budget' as BudgetTab, label: 'Budget' },
+          { value: 'expected-expenses' as BudgetTab, label: 'Expected Expenses' },
+          { value: 'expected-income' as BudgetTab, label: 'Expected Income' },
+          { value: 'expected-savings' as BudgetTab, label: 'Expected Savings Contributions' },
+          { value: 'manage-scenarios' as BudgetTab, label: 'Manage Scenarios' },
+        ].map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => setActiveTab(tab.value)}
+            className={cn(
+              'inline-flex h-8 cursor-pointer items-center justify-center rounded-md px-3 text-sm font-medium transition-all',
+              activeTab === tab.value
+                ? 'bg-background text-foreground shadow-sm'
+                : 'hover:text-foreground',
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-      {/* Breakdown Chart */}
-      <div className="rounded-xl border bg-card p-5">
+      {/* Status tab - Breakdown Chart */}
+      {activeTab === 'status' && (
+        <div className="rounded-xl border bg-card p-5">
         {/* Period tabs - top */}
         <div className="flex justify-center">
           <div className="flex rounded-lg bg-muted p-1">
@@ -720,12 +752,12 @@ export function BudgetPage() {
                 </p>
               </>
             ) : (
-              <p className="py-4 text-center">No budgets set yet. Set spending limits below to see your allocation.</p>
+              <p className="py-4 text-center">No budgets set yet. Set spending limits in the Budget tab to see your allocation.</p>
             )}
           </div>
         ) : budgetBreakdownSegments.length === 0 ? (
           <p className="mt-4 py-4 text-center text-sm text-muted-foreground">
-            No budgets set yet. Set spending limits below to see your allocation.
+            No budgets set yet. Set spending limits in the Budget tab to see your allocation.
           </p>
         ) : (
           <div className="mt-4">
@@ -741,30 +773,69 @@ export function BudgetPage() {
             />
           </div>
         )}
-      </div>
-
-      {categories.length === 0 ? (
-        <div className="mt-8 space-y-4">
-          <Alert variant="info">
-            Create categories like groceries, transport, or entertainment to see where your money goes.
-          </Alert>
-          <div className="empty-state">
-            <p className="empty-state-text">No categories yet.</p>
-            <Button className="empty-state-action" onClick={() => setAddDialogOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Add your first category
-            </Button>
-          </div>
         </div>
-      ) : (
-        <div className="mt-6">
-          <DataTable
-            columns={columns}
-            data={allRows}
-            searchKey="categoryName"
-            searchPlaceholder="Search categories..."
-            showPagination={false}
-          />
+      )}
+
+      {/* Budget tab - table with categories and limits */}
+      {activeTab === 'budget' && (
+        <>
+          <Alert variant="info" className="mb-6">
+            Budgets set spending limits for each category. They vary by scenario.
+          </Alert>
+
+          {categories.length === 0 ? (
+            <div className="space-y-4">
+              <Alert variant="info">
+                Create categories like groceries, transport, or entertainment to see where your money goes.
+              </Alert>
+              <div className="empty-state">
+                <p className="empty-state-text">No categories yet.</p>
+                <Button className="empty-state-action" onClick={() => setAddDialogOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  Add your first category
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <DataTable
+              columns={columns}
+              data={allRows}
+              searchKey="categoryName"
+              searchPlaceholder="Search categories..."
+              showPagination={false}
+            />
+          )}
+        </>
+      )}
+
+      {/* Expected Expenses tab - placeholder */}
+      {activeTab === 'expected-expenses' && (
+        <div className="empty-state">
+          <p className="empty-state-text">Expected expenses coming soon.</p>
+        </div>
+      )}
+
+      {/* Expected Income tab - placeholder */}
+      {activeTab === 'expected-income' && (
+        <div className="empty-state">
+          <p className="empty-state-text">Expected income coming soon.</p>
+        </div>
+      )}
+
+      {/* Expected Savings Contributions tab - placeholder */}
+      {activeTab === 'expected-savings' && (
+        <div className="empty-state">
+          <p className="empty-state-text">Expected savings contributions coming soon.</p>
+        </div>
+      )}
+
+      {/* Manage Scenarios tab - placeholder */}
+      {activeTab === 'manage-scenarios' && (
+        <div className="empty-state">
+          <p className="empty-state-text">Manage scenarios coming soon.</p>
+          <Button asChild className="empty-state-action">
+            <Link to="/scenarios">Go to Scenarios page</Link>
+          </Button>
         </div>
       )}
 
