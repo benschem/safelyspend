@@ -1196,34 +1196,37 @@ export function MoneyIndexPage() {
               <div className="rounded-xl border bg-card p-5">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-green-500" />
-                  <span className="text-sm text-muted-foreground">{periodLabels[averagePeriod]} Earned</span>
+                  <span className="text-sm text-muted-foreground">Earned</span>
                 </div>
                 <p className="mt-2 text-2xl font-bold">{formatCents(periodAverages.income)}</p>
+                <p className="text-sm text-muted-foreground">{periodLabels[averagePeriod]} average</p>
               </div>
 
               {/* Spent card */}
               <div className="rounded-xl border bg-card p-5">
                 <div className="flex items-center gap-2">
                   <TrendingDown className="h-4 w-4 text-red-500" />
-                  <span className="text-sm text-muted-foreground">{periodLabels[averagePeriod]} Spent</span>
+                  <span className="text-sm text-muted-foreground">Spent</span>
                 </div>
                 <p className="mt-2 text-2xl font-bold">{formatCents(periodAverages.expenses)}</p>
+                <p className="text-sm text-muted-foreground">{periodLabels[averagePeriod]} average</p>
               </div>
 
               {/* Saved card */}
               <div className="rounded-xl border bg-card p-5">
                 <div className="flex items-center gap-2">
                   <PiggyBank className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm text-muted-foreground">{periodLabels[averagePeriod]} Saved</span>
+                  <span className="text-sm text-muted-foreground">Saved</span>
                 </div>
                 <p className="mt-2 text-2xl font-bold">{formatCents(periodAverages.savings)}</p>
+                <p className="text-sm text-muted-foreground">{periodLabels[averagePeriod]} average</p>
               </div>
 
               {/* Net card */}
               <div className="rounded-xl border bg-card p-5">
                 <div className="flex items-center gap-2">
                   <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">{periodLabels[averagePeriod]} Net</span>
+                  <span className="text-sm text-muted-foreground">Net</span>
                 </div>
                 <p className={cn(
                   'mt-2 text-2xl font-bold',
@@ -1231,6 +1234,7 @@ export function MoneyIndexPage() {
                 )}>
                   {periodAverages.net >= 0 ? '+' : ''}{formatCents(periodAverages.net)}
                 </p>
+                <p className="text-sm text-muted-foreground">{periodLabels[averagePeriod]} average</p>
               </div>
             </div>
           </div>
