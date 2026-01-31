@@ -342,8 +342,8 @@ export function TransactionsIndexPage() {
           </h1>
           <p className="page-description">Actual income, expenses, and savings.</p>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <div className="flex gap-2">
+        <div className="flex flex-col items-stretch gap-2 sm:items-end">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Button variant="secondary" onClick={handleImportClick}>
               <Download className="h-4 w-4" />
               Import CSV

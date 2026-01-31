@@ -244,14 +244,14 @@ export function SpendingPage() {
           </h1>
           <p className="page-description">Track your spending against your plan</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" className="h-10 w-40" asChild>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button variant="outline" className="h-10" asChild>
             <Link to="/forecasts">
               <Plus className="h-4 w-4" />
               Forecast Expense
             </Link>
           </Button>
-          <Button className="h-10 w-40" onClick={() => setTransactionDialogOpen(true)}>
+          <Button className="h-10" onClick={() => setTransactionDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             Add Expense
           </Button>
@@ -557,14 +557,14 @@ export function SpendingPage() {
 
               {/* Income Section */}
               <div className="mt-6 space-y-2">
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-1 text-sm">
                   <div className="flex items-center gap-2.5">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-green-500/10">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-500/10">
                       <TrendingUp className="h-3.5 w-3.5 text-green-500" />
                     </div>
                     <span className="font-medium">{isFuturePeriod ? 'Projected Income' : 'Earned'}</span>
                   </div>
-                  <span className="font-mono text-muted-foreground">
+                  <span className="font-mono text-right text-muted-foreground">
                     {isFuturePeriod ? (
                       formatCents(expectedIncome)
                     ) : (
@@ -590,14 +590,14 @@ export function SpendingPage() {
 
               {/* Savings Section */}
               <div className="mt-5 space-y-2">
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-1 text-sm">
                   <div className="flex items-center gap-2.5">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/10">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-500/10">
                       <PiggyBank className="h-3.5 w-3.5 text-blue-500" />
                     </div>
                     <span className="font-medium">{isFuturePeriod ? 'Planned Savings' : 'Saved'}</span>
                   </div>
-                  <span className="font-mono text-muted-foreground">
+                  <span className="font-mono text-right text-muted-foreground">
                     {isFuturePeriod ? (
                       <>{formatCents(expectedSavings)} ({Math.round(expectedSavingsPctOfIncome)}%)</>
                     ) : (
@@ -623,14 +623,14 @@ export function SpendingPage() {
 
               {/* Spending Section */}
               <div className="mt-5 space-y-2">
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-1 text-sm">
                   <div className="flex items-center gap-2.5">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-red-500/10">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-500/10">
                       <Receipt className="h-3.5 w-3.5 text-red-500" />
                     </div>
                     <span className="font-medium">{isFuturePeriod ? 'Planned Spending' : 'Spent'}</span>
                   </div>
-                  <span className={cn('font-mono', isOverBudget ? 'text-red-500' : 'text-muted-foreground')}>
+                  <span className={cn('font-mono text-right', isOverBudget ? 'text-red-500' : 'text-muted-foreground')}>
                     {isFuturePeriod ? (
                       <>{formatCents(totalBudget)} ({Math.round(budgetPctOfIncome)}%)</>
                     ) : (
@@ -737,9 +737,9 @@ export function SpendingPage() {
 
                     return (
                       <div key={item.id} className="space-y-1">
-                        <div className="flex items-center justify-between text-sm">
+                        <div className="flex flex-wrap items-center justify-between gap-1 text-sm">
                           <span className="font-medium">{item.name}</span>
-                          <span className={cn('font-mono', isOverBudget ? 'text-red-500' : 'text-muted-foreground')}>
+                          <span className={cn('font-mono text-right', isOverBudget ? 'text-red-500' : 'text-muted-foreground')}>
                             {hasBudget ? (
                               <>{itemPctOfBudget}% of {formatCents(item.budget)} budget</>
                             ) : isFuturePeriod ? (

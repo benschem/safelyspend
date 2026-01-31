@@ -455,7 +455,7 @@ export function InsightsPage() {
       </div>
 
       {/* Controls row: Tabs left, Scenario right */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         {/* Tabs */}
         <div className="inline-flex h-9 items-center rounded-lg bg-muted p-1 text-muted-foreground">
           {[

@@ -240,7 +240,7 @@ export function CategoriesIndexPage() {
           </h1>
           <p className="page-description">Organise your expenses by category.</p>
         </div>
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-col items-stretch gap-2 sm:items-end">
           <Button onClick={openAddDialog}>
             <Plus className="h-4 w-4" />
             Add Category

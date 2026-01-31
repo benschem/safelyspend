@@ -17,7 +17,7 @@ import {
 import { Pencil, Trash2, Plus, AlertTriangle, Download, Upload, Check, Settings, Bug, Info } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
-import { exportAllData, importAllData, fullReset } from '@/lib/db';
+import { exportAllData, importAllData, fullReset, CURRENT_SCHEMA_VERSION, CURRENT_DATA_VERSION } from '@/lib/db';
 import { formatCents, formatDate, today } from '@/lib/utils';
 import {
   validateImport,
@@ -397,13 +397,13 @@ export function SettingsPage() {
                   <h3 className="text-destructive">Delete All Data</h3>
                   <p className="text-sm text-muted-foreground">Permanently delete all data and start fresh.</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex w-full gap-2 sm:w-auto">
                   {confirmingDelete && (
-                    <Button variant="outline" onClick={() => setConfirmingDelete(false)}>
+                    <Button variant="outline" onClick={() => setConfirmingDelete(false)} className="flex-1 sm:flex-none">
                       Cancel
                     </Button>
                   )}
-                  <Button variant="destructive" onClick={handleDeleteAll} className="w-full sm:w-auto">
+                  <Button variant="destructive" onClick={handleDeleteAll} className="flex-1 sm:flex-none">
                     <Trash2 className="h-4 w-4" />
                     {confirmingDelete ? 'Confirm Delete' : 'Delete All'}
                   </Button>
@@ -463,6 +463,31 @@ export function SettingsPage() {
                   onCheckedChange={handleDebugToggle}
                   aria-label="Toggle debug mode"
                 />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <Separator />
+
+        {/* About Section */}
+        <section className="section">
+          <div className="section-header">
+            <h2>About</h2>
+          </div>
+          <div className="section-content">
+            <div className="panel p-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">App Version</span>
+                <span className="font-mono">1.0.0</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Schema Version</span>
+                <span className="font-mono">{CURRENT_SCHEMA_VERSION}</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Data Format</span>
+                <span className="font-mono">v{CURRENT_DATA_VERSION}</span>
               </div>
             </div>
           </div>
