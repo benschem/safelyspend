@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Link, useOutletContext } from 'react-router';
+import { Link, useOutletContext, useSearchParams } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -53,7 +53,10 @@ const CADENCE_FULL_LABELS: Record<Cadence, string> = {
 
 type BudgetTab = 'status' | 'budget' | 'expected-expenses' | 'expected-income' | 'expected-savings' | 'manage-scenarios';
 
+const VALID_TABS: BudgetTab[] = ['status', 'budget', 'expected-expenses', 'expected-income', 'expected-savings', 'manage-scenarios'];
+
 export function BudgetPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
   const { categories, activeCategories, isLoading: categoriesLoading, addCategory, updateCategory, deleteCategory } = useCategories();
@@ -77,8 +80,25 @@ export function BudgetPage() {
 
   const isLoading = categoriesLoading || budgetLoading || transactionsLoading || forecastsLoading;
 
-  // Tab state
-  const [activeTab, setActiveTab] = useState<BudgetTab>('status');
+  // Tab state from URL
+  const [activeTab, setActiveTab] = useState<BudgetTab>(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && VALID_TABS.includes(tabParam as BudgetTab)) {
+      return tabParam as BudgetTab;
+    }
+    return 'status';
+  });
+
+  // Sync tab state to URL
+  useEffect(() => {
+    const currentTab = searchParams.get('tab');
+    if (activeTab === 'status' && currentTab) {
+      // Remove tab param when on default tab
+      setSearchParams({}, { replace: true });
+    } else if (activeTab !== 'status' && currentTab !== activeTab) {
+      setSearchParams({ tab: activeTab }, { replace: true });
+    }
+  }, [activeTab, searchParams, setSearchParams]);
 
   // Period state for breakdown chart
   const [breakdownPeriod, setBreakdownPeriod] = useState<BudgetPeriod>('monthly');
