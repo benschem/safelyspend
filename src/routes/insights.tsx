@@ -618,6 +618,17 @@ export function InsightsPage() {
               </AlertDescription>
             </Alert>
           )}
+          {savingsBalanceInfo.warning && (
+            <Alert variant="warning">
+              <AlertTitle>{savingsBalanceInfo.warning.title}</AlertTitle>
+              <AlertDescription>
+                <Link to="/settings" className="underline">
+                  {savingsBalanceInfo.warning.linkText}
+                </Link>{' '}
+                {savingsBalanceInfo.warning.linkSuffix}
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="rounded-xl border bg-card p-5">
             <div className="mb-4 flex min-h-9 items-center">
               <p className="text-sm text-muted-foreground">

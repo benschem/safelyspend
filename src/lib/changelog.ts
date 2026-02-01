@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.11.1',
+    date: '2026-02-02',
+    changes: [
+      'Cash Flow tab now warns when savings balances are missing',
+    ],
+  },
+  {
     version: '0.11.0',
     date: '2026-02-02',
     changes: [
