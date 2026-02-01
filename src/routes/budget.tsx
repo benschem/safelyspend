@@ -1,10 +1,14 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Link, useOutletContext, useSearchParams } from 'react-router';
-import type { ColumnDef } from '@tanstack/react-table';
+import { Link, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Alert } from '@/components/ui/alert';
-import { DataTable, SortableHeader } from '@/components/ui/data-table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -18,10 +22,34 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Pencil, Trash2, Plus, Target, Archive, ArchiveRestore, Settings2, PiggyBank } from 'lucide-react';
-import { cn, formatCents, toMonthlyCents, type CadenceType } from '@/lib/utils';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
+  Pencil,
+  Trash2,
+  Plus,
+  Target,
+  PiggyBank,
+  DollarSign,
+  Pin,
+  ChevronDown,
+  ChevronRight,
+  Tag,
+  CheckCircle2,
+  CreditCard,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  BanknoteArrowDown,
+  BanknoteArrowUp,
+} from 'lucide-react';
+import { cn, formatCents } from '@/lib/utils';
 import { CHART_COLORS } from '@/lib/chart-colors';
 import { PageLoading } from '@/components/page-loading';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
@@ -31,11 +59,9 @@ import { useForecasts } from '@/hooks/use-forecasts';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { CategoryBudgetDialog } from '@/components/dialogs/category-budget-dialog';
 import { ForecastRuleDialog } from '@/components/dialogs/forecast-rule-dialog';
-import { BudgetPromptDialog } from '@/components/dialogs/budget-prompt-dialog';
-import { useLocalStorage } from '@/hooks/use-local-storage';
-import type { Cadence, BudgetRule, Category, ForecastRule } from '@/lib/types';
 import { SpendingBreakdownChart } from '@/components/charts/spending-breakdown-chart';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
+import type { Cadence, BudgetRule, Category, ForecastRule } from '@/lib/types';
 
 type BudgetPeriod = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly';
 
@@ -43,15 +69,16 @@ interface OutletContext {
   activeScenarioId: string | null;
 }
 
-interface BudgetRow {
+interface CategoryRow {
   id: string;
   category: Category;
   categoryName: string;
-  budgetAmount: number;
-  cadence: Cadence | null;
-  rule: BudgetRule | null;
-  transactionCount: number;
-  forecastCount: number;
+  fixedAmount: number; // From ForecastRules type=expense
+  variableAmount: number; // From BudgetRule
+  totalAmount: number; // Fixed + Variable
+  budgetRule: BudgetRule | null;
+  fixedExpenseRules: ForecastRule[];
+  canDelete: boolean; // No transactions associated
 }
 
 const CADENCE_FULL_LABELS: Record<Cadence, string> = {
@@ -62,19 +89,22 @@ const CADENCE_FULL_LABELS: Record<Cadence, string> = {
   yearly: 'Yearly',
 };
 
-type BudgetTab = 'categories' | 'income' | 'fixed-expenses' | 'savings-contributions';
-
-const VALID_TABS: BudgetTab[] = ['categories', 'income', 'fixed-expenses', 'savings-contributions'];
+const FREQUENCY_PER_LABELS: Record<Cadence, string> = {
+  weekly: 'per week',
+  fortnightly: 'per fortnight',
+  monthly: 'per month',
+  quarterly: 'per quarter',
+  yearly: 'per year',
+};
 
 export function BudgetPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
   const { categories, activeCategories, isLoading: categoriesLoading, addCategory, updateCategory, deleteCategory } = useCategories();
   const { getRuleForCategory, isLoading: budgetLoading, setBudgetForCategory, deleteBudgetRule } =
     useBudgetRules(activeScenarioId);
-  const { allTransactions, isLoading: transactionsLoading } = useTransactions();
   const { savingsGoals, isLoading: savingsLoading } = useSavingsGoals();
+  const { allTransactions } = useTransactions();
 
   // Calculate date range for next 12 months (for expected income)
   const forecastDateRange = useMemo(() => {
@@ -84,154 +114,71 @@ export function BudgetPage() {
     return { startDate, endDate };
   }, []);
 
-  const { rules: forecastRules, savingsForecasts, incomeForecasts, isLoading: forecastsLoading, addRule, updateRule, deleteRule } = useForecasts(
+  const {
+    rules: forecastRules,
+    savingsForecasts,
+    incomeForecasts,
+    isLoading: forecastsLoading,
+    addRule,
+    updateRule,
+    deleteRule,
+  } = useForecasts(
     activeScenarioId,
     forecastDateRange.startDate,
     forecastDateRange.endDate,
   );
 
-  const isLoading = categoriesLoading || budgetLoading || transactionsLoading || forecastsLoading || savingsLoading;
-
-  // Tab state from URL
-  const [activeTab, setActiveTab] = useState<BudgetTab>(() => {
-    const tabParam = searchParams.get('tab');
-    if (tabParam && VALID_TABS.includes(tabParam as BudgetTab)) {
-      return tabParam as BudgetTab;
-    }
-    return 'categories';
-  });
-
-  // Sync tab state to URL
-  useEffect(() => {
-    const currentTab = searchParams.get('tab');
-    if (activeTab === 'categories' && currentTab) {
-      // Remove tab param when on default tab
-      setSearchParams({}, { replace: true });
-    } else if (activeTab !== 'categories' && currentTab !== activeTab) {
-      setSearchParams({ tab: activeTab }, { replace: true });
-    }
-  }, [activeTab, searchParams, setSearchParams]);
+  const isLoading = categoriesLoading || budgetLoading || forecastsLoading || savingsLoading;
 
   // Period state for breakdown chart
   const [breakdownPeriod, setBreakdownPeriod] = useState<BudgetPeriod>('monthly');
 
   // Dialog state
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editingRow, setEditingRow] = useState<BudgetRow | null>(null);
+  const [addCategoryDialogOpen, setAddCategoryDialogOpen] = useState(false);
+  const [editCategoryDialogOpen, setEditCategoryDialogOpen] = useState(false);
+  const [editingRow, setEditingRow] = useState<CategoryRow | null>(null);
   const [focusLimit, setFocusLimit] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [hiddenSegments, setHiddenSegments] = useState<Set<string>>(new Set());
+
+  // Fixed expenses list dialog state
+  const [fixedExpensesDialogOpen, setFixedExpensesDialogOpen] = useState(false);
+  const [fixedExpensesCategoryId, setFixedExpensesCategoryId] = useState<string | null>(null);
 
   // Forecast rule dialog state
   const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<ForecastRule | null>(null);
   const [deletingRuleId, setDeletingRuleId] = useState<string | null>(null);
+  const [ruleDialogType, setRuleDialogType] = useState<'income' | 'expense' | 'savings' | null>(null);
 
-  // Filter state for expected expenses
-  const [expenseFilterCategory, setExpenseFilterCategory] = useState<string>('all');
+  // Collapsible sections state (persisted)
+  const [budgetedExpensesOpen, setBudgetedExpensesOpen] = useLocalStorage('budget:budgetedExpensesOpen', false);
+  const [incomeOpen, setIncomeOpen] = useLocalStorage('budget:incomeOpen', false);
+  const [savingsOpen, setSavingsOpen] = useLocalStorage('budget:savingsOpen', false);
 
-  // Budget prompt dialog state
-  const [skipBudgetPrompt, setSkipBudgetPrompt] = useLocalStorage('budget:skipBudgetPrompt', false);
-  const [budgetPromptOpen, setBudgetPromptOpen] = useState(false);
-  const [createdRule, setCreatedRule] = useState<ForecastRule | null>(null);
+  // Chart visibility state
+  const [hiddenSegments, setHiddenSegments] = useState<Set<string>>(new Set());
 
-  // Compute transaction counts per category
-  const transactionCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const t of allTransactions) {
-      if (t.categoryId) {
-        counts[t.categoryId] = (counts[t.categoryId] ?? 0) + 1;
-      }
+  // Sort state for category table
+  type SortField = 'name' | 'fixed' | 'variable' | 'total';
+  type SortDirection = 'asc' | 'desc';
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  const toggleSort = useCallback((field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection(field === 'name' ? 'asc' : 'desc'); // Default desc for amounts
     }
-    return counts;
-  }, [allTransactions]);
-
-  // Compute forecast rule counts per category
-  const forecastCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const r of forecastRules) {
-      if (r.categoryId) {
-        counts[r.categoryId] = (counts[r.categoryId] ?? 0) + 1;
-      }
-    }
-    return counts;
-  }, [forecastRules]);
-
-  // Check if category has references (transactions or forecasts)
-  const hasReferences = useCallback((id: string) => {
-    return (transactionCounts[id] ?? 0) > 0 || (forecastCounts[id] ?? 0) > 0;
-  }, [transactionCounts, forecastCounts]);
-
-  // Get reference count text for warning
-  const getReferenceText = useCallback((id: string) => {
-    const txCount = transactionCounts[id] ?? 0;
-    const fcCount = forecastCounts[id] ?? 0;
-    const parts: string[] = [];
-    if (txCount > 0) parts.push(`${txCount} transaction${txCount !== 1 ? 's' : ''}`);
-    if (fcCount > 0) parts.push(`${fcCount} expected transaction${fcCount !== 1 ? 's' : ''}`);
-    return parts.join(' and ');
-  }, [transactionCounts, forecastCounts]);
-
-  // Build rows from all categories (active first, then archived)
-  const allRows: BudgetRow[] = useMemo(() => {
-    return [...categories]
-      .sort((a, b) => {
-        // First sort by archived status
-        if (a.isArchived !== b.isArchived) {
-          return a.isArchived ? 1 : -1;
-        }
-        // Then by name
-        return a.name.localeCompare(b.name);
-      })
-      .map((category) => {
-        const rule = getRuleForCategory(category.id);
-        return {
-          id: category.id,
-          category,
-          categoryName: category.name,
-          budgetAmount: rule?.amountCents ?? 0,
-          cadence: rule?.cadence ?? null,
-          rule,
-          transactionCount: transactionCounts[category.id] ?? 0,
-          forecastCount: forecastCounts[category.id] ?? 0,
-        };
-      });
-  }, [categories, getRuleForCategory, transactionCounts, forecastCounts]);
-
-  const categoryColorMap = useMemo(() => {
-    const map = buildCategoryColorMap(activeCategories.map((c) => c.id));
-    map['savings'] = CHART_COLORS.savings;
-    map['unbudgeted'] = CHART_COLORS.available;
-    return map;
-  }, [activeCategories]);
+  }, [sortField]);
 
   // Filter forecast rules by type
   const incomeRules = useMemo(() => forecastRules.filter(r => r.type === 'income'), [forecastRules]);
-  const expenseRules = useMemo(() => {
-    const expenses = forecastRules.filter(r => r.type === 'expense');
-    if (expenseFilterCategory !== 'all') {
-      return expenses.filter(r => r.categoryId === expenseFilterCategory);
-    }
-    return expenses;
-  }, [forecastRules, expenseFilterCategory]);
+  const expenseRules = useMemo(() => forecastRules.filter(r => r.type === 'expense'), [forecastRules]);
   const savingsRules = useMemo(() => forecastRules.filter(r => r.type === 'savings'), [forecastRules]);
-
-  // Helper to get category name
-  const getCategoryName = useCallback(
-    (id: string | null) => (id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '—'),
-    [categories],
-  );
-
-  // Helper to get savings goal name
-  const getSavingsGoalName = useCallback(
-    (id: string | null) => (id ? (savingsGoals.find((g) => g.id === id)?.name ?? 'Unknown') : '—'),
-    [savingsGoals],
-  );
 
   // Normalize amounts to selected period
   const toPeriod = useCallback((amount: number, cadence: Cadence, period: BudgetPeriod): number => {
-    // First convert to yearly, then to target period
     let yearly: number;
     switch (cadence) {
       case 'weekly': yearly = amount * 52; break;
@@ -249,85 +196,172 @@ export function BudgetPage() {
     }
   }, []);
 
-  // Calculate expected average income from next 12 months of forecasts
-  const expectedIncome = useMemo(() => {
-    if (incomeForecasts.length === 0) return null;
+  // Calculate fixed expenses per category (from ForecastRules type=expense)
+  const fixedExpensesPerCategory = useMemo(() => {
+    const result: Record<string, { amount: number; rules: ForecastRule[] }> = {};
 
-    // Sum all expected income over the next 12 months
-    const totalYearlyIncome = incomeForecasts.reduce((sum, f) => sum + f.amountCents, 0);
-
-    // Convert to each period
-    return {
-      weekly: Math.round(totalYearlyIncome / 52),
-      fortnightly: Math.round(totalYearlyIncome / 26),
-      monthly: Math.round(totalYearlyIncome / 12),
-      quarterly: Math.round(totalYearlyIncome / 4),
-      yearly: totalYearlyIncome,
-    };
-  }, [incomeForecasts]);
-
-  const budgetBreakdownSegments = useMemo(() => {
-    const tracked = allRows.filter((r) => r.rule && r.budgetAmount > 0 && !r.category.isArchived);
-    const categorySegments = tracked
-      .map((row) => ({
-        id: row.id,
-        name: row.categoryName,
-        amount: toPeriod(row.budgetAmount, row.cadence!, breakdownPeriod),
-      }))
-      .sort((a, b) => b.amount - a.amount);
-
-    // Always include savings if there are any
-    // savingsForecasts spans 12 months, so divide by 12 to get monthly average
-    const yearlySavings = savingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
-    const monthlySavings = Math.round(yearlySavings / 12);
-    if (monthlySavings > 0) {
-      categorySegments.push({
-        id: 'savings',
-        name: 'Savings',
-        amount: toPeriod(monthlySavings, 'monthly', breakdownPeriod),
-      });
+    for (const rule of expenseRules) {
+      if (rule.categoryId) {
+        if (!result[rule.categoryId]) {
+          result[rule.categoryId] = { amount: 0, rules: [] };
+        }
+        // Convert to period amount
+        const periodAmount = toPeriod(rule.amountCents, rule.cadence, breakdownPeriod);
+        const catData = result[rule.categoryId];
+        if (catData) {
+          catData.amount += periodAmount;
+          catData.rules.push(rule);
+        }
+      }
     }
 
-    // Calculate unbudgeted income
-    const periodIncome = expectedIncome?.[breakdownPeriod] ?? 0;
-    const totalBudgeted = categorySegments.reduce((sum, s) => sum + s.amount, 0);
-    const unbudgeted = periodIncome - totalBudgeted;
+    return result;
+  }, [expenseRules, toPeriod, breakdownPeriod]);
 
-    if (unbudgeted > 0) {
-      categorySegments.push({
-        id: 'unbudgeted',
-        name: 'Unbudgeted',
-        amount: unbudgeted,
-      });
-    }
+  // Build category rows
+  const categoryRows: CategoryRow[] = useMemo(() => {
+    // Build a set of category IDs that have transactions
+    const categoriesWithTransactions = new Set(
+      allTransactions.filter(t => t.categoryId).map(t => t.categoryId),
+    );
 
-    return categorySegments;
-  }, [allRows, savingsForecasts, breakdownPeriod, toPeriod, expectedIncome]);
+    const rows = categories.map((category) => {
+      const budgetRule = getRuleForCategory(category.id);
+      const fixedData = fixedExpensesPerCategory[category.id];
+      const fixedAmount = fixedData?.amount ?? 0;
+      const variableAmount = budgetRule
+        ? toPeriod(budgetRule.amountCents, budgetRule.cadence, breakdownPeriod)
+        : 0;
 
-  // Calculate total for chart (use income as base, or total budgeted if over-budget)
-  const { chartTotal, incomeMarkerPercent } = useMemo(() => {
-    const periodIncome = expectedIncome?.[breakdownPeriod] ?? 0;
-    const totalBudgeted = budgetBreakdownSegments
-      .filter((s) => s.id !== 'unbudgeted')
-      .reduce((sum, s) => sum + s.amount, 0);
-
-    if (periodIncome === 0) {
-      // No income data - use total budgeted
-      return { chartTotal: totalBudgeted, incomeMarkerPercent: undefined };
-    }
-
-    if (totalBudgeted > periodIncome) {
-      // Over-budget: bar extends past income, show marker
       return {
-        chartTotal: totalBudgeted,
-        incomeMarkerPercent: Math.round((periodIncome / totalBudgeted) * 100),
+        id: category.id,
+        category,
+        categoryName: category.name,
+        fixedAmount,
+        variableAmount,
+        totalAmount: fixedAmount + variableAmount,
+        budgetRule,
+        fixedExpenseRules: fixedData?.rules ?? [],
+        canDelete: !categoriesWithTransactions.has(category.id),
+      };
+    });
+
+    // Sort: archived always at bottom, then by selected field
+    return rows.sort((a, b) => {
+      // Archived categories always at the bottom
+      if (a.category.isArchived !== b.category.isArchived) {
+        return a.category.isArchived ? 1 : -1;
+      }
+
+      const multiplier = sortDirection === 'asc' ? 1 : -1;
+      switch (sortField) {
+        case 'name':
+          return multiplier * a.categoryName.localeCompare(b.categoryName);
+        case 'fixed':
+          return multiplier * (a.fixedAmount - b.fixedAmount);
+        case 'variable':
+          return multiplier * (a.variableAmount - b.variableAmount);
+        case 'total':
+          return multiplier * (a.totalAmount - b.totalAmount);
+        default:
+          return 0;
+      }
+    });
+  }, [categories, allTransactions, getRuleForCategory, fixedExpensesPerCategory, toPeriod, breakdownPeriod, sortField, sortDirection]);
+
+  // Calculate totals
+  const totals = useMemo(() => {
+    // Total income from forecasts (averaged to period)
+    const yearlyIncome = incomeForecasts.reduce((sum, f) => sum + f.amountCents, 0);
+    const periodIncome: Record<BudgetPeriod, number> = {
+      weekly: Math.round(yearlyIncome / 52),
+      fortnightly: Math.round(yearlyIncome / 26),
+      monthly: Math.round(yearlyIncome / 12),
+      quarterly: Math.round(yearlyIncome / 4),
+      yearly: yearlyIncome,
+    };
+
+    // Total fixed expenses
+    const totalFixed = categoryRows
+      .filter(r => !r.category.isArchived)
+      .reduce((sum, r) => sum + r.fixedAmount, 0);
+
+    // Total variable budgets
+    const totalVariable = categoryRows
+      .filter(r => !r.category.isArchived)
+      .reduce((sum, r) => sum + r.variableAmount, 0);
+
+    // Total savings (averaged to period)
+    const yearlySavings = savingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
+    const periodSavings: Record<BudgetPeriod, number> = {
+      weekly: Math.round(yearlySavings / 52),
+      fortnightly: Math.round(yearlySavings / 26),
+      monthly: Math.round(yearlySavings / 12),
+      quarterly: Math.round(yearlySavings / 4),
+      yearly: yearlySavings,
+    };
+
+    const income = periodIncome[breakdownPeriod];
+    const savings = periodSavings[breakdownPeriod];
+    const totalSpending = totalFixed + totalVariable;
+    const unallocated = income - totalSpending - savings;
+
+    return {
+      income,
+      fixed: totalFixed,
+      variable: totalVariable,
+      savings,
+      totalSpending,
+      unallocated,
+    };
+  }, [categoryRows, incomeForecasts, savingsForecasts, breakdownPeriod]);
+
+  // Build chart segments
+  // Fixed order: Fixed → Savings → Variable → Available
+  // Variable is rightmost expense so it's visually clear it's the first to cut when over budget
+  const budgetBreakdownSegments = useMemo(() => {
+    const orderedSegments = [
+      { id: 'fixed', name: 'Fixed Expenses', amount: totals.fixed },
+      { id: 'savings', name: 'Savings', amount: totals.savings },
+      { id: 'variable', name: 'Variable Budget', amount: totals.variable },
+      { id: 'available', name: 'Available', amount: totals.unallocated },
+    ];
+
+    // Filter out zero-amount segments but maintain order
+    return orderedSegments.filter(s => s.amount > 0);
+  }, [totals]);
+
+  // Category color map
+  const categoryColorMap = useMemo(() => {
+    const map = buildCategoryColorMap(activeCategories.map((c) => c.id));
+    map['fixed'] = '#ef4444'; // red-500 for fixed expenses
+    map['variable'] = '#f87171'; // red-400 for variable budget
+    map['savings'] = CHART_COLORS.savings;
+    map['unbudgeted'] = CHART_COLORS.available;
+    map['available'] = '#22c55e'; // green-500 to match income
+    return map;
+  }, [activeCategories]);
+
+  // Chart total and income marker
+  const { chartTotal, incomeMarkerPercent } = useMemo(() => {
+    const { income } = totals;
+    const totalAllocated = totals.fixed + totals.variable + totals.savings;
+
+    if (income === 0) {
+      return { chartTotal: totalAllocated, incomeMarkerPercent: undefined };
+    }
+
+    if (totalAllocated > income) {
+      return {
+        chartTotal: totalAllocated,
+        incomeMarkerPercent: Math.round((income / totalAllocated) * 100),
       };
     }
 
-    // Under-budget or exact: use income as total
-    return { chartTotal: periodIncome, incomeMarkerPercent: undefined };
-  }, [expectedIncome, breakdownPeriod, budgetBreakdownSegments]);
+    return { chartTotal: income, incomeMarkerPercent: undefined };
+  }, [totals]);
 
+  // Handlers
   const handleSegmentToggle = useCallback((id: string) => {
     setHiddenSegments((prev) => {
       const next = new Set(prev);
@@ -340,46 +374,43 @@ export function BudgetPage() {
     });
   }, []);
 
-  const openEditDialog = useCallback((row: BudgetRow, shouldFocusLimit = false) => {
+  const openEditCategoryDialog = useCallback((row: CategoryRow, shouldFocusLimit = false) => {
     setEditingRow(row);
     setFocusLimit(shouldFocusLimit);
-    setEditDialogOpen(true);
+    setEditCategoryDialogOpen(true);
   }, []);
 
   const handleEditDialogClose = useCallback((open: boolean) => {
-    setEditDialogOpen(open);
+    setEditCategoryDialogOpen(open);
     if (!open) {
       setEditingRow(null);
       setFocusLimit(false);
     }
   }, []);
 
-  const handleDelete = useCallback(
-    (categoryId: string) => {
-      if (deletingId === categoryId) {
-        deleteCategory(categoryId);
-        setDeletingId(null);
-      } else {
-        setDeletingId(categoryId);
-      }
-    },
-    [deletingId, deleteCategory],
-  );
+  const openFixedExpensesDialog = useCallback((categoryId: string) => {
+    setFixedExpensesCategoryId(categoryId);
+    setFixedExpensesDialogOpen(true);
+  }, []);
 
-  // Forecast rule handlers
-  const openAddRuleDialog = useCallback(() => {
+  const openAddRuleDialog = useCallback((type: 'income' | 'expense' | 'savings') => {
     setEditingRule(null);
+    setRuleDialogType(type);
     setRuleDialogOpen(true);
   }, []);
 
   const openEditRuleDialog = useCallback((rule: ForecastRule) => {
     setEditingRule(rule);
+    setRuleDialogType(rule.type);
     setRuleDialogOpen(true);
   }, []);
 
   const handleRuleDialogClose = useCallback((open: boolean) => {
     setRuleDialogOpen(open);
-    if (!open) setEditingRule(null);
+    if (!open) {
+      setEditingRule(null);
+      setRuleDialogType(null);
+    }
   }, []);
 
   const handleDeleteRule = useCallback((id: string) => {
@@ -391,582 +422,37 @@ export function BudgetPage() {
     }
   }, [deletingRuleId, deleteRule]);
 
-  // Handle when rule is created - show budget prompt for expenses
-  const handleRuleCreated = useCallback((rule: ForecastRule) => {
-    if (rule.type === 'expense' && rule.categoryId && !skipBudgetPrompt) {
-      setCreatedRule(rule);
-      setBudgetPromptOpen(true);
-    }
-  }, [skipBudgetPrompt]);
+  // Get category name helper
+  const getCategoryName = useCallback(
+    (id: string | null) => (id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '—'),
+    [categories],
+  );
 
-  const createdRuleCategoryName = useMemo(() => {
-    if (!createdRule?.categoryId) return '';
-    return categories.find((c) => c.id === createdRule.categoryId)?.name ?? 'Unknown';
-  }, [createdRule, categories]);
+  // Get savings goal name helper
+  const getSavingsGoalName = useCallback(
+    (id: string | null) => (id ? (savingsGoals.find((g) => g.id === id)?.name ?? 'Unknown') : '—'),
+    [savingsGoals],
+  );
 
-  const existingBudgetForCreatedRule = useMemo(() => {
-    if (!createdRule?.categoryId) return null;
-    return getRuleForCategory(createdRule.categoryId);
-  }, [createdRule, getRuleForCategory]);
-
-  const handleAddToBudget = useCallback(async (dontAskAgain: boolean) => {
-    if (!createdRule?.categoryId) return;
-
-    const existingBudget = getRuleForCategory(createdRule.categoryId);
-    const newMonthly = toMonthlyCents(createdRule.amountCents, createdRule.cadence as CadenceType);
-    const existingMonthly = existingBudget
-      ? toMonthlyCents(existingBudget.amountCents, existingBudget.cadence as CadenceType)
-      : 0;
-
-    await setBudgetForCategory(createdRule.categoryId, existingMonthly + newMonthly, 'monthly');
-
-    if (dontAskAgain) setSkipBudgetPrompt(true);
-    setCreatedRule(null);
-  }, [createdRule, getRuleForCategory, setBudgetForCategory, setSkipBudgetPrompt]);
-
-  const handleReplaceBudget = useCallback(async (dontAskAgain: boolean) => {
-    if (!createdRule?.categoryId) return;
-
-    const newMonthly = toMonthlyCents(createdRule.amountCents, createdRule.cadence as CadenceType);
-    await setBudgetForCategory(createdRule.categoryId, newMonthly, 'monthly');
-
-    if (dontAskAgain) setSkipBudgetPrompt(true);
-    setCreatedRule(null);
-  }, [createdRule, setBudgetForCategory, setSkipBudgetPrompt]);
-
-  const handleSkipBudget = useCallback((dontAskAgain: boolean) => {
-    if (dontAskAgain) setSkipBudgetPrompt(true);
-    setCreatedRule(null);
-  }, [setSkipBudgetPrompt]);
+  // Get fixed expenses for dialog
+  const fixedExpensesForDialog = useMemo(() => {
+    if (!fixedExpensesCategoryId) return { rules: [] };
+    const data = fixedExpensesPerCategory[fixedExpensesCategoryId];
+    return {
+      rules: data?.rules ?? [],
+    };
+  }, [fixedExpensesCategoryId, fixedExpensesPerCategory]);
 
   // Close delete confirmation on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (deletingId) setDeletingId(null);
         if (deletingRuleId) setDeletingRuleId(null);
       }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [deletingId, deletingRuleId]);
-
-  const columns: ColumnDef<BudgetRow>[] = useMemo(
-    () => [
-      {
-        accessorKey: 'categoryName',
-        header: ({ column }) => <SortableHeader column={column}>Category</SortableHeader>,
-        cell: ({ row }) => {
-          const budgetRow = row.original;
-          const isArchived = budgetRow.category.isArchived;
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link
-                    to={`/categories/${budgetRow.id}`}
-                    className={`font-medium hover:underline ${isArchived ? 'text-muted-foreground' : ''}`}
-                  >
-                    {budgetRow.categoryName}
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent>View category details</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          );
-        },
-      },
-      {
-        accessorKey: 'isArchived',
-        header: ({ column }) => <SortableHeader column={column}>Archived?</SortableHeader>,
-        accessorFn: (row) => row.category.isArchived,
-        cell: ({ row }) =>
-          row.original.category.isArchived ? (
-            <Badge variant="secondary">Archived</Badge>
-          ) : null,
-      },
-      {
-        accessorKey: 'budgetAmount',
-        header: ({ column }) => (
-          <SortableHeader column={column} className="justify-end">
-            Budget
-          </SortableHeader>
-        ),
-        cell: ({ row }) => {
-          const budgetRow = row.original;
-          const isArchived = budgetRow.category.isArchived;
-
-          if (!budgetRow.rule) {
-            return (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => openEditDialog(budgetRow, true)}
-                      className={`cursor-pointer text-right text-sm hover:underline hover:text-foreground ${isArchived ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}
-                    >
-                      Set budget
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>Set a spending expectation for this category</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            );
-          }
-
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => openEditDialog(budgetRow, true)}
-                    className={`cursor-pointer text-right hover:underline ${isArchived ? 'text-muted-foreground' : ''}`}
-                  >
-                    <span className="font-mono">{formatCents(budgetRow.budgetAmount)}</span>
-                    <span className="ml-1 text-muted-foreground">{CADENCE_FULL_LABELS[budgetRow.cadence!]}</span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Edit spending expectation</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          );
-        },
-      },
-      {
-        accessorKey: 'transactionCount',
-        header: ({ column }) => (
-          <SortableHeader column={column} className="justify-center">
-            Past Transactions
-          </SortableHeader>
-        ),
-        cell: ({ row }) => {
-          const budgetRow = row.original;
-          const count = budgetRow.transactionCount;
-          const isArchived = budgetRow.category.isArchived;
-          if (count === 0) {
-            return <div className={`text-center ${isArchived ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>—</div>;
-          }
-          return (
-            <div className="text-center">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link
-                      to={`/money?category=${budgetRow.id}&from=budget`}
-                      className={`hover:underline ${isArchived ? 'text-muted-foreground' : ''}`}
-                    >
-                      {count}
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent>View past transactions in this category</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          );
-        },
-      },
-      {
-        accessorKey: 'forecastCount',
-        header: ({ column }) => (
-          <SortableHeader column={column} className="justify-center">
-            Expected Transactions
-          </SortableHeader>
-        ),
-        cell: ({ row }) => {
-          const budgetRow = row.original;
-          const count = budgetRow.forecastCount;
-          const isArchived = budgetRow.category.isArchived;
-          if (count === 0) {
-            return <div className={`text-center ${isArchived ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>—</div>;
-          }
-          return (
-            <div className="text-center">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link
-                      to={`/money?tab=expected&category=${budgetRow.id}&from=budget`}
-                      className={`hover:underline ${isArchived ? 'text-muted-foreground' : ''}`}
-                    >
-                      {count}
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent>View expected transactions in this category</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          );
-        },
-      },
-      {
-        id: 'actions',
-        cell: ({ row }) => {
-          const budgetRow = row.original;
-          const isDeleting = deletingId === budgetRow.id;
-          const isArchived = budgetRow.category.isArchived;
-
-          return (
-            <TooltipProvider>
-              <div className="flex justify-end gap-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openEditDialog(budgetRow)}
-                      aria-label="Edit"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Edit</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => updateCategory(budgetRow.id, { isArchived: !isArchived })}
-                      aria-label={isArchived ? 'Restore' : 'Archive'}
-                    >
-                      {isArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{isArchived ? 'Restore' : 'Archive'}</TooltipContent>
-                </Tooltip>
-                {hasReferences(budgetRow.id) ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="inline-block">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled
-                          className="pointer-events-none"
-                          aria-label="Delete (disabled)"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Archive instead — used by {getReferenceText(budgetRow.id)}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                ) : (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant={isDeleting ? 'destructive' : 'ghost'}
-                        size="sm"
-                        onClick={() => handleDelete(budgetRow.id)}
-                        onBlur={() => setTimeout(() => setDeletingId(null), 200)}
-                        aria-label={isDeleting ? 'Confirm delete' : 'Delete'}
-                      >
-                        {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>{isDeleting ? 'Click to confirm' : 'Delete'}</TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-            </TooltipProvider>
-          );
-        },
-      },
-    ],
-    [deletingId, openEditDialog, handleDelete, updateCategory, hasReferences, getReferenceText],
-  );
-
-  // Income rules columns
-  const incomeColumns: ColumnDef<ForecastRule>[] = useMemo(
-    () => [
-      {
-        accessorKey: 'description',
-        header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
-        cell: ({ row }) => (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => openEditRuleDialog(row.original)}
-                  className="cursor-pointer text-left font-medium hover:underline"
-                >
-                  {row.getValue('description')}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Edit</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ),
-      },
-      {
-        accessorKey: 'cadence',
-        header: 'Cadence',
-        cell: ({ row }) => (
-          <Badge variant="outline">{CADENCE_FULL_LABELS[row.getValue('cadence') as Cadence]}</Badge>
-        ),
-      },
-      {
-        accessorKey: 'amountCents',
-        header: ({ column }) => (
-          <SortableHeader column={column} className="justify-end">
-            Amount
-          </SortableHeader>
-        ),
-        cell: ({ row }) => (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="cursor-default text-right font-mono text-green-600">
-                  +{formatCents(row.getValue('amountCents'))}
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>Recurring income</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ),
-      },
-      {
-        id: 'actions',
-        cell: ({ row }) => {
-          const rule = row.original;
-          const isDeleting = deletingRuleId === rule.id;
-          return (
-            <TooltipProvider>
-              <div className="flex justify-end gap-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="sm" onClick={() => openEditRuleDialog(rule)} aria-label="Edit">
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Edit</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={isDeleting ? 'destructive' : 'ghost'}
-                      size="sm"
-                      onClick={() => handleDeleteRule(rule.id)}
-                      onBlur={() => setTimeout(() => setDeletingRuleId(null), 200)}
-                      aria-label={isDeleting ? 'Confirm delete' : 'Delete'}
-                    >
-                      {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{isDeleting ? 'Click to confirm' : 'Delete'}</TooltipContent>
-                </Tooltip>
-              </div>
-            </TooltipProvider>
-          );
-        },
-      },
-    ],
-    [deletingRuleId, openEditRuleDialog, handleDeleteRule],
-  );
-
-  // Expense rules columns
-  const expenseColumns: ColumnDef<ForecastRule>[] = useMemo(
-    () => [
-      {
-        accessorKey: 'description',
-        header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
-        cell: ({ row }) => (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => openEditRuleDialog(row.original)}
-                  className="cursor-pointer text-left font-medium hover:underline"
-                >
-                  {row.getValue('description')}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Edit</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ),
-      },
-      {
-        accessorKey: 'categoryId',
-        header: 'Category',
-        cell: ({ row }) => {
-          const categoryId = row.getValue('categoryId') as string | null;
-          const categoryName = getCategoryName(categoryId);
-          if (!categoryId) {
-            return <span className="text-muted-foreground">—</span>;
-          }
-          return (
-            <Link to={`/categories/${categoryId}`} className="hover:underline">
-              {categoryName}
-            </Link>
-          );
-        },
-      },
-      {
-        accessorKey: 'cadence',
-        header: 'Cadence',
-        cell: ({ row }) => (
-          <Badge variant="outline">{CADENCE_FULL_LABELS[row.getValue('cadence') as Cadence]}</Badge>
-        ),
-      },
-      {
-        accessorKey: 'amountCents',
-        header: ({ column }) => (
-          <SortableHeader column={column} className="justify-end">
-            Amount
-          </SortableHeader>
-        ),
-        cell: ({ row }) => (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="cursor-default text-right font-mono text-red-600">
-                  -{formatCents(row.getValue('amountCents'))}
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>Recurring expense</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ),
-      },
-      {
-        id: 'actions',
-        cell: ({ row }) => {
-          const rule = row.original;
-          const isDeleting = deletingRuleId === rule.id;
-          return (
-            <TooltipProvider>
-              <div className="flex justify-end gap-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="sm" onClick={() => openEditRuleDialog(rule)} aria-label="Edit">
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Edit</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={isDeleting ? 'destructive' : 'ghost'}
-                      size="sm"
-                      onClick={() => handleDeleteRule(rule.id)}
-                      onBlur={() => setTimeout(() => setDeletingRuleId(null), 200)}
-                      aria-label={isDeleting ? 'Confirm delete' : 'Delete'}
-                    >
-                      {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{isDeleting ? 'Click to confirm' : 'Delete'}</TooltipContent>
-                </Tooltip>
-              </div>
-            </TooltipProvider>
-          );
-        },
-      },
-    ],
-    [deletingRuleId, openEditRuleDialog, handleDeleteRule, getCategoryName],
-  );
-
-  // Savings rules columns
-  const savingsColumns: ColumnDef<ForecastRule>[] = useMemo(
-    () => [
-      {
-        accessorKey: 'description',
-        header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
-        cell: ({ row }) => (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => openEditRuleDialog(row.original)}
-                  className="cursor-pointer text-left font-medium hover:underline"
-                >
-                  {row.getValue('description')}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Edit</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ),
-      },
-      {
-        accessorKey: 'savingsGoalId',
-        header: 'Savings Goal',
-        cell: ({ row }) => getSavingsGoalName(row.getValue('savingsGoalId')),
-      },
-      {
-        accessorKey: 'cadence',
-        header: 'Cadence',
-        cell: ({ row }) => (
-          <Badge variant="outline">{CADENCE_FULL_LABELS[row.getValue('cadence') as Cadence]}</Badge>
-        ),
-      },
-      {
-        accessorKey: 'amountCents',
-        header: ({ column }) => (
-          <SortableHeader column={column} className="justify-end">
-            Amount
-          </SortableHeader>
-        ),
-        cell: ({ row }) => (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="cursor-default text-right font-mono text-blue-600">
-                  -{formatCents(row.getValue('amountCents'))}
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>Recurring savings contribution</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ),
-      },
-      {
-        id: 'actions',
-        cell: ({ row }) => {
-          const rule = row.original;
-          const isDeleting = deletingRuleId === rule.id;
-          return (
-            <TooltipProvider>
-              <div className="flex justify-end gap-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="sm" onClick={() => openEditRuleDialog(rule)} aria-label="Edit">
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Edit</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={isDeleting ? 'destructive' : 'ghost'}
-                      size="sm"
-                      onClick={() => handleDeleteRule(rule.id)}
-                      onBlur={() => setTimeout(() => setDeletingRuleId(null), 200)}
-                      aria-label={isDeleting ? 'Confirm delete' : 'Delete'}
-                    >
-                      {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{isDeleting ? 'Click to confirm' : 'Delete'}</TooltipContent>
-                </Tooltip>
-              </div>
-            </TooltipProvider>
-          );
-        },
-      },
-    ],
-    [deletingRuleId, openEditRuleDialog, handleDeleteRule, getSavingsGoalName],
-  );
+  }, [deletingRuleId]);
 
   // Show loading spinner while data is being fetched
   if (isLoading) {
@@ -987,10 +473,10 @@ export function BudgetPage() {
             </div>
             Budget
           </h1>
-          <p className="page-description">Manage budgets and expected </p>
+          <p className="page-description">Plan your spending and savings</p>
         </div>
         <div className="empty-state">
-          <p className="empty-state-text">Select a scenario to configure spending expectations.</p>
+          <p className="empty-state-text">Select a scenario to configure your budget.</p>
           <Button asChild className="empty-state-action">
             <Link to="/scenarios">Manage Scenarios</Link>
           </Button>
@@ -998,6 +484,20 @@ export function BudgetPage() {
       </div>
     );
   }
+
+  // Use a tolerance to account for rounding when converting between periods
+  // Scale with period: yearly accumulates more rounding error than weekly
+  const roundingToleranceByPeriod: Record<BudgetPeriod, number> = {
+    weekly: 100,      // $1
+    fortnightly: 200, // $2
+    monthly: 300,     // $3
+    quarterly: 500,   // $5
+    yearly: 1000,     // $10
+  };
+  const roundingTolerance = roundingToleranceByPeriod[breakdownPeriod];
+  const isFullyAllocated = Math.abs(totals.unallocated) <= roundingTolerance && totals.income > 0;
+  const isOvercommitted = totals.unallocated < -roundingTolerance || (totals.income === 0 && totals.totalSpending + totals.savings > 0);
+  const hasAvailable = totals.unallocated > roundingTolerance && totals.income > 0;
 
   return (
     <div className="page-shell">
@@ -1008,358 +508,547 @@ export function BudgetPage() {
           </div>
           Budget
         </h1>
-        <p className="page-description">Manage budgets and expected transactions</p>
+        <p className="page-description">Plan your spending and savings</p>
       </div>
 
-      {/* Budget health summary - always shown */}
-      <div className="mb-6 space-y-6">
-        {/* Period dropdown */}
-        <div>
-          <Select value={breakdownPeriod} onValueChange={(v) => setBreakdownPeriod(v as BudgetPeriod)}>
-            <SelectTrigger className="w-36">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="weekly">Weekly</SelectItem>
-              <SelectItem value="fortnightly">Fortnightly</SelectItem>
-              <SelectItem value="monthly">Monthly</SelectItem>
-              <SelectItem value="quarterly">Quarterly</SelectItem>
-              <SelectItem value="yearly">Yearly</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Period selector and scenario */}
+      <div className="mb-6 flex flex-wrap items-center gap-4">
+        <Select value={breakdownPeriod} onValueChange={(v) => setBreakdownPeriod(v as BudgetPeriod)}>
+          <SelectTrigger className="w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="weekly">Weekly</SelectItem>
+            <SelectItem value="fortnightly">Fortnightly</SelectItem>
+            <SelectItem value="monthly">Monthly</SelectItem>
+            <SelectItem value="quarterly">Quarterly</SelectItem>
+            <SelectItem value="yearly">Yearly</SelectItem>
+          </SelectContent>
+        </Select>
+        <ScenarioSelector hideLabel />
+      </div>
 
-        {/* Stats cards */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          {/* Budget status card */}
-          {(() => {
-            const unbudgetedAmount = budgetBreakdownSegments.find((s) => s.id === 'unbudgeted')?.amount ?? 0;
-            const isOverBudget = incomeMarkerPercent !== undefined;
-            const overBudgetAmount = isOverBudget && expectedIncome ? chartTotal - expectedIncome[breakdownPeriod] : 0;
-            const periodIncome = expectedIncome?.[breakdownPeriod] ?? 0;
-            const unbudgetedPercent = periodIncome > 0 ? (unbudgetedAmount / periodIncome) * 100 : 0;
-            const isFullyBudgeted = !isOverBudget && unbudgetedPercent < 2;
-
-            if (!expectedIncome || budgetBreakdownSegments.length === 0) {
-              return (
-                <div className="rounded-xl border bg-card p-5">
-                  <div className="flex items-center gap-2">
-                    <Target className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Budgeted</span>
-                  </div>
-                  <p className="mt-2 text-2xl font-bold text-muted-foreground">—</p>
-                </div>
-              );
-            }
-
-            if (isFullyBudgeted) {
-              return (
-                <div className="rounded-xl border bg-card p-5">
-                  <div className="flex items-center gap-2">
-                    <Target className="h-4 w-4 text-green-500" />
-                    <span className="text-sm text-muted-foreground">Budgeted</span>
-                  </div>
-                  <p className="mt-2 text-2xl font-bold text-green-600 dark:text-green-400">100%</p>
-                  <p className="text-sm text-muted-foreground">of planned {formatCents(periodIncome)} income</p>
-                </div>
-              );
-            }
-
-            if (isOverBudget) {
-              return (
-                <div className="rounded-xl border border-amber-500/50 bg-amber-500/5 p-5">
-                  <div className="flex items-center gap-2">
-                    <Target className="h-4 w-4 text-amber-500" />
-                    <span className="text-sm text-muted-foreground">Overcommitted</span>
-                  </div>
-                  <p className="mt-2 text-2xl font-bold text-amber-600 dark:text-amber-400">
-                    {formatCents(overBudgetAmount)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">above planned {formatCents(periodIncome)} income</p>
-                </div>
-              );
-            }
-
-            return (
-              <div className="rounded-xl border bg-card p-5">
-                <div className="flex items-center gap-2">
-                  <Target className="h-4 w-4 text-green-500" />
-                  <span className="text-sm text-muted-foreground">Unbudgeted</span>
-                </div>
-                <p className="mt-2 text-2xl font-bold text-green-600 dark:text-green-400">
-                  {formatCents(unbudgetedAmount)}
-                </p>
-                <p className="text-sm text-muted-foreground">of planned {formatCents(periodIncome)} income</p>
-              </div>
-            );
-          })()}
-
-          {/* Savings card */}
-          <div className="rounded-xl border bg-card p-5">
-            <div className="flex items-center gap-2">
-              <PiggyBank className="h-4 w-4 text-blue-500" />
-              <span className="text-sm text-muted-foreground">Planned Savings</span>
-            </div>
-            <p className="mt-2 text-2xl font-bold">
-              {formatCents(budgetBreakdownSegments.find((s) => s.id === 'savings')?.amount ?? 0)}
-            </p>
-          </div>
-        </div>
-
-        {/* Income Breakdown chart */}
+      {/* Summary Cards */}
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Income Card */}
         <div className="rounded-xl border bg-card p-5">
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold">Income Breakdown</h3>
-            <p className="text-sm text-muted-foreground">How your expected income is allocated across categories.</p>
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/10">
+              <DollarSign className="h-4 w-4 text-green-500" />
+            </div>
+            <span className="text-sm text-muted-foreground">Income</span>
           </div>
-
-          {!expectedIncome ? (
-            budgetBreakdownSegments.length > 0 ? (
-              <>
-                <SpendingBreakdownChart
-                  segments={budgetBreakdownSegments}
-                  total={chartTotal}
-                  colorMap={categoryColorMap}
-                  disableToggle
-                  toggleableIds={['unbudgeted']}
-                  hiddenSegmentIds={hiddenSegments}
-                  onSegmentToggle={handleSegmentToggle}
-                />
-                <p className="mt-4 text-center text-sm text-muted-foreground">
-                  Add expected income to see budget relative to income.
-                </p>
-              </>
-            ) : (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                No budgets set yet. Set spending expectations in the Categories tab to see your allocation.
-              </p>
-            )
-          ) : budgetBreakdownSegments.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No budgets set yet. Set spending expectations in the Categories tab to see your allocation.
+          <p className="mt-2 text-2xl font-bold">
+            {totals.income > 0 ? formatCents(totals.income) : '—'}
+          </p>
+          {totals.income > 0 && (
+            <p className="text-sm text-muted-foreground">
+              {incomeRules.length} source{incomeRules.length !== 1 ? 's' : ''}
             </p>
-          ) : (
-            <SpendingBreakdownChart
-              segments={budgetBreakdownSegments}
-              total={chartTotal}
-              colorMap={categoryColorMap}
-              disableToggle
-              toggleableIds={['unbudgeted']}
-              hiddenSegmentIds={hiddenSegments}
-              onSegmentToggle={handleSegmentToggle}
-              {...(incomeMarkerPercent !== undefined && { incomeMarker: incomeMarkerPercent })}
-            />
+          )}
+        </div>
+
+        {/* Fixed Expenses Card */}
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10">
+              <Pin className="h-4 w-4 text-red-500" />
+            </div>
+            <span className="text-sm text-muted-foreground">Fixed Expenses</span>
+          </div>
+          <p className="mt-2 text-2xl font-bold">
+            {totals.fixed > 0 ? formatCents(totals.fixed) : '—'}
+          </p>
+          {totals.income > 0 && totals.fixed > 0 && (
+            <p className="text-sm text-muted-foreground">
+              {Math.round((totals.fixed / totals.income) * 100)}% of income
+            </p>
+          )}
+        </div>
+
+        {/* Variable Budget Card */}
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-400/10">
+              <Target className="h-4 w-4 text-red-400" />
+            </div>
+            <span className="text-sm text-muted-foreground">Variable Budget</span>
+          </div>
+          <p className="mt-2 text-2xl font-bold">
+            {totals.variable > 0 ? formatCents(totals.variable) : '—'}
+          </p>
+          {totals.income > 0 && totals.variable > 0 && (
+            <p className="text-sm text-muted-foreground">
+              {Math.round((totals.variable / totals.income) * 100)}% of income
+            </p>
+          )}
+        </div>
+
+        {/* Savings Card */}
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10">
+              <PiggyBank className="h-4 w-4 text-blue-500" />
+            </div>
+            <span className="text-sm text-muted-foreground">Savings</span>
+          </div>
+          <p className="mt-2 text-2xl font-bold">
+            {totals.savings > 0 ? formatCents(totals.savings) : '—'}
+          </p>
+          {totals.income > 0 && totals.savings > 0 && (
+            <p className="text-sm text-muted-foreground">
+              {Math.round((totals.savings / totals.income) * 100)}% of income
+            </p>
           )}
         </div>
       </div>
 
-      {/* Main tabs */}
-      <div className="mb-6 inline-flex flex-wrap gap-1 rounded-lg bg-muted p-1 text-muted-foreground">
-        {[
-          { value: 'categories' as BudgetTab, label: 'Categories' },
-          { value: 'income' as BudgetTab, label: 'Income' },
-          { value: 'fixed-expenses' as BudgetTab, label: 'Fixed Expenses' },
-          { value: 'savings-contributions' as BudgetTab, label: 'Savings Contributions' },
-        ].map((tab) => (
-          <button
-            key={tab.value}
-            type="button"
-            onClick={() => setActiveTab(tab.value)}
-            className={cn(
-              'inline-flex h-8 cursor-pointer items-center justify-center rounded-md px-3 text-sm font-medium transition-all',
-              activeTab === tab.value
-                ? 'bg-background text-foreground shadow-sm'
-                : 'hover:text-foreground',
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Categories tab - table with categories and limits */}
-      {activeTab === 'categories' && (
-        <>
-          <Alert variant="info" className="mb-6">
-            Budgets for each category. They vary by scenario.
-          </Alert>
-
-          {categories.length === 0 ? (
-            <div className="space-y-4">
-              <Alert variant="info">
-                Create categories like groceries, transport, or entertainment to see where your money goes.
-              </Alert>
-              <div className="empty-state">
-                <p className="empty-state-text">No categories yet.</p>
-                <Button className="empty-state-action" onClick={() => setAddDialogOpen(true)}>
-                  <Plus className="h-4 w-4" />
-                  Add your first category
-                </Button>
+      {/* Available/Overcommitted Status */}
+      {(totals.income > 0 || isOvercommitted) && (
+        <div className={cn(
+          'mb-6 rounded-xl border p-4',
+          isOvercommitted
+            ? 'border-amber-500/50 bg-amber-500/5'
+            : 'border-green-500/50 bg-green-500/5',
+        )}>
+          {isOvercommitted ? (
+            <div className="flex items-center gap-3">
+              <CreditCard className="h-5 w-5 text-amber-500" />
+              <div>
+                <span className="font-medium text-amber-600 dark:text-amber-400">
+                  Overcommitted{totals.income > 0 ? ` by ${formatCents(Math.abs(totals.unallocated))} ${FREQUENCY_PER_LABELS[breakdownPeriod]} on average` : ''}
+                </span>
+                <p className="text-sm text-muted-foreground">
+                  {totals.income > 0 ? 'Reduce spending or add income' : 'Add income to cover your planned expenses and savings'}
+                </p>
               </div>
             </div>
-          ) : (
-            <DataTable
-              columns={columns}
-              data={allRows}
-              searchKey="categoryName"
-              searchPlaceholder="Search categories..."
-              showPagination={false}
-              filterSlot={
-                <div className="flex flex-1 flex-wrap items-center gap-2">
-                  <ScenarioSelector hideLabel />
-                  <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
-                    <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
-                      <Link to="/categories/import-rules">
-                        <Settings2 className="h-4 w-4" />
-                        <span className="hidden sm:inline">Import Rules</span>
-                      </Link>
-                    </Button>
-                    <Button onClick={() => setAddDialogOpen(true)}>
-                      <Plus className="h-4 w-4" />
-                      <span className="hidden sm:inline">Add Category</span>
-                    </Button>
-                  </div>
-                </div>
-              }
-            />
-          )}
-        </>
-      )}
-
-      {/* Income tab */}
-      {activeTab === 'income' && (
-        <>
-          <Alert variant="info" className="mb-6">
-            Expected regular income. It varies by scenario.
-          </Alert>
-
-          {incomeRules.length === 0 ? (
-            <div className="empty-state">
-              <p className="empty-state-text">No expected income yet.</p>
-              <Button className="empty-state-action" onClick={openAddRuleDialog}>
-                <Plus className="h-4 w-4" />
-                Add expected income
-              </Button>
+          ) : isFullyAllocated ? (
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="h-5 w-5 text-green-500" />
+              <div>
+                <span className="font-medium text-green-600 dark:text-green-400">
+                  Budget balanced
+                </span>
+                <p className="text-sm text-muted-foreground">
+                  Every dollar accounted for
+                </p>
+              </div>
             </div>
-          ) : (
-            <DataTable
-              columns={incomeColumns}
-              data={incomeRules}
-              searchKey="description"
-              searchPlaceholder="Search income..."
-              showPagination={false}
-              filterSlot={
-                <div className="flex flex-1 flex-wrap items-center gap-2">
-                  <ScenarioSelector hideLabel />
-                  <div className="flex flex-1 items-center justify-end">
-                    <Button onClick={openAddRuleDialog}>
-                      <Plus className="h-4 w-4" />
-                      <span className="hidden sm:inline">Add Income</span>
-                    </Button>
-                  </div>
-                </div>
-              }
-            />
-          )}
-        </>
-      )}
-
-      {/* Fixed Expenses tab */}
-      {activeTab === 'fixed-expenses' && (
-        <>
-          <Alert variant="info" className="mb-6">
-            Expected fixed expenses. They vary by scenario.
-          </Alert>
-
-          {expenseRules.length === 0 && expenseFilterCategory === 'all' ? (
-            <div className="empty-state">
-              <p className="empty-state-text">No fixed expenses yet.</p>
-              <Button className="empty-state-action" onClick={openAddRuleDialog}>
-                <Plus className="h-4 w-4" />
-                Add fixed expense
-              </Button>
+          ) : hasAvailable ? (
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="h-5 w-5 text-green-500" />
+              <div>
+                <span className="font-medium text-green-600 dark:text-green-400">
+                  {formatCents(totals.unallocated)} surplus {FREQUENCY_PER_LABELS[breakdownPeriod]} on average
+                </span>
+                <p className="text-sm text-muted-foreground">
+                  {Math.round((totals.unallocated / totals.income) * 100)}% of income not being spent or saved
+                </p>
+              </div>
             </div>
-          ) : (
-            <DataTable
-              columns={expenseColumns}
-              data={expenseRules}
-              searchKey="description"
-              searchPlaceholder="Search expenses..."
-              showPagination={false}
-              emptyMessage="No fixed expenses found matching your filters."
-              filterSlot={
-                <div className="flex flex-1 flex-wrap items-center gap-2">
-                  <ScenarioSelector hideLabel />
-                  <Select value={expenseFilterCategory} onValueChange={setExpenseFilterCategory}>
-                    <SelectTrigger className={`w-44 ${expenseFilterCategory === 'all' ? 'text-muted-foreground' : ''}`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      {activeCategories
-                        .sort((a, b) => a.name.localeCompare(b.name))
-                        .map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="flex flex-1 items-center justify-end">
-                    <Button onClick={openAddRuleDialog}>
-                      <Plus className="h-4 w-4" />
-                      <span className="hidden sm:inline">Add Expense</span>
-                    </Button>
-                  </div>
-                </div>
-              }
-            />
-          )}
-        </>
+          ) : null}
+        </div>
       )}
 
-      {/* Savings Contributions tab */}
-      {activeTab === 'savings-contributions' && (
-        <>
-          <Alert variant="info" className="mb-6">
-            Expected regular contributions to savings goals. They vary by scenario.
-          </Alert>
-
-          {savingsRules.length === 0 ? (
-            <div className="empty-state">
-              <p className="empty-state-text">No expected savings contributions yet.</p>
-              <Button className="empty-state-action" onClick={openAddRuleDialog}>
-                <Plus className="h-4 w-4" />
-                Add expected savings contribution
-              </Button>
-            </div>
-          ) : (
-            <DataTable
-              columns={savingsColumns}
-              data={savingsRules}
-              searchKey="description"
-              searchPlaceholder="Search savings..."
-              showPagination={false}
-              filterSlot={
-                <div className="flex flex-1 flex-wrap items-center gap-2">
-                  <ScenarioSelector hideLabel />
-                  <div className="flex flex-1 items-center justify-end">
-                    <Button onClick={openAddRuleDialog}>
-                      <Plus className="h-4 w-4" />
-                      <span className="hidden sm:inline">Add Contribution</span>
-                    </Button>
-                  </div>
-                </div>
-              }
-            />
-          )}
-        </>
+      {/* Allocation Chart */}
+      {budgetBreakdownSegments.length > 0 && (
+        <div className="mb-8 rounded-xl border bg-card p-5">
+          <h3 className="mb-2 text-lg font-semibold">Income Allocation</h3>
+          <p className="mb-4 text-sm text-muted-foreground">
+            How your {formatCents(totals.income)} income is allocated
+          </p>
+          <SpendingBreakdownChart
+            segments={budgetBreakdownSegments}
+            total={chartTotal}
+            colorMap={categoryColorMap}
+            disableToggle
+            toggleableIds={['available']}
+            hiddenSegmentIds={hiddenSegments}
+            onSegmentToggle={handleSegmentToggle}
+            {...(incomeMarkerPercent !== undefined && { incomeMarker: incomeMarkerPercent })}
+          />
+        </div>
       )}
+
+      {/* Budgeted Expenses */}
+      <Collapsible open={budgetedExpensesOpen} onOpenChange={setBudgetedExpensesOpen} className="mb-4">
+        <div className="overflow-hidden rounded-lg border">
+          <div className="flex items-center justify-between bg-card p-4">
+            <CollapsibleTrigger className="flex flex-1 cursor-pointer items-center gap-2">
+              {budgetedExpensesOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              <BanknoteArrowDown className="h-4 w-4 text-red-500" />
+              <span className="font-medium">Budgeted Expenses</span>
+              <span className="text-sm text-muted-foreground">
+                {categoryRows.filter(r => !r.category.isArchived && r.totalAmount > 0).length} categories totaling {formatCents(totals.fixed + totals.variable)} {FREQUENCY_PER_LABELS[breakdownPeriod]}
+              </span>
+            </CollapsibleTrigger>
+            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setAddCategoryDialogOpen(true); }}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+          <CollapsibleContent>
+        {categoryRows.length === 0 ? (
+          <p className="border-t bg-card py-4 text-center text-sm text-muted-foreground">
+            No categories yet.{' '}
+            <button onClick={() => setAddCategoryDialogOpen(true)} className="cursor-pointer text-primary hover:underline">
+              Add one
+            </button>
+          </p>
+        ) : (
+            <table className="w-full">
+              <thead className="border-t bg-muted/50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-medium">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort('name')}
+                      className="flex cursor-pointer items-center gap-1 hover:text-foreground"
+                    >
+                      Category
+                      {sortField === 'name' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-50" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="hidden px-4 py-3 text-right text-sm font-medium sm:table-cell">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort('fixed')}
+                      className="ml-auto flex cursor-pointer items-center gap-1 hover:text-foreground"
+                    >
+                      Fixed Expenses
+                      {sortField === 'fixed' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-50" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="hidden px-4 py-3 text-right text-sm font-medium sm:table-cell">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort('variable')}
+                      className="ml-auto flex cursor-pointer items-center gap-1 hover:text-foreground"
+                    >
+                      Variable Budget
+                      {sortField === 'variable' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-50" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 text-right text-sm font-medium">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort('total')}
+                      className="ml-auto flex cursor-pointer items-center gap-1 hover:text-foreground"
+                    >
+                      Total
+                      {sortField === 'total' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-50" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="w-20 px-4 py-3 text-right text-sm font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {categoryRows.map((row) => {
+                  const isArchived = row.category.isArchived;
+                  return (
+                    <tr
+                      key={row.id}
+                      className={cn(
+                        'transition-colors hover:bg-muted/50',
+                        isArchived && 'opacity-50',
+                      )}
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Tag className="h-4 w-4 text-muted-foreground" />
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Link
+                                  to={`/categories/${row.id}`}
+                                  className="font-medium hover:underline"
+                                >
+                                  {row.categoryName}
+                                </Link>
+                              </TooltipTrigger>
+                              <TooltipContent>View category details</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          {isArchived && <Badge variant="secondary">Archived</Badge>}
+                        </div>
+                        {/* Mobile: show fixed/variable inline */}
+                        <div className="mt-1 flex gap-3 text-xs text-muted-foreground sm:hidden">
+                          <span>Fixed Expenses: {row.fixedAmount > 0 ? formatCents(row.fixedAmount) : '—'}</span>
+                          <span>Variable Budget: {row.variableAmount > 0 ? formatCents(row.variableAmount) : '—'}</span>
+                        </div>
+                      </td>
+                      <td className="hidden px-4 py-3 text-right sm:table-cell">
+                        {row.fixedAmount > 0 ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={() => openFixedExpensesDialog(row.id)}
+                                  className="cursor-pointer font-mono hover:underline"
+                                >
+                                  {formatCents(row.fixedAmount)}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {row.fixedExpenseRules.length} recurring expense{row.fixedExpenseRules.length !== 1 ? 's' : ''} — click to view
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setRuleDialogType('expense');
+                                    setRuleDialogOpen(true);
+                                  }}
+                                  className="cursor-pointer text-muted-foreground hover:underline hover:text-foreground"
+                                >
+                                  —
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>Add a recurring expense</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </td>
+                      <td className="hidden px-4 py-3 text-right sm:table-cell">
+                        {row.variableAmount > 0 ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={() => openEditCategoryDialog(row, true)}
+                                  className="cursor-pointer font-mono hover:underline"
+                                >
+                                  {formatCents(row.variableAmount)}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>Edit variable budget</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={() => openEditCategoryDialog(row, true)}
+                                  className="cursor-pointer text-muted-foreground hover:underline hover:text-foreground"
+                                >
+                                  —
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>Set a variable budget</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className={cn(
+                          'font-mono font-medium',
+                          row.totalAmount === 0 && 'text-muted-foreground',
+                        )}>
+                          {row.totalAmount > 0 ? formatCents(row.totalAmount) : '—'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-1">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openEditCategoryDialog(row)}
+                                  aria-label="Edit"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Edit category</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+        )}
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+
+      {/* Income Sources Section */}
+      <Collapsible open={incomeOpen} onOpenChange={setIncomeOpen} className="mb-4">
+        <div className="overflow-hidden rounded-lg border">
+          <div className="flex items-center justify-between bg-card p-4">
+            <CollapsibleTrigger className="flex flex-1 cursor-pointer items-center gap-2">
+              {incomeOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              <BanknoteArrowUp className="h-4 w-4 text-green-500" />
+              <span className="font-medium">Income Sources</span>
+              <span className="text-sm text-muted-foreground">
+                {incomeRules.length} source{incomeRules.length !== 1 ? 's' : ''} totaling {formatCents(totals.income)} {FREQUENCY_PER_LABELS[breakdownPeriod]}
+              </span>
+            </CollapsibleTrigger>
+            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openAddRuleDialog('income'); }}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+          <CollapsibleContent>
+            {incomeRules.length === 0 ? (
+              <p className="border-t bg-card py-4 text-center text-sm text-muted-foreground">
+                No income sources yet.{' '}
+                <button onClick={() => openAddRuleDialog('income')} className="cursor-pointer text-primary hover:underline">
+                  Add one
+                </button>
+              </p>
+            ) : (
+              <table className="w-full">
+                <tbody className="divide-y border-t">
+                  {incomeRules.map((rule) => (
+                    <tr key={rule.id} className="bg-card transition-colors hover:bg-muted/50">
+                      <td className="px-4 py-3 font-medium">{rule.description}</td>
+                      <td className="px-4 py-3 text-right text-sm text-muted-foreground">
+                        {formatCents(rule.amountCents)} {FREQUENCY_PER_LABELS[rule.cadence]}
+                      </td>
+                      <td className="w-20 px-4 py-3">
+                        <div className="flex justify-end gap-1">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="sm" onClick={() => openEditRuleDialog(rule)}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Edit</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant={deletingRuleId === rule.id ? 'destructive' : 'ghost'}
+                                  size="sm"
+                                  onClick={() => handleDeleteRule(rule.id)}
+                                  onBlur={() => setTimeout(() => setDeletingRuleId(null), 200)}
+                                >
+                                  {deletingRuleId === rule.id ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{deletingRuleId === rule.id ? 'Click to confirm' : 'Delete'}</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+
+      {/* Savings Contributions Section */}
+      <Collapsible open={savingsOpen} onOpenChange={setSavingsOpen}>
+        <div className="overflow-hidden rounded-lg border">
+          <div className="flex items-center justify-between bg-card p-4">
+            <CollapsibleTrigger className="flex flex-1 cursor-pointer items-center gap-2">
+              {savingsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              <PiggyBank className="h-4 w-4 text-blue-500" />
+              <span className="font-medium">Savings Contributions</span>
+              <span className="text-sm text-muted-foreground">
+                {savingsRules.length} contribution{savingsRules.length !== 1 ? 's' : ''} totaling {formatCents(totals.savings)} {FREQUENCY_PER_LABELS[breakdownPeriod]}
+              </span>
+            </CollapsibleTrigger>
+            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openAddRuleDialog('savings'); }}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+          <CollapsibleContent>
+            {savingsRules.length === 0 ? (
+              <p className="border-t bg-card py-4 text-center text-sm text-muted-foreground">
+                No savings contributions yet.{' '}
+                <button onClick={() => openAddRuleDialog('savings')} className="cursor-pointer text-primary hover:underline">
+                  Add one
+                </button>
+              </p>
+            ) : (
+              <table className="w-full">
+                <tbody className="divide-y border-t">
+                  {savingsRules.map((rule) => (
+                    <tr key={rule.id} className="bg-card transition-colors hover:bg-muted/50">
+                      <td className="px-4 py-3 font-medium">
+                        {rule.savingsGoalId ? getSavingsGoalName(rule.savingsGoalId) : 'Savings'}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm text-muted-foreground">
+                        {formatCents(rule.amountCents)} {FREQUENCY_PER_LABELS[rule.cadence]}
+                      </td>
+                      <td className="w-20 px-4 py-3">
+                        <div className="flex justify-end gap-1">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="sm" onClick={() => openEditRuleDialog(rule)}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Edit</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant={deletingRuleId === rule.id ? 'destructive' : 'ghost'}
+                                  size="sm"
+                                  onClick={() => handleDeleteRule(rule.id)}
+                                  onBlur={() => setTimeout(() => setDeletingRuleId(null), 200)}
+                                >
+                                  {deletingRuleId === rule.id ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{deletingRuleId === rule.id ? 'Click to confirm' : 'Delete'}</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
 
       {/* Add Category Dialog */}
       <CategoryBudgetDialog
-        open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
+        open={addCategoryDialogOpen}
+        onOpenChange={setAddCategoryDialogOpen}
         scenarioId={activeScenarioId}
         addCategory={addCategory}
         setBudgetForCategory={setBudgetForCategory}
@@ -1368,18 +1057,71 @@ export function BudgetPage() {
       {/* Edit Category Dialog */}
       {editingRow && (
         <CategoryBudgetDialog
-          open={editDialogOpen}
+          open={editCategoryDialogOpen}
           onOpenChange={handleEditDialogClose}
           scenarioId={activeScenarioId}
           category={editingRow.category}
-          existingRule={editingRow.rule}
+          existingRule={editingRow.budgetRule}
           focusLimit={focusLimit}
+          canDeleteCategory={editingRow.canDelete}
           addCategory={addCategory}
           updateCategory={updateCategory}
+          deleteCategory={deleteCategory}
           setBudgetForCategory={setBudgetForCategory}
           deleteBudgetRule={deleteBudgetRule}
         />
       )}
+
+      {/* Fixed Expenses Dialog */}
+      <Dialog open={fixedExpensesDialogOpen} onOpenChange={setFixedExpensesDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Fixed Expenses</DialogTitle>
+            <DialogDescription>
+              {fixedExpensesCategoryId && getCategoryName(fixedExpensesCategoryId)} — committed recurring costs
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-80 space-y-4 overflow-y-auto">
+            {fixedExpensesForDialog.rules.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                No fixed expenses in this category.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {fixedExpensesForDialog.rules.map((rule) => (
+                  <div key={rule.id} className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <p className="font-medium">{rule.description}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {formatCents(rule.amountCents)} {CADENCE_FULL_LABELS[rule.cadence].toLowerCase()}
+                      </p>
+                    </div>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="sm" onClick={() => { setFixedExpensesDialogOpen(false); openEditRuleDialog(rule); }}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Edit</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => setFixedExpensesDialogOpen(false)}>
+              Close
+            </Button>
+            <Button onClick={() => { setFixedExpensesDialogOpen(false); openAddRuleDialog('expense'); }}>
+              <Plus className="h-4 w-4" />
+              Add Recurring Expense
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Forecast Rule Dialog */}
       <ForecastRuleDialog
@@ -1389,30 +1131,8 @@ export function BudgetPage() {
         rule={editingRule}
         addRule={addRule}
         updateRule={updateRule}
-        {...(activeTab === 'fixed-expenses' && { onRuleCreated: handleRuleCreated })}
-        restrictType={
-          activeTab === 'fixed-expenses' ? 'expense' :
-          activeTab === 'income' ? 'income' :
-          activeTab === 'savings-contributions' ? 'savings' :
-          null
-        }
+        restrictType={ruleDialogType}
       />
-
-      {/* Budget Prompt Dialog */}
-      {createdRule && (
-        <BudgetPromptDialog
-          open={budgetPromptOpen}
-          onOpenChange={setBudgetPromptOpen}
-          categoryId={createdRule.categoryId ?? ''}
-          categoryName={createdRuleCategoryName}
-          forecastAmountCents={createdRule.amountCents}
-          forecastCadence={createdRule.cadence as CadenceType}
-          existingBudget={existingBudgetForCreatedRule}
-          onAddToBudget={handleAddToBudget}
-          onReplaceBudget={handleReplaceBudget}
-          onSkip={handleSkipBudget}
-        />
-      )}
     </div>
   );
 }

@@ -52,7 +52,16 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+// Ordered Monday-first for display, with correct JS dayOfWeek values (0=Sun, 1=Mon, etc.)
+const DAYS_OF_WEEK = [
+  { value: 1, label: 'Monday' },
+  { value: 2, label: 'Tuesday' },
+  { value: 3, label: 'Wednesday' },
+  { value: 4, label: 'Thursday' },
+  { value: 5, label: 'Friday' },
+  { value: 6, label: 'Saturday' },
+  { value: 0, label: 'Sunday' },
+];
 
 export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRule, updateRule, onRuleCreated, prefill, restrictType }: ForecastRuleDialogProps) {
   const isEditing = !!rule;
@@ -121,7 +130,8 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
       return;
     }
 
-    if (!description.trim()) {
+    // Description required for income/expense but not for savings
+    if (type !== 'savings' && !description.trim()) {
       setFormError('Please enter a description');
       return;
     }
@@ -137,10 +147,16 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
       return;
     }
 
+    if (type === 'expense' && !categoryId) {
+      setFormError('Please select a category for this expense');
+      return;
+    }
+
     const data: Parameters<typeof addRule>[0] = {
       scenarioId,
       type,
-      description: description.trim(),
+      // For savings, description is auto-generated (not user-entered)
+      description: type === 'savings' ? 'Savings contribution' : description.trim(),
       amountCents,
       cadence,
       categoryId: type === 'savings' ? null : categoryId || null,
@@ -203,16 +219,6 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="rule-description" className="select-none">Description</Label>
-            <Input
-              id="rule-description"
-              placeholder="e.g., Salary, Rent, Car payment"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
-
           {/* Type selector - hidden when type is restricted */}
           {!restrictType && (
             <div className="space-y-2">
@@ -230,35 +236,35 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="rule-amount" className="select-none">Amount ($)</Label>
-              <Input
-                id="rule-amount"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-            </div>
+          {/* Amount - full width */}
+          <div className="space-y-2">
+            <Label htmlFor="rule-amount" className="select-none">Amount ($)</Label>
+            <Input
+              id="rule-amount"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+          </div>
 
-            <div className="space-y-2">
-              <Label className="select-none">Frequency</Label>
-              <Select value={cadence} onValueChange={(v) => setCadence(v as Cadence)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="fortnightly">Fortnightly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="quarterly">Quarterly</SelectItem>
-                  <SelectItem value="yearly">Yearly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Frequency */}
+          <div className="space-y-2">
+            <Label className="select-none">Frequency</Label>
+            <Select value={cadence} onValueChange={(v) => setCadence(v as Cadence)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="fortnightly">Fortnightly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="quarterly">Quarterly</SelectItem>
+                <SelectItem value="yearly">Yearly</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Schedule fields based on cadence */}
@@ -353,11 +359,24 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {DAY_NAMES.map((name, i) => (
-                    <SelectItem key={i} value={String(i)}>{name}</SelectItem>
+                  {DAYS_OF_WEEK.map((day) => (
+                    <SelectItem key={day.value} value={String(day.value)}>{day.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          {/* Description - hidden for savings (uses goal name instead) */}
+          {type !== 'savings' && (
+            <div className="space-y-2">
+              <Label htmlFor="rule-description" className="select-none">Description</Label>
+              <Input
+                id="rule-description"
+                placeholder="e.g., Salary, Rent, Car payment"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
             </div>
           )}
 
@@ -374,12 +393,18 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
               <Label className="select-none">
                 Category
                 {type === 'income' && <span className="ml-1 font-normal text-muted-foreground">(optional)</span>}
+                {type === 'expense' && <span className="ml-1 font-normal text-destructive">*</span>}
               </Label>
               <CategorySelect
                 value={categoryId}
                 onChange={setCategoryId}
-                allowNone
+                allowNone={type !== 'expense'}
               />
+              {type === 'expense' && (
+                <p className="text-xs text-muted-foreground">
+                  Fixed expenses must be assigned to a category
+                </p>
+              )}
             </div>
           )}
 

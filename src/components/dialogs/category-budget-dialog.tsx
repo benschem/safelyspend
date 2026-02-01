@@ -16,6 +16,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { Archive, ArchiveRestore, Trash2 } from 'lucide-react';
 import { parseCentsFromInput } from '@/lib/utils';
 import type { Cadence, Category, CreateEntity, BudgetRule } from '@/lib/types';
 
@@ -28,9 +35,12 @@ interface CategoryBudgetDialogProps {
   existingRule?: BudgetRule | null;
   // Focus the limit field when opening
   focusLimit?: boolean;
+  // Whether this category can be deleted (no transactions)
+  canDeleteCategory?: boolean;
   // Callbacks
   addCategory: (data: CreateEntity<Category>) => Promise<Category>;
   updateCategory?: (id: string, updates: Partial<Omit<Category, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
+  deleteCategory?: (id: string) => Promise<void>;
   setBudgetForCategory: (
     categoryId: string,
     amountCents: number,
@@ -42,7 +52,16 @@ interface CategoryBudgetDialogProps {
   deleteBudgetRule?: (id: string) => Promise<void>;
 }
 
-const DAY_OF_WEEK_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+// Ordered Monday-first for display, with correct JS dayOfWeek values (0=Sun, 1=Mon, etc.)
+const DAYS_OF_WEEK = [
+  { value: 1, label: 'Mon' },
+  { value: 2, label: 'Tue' },
+  { value: 3, label: 'Wed' },
+  { value: 4, label: 'Thu' },
+  { value: 5, label: 'Fri' },
+  { value: 6, label: 'Sat' },
+  { value: 0, label: 'Sun' },
+];
 const MONTH_OF_QUARTER_LABELS = ['1st month', '2nd month', '3rd month'];
 
 export function CategoryBudgetDialog({
@@ -52,8 +71,10 @@ export function CategoryBudgetDialog({
   category,
   existingRule,
   focusLimit,
+  canDeleteCategory,
   addCategory,
   updateCategory,
+  deleteCategory,
   setBudgetForCategory,
   deleteBudgetRule,
 }: CategoryBudgetDialogProps) {
@@ -67,6 +88,7 @@ export function CategoryBudgetDialog({
   const [day, setDay] = useState('1');
   const [monthOfQuarter, setMonthOfQuarter] = useState('0');
   const [formError, setFormError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -170,6 +192,29 @@ export function CategoryBudgetDialog({
   const isWeeklyCadence = cadence === 'weekly' || cadence === 'fortnightly';
   const isQuarterlyCadence = cadence === 'quarterly';
 
+  const handleArchiveToggle = async () => {
+    if (category && updateCategory) {
+      await updateCategory(category.id, { isArchived: !category.isArchived });
+      onOpenChange(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (confirmingDelete && category && deleteCategory) {
+      await deleteCategory(category.id);
+      onOpenChange(false);
+    } else {
+      setConfirmingDelete(true);
+    }
+  };
+
+  // Reset confirmingDelete when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setConfirmingDelete(false);
+    }
+  }, [open]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -227,7 +272,7 @@ export function CategoryBudgetDialog({
             </div>
 
             <div className="space-y-2">
-              <Label className="select-none">Cadence</Label>
+              <Label className="select-none">Frequency</Label>
               <Select
                 value={cadence}
                 onValueChange={(v) => {
@@ -296,9 +341,9 @@ export function CategoryBudgetDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {DAY_OF_WEEK_LABELS.map((label, i) => (
-                    <SelectItem key={i} value={String(i)}>
-                      {label}
+                  {DAYS_OF_WEEK.map((d) => (
+                    <SelectItem key={d.value} value={String(d.value)}>
+                      {d.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -324,13 +369,61 @@ export function CategoryBudgetDialog({
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave}>
-              {isEditing ? 'Save Changes' : 'Add Category'}
-            </Button>
+          <div className="flex items-center justify-between gap-3 pt-2">
+            {/* Left side: Archive/Delete buttons (edit mode only) */}
+            <div className="flex gap-1">
+              {isEditing && category && updateCategory && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleArchiveToggle}
+                      >
+                        {category.isArchived ? (
+                          <ArchiveRestore className="h-4 w-4" />
+                        ) : (
+                          <Archive className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {category.isArchived ? 'Restore category' : 'Archive category'}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              {isEditing && canDeleteCategory && deleteCategory && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={confirmingDelete ? 'destructive' : 'ghost'}
+                        size="icon"
+                        onClick={handleDelete}
+                        onBlur={() => setTimeout(() => setConfirmingDelete(false), 200)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {confirmingDelete ? 'Click again to confirm deletion' : 'Delete category'}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
+
+            {/* Right side: Cancel/Save buttons */}
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSave}>
+                {isEditing ? 'Save Changes' : 'Add Category'}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

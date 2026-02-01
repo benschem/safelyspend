@@ -159,7 +159,7 @@ export function BudgetRuleDialog({
             </div>
 
             <div className="space-y-2">
-              <Label className="select-none">Cadence</Label>
+              <Label className="select-none">Frequency</Label>
               <Select
                 value={cadence}
                 onValueChange={(v) => {

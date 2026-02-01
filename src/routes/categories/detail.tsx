@@ -12,7 +12,15 @@ import {
   TrendingDown,
   Target,
   ArrowRight,
+  Tag,
+  Trash2,
 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { PageLoading } from '@/components/page-loading';
 import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
@@ -62,6 +70,7 @@ export function CategoryDetailPage() {
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   // Fixed to current month
   const now = new Date();
@@ -94,7 +103,7 @@ export function CategoryDetailPage() {
   const dayOfMonth = now.getDate();
 
   // Data hooks - get all transactions then filter
-  const { categories, isLoading: categoriesLoading, updateCategory, addCategory } = useCategories();
+  const { categories, isLoading: categoriesLoading, updateCategory, addCategory, deleteCategory } = useCategories();
   const { allTransactions, isLoading: transactionsLoading } = useTransactions();
   const { getRuleForCategory, isLoading: budgetLoading } = useBudgetRules(activeScenarioId);
 
@@ -193,12 +202,25 @@ export function CategoryDetailPage() {
     [periodTransactions],
   );
 
+  // Check if category can be deleted (no transactions)
+  const canDelete = allCategoryTransactions.length === 0;
+
   // Handle archive toggle
   const handleArchiveToggle = useCallback(async () => {
     if (category) {
       await updateCategory(category.id, { isArchived: !category.isArchived });
     }
   }, [category, updateCategory]);
+
+  // Handle delete
+  const handleDelete = useCallback(async () => {
+    if (confirmingDelete && category) {
+      await deleteCategory(category.id);
+      window.location.href = '/budget';
+    } else {
+      setConfirmingDelete(true);
+    }
+  }, [confirmingDelete, category, deleteCategory]);
 
   // Loading state
   if (isLoading) {
@@ -243,6 +265,9 @@ export function CategoryDetailPage() {
             </Link>
           </Button>
           <div className="flex items-center gap-3">
+            <div className="page-title-icon bg-slate-500/10">
+              <Tag className="h-5 w-5 text-slate-500" />
+            </div>
             <h1 className="page-title">{category.name}</h1>
             {category.isArchived && <Badge variant="secondary">Archived</Badge>}
           </div>
@@ -284,6 +309,26 @@ export function CategoryDetailPage() {
               </>
             )}
           </Button>
+          {canDelete && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={confirmingDelete ? 'destructive' : 'outline'}
+                    size="sm"
+                    onClick={handleDelete}
+                    onBlur={() => setTimeout(() => setConfirmingDelete(false), 200)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    {confirmingDelete ? 'Confirm' : 'Delete'}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {confirmingDelete ? 'Click again to confirm deletion' : 'Permanently delete this category'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
       </div>
 
@@ -305,7 +350,20 @@ export function CategoryDetailPage() {
           <p className="mt-4 text-sm text-muted-foreground">Spent</p>
           <p className="mt-1 text-2xl font-semibold">{formatCents(thisMonthSpent)}</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            {periodTransactions.length} transaction{periodTransactions.length !== 1 ? 's' : ''}
+            {periodTransactions.length > 0 ? (
+              <a
+                href="#recent-transactions"
+                className="cursor-pointer hover:underline"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById('recent-transactions')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
+                {periodTransactions.length} transaction{periodTransactions.length !== 1 ? 's' : ''}
+              </a>
+            ) : (
+              <span>{periodTransactions.length} transactions</span>
+            )}
           </p>
         </div>
 
@@ -431,7 +489,7 @@ export function CategoryDetailPage() {
         </div>
 
         {/* Recent Transactions */}
-        <div className="rounded-xl border bg-card p-6">
+        <div id="recent-transactions" className="rounded-xl border bg-card p-6">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-semibold">Recent Transactions</h2>
             {periodTransactions.length > 10 && (

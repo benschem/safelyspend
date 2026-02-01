@@ -27,35 +27,6 @@ export function DeleteForecastDialog({
 }: DeleteForecastDialogProps) {
   if (!forecast) return null;
 
-  const isRecurring = forecast.sourceType === 'rule';
-
-  // For non-recurring (events), just confirm deletion
-  if (!isRecurring) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete Expected Transaction</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete &quot;{forecast.description}&quot; on {formatDate(forecast.date)}?
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={onDeleteAll}>
-              <Trash2 className="h-4 w-4" />
-              Delete
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // For recurring rules, offer choice
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
