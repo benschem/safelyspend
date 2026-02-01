@@ -3,14 +3,14 @@ import { Link, useOutletContext, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import {
-  Camera,
   PiggyBank,
-  Landmark,
+  Banknote,
   CreditCard,
   Sprout,
   ArrowRight,
   Building2,
   Ambulance,
+  HandCoins,
 } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -55,7 +55,7 @@ interface OutletContext {
   activeScenarioId: string | null;
 }
 
-export function SnapshotPage() {
+export function NetWorthPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
   const { getActiveAnchor } = useBalanceAnchors();
@@ -140,10 +140,10 @@ export function SnapshotPage() {
       <div className="page-shell">
         <div className="page-header">
           <h1 className="page-title">
-            <div className="page-title-icon bg-slate-500/10">
-              <Camera className="h-5 w-5 text-slate-500" />
+            <div className="page-title-icon bg-amber-500/10">
+              <HandCoins className="h-5 w-5 text-amber-500" />
             </div>
-            Snapshot
+            Net Worth
           </h1>
           <p className="page-description">Your financial position right now</p>
         </div>
@@ -162,10 +162,10 @@ export function SnapshotPage() {
       {/* Header */}
       <div className="page-header">
         <h1 className="page-title">
-          <div className="page-title-icon bg-slate-500/10">
-            <Camera className="h-5 w-5 text-slate-500" />
+          <div className="page-title-icon bg-amber-500/10">
+            <HandCoins className="h-5 w-5 text-amber-500" />
           </div>
-          Snapshot
+          Net Worth
         </h1>
         <p className="page-description">Your financial position right now</p>
       </div>
@@ -188,7 +188,8 @@ export function SnapshotPage() {
       <div className="mb-4 min-h-28 text-center sm:min-h-32">
         {/* Spacer row for alignment with other pages */}
         <div className="min-h-8" />
-        <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+        <p className="flex items-center justify-center gap-2 text-sm font-medium uppercase tracking-wide text-muted-foreground">
+          <HandCoins className="h-4 w-4" />
           Net Wealth
         </p>
         <p className={`mt-2 text-5xl font-bold tracking-tight ${netWorth >= 0 ? '' : 'text-red-500'}`}>
@@ -209,8 +210,8 @@ export function SnapshotPage() {
             className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50"
           >
             <div className="flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-500/10">
-                <Landmark className="h-5 w-5 text-sky-500" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/10">
+                <Banknote className="h-5 w-5 text-green-500" />
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
             </div>
@@ -251,8 +252,8 @@ export function SnapshotPage() {
             className="group cursor-pointer rounded-xl border bg-card p-5 text-left transition-colors hover:bg-muted/50"
           >
             <div className="flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10">
-                <Ambulance className="h-5 w-5 text-emerald-500" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
+                <Ambulance className="h-5 w-5 text-slate-500" />
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
             </div>

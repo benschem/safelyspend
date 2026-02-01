@@ -5,10 +5,10 @@ import { FirstRunWizard } from '@/components/first-run-wizard';
 import { ErrorBoundary } from '@/components/error-boundary';
 
 // Route components
-import { SnapshotPage } from '@/routes/overview';
+import { NetWorthPage } from '@/routes/net-worth';
 import { MoneyIndexPage } from '@/routes/money/index';
 import { BudgetPage } from '@/routes/budget';
-import { SpendingPage } from '@/routes/spending';
+import { SnapshotPage } from '@/routes/snapshot';
 import { TransactionNewPage } from '@/routes/transactions/new';
 import { CategoryDetailPage } from '@/routes/categories/detail';
 import { CategoryImportRulesPage } from '@/routes/categories/import-rules';
@@ -37,8 +37,11 @@ const router = createBrowserRouter([
       // Redirect root to snapshot
       { index: true, element: <Navigate to="/snapshot" replace /> },
 
-      // Snapshot (current position)
+      // Snapshot (monthly/quarterly/yearly view)
       { path: 'snapshot', element: <SnapshotPage /> },
+
+      // Net Worth (balances overview)
+      { path: 'net-worth', element: <NetWorthPage /> },
 
       // Money (combined transactions + forecasts + recurring)
       { path: 'money', element: <MoneyIndexPage /> },
@@ -48,12 +51,11 @@ const router = createBrowserRouter([
       { path: 'forecasts', element: <Navigate to="/money?tab=expected" replace /> },
       { path: 'forecasts/recurring', element: <Navigate to="/budget?tab=fixed-expenses" replace /> },
       { path: 'recurring', element: <Navigate to="/budget?tab=fixed-expenses" replace /> },
+      { path: 'check-in', element: <Navigate to="/snapshot" replace /> },
+      { path: 'spending', element: <Navigate to="/snapshot" replace /> },
 
       // Budget - spending limits (plan)
       { path: 'budget', element: <BudgetPage /> },
-
-      // Spending - period view (track)
-      { path: 'spending', element: <SpendingPage /> },
 
       // Transactions new page (still needed for direct navigation)
       { path: 'transactions/new', element: <TransactionNewPage /> },
