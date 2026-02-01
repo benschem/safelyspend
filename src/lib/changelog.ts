@@ -26,9 +26,11 @@ export const changelog: ChangelogEntry[] = [
     changes: [
       'Renamed "Check-in" page to "Snapshot" for monthly/quarterly/yearly views',
       'Renamed "Snapshot" page to "Net Worth" for balance overview',
-      'Added trend sparkline showing 12-month surplus history',
+      'Added trend sparkline showing 12 months around current month',
+      'Sparkline shows "Now" indicator and shaded future months',
       'Added year grid view to see all months at a glance',
       'Added quarter view to compare 3 months side-by-side',
+      'Budget status card now shows spending pace chart',
       'Click any month in sparkline or grid to jump to that month',
     ],
   },
