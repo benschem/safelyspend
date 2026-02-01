@@ -628,6 +628,7 @@ export function SnapshotPage() {
             <TrendSparkline
               data={sparklineMonths}
               showNowLine
+              selectedMonth={{ monthIndex: selectedMonth.getMonth(), year: selectedMonth.getFullYear() }}
               onMonthClick={(monthIndex, year) => {
                 setSelectedMonth(new Date(year, monthIndex, 1));
                 setViewMode('month');
@@ -767,69 +768,65 @@ export function SnapshotPage() {
         /* Month View - detailed view */
         <>
           {/* Headline Metrics */}
-          <div className={cn('grid gap-4', budgetStatus ? 'sm:grid-cols-2' : '')}>
-            {/* Expected Surplus/Shortfall */}
+          <div className={cn('grid gap-4', budgetStatus ? 'grid-cols-[auto_1fr]' : '')}>
+            {/* Expected Surplus/Shortfall - compact stacked layout */}
             <div className={cn(
-              'rounded-xl border p-6',
+              'rounded-xl border p-5 text-center',
               headline.isPositive
                 ? headline.hasPlan ? 'border-green-500/50 bg-green-500/5' : 'bg-card'
                 : 'border-red-500/50 bg-red-500/5',
             )}>
-              <div className="flex items-center gap-3">
-                <div className={cn(
-                  'flex h-10 w-10 items-center justify-center rounded-full',
-                  headline.isPositive ? 'bg-green-500/10' : 'bg-red-500/10',
-                )}>
-                  {headline.isPositive ? (
-                    <TrendingUp className={cn('h-5 w-5', headline.hasPlan ? 'text-green-500' : 'text-slate-500')} />
-                  ) : (
-                    <TrendingDown className="h-5 w-5 text-red-500" />
-                  )}
-                </div>
-                <div>
-                  <p className={cn(
-                    'text-2xl font-bold',
-                    headline.isPositive
-                      ? headline.hasPlan ? 'text-green-600 dark:text-green-400' : ''
-                      : 'text-red-600 dark:text-red-400',
-                  )}>
-                    {headline.isPositive ? '+' : ''}{formatCents(headline.amount)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{headline.label}</p>
-                </div>
+              <div className={cn(
+                'mx-auto flex h-10 w-10 items-center justify-center rounded-full',
+                headline.isPositive ? 'bg-green-500/10' : 'bg-red-500/10',
+              )}>
+                {headline.isPositive ? (
+                  <TrendingUp className={cn('h-5 w-5', headline.hasPlan ? 'text-green-500' : 'text-slate-500')} />
+                ) : (
+                  <TrendingDown className="h-5 w-5 text-red-500" />
+                )}
               </div>
+              <p className={cn(
+                'mt-2 text-2xl font-bold',
+                headline.isPositive
+                  ? headline.hasPlan ? 'text-green-600 dark:text-green-400' : ''
+                  : 'text-red-600 dark:text-red-400',
+              )}>
+                {headline.isPositive ? '+' : ''}{formatCents(headline.amount)}
+              </p>
+              <p className="text-xs text-muted-foreground">{headline.label}</p>
             </div>
 
-            {/* Budget Status (current/past periods only) */}
+            {/* Budget Status with burn rate chart */}
             {budgetStatus && (
               <div className={cn(
-                'rounded-xl border p-6',
+                'rounded-xl border p-5',
                 budgetStatus.isPositive
                   ? budgetStatus.hasBudget ? 'border-green-500/50 bg-green-500/5' : 'bg-card'
                   : 'border-red-500/50 bg-red-500/5',
               )}>
                 <div className="flex items-center gap-3">
                   <div className={cn(
-                    'flex h-10 w-10 items-center justify-center rounded-full',
+                    'flex h-8 w-8 items-center justify-center rounded-full',
                     budgetStatus.isPositive ? 'bg-green-500/10' : 'bg-red-500/10',
                   )}>
-                    <Target className={cn('h-5 w-5', budgetStatus.isPositive ? 'text-green-500' : 'text-red-500')} />
+                    <Target className={cn('h-4 w-4', budgetStatus.isPositive ? 'text-green-500' : 'text-red-500')} />
                   </div>
                   <div className="flex-1">
                     <p className={cn(
-                      'text-2xl font-bold',
+                      'text-lg font-bold',
                       budgetStatus.isPositive
                         ? budgetStatus.hasBudget ? 'text-green-600 dark:text-green-400' : ''
                         : 'text-red-600 dark:text-red-400',
                     )}>
                       {budgetStatus.isPositive && budgetStatus.amount > 0 ? '+' : ''}{budgetStatus.amount > 0 ? formatCents(budgetStatus.amount) : '—'}
+                      <span className="ml-2 text-sm font-normal text-muted-foreground">{budgetStatus.label}</span>
                     </p>
-                    <p className="text-sm text-muted-foreground">{budgetStatus.label}</p>
                   </div>
                 </div>
-                {/* Burn rate mini chart */}
+                {/* Burn rate chart */}
                 {budgetStatus.hasBudget && burnRateData.totalBudget > 0 && (
-                  <div className="mt-4">
+                  <div className="mt-3">
                     <BurnRateChart
                       dailySpending={burnRateData.dailySpending}
                       totalBudget={burnRateData.totalBudget}

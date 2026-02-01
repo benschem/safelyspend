@@ -6,8 +6,10 @@ import type { MonthSummary } from '@/hooks/use-multi-period-summary';
 interface TrendSparklineProps {
   data: MonthSummary[];
   onMonthClick?: (monthIndex: number, year: number) => void;
-  /** Show a "Now" reference line at the current month */
+  /** Show a reference line at the current/selected month */
   showNowLine?: boolean;
+  /** Currently selected month (to highlight and label) */
+  selectedMonth?: { monthIndex: number; year: number };
 }
 
 interface CustomDotProps {
@@ -15,22 +17,24 @@ interface CustomDotProps {
   cy: number | undefined;
   payload: MonthSummary | undefined;
   onClick: ((monthIndex: number, year: number) => void) | undefined;
+  isSelected: boolean;
 }
 
-function CustomDot({ cx, cy, payload, onClick }: CustomDotProps) {
+function CustomDot({ cx, cy, payload, onClick, isSelected }: CustomDotProps) {
   if (!cx || !cy || !payload) return null;
 
   const isPositive = payload.surplus >= 0;
   const color = isPositive ? '#22c55e' : '#ef4444'; // green-500 / red-500
+  const isHighlighted = isSelected || payload.isCurrentMonth;
 
   return (
     <circle
       cx={cx}
       cy={cy}
-      r={payload.isCurrentMonth ? 5 : 3}
+      r={isHighlighted ? 5 : 3}
       fill={color}
-      stroke={payload.isCurrentMonth ? '#fff' : 'none'}
-      strokeWidth={payload.isCurrentMonth ? 2 : 0}
+      stroke={isHighlighted ? '#fff' : 'none'}
+      strokeWidth={isHighlighted ? 2 : 0}
       className="cursor-pointer transition-all hover:r-4"
       onClick={() => onClick?.(payload.monthIndex, payload.year)}
     />
@@ -64,13 +68,24 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
   );
 }
 
-export function TrendSparkline({ data, onMonthClick, showNowLine = false }: TrendSparklineProps) {
+export function TrendSparkline({ data, onMonthClick, showNowLine = false, selectedMonth }: TrendSparklineProps) {
   if (data.length === 0) return null;
 
   // Find the current month index for the "Now" line
   const currentMonthIndex = useMemo(() => {
     return data.findIndex((d) => d.isCurrentMonth);
   }, [data]);
+
+  // Find the selected month index (if different from current)
+  const selectedMonthIndex = useMemo(() => {
+    if (!selectedMonth) return -1;
+    return data.findIndex((d) => d.monthIndex === selectedMonth.monthIndex && d.year === selectedMonth.year);
+  }, [data, selectedMonth]);
+
+  // Determine which month to highlight and label
+  const isViewingCurrentMonth = selectedMonthIndex === currentMonthIndex || selectedMonthIndex === -1;
+  const highlightIndex = selectedMonthIndex >= 0 ? selectedMonthIndex : currentMonthIndex;
+  const highlightedMonth = highlightIndex >= 0 ? data[highlightIndex] : null;
 
   // Add index to data for x-axis positioning
   const chartData = useMemo(() => {
@@ -94,7 +109,7 @@ export function TrendSparkline({ data, onMonthClick, showNowLine = false }: Tren
             />
           )}
           <ReferenceLine y={0} stroke="#e5e7eb" strokeDasharray="3 3" />
-          {/* "Now" vertical line */}
+          {/* "Now" vertical line (always at current month) */}
           {showNowLine && currentMonthIndex >= 0 && (
             <ReferenceLine
               x={currentMonthIndex}
@@ -103,20 +118,34 @@ export function TrendSparkline({ data, onMonthClick, showNowLine = false }: Tren
               strokeDasharray="3 3"
             />
           )}
+          {/* Selected month vertical line (if different from current) */}
+          {selectedMonthIndex >= 0 && selectedMonthIndex !== currentMonthIndex && (
+            <ReferenceLine
+              x={selectedMonthIndex}
+              stroke="#6b7280"
+              strokeWidth={2}
+            />
+          )}
           <Line
             type="monotone"
             dataKey="surplus"
             stroke="#9ca3af"
             strokeWidth={1.5}
-            dot={(props) => (
-              <CustomDot
-                key={props.payload?.month}
-                cx={props.cx}
-                cy={props.cy}
-                payload={props.payload}
-                onClick={onMonthClick}
-              />
-            )}
+            dot={(props) => {
+              const isSelected = selectedMonthIndex >= 0 &&
+                props.payload?.monthIndex === selectedMonth?.monthIndex &&
+                props.payload?.year === selectedMonth?.year;
+              return (
+                <CustomDot
+                  key={props.payload?.month}
+                  cx={props.cx}
+                  cy={props.cy}
+                  payload={props.payload}
+                  onClick={onMonthClick}
+                  isSelected={isSelected}
+                />
+              );
+            }}
             activeDot={false}
           />
           <Tooltip content={<CustomTooltip />} />
@@ -125,9 +154,14 @@ export function TrendSparkline({ data, onMonthClick, showNowLine = false }: Tren
       {/* Labels row */}
       <div className="flex items-center justify-between px-2 text-[10px] text-muted-foreground">
         <span>{data[0]?.shortLabel} {data[0]?.year !== data[data.length - 1]?.year ? data[0]?.year : ''}</span>
-        {showNowLine && currentMonthIndex >= 0 && (
-          <span className="flex items-center gap-1 rounded-full bg-blue-500/10 px-1.5 py-0.5 text-blue-600 dark:text-blue-400">
-            Now
+        {showNowLine && highlightedMonth && (
+          <span className={cn(
+            'flex items-center gap-1 rounded-full px-1.5 py-0.5',
+            isViewingCurrentMonth
+              ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+              : 'bg-muted text-muted-foreground',
+          )}>
+            {isViewingCurrentMonth ? 'Now' : `${highlightedMonth.shortLabel} ${highlightedMonth.year}`}
           </span>
         )}
         <span>{data[data.length - 1]?.shortLabel} {data[0]?.year !== data[data.length - 1]?.year ? data[data.length - 1]?.year : ''}</span>

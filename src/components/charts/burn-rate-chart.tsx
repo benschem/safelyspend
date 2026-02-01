@@ -194,15 +194,32 @@ export function BurnRateChart({
     );
   }
 
-  // Compact mode: minimal chart only
+  // Compact mode: chart with minimal axis labels
   if (compact) {
     // Dynamic color based on burn rate: green (on track), amber (slightly over), red (overspending)
     const paceColor = burnRate > 120 ? '#dc2626' : burnRate > 100 ? '#d97706' : '#16a34a';
 
     return (
       <div className="w-full">
-        <ResponsiveContainer width="100%" height={80}>
-          <ComposedChart data={chartData.data} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+        <ResponsiveContainer width="100%" height={100}>
+          <ComposedChart data={chartData.data} margin={{ top: 5, right: 5, bottom: 5, left: 30 }}>
+            <XAxis
+              dataKey="day"
+              tick={{ fontSize: 9 }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(value) => value === 1 ? '1' : value === chartData.totalDays ? String(chartData.totalDays) : ''}
+              interval="preserveStartEnd"
+            />
+            <YAxis
+              tick={{ fontSize: 9 }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(value) => `${value}%`}
+              domain={[0, (dataMax: number) => Math.max(100, Math.ceil(dataMax / 20) * 20)]}
+              ticks={[0, 50, 100]}
+              width={28}
+            />
             {/* 100% budget line */}
             <ReferenceLine y={100} stroke="#e5e7eb" strokeDasharray="2 2" />
 
