@@ -31,6 +31,7 @@ import {
   CheckCircle2,
   Pin,
   Target,
+  CircleDot,
 } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -596,7 +597,8 @@ export function SnapshotPage() {
           {isCurrentPeriod && viewMode === 'month' && (
             <>
               <span className="flex items-center gap-1 rounded-full bg-gray-500/15 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-                Now
+                <CircleDot className="h-3 w-3" />
+                Today
               </span>
               <span className="text-sm text-muted-foreground">
                 Day {periodCashFlow.dayOfPeriod} of {periodCashFlow.daysInPeriod}
@@ -606,7 +608,8 @@ export function SnapshotPage() {
           {isCurrentPeriod && viewMode === 'quarter' && (
             <>
               <span className="flex items-center gap-1 rounded-full bg-gray-500/15 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-                Now
+                <CircleDot className="h-3 w-3" />
+                Today
               </span>
               <span className="text-sm text-muted-foreground">
                 Month {((selectedMonthIndex % 3) + 1)} of 3
@@ -616,7 +619,8 @@ export function SnapshotPage() {
           {isCurrentPeriod && viewMode === 'year' && (
             <>
               <span className="flex items-center gap-1 rounded-full bg-gray-500/15 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-                Now
+                <CircleDot className="h-3 w-3" />
+                Today
               </span>
               <span className="text-sm text-muted-foreground">
                 Month {new Date().getMonth() + 1} of 12
@@ -731,8 +735,9 @@ export function SnapshotPage() {
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-lg font-semibold">{month.label}</h3>
                   {month.isCurrentMonth && (
-                    <span className="rounded-full bg-gray-500/15 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400">
-                      Now
+                    <span className="flex items-center gap-1 rounded-full bg-gray-500/15 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400">
+                      <CircleDot className="h-3 w-3" />
+                      Today
                     </span>
                   )}
                   {month.isFuture && !month.isCurrentMonth && (

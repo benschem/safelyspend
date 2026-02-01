@@ -62,7 +62,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
         {isPositive ? '+' : ''}{formatCents(data.surplus)}
       </p>
       {data.isCurrentMonth && (
-        <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Now</p>
+        <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Today</p>
       )}
       {data.isFuture && !data.isCurrentMonth && (
         <p className="text-xs text-violet-600 dark:text-violet-400">Projected</p>
@@ -166,7 +166,7 @@ export function TrendSparkline({ data, onMonthClick, showNowLine = false, select
               ? 'bg-gray-500/15 font-medium text-gray-600 dark:text-gray-400'
               : 'bg-muted text-muted-foreground',
           )}>
-            {isViewingCurrentMonth ? 'Now' : `${highlightedMonth.shortLabel} ${highlightedMonth.year}`}
+            {isViewingCurrentMonth ? 'Today' : `${highlightedMonth.shortLabel} ${highlightedMonth.year}`}
           </span>
         )}
         <span>{data[data.length - 1]?.shortLabel} {data[0]?.year !== data[data.length - 1]?.year ? data[data.length - 1]?.year : ''}</span>
