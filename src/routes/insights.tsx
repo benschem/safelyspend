@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useOutletContext, useSearchParams } from 'react-router';
-import { ChartSpline } from 'lucide-react';
+import { ChartSpline, Banknote, BanknoteArrowDown, PiggyBank } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -562,21 +562,22 @@ export function InsightsPage() {
         {/* Tabs */}
         <div className="inline-flex h-9 items-center rounded-lg bg-muted p-1 text-muted-foreground">
           {[
-            { value: 'cashflow', label: 'Cash Flow' },
-            { value: 'spending', label: 'Spending' },
-            { value: 'savings', label: 'Savings' },
+            { value: 'cashflow', label: 'Cash Flow', icon: Banknote, color: 'text-emerald-500' },
+            { value: 'spending', label: 'Spending', icon: BanknoteArrowDown, color: 'text-red-500' },
+            { value: 'savings', label: 'Savings', icon: PiggyBank, color: 'text-blue-500' },
           ].map((tab) => (
             <button
               key={tab.value}
               type="button"
               onClick={() => handleTabChange(tab.value)}
               className={cn(
-                'inline-flex cursor-pointer items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all',
+                'inline-flex cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all',
                 activeTab === tab.value
                   ? 'bg-background text-foreground shadow-sm'
                   : 'hover:text-foreground',
               )}
             >
+              <tab.icon className={cn('h-4 w-4', activeTab === tab.value && tab.color)} />
               {tab.label}
             </button>
           ))}
