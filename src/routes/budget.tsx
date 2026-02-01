@@ -1014,6 +1014,8 @@ export function BudgetPage() {
         open={addCategoryDialogOpen}
         onOpenChange={setAddCategoryDialogOpen}
         scenarioId={activeScenarioId}
+        unallocatedAmount={totals.unallocated}
+        hasIncome={totals.income > 0}
         addCategory={addCategory}
         setBudgetForCategory={setBudgetForCategory}
       />
@@ -1028,6 +1030,8 @@ export function BudgetPage() {
           existingRule={editingRow.budgetRule}
           focusLimit={focusLimit}
           canDeleteCategory={editingRow.canDelete}
+          unallocatedAmount={totals.unallocated}
+          hasIncome={totals.income > 0}
           addCategory={addCategory}
           updateCategory={updateCategory}
           deleteCategory={deleteCategory}
