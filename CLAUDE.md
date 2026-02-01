@@ -40,10 +40,9 @@ Note: `adjustment` transactions are used for opening balance and manual correcti
 - **Scenario** - A named set of rules for what-if planning. One is marked `isDefault`.
 - **BudgetRule** - Spending limit per category with cadence (weekly, fortnightly, monthly, quarterly, yearly)
 - **ForecastRule** - Recurring income/expense/savings patterns with cadence
-- **ForecastEvent** - One-off forecast items with specific dates
 
 #### Computed Types
-- **ExpandedForecast** - Materialised forecast for a specific date (computed from rules + events)
+- **ExpandedForecast** - Materialised forecast for a specific date (computed from rules)
 
 ### Cadence System
 
@@ -68,12 +67,12 @@ src/
 │   ├── use-view-state.ts      # Date range selection (defaults to AU financial year)
 │   ├── use-categories.ts
 │   ├── use-budget-rules.ts    # Budget rules with cadence expansion
-│   ├── use-forecasts.ts       # Forecast rules + events + expansion
+│   ├── use-forecasts.ts       # Forecast rules with cadence expansion
 │   ├── use-transactions.ts    # Date range filtering
 │   └── use-savings-goals.ts
 ├── routes/
 │   ├── dashboard.tsx
-│   ├── forecast/           # View expanded forecasts, add one-off events
+│   ├── forecast/           # View expanded forecasts
 │   ├── budget.tsx
 │   ├── transactions/
 │   ├── categories/

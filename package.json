@@ -1,6 +1,6 @@
 {
   "name": "safely-spend",
-  "version": "0.6.0",
+  "version": "0.9.0",
   "description": "A personal finance tool that tells you how much you can safely spend.",
   "type": "module",
   "scripts": {
@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
+    "@radix-ui/react-collapsible": "^1.1.12",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.15",
     "@radix-ui/react-label": "^2.1.8",

@@ -21,6 +21,73 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.9.0',
+    date: '2026-02-01',
+    changes: [
+      'Renamed "Check-in" page to "Snapshot" for monthly/quarterly/yearly views',
+      'Renamed "Snapshot" page to "Net Worth" for balance overview',
+      'Added trend sparkline showing 12-month surplus history',
+      'Added year grid view to see all months at a glance',
+      'Added quarter view to compare 3 months side-by-side',
+      'Click any month in sparkline or grid to jump to that month',
+    ],
+  },
+  {
+    version: '0.8.3',
+    date: '2026-02-01',
+    changes: [
+      'Money page redesigned with collapsible Past and Expected sections',
+      'Section headers now show income, expenses, and savings totals at a glance',
+      'Sections start collapsed and remember their open/closed state',
+      'Date filters now prevent selecting invalid dates (past for expected, future for past)',
+      'Tables show 10 rows per page with pagination',
+      'Budget page Income and Savings sections also remember open/closed state',
+    ],
+  },
+  {
+    version: '0.8.2',
+    date: '2026-02-01',
+    changes: [
+      'Improved recurring item dialog layout with amount first',
+      'Savings contributions no longer need a separate description',
+      'Income and savings lists now show frequency in full words',
+      'Renamed "Cadence" to "Frequency" throughout the app',
+    ],
+  },
+  {
+    version: '0.8.1',
+    date: '2026-02-01',
+    changes: [
+      'Budget table now has sortable columns',
+      'Fixed expenses and variable budget use consistent red color scheme',
+      'Unallocated income now shows as a blue info card',
+      'Budget page shows overcommitted status even with no income set',
+    ],
+  },
+  {
+    version: '0.8.0',
+    date: '2026-02-01',
+    changes: [
+      'Simplified expected transactions to only support recurring items',
+      'Removed one-off forecast events for a cleaner mental model',
+      'Use actual transactions for one-time expenses instead',
+    ],
+  },
+  {
+    version: '0.7.0',
+    date: '2026-02-01',
+    changes: [
+      'Redesigned Budget page with new Fixed vs Variable expense model',
+      'Fixed expenses (from recurring rules) now show separately from variable budgets',
+      'Summary cards show Income, Fixed, Variable, and Savings at a glance',
+      'New "Spending" renamed to "Check-in" for clearer purpose',
+      'Check-in page shows checkmark for fixed-only categories instead of progress bars',
+      'Category table now shows Fixed, Variable, and Total columns',
+      'Fixed expenses now require a category to be assigned',
+      'Collapsible Income and Savings sections on Budget page',
+    ],
+  },
+  {
     version: '0.6.0',
     date: '2026-02-01',
     changes: [
