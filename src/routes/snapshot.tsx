@@ -595,7 +595,7 @@ export function SnapshotPage() {
         <div className="mt-2 flex min-h-9 items-center justify-center gap-2">
           {isCurrentPeriod && viewMode === 'month' && (
             <>
-              <span className="flex items-center gap-1 rounded-full bg-blue-500/10 px-2.5 py-1 text-xs text-blue-600 dark:text-blue-400">
+              <span className="flex items-center gap-1 rounded-full bg-gray-500/15 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400">
                 Now
               </span>
               <span className="text-sm text-muted-foreground">
@@ -605,7 +605,7 @@ export function SnapshotPage() {
           )}
           {isCurrentPeriod && viewMode === 'quarter' && (
             <>
-              <span className="flex items-center gap-1 rounded-full bg-blue-500/10 px-2.5 py-1 text-xs text-blue-600 dark:text-blue-400">
+              <span className="flex items-center gap-1 rounded-full bg-gray-500/15 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400">
                 Now
               </span>
               <span className="text-sm text-muted-foreground">
@@ -615,7 +615,7 @@ export function SnapshotPage() {
           )}
           {isCurrentPeriod && viewMode === 'year' && (
             <>
-              <span className="flex items-center gap-1 rounded-full bg-blue-500/10 px-2.5 py-1 text-xs text-blue-600 dark:text-blue-400">
+              <span className="flex items-center gap-1 rounded-full bg-gray-500/15 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400">
                 Now
               </span>
               <span className="text-sm text-muted-foreground">
@@ -731,7 +731,7 @@ export function SnapshotPage() {
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-lg font-semibold">{month.label}</h3>
                   {month.isCurrentMonth && (
-                    <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-600 dark:text-blue-400">
+                    <span className="rounded-full bg-gray-500/15 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400">
                       Now
                     </span>
                   )}
