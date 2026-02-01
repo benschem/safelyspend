@@ -71,7 +71,7 @@ function CustomTooltip({
               className="h-2.5 w-2.5 rounded-sm"
               style={{ backgroundColor: CHART_COLORS.savings }}
             />
-            <span className="text-muted-foreground">Actual this month:</span>
+            <span className="text-muted-foreground">Saved this month:</span>
             <span className="font-mono text-blue-600">+{formatCents(data.actual)}</span>
           </div>
         )}

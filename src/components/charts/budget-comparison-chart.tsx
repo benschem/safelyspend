@@ -37,6 +37,7 @@ function CustomTooltip({
   budgetCategories,
   colorMap,
   showBudget,
+  hiddenCategories,
 }: {
   active?: boolean;
   payload?: TooltipPayload[];
@@ -44,6 +45,7 @@ function CustomTooltip({
   budgetCategories: Category[];
   colorMap: Record<string, string>;
   showBudget: boolean;
+  hiddenCategories: Set<string>;
 }) {
   if (!active || !payload || payload.length === 0) return null;
 
@@ -60,6 +62,9 @@ function CustomTooltip({
   }> = [];
 
   budgetCategories.forEach((cat) => {
+    // Skip hidden categories
+    if (hiddenCategories.has(cat.id)) return;
+
     const actual = (data[`${cat.id}_actual`] as number) ?? 0;
     const budget = (data[`${cat.id}_budget`] as number) ?? 0;
     if (actual > 0 || budget > 0) {
@@ -230,7 +235,7 @@ export function BudgetComparisonChart({
             width={60}
           />
           <Tooltip
-            content={<CustomTooltip budgetCategories={budgetCategories} colorMap={colorMap} showBudget={showBudget} />}
+            content={<CustomTooltip budgetCategories={budgetCategories} colorMap={colorMap} showBudget={showBudget} hiddenCategories={hiddenCategories} />}
           />
           <ReferenceLine y={0} stroke="#e5e7eb" />
 
