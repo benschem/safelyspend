@@ -62,7 +62,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
         {isPositive ? '+' : ''}{formatCents(data.surplus)}
       </p>
       {data.isCurrentMonth && (
-        <p className="text-xs text-blue-600 dark:text-blue-400">Now</p>
+        <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Now</p>
       )}
       {data.isFuture && !data.isCurrentMonth && (
         <p className="text-xs text-violet-600 dark:text-violet-400">Projected</p>
@@ -105,23 +105,22 @@ export function TrendSparkline({ data, onMonthClick, showNowLine = false, select
           data={chartData}
           margin={{ top: 8, right: 8, bottom: 8, left: 8 }}
         >
-          {/* Future months shaded area */}
+          {/* Future months shaded area - purple for projections */}
           {showNowLine && currentMonthIndex >= 0 && currentMonthIndex < data.length - 1 && (
             <ReferenceArea
               x1={currentMonthIndex}
               x2={data.length - 1}
-              fill="#3b82f6"
-              fillOpacity={0.05}
+              fill="#8b5cf6"
+              fillOpacity={0.08}
             />
           )}
           <ReferenceLine y={0} stroke="#e5e7eb" strokeDasharray="3 3" />
-          {/* "Now" vertical line (always at current month) */}
+          {/* "Now" vertical line (always at current month) - gray for neutral current position */}
           {showNowLine && currentMonthIndex >= 0 && (
             <ReferenceLine
               x={currentMonthIndex}
-              stroke="#3b82f6"
+              stroke="#6b7280"
               strokeWidth={2}
-              strokeDasharray="3 3"
             />
           )}
           {/* Selected month vertical line (if different from current) */}
@@ -164,7 +163,7 @@ export function TrendSparkline({ data, onMonthClick, showNowLine = false, select
           <span className={cn(
             'flex items-center gap-1 rounded-full px-1.5 py-0.5',
             isViewingCurrentMonth
-              ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+              ? 'bg-gray-500/15 font-medium text-gray-600 dark:text-gray-400'
               : 'bg-muted text-muted-foreground',
           )}>
             {isViewingCurrentMonth ? 'Now' : `${highlightedMonth.shortLabel} ${highlightedMonth.year}`}
