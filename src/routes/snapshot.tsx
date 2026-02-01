@@ -81,11 +81,11 @@ export function SnapshotPage() {
     year: selectedYear,
   });
 
-  // Multi-period data for sparkline (12 months around now)
+  // Multi-period data for sparkline (12 months around selected month)
   const { months: sparklineMonths } = useMultiPeriodSummary({
     scenarioId: activeScenarioId,
     year: selectedYear,
-    aroundNow: true,
+    centerMonth: { monthIndex: selectedMonth.getMonth(), year: selectedMonth.getFullYear() },
   });
 
   // Get forecast date range for the selected period
@@ -592,30 +592,45 @@ export function SnapshotPage() {
         </div>
 
         {/* Status line - day counter or badge */}
-        <div className="mt-2 flex min-h-9 items-center justify-center">
+        <div className="mt-2 flex min-h-9 items-center justify-center gap-2">
           {isCurrentPeriod && viewMode === 'month' && (
-            <span className="text-sm text-muted-foreground">
-              Day {periodCashFlow.dayOfPeriod} of {periodCashFlow.daysInPeriod}
-            </span>
+            <>
+              <span className="flex items-center gap-1 rounded-full bg-blue-500/10 px-2.5 py-1 text-xs text-blue-600 dark:text-blue-400">
+                Now
+              </span>
+              <span className="text-sm text-muted-foreground">
+                Day {periodCashFlow.dayOfPeriod} of {periodCashFlow.daysInPeriod}
+              </span>
+            </>
           )}
           {isCurrentPeriod && viewMode === 'quarter' && (
-            <span className="text-sm text-muted-foreground">
-              Month {((selectedMonthIndex % 3) + 1)} of 3
-            </span>
+            <>
+              <span className="flex items-center gap-1 rounded-full bg-blue-500/10 px-2.5 py-1 text-xs text-blue-600 dark:text-blue-400">
+                Now
+              </span>
+              <span className="text-sm text-muted-foreground">
+                Month {((selectedMonthIndex % 3) + 1)} of 3
+              </span>
+            </>
           )}
           {isCurrentPeriod && viewMode === 'year' && (
-            <span className="text-sm text-muted-foreground">
-              Month {new Date().getMonth() + 1} of 12
-            </span>
+            <>
+              <span className="flex items-center gap-1 rounded-full bg-blue-500/10 px-2.5 py-1 text-xs text-blue-600 dark:text-blue-400">
+                Now
+              </span>
+              <span className="text-sm text-muted-foreground">
+                Month {new Date().getMonth() + 1} of 12
+              </span>
+            </>
           )}
           {isPastPeriod && viewMode !== 'year' && viewMode !== 'quarter' && (
-            <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs text-amber-600 dark:text-amber-400">
               <History className="h-3 w-3" />
               Historical
             </span>
           )}
           {isFuturePeriod && viewMode !== 'year' && viewMode !== 'quarter' && (
-            <span className="flex items-center gap-1 rounded-full bg-blue-500/10 px-2.5 py-1 text-xs text-blue-600 dark:text-blue-400">
+            <span className="flex items-center gap-1 rounded-full bg-violet-500/10 px-2.5 py-1 text-xs text-violet-600 dark:text-violet-400">
               <Sparkles className="h-3 w-3" />
               Projected
             </span>
@@ -716,13 +731,18 @@ export function SnapshotPage() {
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-lg font-semibold">{month.label}</h3>
                   {month.isCurrentMonth && (
-                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                      Current
+                    <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-600 dark:text-blue-400">
+                      Now
                     </span>
                   )}
-                  {month.isFuture && (
-                    <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-xs text-blue-600 dark:text-blue-400">
+                  {month.isFuture && !month.isCurrentMonth && (
+                    <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-xs text-violet-600 dark:text-violet-400">
                       Projected
+                    </span>
+                  )}
+                  {month.isPast && !month.isCurrentMonth && (
+                    <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-600 dark:text-amber-400">
+                      Historical
                     </span>
                   )}
                 </div>

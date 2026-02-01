@@ -194,32 +194,15 @@ export function BurnRateChart({
     );
   }
 
-  // Compact mode: chart with minimal axis labels
+  // Compact mode: chart with simple axis labels
   if (compact) {
     // Dynamic color based on burn rate: green (on track), amber (slightly over), red (overspending)
     const paceColor = burnRate > 120 ? '#dc2626' : burnRate > 100 ? '#d97706' : '#16a34a';
 
     return (
       <div className="w-full">
-        <ResponsiveContainer width="100%" height={100}>
-          <ComposedChart data={chartData.data} margin={{ top: 5, right: 5, bottom: 5, left: 30 }}>
-            <XAxis
-              dataKey="day"
-              tick={{ fontSize: 9 }}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={(value) => value === 1 ? '1' : value === chartData.totalDays ? String(chartData.totalDays) : ''}
-              interval="preserveStartEnd"
-            />
-            <YAxis
-              tick={{ fontSize: 9 }}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={(value) => `${value}%`}
-              domain={[0, (dataMax: number) => Math.max(100, Math.ceil(dataMax / 20) * 20)]}
-              ticks={[0, 50, 100]}
-              width={28}
-            />
+        <ResponsiveContainer width="100%" height={80}>
+          <ComposedChart data={chartData.data} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
             {/* 100% budget line */}
             <ReferenceLine y={100} stroke="#e5e7eb" strokeDasharray="2 2" />
 
@@ -252,6 +235,12 @@ export function BurnRateChart({
             />
           </ComposedChart>
         </ResponsiveContainer>
+        {/* Simple axis labels */}
+        <div className="flex items-end justify-between px-1 text-[9px] text-muted-foreground">
+          <span className="leading-none">0</span>
+          <span className="flex-1 text-center leading-none">Time →</span>
+          <span className="leading-none">Budget</span>
+        </div>
       </div>
     );
   }

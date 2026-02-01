@@ -61,8 +61,14 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
       )}>
         {isPositive ? '+' : ''}{formatCents(data.surplus)}
       </p>
-      {data.isFuture && (
-        <p className="text-xs text-muted-foreground">Projected</p>
+      {data.isCurrentMonth && (
+        <p className="text-xs text-blue-600 dark:text-blue-400">Now</p>
+      )}
+      {data.isFuture && !data.isCurrentMonth && (
+        <p className="text-xs text-violet-600 dark:text-violet-400">Projected</p>
+      )}
+      {data.isPast && !data.isCurrentMonth && (
+        <p className="text-xs text-amber-600 dark:text-amber-400">Historical</p>
       )}
     </div>
   );
