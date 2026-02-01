@@ -27,6 +27,7 @@ export const changelog: ChangelogEntry[] = [
       'Cash Flow tab now warns when savings balances are missing',
       'Budget dialog now shows if adding a budget will overcommit your income',
       'Yearly frequency budgets now let you choose both month and day',
+      'Snapshot sparkline now uses purple for future months (blue is for savings)',
     ],
   },
   {
