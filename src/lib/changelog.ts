@@ -25,6 +25,8 @@ export const changelog: ChangelogEntry[] = [
     date: '2026-02-02',
     changes: [
       'Cash Flow tab now warns when savings balances are missing',
+      'Budget dialog now shows if adding a budget will overcommit your income',
+      'Yearly frequency budgets now let you choose both month and day',
     ],
   },
   {
