@@ -3,13 +3,6 @@ import { Link, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -43,7 +36,6 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  BanknoteArrowDown,
   BanknoteArrowUp,
 } from 'lucide-react';
 import { cn, formatCents } from '@/lib/utils';
@@ -80,14 +72,6 @@ interface CategoryRow {
   fixedExpenseRules: ForecastRule[];
   canDelete: boolean; // No transactions associated
 }
-
-const CADENCE_FULL_LABELS: Record<Cadence, string> = {
-  weekly: 'Weekly',
-  fortnightly: 'Fortnightly',
-  monthly: 'Monthly',
-  quarterly: 'Quarterly',
-  yearly: 'Yearly',
-};
 
 const FREQUENCY_PER_LABELS: Record<Cadence, string> = {
   weekly: 'per week',
@@ -139,10 +123,6 @@ export function BudgetPage() {
   const [editingRow, setEditingRow] = useState<CategoryRow | null>(null);
   const [focusLimit, setFocusLimit] = useState(false);
 
-  // Fixed expenses list dialog state
-  const [fixedExpensesDialogOpen, setFixedExpensesDialogOpen] = useState(false);
-  const [fixedExpensesCategoryId, setFixedExpensesCategoryId] = useState<string | null>(null);
-
   // Forecast rule dialog state
   const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<ForecastRule | null>(null);
@@ -152,6 +132,7 @@ export function BudgetPage() {
   // Collapsible sections state (persisted)
   const [budgetedExpensesOpen, setBudgetedExpensesOpen] = useLocalStorage('budget:budgetedExpensesOpen', false);
   const [incomeOpen, setIncomeOpen] = useLocalStorage('budget:incomeOpen', false);
+  const [fixedExpensesOpen, setFixedExpensesOpen] = useLocalStorage('budget:fixedExpensesOpen', false);
   const [savingsOpen, setSavingsOpen] = useLocalStorage('budget:savingsOpen', false);
 
   // Chart visibility state
@@ -323,7 +304,7 @@ export function BudgetPage() {
     const orderedSegments = [
       { id: 'fixed', name: 'Fixed Expenses', amount: totals.fixed },
       { id: 'savings', name: 'Savings', amount: totals.savings },
-      { id: 'variable', name: 'Variable Budget', amount: totals.variable },
+      { id: 'variable', name: 'Budgeted Expenses', amount: totals.variable },
       { id: 'available', name: 'Available', amount: totals.unallocated },
     ];
 
@@ -334,8 +315,8 @@ export function BudgetPage() {
   // Category color map
   const categoryColorMap = useMemo(() => {
     const map = buildCategoryColorMap(activeCategories.map((c) => c.id));
-    map['fixed'] = '#ef4444'; // red-500 for fixed expenses
-    map['variable'] = '#f87171'; // red-400 for variable budget
+    map['fixed'] = '#f97316'; // orange-500 for fixed expenses
+    map['variable'] = '#ef4444'; // red-500 for budgeted expenses
     map['savings'] = CHART_COLORS.savings;
     map['unbudgeted'] = CHART_COLORS.available;
     map['available'] = '#22c55e'; // green-500 to match income
@@ -388,11 +369,6 @@ export function BudgetPage() {
     }
   }, []);
 
-  const openFixedExpensesDialog = useCallback((categoryId: string) => {
-    setFixedExpensesCategoryId(categoryId);
-    setFixedExpensesDialogOpen(true);
-  }, []);
-
   const openAddRuleDialog = useCallback((type: 'income' | 'expense' | 'savings') => {
     setEditingRule(null);
     setRuleDialogType(type);
@@ -433,15 +409,6 @@ export function BudgetPage() {
     (id: string | null) => (id ? (savingsGoals.find((g) => g.id === id)?.name ?? 'Unknown') : '—'),
     [savingsGoals],
   );
-
-  // Get fixed expenses for dialog
-  const fixedExpensesForDialog = useMemo(() => {
-    if (!fixedExpensesCategoryId) return { rules: [] };
-    const data = fixedExpensesPerCategory[fixedExpensesCategoryId];
-    return {
-      rules: data?.rules ?? [],
-    };
-  }, [fixedExpensesCategoryId, fixedExpensesPerCategory]);
 
   // Close delete confirmation on Escape key
   useEffect(() => {
@@ -528,6 +495,56 @@ export function BudgetPage() {
         <ScenarioSelector hideLabel />
       </div>
 
+      {/* Budget Status Hero */}
+      {(totals.income > 0 || isOvercommitted) && (
+        <div className="mb-6 min-h-28 text-center sm:min-h-32">
+          <div className="min-h-8" />
+          {isOvercommitted ? (
+            <>
+              <p className="flex items-center justify-center gap-2 text-sm font-medium uppercase tracking-wide text-amber-500">
+                <CreditCard className="h-4 w-4" />
+                Overcommitted
+              </p>
+              <p className="mt-2 text-5xl font-bold tracking-tight text-amber-500">
+                {formatCents(Math.abs(totals.unallocated))}
+              </p>
+              <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
+              <p className="text-sm text-muted-foreground">
+                {totals.income > 0 ? `Over budget ${FREQUENCY_PER_LABELS[breakdownPeriod]} on average` : 'Add income to cover your planned expenses and savings'}
+              </p>
+            </>
+          ) : isFullyAllocated ? (
+            <>
+              <p className="flex items-center justify-center gap-2 text-sm font-medium uppercase tracking-wide text-green-500">
+                <CheckCircle2 className="h-4 w-4" />
+                Budget Balanced
+              </p>
+              <p className="mt-2 text-5xl font-bold tracking-tight text-green-500">
+                {formatCents(totals.income)}
+              </p>
+              <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
+              <p className="text-sm text-muted-foreground">
+                Every dollar accounted for
+              </p>
+            </>
+          ) : hasAvailable ? (
+            <>
+              <p className="flex items-center justify-center gap-2 text-sm font-medium uppercase tracking-wide text-green-500">
+                <CheckCircle2 className="h-4 w-4" />
+                Surplus
+              </p>
+              <p className="mt-2 text-5xl font-bold tracking-tight text-green-500">
+                {formatCents(totals.unallocated)}
+              </p>
+              <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
+              <p className="text-sm text-muted-foreground">
+                {Math.round((totals.unallocated / totals.income) * 100)}% of income not being spent or saved
+              </p>
+            </>
+          ) : null}
+        </div>
+      )}
+
       {/* Summary Cards */}
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Income Card */}
@@ -551,8 +568,8 @@ export function BudgetPage() {
         {/* Fixed Expenses Card */}
         <div className="rounded-xl border bg-card p-5">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10">
-              <Pin className="h-4 w-4 text-red-500" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-500/10">
+              <Pin className="h-4 w-4 text-orange-500" />
             </div>
             <span className="text-sm text-muted-foreground">Fixed Expenses</span>
           </div>
@@ -566,13 +583,13 @@ export function BudgetPage() {
           )}
         </div>
 
-        {/* Variable Budget Card */}
+        {/* Budgeted Expenses Card */}
         <div className="rounded-xl border bg-card p-5">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-400/10">
-              <Target className="h-4 w-4 text-red-400" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10">
+              <Target className="h-4 w-4 text-red-500" />
             </div>
-            <span className="text-sm text-muted-foreground">Variable Budget</span>
+            <span className="text-sm text-muted-foreground">Budgeted Expenses</span>
           </div>
           <p className="mt-2 text-2xl font-bold">
             {totals.variable > 0 ? formatCents(totals.variable) : '—'}
@@ -603,54 +620,6 @@ export function BudgetPage() {
         </div>
       </div>
 
-      {/* Available/Overcommitted Status */}
-      {(totals.income > 0 || isOvercommitted) && (
-        <div className={cn(
-          'mb-6 rounded-xl border p-4',
-          isOvercommitted
-            ? 'border-amber-500/50 bg-amber-500/5'
-            : 'border-green-500/50 bg-green-500/5',
-        )}>
-          {isOvercommitted ? (
-            <div className="flex items-center gap-3">
-              <CreditCard className="h-5 w-5 text-amber-500" />
-              <div>
-                <span className="font-medium text-amber-600 dark:text-amber-400">
-                  Overcommitted{totals.income > 0 ? ` by ${formatCents(Math.abs(totals.unallocated))} ${FREQUENCY_PER_LABELS[breakdownPeriod]} on average` : ''}
-                </span>
-                <p className="text-sm text-muted-foreground">
-                  {totals.income > 0 ? 'Reduce spending or add income' : 'Add income to cover your planned expenses and savings'}
-                </p>
-              </div>
-            </div>
-          ) : isFullyAllocated ? (
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-5 w-5 text-green-500" />
-              <div>
-                <span className="font-medium text-green-600 dark:text-green-400">
-                  Budget balanced
-                </span>
-                <p className="text-sm text-muted-foreground">
-                  Every dollar accounted for
-                </p>
-              </div>
-            </div>
-          ) : hasAvailable ? (
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-5 w-5 text-green-500" />
-              <div>
-                <span className="font-medium text-green-600 dark:text-green-400">
-                  {formatCents(totals.unallocated)} surplus {FREQUENCY_PER_LABELS[breakdownPeriod]} on average
-                </span>
-                <p className="text-sm text-muted-foreground">
-                  {Math.round((totals.unallocated / totals.income) * 100)}% of income not being spent or saved
-                </p>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      )}
-
       {/* Allocation Chart */}
       {budgetBreakdownSegments.length > 0 && (
         <div className="mb-8 rounded-xl border bg-card p-5">
@@ -670,236 +639,6 @@ export function BudgetPage() {
           />
         </div>
       )}
-
-      {/* Budgeted Expenses */}
-      <Collapsible open={budgetedExpensesOpen} onOpenChange={setBudgetedExpensesOpen} className="mb-4">
-        <div className="overflow-hidden rounded-lg border">
-          <div className="flex items-center justify-between bg-card p-4">
-            <CollapsibleTrigger className="flex flex-1 cursor-pointer items-center gap-2">
-              {budgetedExpensesOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              <BanknoteArrowDown className="h-4 w-4 text-red-500" />
-              <span className="font-medium">Budgeted Expenses</span>
-              <span className="text-sm text-muted-foreground">
-                {categoryRows.filter(r => !r.category.isArchived && r.totalAmount > 0).length} categories totaling {formatCents(totals.fixed + totals.variable)} {FREQUENCY_PER_LABELS[breakdownPeriod]}
-              </span>
-            </CollapsibleTrigger>
-            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setAddCategoryDialogOpen(true); }}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-          <CollapsibleContent>
-        {categoryRows.length === 0 ? (
-          <p className="border-t bg-card py-4 text-center text-sm text-muted-foreground">
-            No categories yet.{' '}
-            <button onClick={() => setAddCategoryDialogOpen(true)} className="cursor-pointer text-primary hover:underline">
-              Add one
-            </button>
-          </p>
-        ) : (
-            <table className="w-full">
-              <thead className="border-t bg-muted/50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    <button
-                      type="button"
-                      onClick={() => toggleSort('name')}
-                      className="flex cursor-pointer items-center gap-1 hover:text-foreground"
-                    >
-                      Category
-                      {sortField === 'name' ? (
-                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
-                      ) : (
-                        <ArrowUpDown className="h-3 w-3 opacity-50" />
-                      )}
-                    </button>
-                  </th>
-                  <th className="hidden px-4 py-3 text-right text-sm font-medium sm:table-cell">
-                    <button
-                      type="button"
-                      onClick={() => toggleSort('fixed')}
-                      className="ml-auto flex cursor-pointer items-center gap-1 hover:text-foreground"
-                    >
-                      Fixed Expenses
-                      {sortField === 'fixed' ? (
-                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
-                      ) : (
-                        <ArrowUpDown className="h-3 w-3 opacity-50" />
-                      )}
-                    </button>
-                  </th>
-                  <th className="hidden px-4 py-3 text-right text-sm font-medium sm:table-cell">
-                    <button
-                      type="button"
-                      onClick={() => toggleSort('variable')}
-                      className="ml-auto flex cursor-pointer items-center gap-1 hover:text-foreground"
-                    >
-                      Variable Budget
-                      {sortField === 'variable' ? (
-                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
-                      ) : (
-                        <ArrowUpDown className="h-3 w-3 opacity-50" />
-                      )}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 text-right text-sm font-medium">
-                    <button
-                      type="button"
-                      onClick={() => toggleSort('total')}
-                      className="ml-auto flex cursor-pointer items-center gap-1 hover:text-foreground"
-                    >
-                      Total
-                      {sortField === 'total' ? (
-                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
-                      ) : (
-                        <ArrowUpDown className="h-3 w-3 opacity-50" />
-                      )}
-                    </button>
-                  </th>
-                  <th className="w-20 px-4 py-3 text-right text-sm font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {categoryRows.map((row) => {
-                  const isArchived = row.category.isArchived;
-                  return (
-                    <tr
-                      key={row.id}
-                      className={cn(
-                        'transition-colors hover:bg-muted/50',
-                        isArchived && 'opacity-50',
-                      )}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Tag className="h-4 w-4 text-muted-foreground" />
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Link
-                                  to={`/categories/${row.id}`}
-                                  className="font-medium hover:underline"
-                                >
-                                  {row.categoryName}
-                                </Link>
-                              </TooltipTrigger>
-                              <TooltipContent>View category details</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          {isArchived && <Badge variant="secondary">Archived</Badge>}
-                        </div>
-                        {/* Mobile: show fixed/variable inline */}
-                        <div className="mt-1 flex gap-3 text-xs text-muted-foreground sm:hidden">
-                          <span>Fixed Expenses: {row.fixedAmount > 0 ? formatCents(row.fixedAmount) : '—'}</span>
-                          <span>Variable Budget: {row.variableAmount > 0 ? formatCents(row.variableAmount) : '—'}</span>
-                        </div>
-                      </td>
-                      <td className="hidden px-4 py-3 text-right sm:table-cell">
-                        {row.fixedAmount > 0 ? (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  onClick={() => openFixedExpensesDialog(row.id)}
-                                  className="cursor-pointer font-mono hover:underline"
-                                >
-                                  {formatCents(row.fixedAmount)}
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {row.fixedExpenseRules.length} recurring expense{row.fixedExpenseRules.length !== 1 ? 's' : ''} — click to view
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        ) : (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setRuleDialogType('expense');
-                                    setRuleDialogOpen(true);
-                                  }}
-                                  className="cursor-pointer text-muted-foreground hover:underline hover:text-foreground"
-                                >
-                                  —
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent>Add a recurring expense</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </td>
-                      <td className="hidden px-4 py-3 text-right sm:table-cell">
-                        {row.variableAmount > 0 ? (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  onClick={() => openEditCategoryDialog(row, true)}
-                                  className="cursor-pointer font-mono hover:underline"
-                                >
-                                  {formatCents(row.variableAmount)}
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent>Edit variable budget</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        ) : (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  onClick={() => openEditCategoryDialog(row, true)}
-                                  className="cursor-pointer text-muted-foreground hover:underline hover:text-foreground"
-                                >
-                                  —
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent>Set a variable budget</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className={cn(
-                          'font-mono font-medium',
-                          row.totalAmount === 0 && 'text-muted-foreground',
-                        )}>
-                          {row.totalAmount > 0 ? formatCents(row.totalAmount) : '—'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-1">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openEditCategoryDialog(row)}
-                                  aria-label="Edit"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Edit category</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-        )}
-          </CollapsibleContent>
-        </div>
-      </Collapsible>
 
       {/* Income Sources Section */}
       <Collapsible open={incomeOpen} onOpenChange={setIncomeOpen} className="mb-4">
@@ -968,6 +707,231 @@ export function BudgetPage() {
                 </tbody>
               </table>
             )}
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+
+      {/* Fixed Expenses Section */}
+      <Collapsible open={fixedExpensesOpen} onOpenChange={setFixedExpensesOpen} className="mb-4">
+        <div className="overflow-hidden rounded-lg border">
+          <div className="flex items-center justify-between bg-card p-4">
+            <CollapsibleTrigger className="flex flex-1 cursor-pointer items-center gap-2">
+              {fixedExpensesOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              <Pin className="h-4 w-4 text-orange-500" />
+              <span className="font-medium">Fixed Expenses</span>
+              <span className="text-sm text-muted-foreground">
+                {expenseRules.length} expense{expenseRules.length !== 1 ? 's' : ''} totaling {formatCents(totals.fixed)} {FREQUENCY_PER_LABELS[breakdownPeriod]}
+              </span>
+            </CollapsibleTrigger>
+            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openAddRuleDialog('expense'); }}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+          <CollapsibleContent>
+            {expenseRules.length === 0 ? (
+              <p className="border-t bg-card py-4 text-center text-sm text-muted-foreground">
+                No fixed expenses yet.{' '}
+                <button onClick={() => openAddRuleDialog('expense')} className="cursor-pointer text-primary hover:underline">
+                  Add one
+                </button>
+              </p>
+            ) : (
+              <table className="w-full">
+                <tbody className="divide-y border-t">
+                  {expenseRules.map((rule) => (
+                    <tr key={rule.id} className="bg-card transition-colors hover:bg-muted/50">
+                      <td className="px-4 py-3 font-medium">{rule.description}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
+                        {rule.categoryId ? getCategoryName(rule.categoryId) : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm text-muted-foreground">
+                        {formatCents(rule.amountCents)} {FREQUENCY_PER_LABELS[rule.cadence]}
+                      </td>
+                      <td className="w-20 px-4 py-3">
+                        <div className="flex justify-end gap-1">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="sm" onClick={() => openEditRuleDialog(rule)}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Edit</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant={deletingRuleId === rule.id ? 'destructive' : 'ghost'}
+                                  size="sm"
+                                  onClick={() => handleDeleteRule(rule.id)}
+                                  onBlur={() => setTimeout(() => setDeletingRuleId(null), 200)}
+                                >
+                                  {deletingRuleId === rule.id ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{deletingRuleId === rule.id ? 'Click to confirm' : 'Delete'}</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+
+      {/* Budgeted Expenses */}
+      <Collapsible open={budgetedExpensesOpen} onOpenChange={setBudgetedExpensesOpen} className="mb-4">
+        <div className="overflow-hidden rounded-lg border">
+          <div className="flex items-center justify-between bg-card p-4">
+            <CollapsibleTrigger className="flex flex-1 cursor-pointer items-center gap-2">
+              {budgetedExpensesOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              <Target className="h-4 w-4 text-red-500" />
+              <span className="font-medium">Budgeted Expenses</span>
+              <span className="text-sm text-muted-foreground">
+                {categoryRows.filter(r => !r.category.isArchived && r.variableAmount > 0).length} categories totaling {formatCents(totals.variable)} {FREQUENCY_PER_LABELS[breakdownPeriod]}
+              </span>
+            </CollapsibleTrigger>
+            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setAddCategoryDialogOpen(true); }}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+          <CollapsibleContent>
+        {categoryRows.length === 0 ? (
+          <p className="border-t bg-card py-4 text-center text-sm text-muted-foreground">
+            No categories yet.{' '}
+            <button onClick={() => setAddCategoryDialogOpen(true)} className="cursor-pointer text-primary hover:underline">
+              Add one
+            </button>
+          </p>
+        ) : (
+            <table className="w-full">
+              <thead className="border-t bg-muted/50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-medium">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort('name')}
+                      className="flex cursor-pointer items-center gap-1 hover:text-foreground"
+                    >
+                      Category
+                      {sortField === 'name' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-50" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 text-right text-sm font-medium">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort('variable')}
+                      className="ml-auto flex cursor-pointer items-center gap-1 hover:text-foreground"
+                    >
+                      Budget
+                      {sortField === 'variable' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-50" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="w-20 px-4 py-3 text-right text-sm font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {categoryRows.map((row) => {
+                  const isArchived = row.category.isArchived;
+                  return (
+                    <tr
+                      key={row.id}
+                      className={cn(
+                        'transition-colors hover:bg-muted/50',
+                        isArchived && 'opacity-50',
+                      )}
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Tag className="h-4 w-4 text-muted-foreground" />
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Link
+                                  to={`/categories/${row.id}`}
+                                  className="font-medium hover:underline"
+                                >
+                                  {row.categoryName}
+                                </Link>
+                              </TooltipTrigger>
+                              <TooltipContent>View category details</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          {isArchived && <Badge variant="secondary">Archived</Badge>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {row.variableAmount > 0 ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={() => openEditCategoryDialog(row, true)}
+                                  className="cursor-pointer font-mono hover:underline"
+                                >
+                                  {formatCents(row.variableAmount)}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>Edit budget</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={() => openEditCategoryDialog(row, true)}
+                                  className="cursor-pointer text-muted-foreground hover:underline hover:text-foreground"
+                                >
+                                  —
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>Set a budget</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-1">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openEditCategoryDialog(row)}
+                                  aria-label="Edit"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Edit category</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+        )}
           </CollapsibleContent>
         </div>
       </Collapsible>
@@ -1071,57 +1035,6 @@ export function BudgetPage() {
           deleteBudgetRule={deleteBudgetRule}
         />
       )}
-
-      {/* Fixed Expenses Dialog */}
-      <Dialog open={fixedExpensesDialogOpen} onOpenChange={setFixedExpensesDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Fixed Expenses</DialogTitle>
-            <DialogDescription>
-              {fixedExpensesCategoryId && getCategoryName(fixedExpensesCategoryId)} — committed recurring costs
-            </DialogDescription>
-          </DialogHeader>
-          <div className="max-h-80 space-y-4 overflow-y-auto">
-            {fixedExpensesForDialog.rules.length === 0 ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">
-                No fixed expenses in this category.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {fixedExpensesForDialog.rules.map((rule) => (
-                  <div key={rule.id} className="flex items-center justify-between rounded-lg border p-3">
-                    <div>
-                      <p className="font-medium">{rule.description}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatCents(rule.amountCents)} {CADENCE_FULL_LABELS[rule.cadence].toLowerCase()}
-                      </p>
-                    </div>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="ghost" size="sm" onClick={() => { setFixedExpensesDialogOpen(false); openEditRuleDialog(rule); }}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Edit</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => setFixedExpensesDialogOpen(false)}>
-              Close
-            </Button>
-            <Button onClick={() => { setFixedExpensesDialogOpen(false); openAddRuleDialog('expense'); }}>
-              <Plus className="h-4 w-4" />
-              Add Recurring Expense
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Forecast Rule Dialog */}
       <ForecastRuleDialog
