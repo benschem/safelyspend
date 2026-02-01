@@ -787,27 +787,27 @@ export function SnapshotPage() {
       ) : (
         /* Month View - detailed view */
         <>
-          {/* Headline Metrics */}
-          <div className={cn('grid gap-4', budgetStatus ? 'grid-cols-[auto_1fr]' : '')}>
-            {/* Expected Surplus/Shortfall - compact stacked layout */}
+          {/* Top Row: Surplus + Earned + Spent + Saved */}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {/* Expected Surplus/Shortfall */}
             <div className={cn(
-              'rounded-xl border p-5 text-center',
+              'rounded-xl border p-4 text-center',
               headline.isPositive
                 ? headline.hasPlan ? 'border-green-500/50 bg-green-500/5' : 'bg-card'
                 : 'border-red-500/50 bg-red-500/5',
             )}>
               <div className={cn(
-                'mx-auto flex h-10 w-10 items-center justify-center rounded-full',
+                'mx-auto flex h-9 w-9 items-center justify-center rounded-full',
                 headline.isPositive ? 'bg-green-500/10' : 'bg-red-500/10',
               )}>
                 {headline.isPositive ? (
-                  <TrendingUp className={cn('h-5 w-5', headline.hasPlan ? 'text-green-500' : 'text-slate-500')} />
+                  <TrendingUp className={cn('h-4 w-4', headline.hasPlan ? 'text-green-500' : 'text-slate-500')} />
                 ) : (
-                  <TrendingDown className="h-5 w-5 text-red-500" />
+                  <TrendingDown className="h-4 w-4 text-red-500" />
                 )}
               </div>
               <p className={cn(
-                'mt-2 text-2xl font-bold',
+                'mt-2 text-xl font-bold',
                 headline.isPositive
                   ? headline.hasPlan ? 'text-green-600 dark:text-green-400' : ''
                   : 'text-red-600 dark:text-red-400',
@@ -817,112 +817,88 @@ export function SnapshotPage() {
               <p className="text-xs text-muted-foreground">{headline.label}</p>
             </div>
 
-            {/* Budget Status with burn rate chart */}
-            {budgetStatus && (
-              <div className={cn(
-                'rounded-xl border p-5',
-                budgetStatus.isPositive
-                  ? budgetStatus.hasBudget ? 'border-green-500/50 bg-green-500/5' : 'bg-card'
-                  : 'border-red-500/50 bg-red-500/5',
-              )}>
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    'flex h-8 w-8 items-center justify-center rounded-full',
-                    budgetStatus.isPositive ? 'bg-green-500/10' : 'bg-red-500/10',
-                  )}>
-                    <Target className={cn('h-4 w-4', budgetStatus.isPositive ? 'text-green-500' : 'text-red-500')} />
-                  </div>
-                  <div className="flex-1">
-                    <p className={cn(
-                      'text-lg font-bold',
-                      budgetStatus.isPositive
-                        ? budgetStatus.hasBudget ? 'text-green-600 dark:text-green-400' : ''
-                        : 'text-red-600 dark:text-red-400',
-                    )}>
-                      {budgetStatus.isPositive && budgetStatus.amount > 0 ? '+' : ''}{budgetStatus.amount > 0 ? formatCents(budgetStatus.amount) : '—'}
-                      <span className="ml-2 text-sm font-normal text-muted-foreground">{budgetStatus.label}</span>
-                    </p>
-                  </div>
-                </div>
-                {/* Burn rate chart */}
-                {budgetStatus.hasBudget && burnRateData.totalBudget > 0 && (
-                  <div className="mt-3">
-                    <BurnRateChart
-                      dailySpending={burnRateData.dailySpending}
-                      totalBudget={burnRateData.totalBudget}
-                      periodStart={burnRateData.periodStart}
-                      periodEnd={burnRateData.periodEnd}
-                      periodLabel={burnRateData.periodLabel}
-                      compact
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Quick Stats */}
-          <div className="grid gap-4 sm:grid-cols-3">
             {/* Earned */}
-            <div className="rounded-xl border bg-card p-5">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/10">
-                  <BanknoteArrowUp className="h-4 w-4 text-green-500" />
-                </div>
-                <span className="text-sm text-muted-foreground">
-                  {isFuturePeriod ? 'Expected Income' : 'Earned'}
-                </span>
+            <div className="rounded-xl border bg-card p-4 text-center">
+              <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-green-500/10">
+                <BanknoteArrowUp className="h-4 w-4 text-green-500" />
               </div>
-              <p className="mt-2 text-2xl font-bold">
+              <p className="mt-2 text-xl font-bold">
                 {formatCents(isFuturePeriod ? periodCashFlow.income.expected : periodCashFlow.income.actual)}
               </p>
-              {!isFuturePeriod && periodCashFlow.income.expected > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  {Math.round((periodCashFlow.income.actual / periodCashFlow.income.expected) * 100)}% of expected
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground">
+                {isFuturePeriod ? 'Expected' : 'Earned'}
+              </p>
             </div>
 
             {/* Spent */}
-            <div className="rounded-xl border bg-card p-5">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10">
-                  <BanknoteArrowDown className="h-4 w-4 text-red-500" />
-                </div>
-                <span className="text-sm text-muted-foreground">
-                  {isFuturePeriod ? 'Planned Spending' : 'Spent'}
-                </span>
+            <div className="rounded-xl border bg-card p-4 text-center">
+              <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-red-500/10">
+                <BanknoteArrowDown className="h-4 w-4 text-red-500" />
               </div>
-              <p className="mt-2 text-2xl font-bold">
+              <p className="mt-2 text-xl font-bold">
                 {formatCents(isFuturePeriod ? periodCashFlow.budgeted.expected : periodCashFlow.expenses.actual)}
               </p>
-              {!isFuturePeriod && periodCashFlow.budgeted.expected > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  {Math.round((periodCashFlow.expenses.actual / periodCashFlow.budgeted.expected) * 100)}% of budget
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground">
+                {isFuturePeriod ? 'Planned' : 'Spent'}
+              </p>
             </div>
 
             {/* Saved */}
-            <div className="rounded-xl border bg-card p-5">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10">
-                  <PiggyBank className="h-4 w-4 text-blue-500" />
-                </div>
-                <span className="text-sm text-muted-foreground">
-                  {isFuturePeriod ? 'Planned Savings' : 'Saved'}
-                </span>
+            <div className="rounded-xl border bg-card p-4 text-center">
+              <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-blue-500/10">
+                <PiggyBank className="h-4 w-4 text-blue-500" />
               </div>
-              <p className="mt-2 text-2xl font-bold">
+              <p className="mt-2 text-xl font-bold">
                 {formatCents(isFuturePeriod ? periodCashFlow.savings.expected : periodCashFlow.savings.actual)}
               </p>
-              {!isFuturePeriod && periodCashFlow.savings.expected > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  {Math.round((periodCashFlow.savings.actual / periodCashFlow.savings.expected) * 100)}% of goal
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground">
+                {isFuturePeriod ? 'To Save' : 'Saved'}
+              </p>
             </div>
           </div>
+
+          {/* Budget Status with burn rate chart - full width */}
+          {budgetStatus && (
+            <div className={cn(
+              'rounded-xl border p-5',
+              budgetStatus.isPositive
+                ? budgetStatus.hasBudget ? 'border-green-500/50 bg-green-500/5' : 'bg-card'
+                : 'border-red-500/50 bg-red-500/5',
+            )}>
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  'flex h-10 w-10 items-center justify-center rounded-full',
+                  budgetStatus.isPositive ? 'bg-green-500/10' : 'bg-red-500/10',
+                )}>
+                  <Target className={cn('h-5 w-5', budgetStatus.isPositive ? 'text-green-500' : 'text-red-500')} />
+                </div>
+                <div className="flex-1">
+                  <p className={cn(
+                    'text-xl font-bold',
+                    budgetStatus.isPositive
+                      ? budgetStatus.hasBudget ? 'text-green-600 dark:text-green-400' : ''
+                      : 'text-red-600 dark:text-red-400',
+                  )}>
+                    {budgetStatus.isPositive && budgetStatus.amount > 0 ? '+' : ''}{budgetStatus.amount > 0 ? formatCents(budgetStatus.amount) : '—'}
+                    <span className="ml-2 text-sm font-normal text-muted-foreground">{budgetStatus.label}</span>
+                  </p>
+                </div>
+              </div>
+              {/* Burn rate chart - larger now that it's full width */}
+              {budgetStatus.hasBudget && burnRateData.totalBudget > 0 && (
+                <div className="mt-4">
+                  <BurnRateChart
+                    dailySpending={burnRateData.dailySpending}
+                    totalBudget={burnRateData.totalBudget}
+                    periodStart={burnRateData.periodStart}
+                    periodEnd={burnRateData.periodEnd}
+                    periodLabel={burnRateData.periodLabel}
+                    compact
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Category Progress */}
           <div className="rounded-xl border bg-card p-6">
