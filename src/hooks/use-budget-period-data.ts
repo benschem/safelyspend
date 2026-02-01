@@ -64,7 +64,7 @@ interface BurnRateData {
 interface UseBudgetPeriodDataOptions {
   scenarioId: string | null;
   selectedMonth: Date;
-  viewMode: 'month' | 'year';
+  viewMode: 'month' | 'quarter' | 'year';
 }
 
 interface UseBudgetPeriodDataResult {
@@ -107,7 +107,7 @@ function toMonthlyAmount(amountCents: number, cadence: BudgetRule['cadence']): n
  * Calculate period cash flow data
  */
 function calculatePeriodCashFlow(
-  viewMode: 'month' | 'year',
+  viewMode: 'month' | 'quarter' | 'year',
   selectedYear: number,
   selectedMonthIndex: number,
   periodStart: string,
@@ -219,7 +219,7 @@ function calculatePeriodCashFlow(
  * Calculate budget summary stats
  */
 function calculateSummary(
-  viewMode: 'month' | 'year',
+  viewMode: 'month' | 'quarter' | 'year',
   selectedYear: number,
   selectedMonthIndex: number,
   periodStart: string,
@@ -283,7 +283,7 @@ function calculateSummary(
  * Calculate spending by category
  */
 function calculatePeriodSpending(
-  viewMode: 'month' | 'year',
+  viewMode: 'month' | 'quarter' | 'year',
   periodStart: string,
   effectiveDate: string,
   budgetRules: BudgetRule[],
@@ -380,7 +380,7 @@ function calculateForecastExpenses(
  * Calculate burn rate chart data
  */
 function calculateBurnRateData(
-  viewMode: 'month' | 'year',
+  viewMode: 'month' | 'quarter' | 'year',
   periodStart: string,
   periodEnd: string,
   periodLabel: string,
