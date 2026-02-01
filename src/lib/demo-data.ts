@@ -93,20 +93,6 @@ function convertToBudgetData(generated: GeneratedData): BudgetData {
       return rule;
     }),
 
-    forecastEvents: generated.forecastEvents.map((e) => ({
-      id: e.id,
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      scenarioId: e.scenarioId,
-      type: e.type === 'adjustment' ? 'expense' : e.type,
-      date: e.date,
-      amountCents: e.amountCents,
-      description: e.description,
-      categoryId: e.categoryId,
-      savingsGoalId: null,
-    })),
-
     transactions: generated.transactions.map((t) => {
       const transaction: BudgetData['transactions'][0] = {
         id: t.id,

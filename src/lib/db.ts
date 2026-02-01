@@ -5,7 +5,6 @@ import type {
   Transaction,
   BudgetRule,
   ForecastRule,
-  ForecastEvent,
   SavingsGoal,
   BalanceAnchor,
   CategoryRule,
@@ -21,6 +20,10 @@ import { STORAGE_KEYS } from './storage-keys';
 //     forecastRules, forecastEvents, savingsGoals, balanceAnchors, categoryRules
 //   - Config tables: appConfig, activeScenario
 //
+// Version 2 (App v0.16.0): Remove forecastEvents
+//   - Removed forecastEvents table (one-off forecast items)
+//   - Simplified model: use transactions for actuals, forecast rules for recurring
+//
 // IMPORTANT: When adding schema changes:
 // 1. Add a new version() call with the next version number
 // 2. Only define indexes that changed (Dexie merges with previous)
@@ -31,7 +34,7 @@ import { STORAGE_KEYS } from './storage-keys';
 // =============================================================================
 
 /** Current schema version - increment when IndexedDB structure changes */
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 // App config stored in IndexedDB
 export interface AppConfig {
@@ -52,7 +55,6 @@ export class BudgetDatabase extends Dexie {
   transactions!: Table<Transaction, string>;
   budgetRules!: Table<BudgetRule, string>;
   forecastRules!: Table<ForecastRule, string>;
-  forecastEvents!: Table<ForecastEvent, string>;
   savingsGoals!: Table<SavingsGoal, string>;
   balanceAnchors!: Table<BalanceAnchor, string>;
   categoryRules!: Table<CategoryRule, string>;
@@ -79,23 +81,18 @@ export class BudgetDatabase extends Dexie {
       activeScenario: 'id',
     });
 
-    // Future versions go here. Example:
-    // this.version(2).stores({
-    //   // Only specify tables/indexes that changed
-    //   newTable: 'id, someIndex',
-    // }).upgrade(tx => {
-    //   // Migrate existing data if needed
-    //   return tx.table('existingTable').toCollection().modify(item => {
-    //     item.newField = item.newField ?? 'default';
-    //   });
-    // });
+    // Version 2: Remove forecastEvents table (App v0.16.0)
+    // Setting to null removes the table from the schema
+    this.version(2).stores({
+      forecastEvents: null,
+    });
   }
 }
 
 export const db = new BudgetDatabase();
 
 /** Current data export version - increment when export format changes */
-export const CURRENT_DATA_VERSION = 1;
+export const CURRENT_DATA_VERSION = 2;
 
 // Budget backup type for export/import
 export interface BudgetBackup extends BudgetData {
@@ -114,7 +111,6 @@ export async function exportAllData(): Promise<BudgetBackup> {
     transactions,
     budgetRules,
     forecastRules,
-    forecastEvents,
     savingsGoals,
     balanceAnchors,
     categoryRules,
@@ -125,7 +121,6 @@ export async function exportAllData(): Promise<BudgetBackup> {
     db.transactions.toArray(),
     db.budgetRules.toArray(),
     db.forecastRules.toArray(),
-    db.forecastEvents.toArray(),
     db.savingsGoals.toArray(),
     db.balanceAnchors.toArray(),
     db.categoryRules.toArray(),
@@ -140,7 +135,6 @@ export async function exportAllData(): Promise<BudgetBackup> {
     transactions,
     budgetRules,
     forecastRules,
-    forecastEvents,
     savingsGoals,
     balanceAnchors,
     categoryRules,
@@ -162,7 +156,6 @@ export async function importAllData(
       db.transactions,
       db.budgetRules,
       db.forecastRules,
-      db.forecastEvents,
       db.savingsGoals,
       db.balanceAnchors,
       db.categoryRules,
@@ -177,7 +170,6 @@ export async function importAllData(
         db.transactions.clear(),
         db.budgetRules.clear(),
         db.forecastRules.clear(),
-        db.forecastEvents.clear(),
         db.savingsGoals.clear(),
         db.balanceAnchors.clear(),
         db.categoryRules.clear(),
@@ -190,7 +182,6 @@ export async function importAllData(
         db.transactions.bulkPut(backup.transactions),
         db.budgetRules.bulkPut(backup.budgetRules),
         db.forecastRules.bulkPut(backup.forecastRules),
-        db.forecastEvents.bulkPut(backup.forecastEvents),
         db.savingsGoals.bulkPut(backup.savingsGoals),
         db.balanceAnchors.bulkPut(backup.balanceAnchors ?? []),
         db.categoryRules.bulkPut(backup.categoryRules ?? []),
@@ -226,7 +217,6 @@ export async function resetDatabase(): Promise<void> {
       db.transactions,
       db.budgetRules,
       db.forecastRules,
-      db.forecastEvents,
       db.savingsGoals,
       db.balanceAnchors,
       db.categoryRules,
@@ -240,7 +230,6 @@ export async function resetDatabase(): Promise<void> {
         db.transactions.clear(),
         db.budgetRules.clear(),
         db.forecastRules.clear(),
-        db.forecastEvents.clear(),
         db.savingsGoals.clear(),
         db.balanceAnchors.clear(),
         db.categoryRules.clear(),
@@ -275,7 +264,6 @@ export async function loadDemoData(data: BudgetData): Promise<void> {
       db.transactions,
       db.budgetRules,
       db.forecastRules,
-      db.forecastEvents,
       db.savingsGoals,
       db.balanceAnchors,
       db.categoryRules,
@@ -290,7 +278,6 @@ export async function loadDemoData(data: BudgetData): Promise<void> {
         db.transactions.clear(),
         db.budgetRules.clear(),
         db.forecastRules.clear(),
-        db.forecastEvents.clear(),
         db.savingsGoals.clear(),
         db.balanceAnchors.clear(),
         db.categoryRules.clear(),
@@ -303,7 +290,6 @@ export async function loadDemoData(data: BudgetData): Promise<void> {
         db.transactions.bulkPut(data.transactions),
         db.budgetRules.bulkPut(data.budgetRules),
         db.forecastRules.bulkPut(data.forecastRules),
-        db.forecastEvents.bulkPut(data.forecastEvents),
         db.savingsGoals.bulkPut(data.savingsGoals),
         db.balanceAnchors.bulkPut(data.balanceAnchors),
         db.categoryRules.bulkPut(data.categoryRules),

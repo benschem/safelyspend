@@ -74,13 +74,6 @@ export interface ScenarioConfig {
     goalName: string;
     monthlyContributionCents: number;
   }[];
-  // One-off forecast events for this scenario (e.g., expected bonus)
-  forecastEvents?: {
-    description: string;
-    type: 'income' | 'expense';
-    amountCents: number;
-    monthsFromNow: number;
-  }[];
 }
 
 // Generated data ready for database insertion
@@ -89,7 +82,6 @@ export interface GeneratedData {
   scenarios: GeneratedScenario[];
   budgetRules: GeneratedBudgetRule[];
   forecastRules: GeneratedForecastRule[];
-  forecastEvents: GeneratedForecastEvent[];
   transactions: GeneratedTransaction[];
   savingsGoals: GeneratedSavingsGoal[];
   balanceAnchors: GeneratedBalanceAnchor[];
@@ -128,16 +120,6 @@ export interface GeneratedForecastRule {
   dayOfMonth?: number;
   startDate?: string;
   endDate?: string;
-}
-
-export interface GeneratedForecastEvent {
-  id: string;
-  scenarioId: string;
-  categoryId: string | null;
-  description: string;
-  type: TransactionType;
-  amountCents: number;
-  date: string;
 }
 
 export interface GeneratedTransaction {

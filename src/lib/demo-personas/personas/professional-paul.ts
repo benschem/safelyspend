@@ -296,13 +296,6 @@ export const professionalPaul: PersonaConfig = {
       description:
         'Balanced lifestyle with steady savings. Building emergency fund, saving for Japan trip. Nice dinners occasionally, staying mostly on budget.',
       isDefault: true,
-      // Quarterly bonuses expected
-      forecastEvents: [
-        { description: 'Quarterly Bonus - MediaCorp', type: 'income', amountCents: 250000, monthsFromNow: 2 },
-        { description: 'Quarterly Bonus - MediaCorp', type: 'income', amountCents: 250000, monthsFromNow: 5 },
-        { description: 'Quarterly Bonus - MediaCorp', type: 'income', amountCents: 250000, monthsFromNow: 8 },
-        { description: 'Quarterly Bonus - MediaCorp', type: 'income', amountCents: 250000, monthsFromNow: 11 },
-      ],
     },
     {
       name: 'Save for House Deposit',
@@ -323,12 +316,6 @@ export const professionalPaul: PersonaConfig = {
         { goalName: 'Emergency Fund', monthlyContributionCents: 20000 },
         { goalName: 'New Laptop', monthlyContributionCents: 0 },
       ],
-      forecastEvents: [
-        { description: 'Quarterly Bonus - MediaCorp', type: 'income', amountCents: 250000, monthsFromNow: 2 },
-        { description: 'Quarterly Bonus - MediaCorp', type: 'income', amountCents: 250000, monthsFromNow: 5 },
-        { description: 'Quarterly Bonus - MediaCorp', type: 'income', amountCents: 250000, monthsFromNow: 8 },
-        { description: 'Quarterly Bonus - MediaCorp', type: 'income', amountCents: 250000, monthsFromNow: 11 },
-      ],
     },
     {
       name: 'Made Redundant',
@@ -336,7 +323,6 @@ export const professionalPaul: PersonaConfig = {
         'Marketing layoffs hit. No income, need to cut everything non-essential and pause all savings.',
       isDefault: false,
       incomeMultiplier: 0,
-      // No forecast events = no bonuses expected
       budgetOverrides: [
         { category: 'Groceries', amountCents: 30000 },
         { category: 'Transport', amountCents: 8000 },

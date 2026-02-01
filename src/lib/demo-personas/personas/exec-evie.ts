@@ -358,17 +358,8 @@ export const execEvie: PersonaConfig = {
     {
       name: 'Current Lifestyle',
       description:
-        'Living the executive life. Nice restaurants, Equinox, quality shopping. Emergency fund is full, investing in property, saving for a Porsche. Expecting December bonus.',
+        'Living the executive life. Nice restaurants, Equinox, quality shopping. Emergency fund is full, investing in property, saving for a Porsche.',
       isDefault: true,
-      // Add expected bonus as a one-off forecast event
-      forecastEvents: [
-        {
-          description: 'Annual Bonus - Deloitte',
-          type: 'income',
-          amountCents: 2000000, // $20,000
-          monthsFromNow: 11, // December
-        },
-      ],
     },
     {
       name: 'Tighten Up',
@@ -388,21 +379,12 @@ export const execEvie: PersonaConfig = {
         { goalName: 'Investment Property', monthlyContributionCents: 150000 },
         { goalName: 'New Car Fund', monthlyContributionCents: 30000 },
       ],
-      forecastEvents: [
-        {
-          description: 'Annual Bonus - Deloitte',
-          type: 'income',
-          amountCents: 2000000, // $20,000
-          monthsFromNow: 11,
-        },
-      ],
     },
     {
       name: 'No Bonus This Year',
       description:
         'Company restructure means no $20k bonus this December. Keep lifestyle similar but reduce savings targets to compensate.',
       isDefault: false,
-      // No forecastEvents = no bonus expected
       savingsOverrides: [
         { goalName: 'Investment Property', monthlyContributionCents: 60000 },
         { goalName: 'New Car Fund', monthlyContributionCents: 30000 },

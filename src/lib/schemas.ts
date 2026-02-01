@@ -111,34 +111,6 @@ export const savingsGoalEditSchema = z.object({
 export type SavingsGoalEditData = z.infer<typeof savingsGoalEditSchema>;
 
 // =============================================================================
-// Forecast Event Schemas
-// =============================================================================
-
-export const forecastEventFormSchema = z
-  .object({
-    type: forecastTypeSchema,
-    date: dateSchema,
-    description: requiredStringSchema,
-    amount: moneyInputSchema,
-    categoryId: z.string(),
-    savingsGoalId: z.string(),
-  })
-  .refine(
-    (data) => {
-      if (data.type === 'savings') {
-        return data.savingsGoalId.length > 0;
-      }
-      return true;
-    },
-    {
-      message: 'Savings goal is required',
-      path: ['savingsGoalId'],
-    },
-  );
-
-export type ForecastEventFormData = z.infer<typeof forecastEventFormSchema>;
-
-// =============================================================================
 // Forecast Rule Schemas
 // =============================================================================
 

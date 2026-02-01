@@ -80,21 +80,6 @@ export interface ForecastRule extends BaseEntity {
 }
 
 // -----------------------------------------------------------------------------
-// Forecast Event - One-off forecast items with specific dates
-// -----------------------------------------------------------------------------
-
-export interface ForecastEvent extends BaseEntity {
-  scenarioId: string;
-  type: ForecastType;
-  date: string;
-  amountCents: number;
-  description: string;
-  categoryId: string | null; // Required if type === 'expense'
-  savingsGoalId: string | null; // Required if type === 'savings'
-  notes?: string;
-}
-
-// -----------------------------------------------------------------------------
 // Transaction - Actual income, expenses, and savings (global facts)
 // -----------------------------------------------------------------------------
 
@@ -190,7 +175,6 @@ export interface BudgetData {
   categories: Category[];
   budgetRules: BudgetRule[];
   forecastRules: ForecastRule[];
-  forecastEvents: ForecastEvent[];
   transactions: Transaction[];
   savingsGoals: SavingsGoal[];
   balanceAnchors: BalanceAnchor[];
@@ -218,6 +202,6 @@ export interface ExpandedForecast {
   description: string;
   categoryId: string | null;
   savingsGoalId: string | null;
-  sourceType: 'rule' | 'event' | 'interest';
+  sourceType: 'rule' | 'interest';
   sourceId: string;
 }

@@ -645,8 +645,6 @@ export function SettingsPage() {
                       <div>{pendingImport.data.budgetRules.length}</div>
                       <div className="text-muted-foreground">Forecast Rules:</div>
                       <div>{pendingImport.data.forecastRules.length}</div>
-                      <div className="text-muted-foreground">Forecast Events:</div>
-                      <div>{pendingImport.data.forecastEvents.length}</div>
                       <div className="text-muted-foreground">Savings Goals:</div>
                       <div>{pendingImport.data.savingsGoals.length}</div>
                       {pendingImport.data.balanceAnchors && (

@@ -3,7 +3,6 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import type {
   ForecastRule,
-  ForecastEvent,
   ExpandedForecast,
   CreateEntity,
   SavingsGoal,
@@ -317,20 +316,18 @@ function generateInterestForecasts(
 }
 
 /**
- * Hook for managing forecast rules and events
+ * Hook for managing forecast rules
  */
 export function useForecasts(scenarioId: string | null, startDate?: string, endDate?: string) {
   const rawRules = useLiveQuery(() => db.forecastRules.toArray(), []);
-  const rawEvents = useLiveQuery(() => db.forecastEvents.toArray(), []);
   const rawSavingsGoals = useLiveQuery(() => db.savingsGoals.toArray(), []);
   const rawTransactions = useLiveQuery(() => db.transactions.toArray(), []);
 
   const allRules = useMemo(() => rawRules ?? [], [rawRules]);
-  const allEvents = useMemo(() => rawEvents ?? [], [rawEvents]);
   const savingsGoals = useMemo(() => rawSavingsGoals ?? [], [rawSavingsGoals]);
   const allTransactions = useMemo(() => rawTransactions ?? [], [rawTransactions]);
 
-  const isLoading = rawRules === undefined || rawEvents === undefined;
+  const isLoading = rawRules === undefined;
 
   // Filter savings transactions
   const savingsTransactions = useMemo(
@@ -344,19 +341,7 @@ export function useForecasts(scenarioId: string | null, startDate?: string, endD
     [allRules, scenarioId],
   );
 
-  // Filter events to current scenario
-  const events = useMemo(
-    () => (scenarioId ? allEvents.filter((e) => e.scenarioId === scenarioId) : []),
-    [allEvents, scenarioId],
-  );
-
-  // Filter events by date range
-  const eventsInRange = useMemo(() => {
-    if (!startDate || !endDate) return events;
-    return events.filter((e) => e.date >= startDate && e.date <= endDate);
-  }, [events, startDate, endDate]);
-
-  // Expand all rules over the date range and combine with events
+  // Expand all rules over the date range
   const expandedForecasts = useMemo(() => {
     if (!startDate || !endDate) return [];
 
@@ -367,25 +352,11 @@ export function useForecasts(scenarioId: string | null, startDate?: string, endD
       expanded.push(...expandRule(rule, startDate, endDate));
     }
 
-    // Add events
-    for (const event of eventsInRange) {
-      expanded.push({
-        type: event.type,
-        date: event.date,
-        amountCents: event.amountCents,
-        description: event.description,
-        categoryId: event.categoryId,
-        savingsGoalId: event.savingsGoalId,
-        sourceType: 'event',
-        sourceId: event.id,
-      });
-    }
-
     // Sort by date
     expanded.sort((a, b) => a.date.localeCompare(b.date));
 
     return expanded;
-  }, [rules, eventsInRange, startDate, endDate]);
+  }, [rules, startDate, endDate]);
 
   // Filter expanded forecasts by type
   const incomeForecasts = useMemo(
@@ -455,32 +426,7 @@ export function useForecasts(scenarioId: string | null, startDate?: string, endD
     await db.forecastRules.update(ruleId, { excludedDates, updatedAt: now() });
   }, [allRules]);
 
-  // CRUD for events
-  const addEvent = useCallback(async (data: CreateEntity<ForecastEvent>) => {
-    const timestamp = now();
-    const newEvent: ForecastEvent = {
-      id: generateId(),
-      userId: USER_ID,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      ...data,
-    };
-    await db.forecastEvents.add(newEvent);
-    return newEvent;
-  }, []);
-
-  const updateEvent = useCallback(
-    async (id: string, updates: Partial<Omit<ForecastEvent, 'id' | 'userId' | 'createdAt'>>) => {
-      await db.forecastEvents.update(id, { ...updates, updatedAt: now() });
-    },
-    [],
-  );
-
-  const deleteEvent = useCallback(async (id: string) => {
-    await db.forecastEvents.delete(id);
-  }, []);
-
-  // Duplicate rules and events from one scenario to another
+  // Duplicate rules from one scenario to another
   const duplicateToScenario = useCallback(
     async (fromScenarioId: string, toScenarioId: string) => {
       const timestamp = now();
@@ -495,31 +441,16 @@ export function useForecasts(scenarioId: string | null, startDate?: string, endD
         updatedAt: timestamp,
       }));
 
-      // Duplicate events
-      const eventsToCopy = allEvents.filter((e) => e.scenarioId === fromScenarioId);
-      const newEvents = eventsToCopy.map((event) => ({
-        ...event,
-        id: generateId(),
-        scenarioId: toScenarioId,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      }));
-
-      await Promise.all([
-        db.forecastRules.bulkAdd(newRules),
-        db.forecastEvents.bulkAdd(newEvents),
-      ]);
+      await db.forecastRules.bulkAdd(newRules);
     },
-    [allRules, allEvents],
+    [allRules],
   );
 
   return {
     // Raw data
     rules,
-    events,
-    eventsInRange,
     isLoading,
-    // Expanded forecasts (materialized from rules + events)
+    // Expanded forecasts (materialized from rules)
     expandedForecasts,
     incomeForecasts,
     expenseForecasts,
@@ -529,10 +460,6 @@ export function useForecasts(scenarioId: string | null, startDate?: string, endD
     updateRule,
     deleteRule,
     excludeOccurrence,
-    // Event CRUD
-    addEvent,
-    updateEvent,
-    deleteEvent,
     // Utilities
     duplicateToScenario,
   };

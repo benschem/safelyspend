@@ -67,18 +67,6 @@ const forecastRuleSchema = baseEntitySchema.extend({
   excludedDates: z.array(z.string()).optional(), // v1.0: Dates to skip when expanding
 });
 
-// Forecast Event
-const forecastEventSchema = baseEntitySchema.extend({
-  scenarioId: z.string().min(1),
-  type: z.enum(['income', 'expense', 'savings']),
-  date: z.string(),
-  amountCents: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
-  description: z.string().max(500),
-  categoryId: z.string().nullable(),
-  savingsGoalId: z.string().nullable(),
-  notes: z.string().max(1000).optional(),
-});
-
 // Transaction
 // Note: amountCents can be negative for savings withdrawals
 const transactionSchema = baseEntitySchema.extend({
@@ -137,7 +125,8 @@ export const budgetDataSchema = z.object({
   transactions: z.array(transactionSchema).max(100000),
   budgetRules: z.array(budgetRuleSchema).max(1000),
   forecastRules: z.array(forecastRuleSchema).max(1000),
-  forecastEvents: z.array(forecastEventSchema).max(10000),
+  // Deprecated: forecastEvents removed in v2, but accept for backward compatibility
+  forecastEvents: z.array(z.unknown()).max(10000).optional(),
   savingsGoals: z.array(savingsGoalSchema).max(100),
   balanceAnchors: z.array(balanceAnchorSchema).max(100).optional(),
   categoryRules: z.array(categoryRuleSchema).max(500).optional(),
@@ -188,16 +177,13 @@ function migrateImportData(data: ValidatedBudgetData): ValidatedBudgetData {
   debug.info('import', `Migrating import data from version ${version} to ${CURRENT_DATA_VERSION}`);
 
   // Clone to avoid mutating input
-  const migrated = { ...data };
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { forecastEvents, ...migrated } = { ...data };
 
-  // Future migrations go here, example:
-  // if (version < 2) {
-  //   // Migrate from v1 to v2
-  //   migrated.forecastRules = migrated.forecastRules.map(rule => ({
-  //     ...rule,
-  //     newField: rule.newField ?? 'defaultValue',
-  //   }));
-  // }
+  // v1 -> v2: forecastEvents removed (already stripped above)
+  if (version < 2 && forecastEvents && Array.isArray(forecastEvents) && forecastEvents.length > 0) {
+    debug.info('import', `Discarding ${forecastEvents.length} forecastEvents (removed in v2)`);
+  }
 
   // Update version to current
   migrated.version = CURRENT_DATA_VERSION;

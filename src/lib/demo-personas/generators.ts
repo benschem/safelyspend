@@ -6,7 +6,6 @@ import type {
   GeneratedScenario,
   GeneratedBudgetRule,
   GeneratedForecastRule,
-  GeneratedForecastEvent,
   GeneratedTransaction,
   GeneratedSavingsGoal,
   GeneratedBalanceAnchor,
@@ -145,9 +144,8 @@ export function generatePersonaData(
   // Sort transactions by date
   transactions.sort((a, b) => a.date.localeCompare(b.date));
 
-  // Generate forecast rules and events for ALL scenarios
+  // Generate forecast rules for ALL scenarios
   const forecastRules: GeneratedForecastRule[] = [];
-  const forecastEvents: GeneratedForecastEvent[] = [];
 
   for (const scenario of scenarios) {
     const scenarioConfig = config.scenarios.find((s) => s.name === scenario.name);
@@ -159,25 +157,6 @@ export function generatePersonaData(
       scenarioConfig,
     );
     forecastRules.push(...scenarioRules);
-
-    // Generate one-off forecast events from scenario config
-    if (scenarioConfig?.forecastEvents) {
-      for (const event of scenarioConfig.forecastEvents) {
-        const eventDate = new Date(today);
-        eventDate.setMonth(eventDate.getMonth() + event.monthsFromNow);
-        eventDate.setDate(15); // Mid-month
-
-        forecastEvents.push({
-          id: generateId(),
-          scenarioId: scenario.id,
-          categoryId: null,
-          description: event.description,
-          type: event.type,
-          amountCents: event.amountCents,
-          date: formatDate(eventDate),
-        });
-      }
-    }
   }
 
   // Calculate opening balance (what balance would result in current state)
@@ -191,7 +170,6 @@ export function generatePersonaData(
     scenarios,
     budgetRules,
     forecastRules,
-    forecastEvents,
     transactions,
     savingsGoals,
     balanceAnchors,
