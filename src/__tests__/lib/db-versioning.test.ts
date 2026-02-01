@@ -133,6 +133,37 @@ describe('schema migration paths', () => {
       forecastEvents: [],
       savingsGoals: [],
       balanceAnchors: [],
+      savingsAnchors: [],
+      categoryRules: [],
+      activeScenarioId: null,
+    };
+    const result = budgetDataSchema.safeParse(v2Data);
+    expect(result.success).toBe(true);
+  });
+
+  it('v2 data with savings anchors validates', () => {
+    const v2Data = {
+      version: 2,
+      exportedAt: '2025-01-01T00:00:00.000Z',
+      scenarios: [],
+      categories: [],
+      transactions: [],
+      budgetRules: [],
+      forecastRules: [],
+      forecastEvents: [],
+      savingsGoals: [],
+      balanceAnchors: [],
+      savingsAnchors: [
+        {
+          id: '1',
+          userId: 'local',
+          createdAt: '2025-01-01T00:00:00.000Z',
+          updatedAt: '2025-01-01T00:00:00.000Z',
+          savingsGoalId: 'goal-1',
+          date: '2025-01-01',
+          balanceCents: 50000,
+        },
+      ],
       categoryRules: [],
       activeScenarioId: null,
     };

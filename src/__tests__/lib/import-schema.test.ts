@@ -286,6 +286,242 @@ describe('getImportErrorMessage', () => {
 });
 
 // =============================================================================
+// Balance Anchors Tests
+// =============================================================================
+
+describe('balance anchors validation', () => {
+  const validMinimalData = {
+    scenarios: [],
+    categories: [],
+    transactions: [],
+    budgetRules: [],
+    forecastRules: [],
+    forecastEvents: [],
+    savingsGoals: [],
+  };
+
+  it('accepts valid balance anchor', () => {
+    const validAnchor = {
+      id: '1',
+      userId: 'local',
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      date: '2025-01-01',
+      balanceCents: 100000,
+      label: 'Opening balance',
+    };
+
+    const data = {
+      ...validMinimalData,
+      balanceAnchors: [validAnchor],
+    };
+    expect(() => validateImport(data)).not.toThrow();
+  });
+
+  it('accepts balance anchor without optional label', () => {
+    const validAnchor = {
+      id: '1',
+      userId: 'local',
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      date: '2025-01-01',
+      balanceCents: 50000,
+    };
+
+    const data = {
+      ...validMinimalData,
+      balanceAnchors: [validAnchor],
+    };
+    expect(() => validateImport(data)).not.toThrow();
+  });
+
+  it('accepts negative balance anchor (overdraft)', () => {
+    const validAnchor = {
+      id: '1',
+      userId: 'local',
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      date: '2025-01-01',
+      balanceCents: -5000,
+    };
+
+    const data = {
+      ...validMinimalData,
+      balanceAnchors: [validAnchor],
+    };
+    expect(() => validateImport(data)).not.toThrow();
+  });
+
+  it('rejects balance anchor with non-integer balanceCents', () => {
+    const invalidAnchor = {
+      id: '1',
+      userId: 'local',
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      date: '2025-01-01',
+      balanceCents: 100.5,
+    };
+
+    const data = {
+      ...validMinimalData,
+      balanceAnchors: [invalidAnchor],
+    };
+    expect(() => validateImport(data)).toThrow();
+  });
+});
+
+// =============================================================================
+// Savings Anchors Tests
+// =============================================================================
+
+describe('savings anchors validation', () => {
+  const validMinimalData = {
+    scenarios: [],
+    categories: [],
+    transactions: [],
+    budgetRules: [],
+    forecastRules: [],
+    forecastEvents: [],
+    savingsGoals: [],
+  };
+
+  it('accepts valid savings anchor', () => {
+    const validAnchor = {
+      id: '1',
+      userId: 'local',
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      savingsGoalId: 'goal-1',
+      date: '2025-01-01',
+      balanceCents: 50000,
+      label: 'Starting balance',
+    };
+
+    const data = {
+      ...validMinimalData,
+      savingsAnchors: [validAnchor],
+    };
+    expect(() => validateImport(data)).not.toThrow();
+  });
+
+  it('accepts savings anchor without optional label', () => {
+    const validAnchor = {
+      id: '1',
+      userId: 'local',
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      savingsGoalId: 'goal-1',
+      date: '2025-01-01',
+      balanceCents: 25000,
+    };
+
+    const data = {
+      ...validMinimalData,
+      savingsAnchors: [validAnchor],
+    };
+    expect(() => validateImport(data)).not.toThrow();
+  });
+
+  it('accepts multiple savings anchors for different goals', () => {
+    const anchors = [
+      {
+        id: '1',
+        userId: 'local',
+        createdAt: '2025-01-01T00:00:00.000Z',
+        updatedAt: '2025-01-01T00:00:00.000Z',
+        savingsGoalId: 'goal-1',
+        date: '2025-01-01',
+        balanceCents: 50000,
+      },
+      {
+        id: '2',
+        userId: 'local',
+        createdAt: '2025-01-01T00:00:00.000Z',
+        updatedAt: '2025-01-01T00:00:00.000Z',
+        savingsGoalId: 'goal-2',
+        date: '2025-01-01',
+        balanceCents: 75000,
+      },
+    ];
+
+    const data = {
+      ...validMinimalData,
+      savingsAnchors: anchors,
+    };
+    expect(() => validateImport(data)).not.toThrow();
+  });
+
+  it('accepts multiple savings anchors for same goal on different dates', () => {
+    const anchors = [
+      {
+        id: '1',
+        userId: 'local',
+        createdAt: '2025-01-01T00:00:00.000Z',
+        updatedAt: '2025-01-01T00:00:00.000Z',
+        savingsGoalId: 'goal-1',
+        date: '2025-01-01',
+        balanceCents: 50000,
+      },
+      {
+        id: '2',
+        userId: 'local',
+        createdAt: '2025-06-01T00:00:00.000Z',
+        updatedAt: '2025-06-01T00:00:00.000Z',
+        savingsGoalId: 'goal-1',
+        date: '2025-06-01',
+        balanceCents: 75000,
+      },
+    ];
+
+    const data = {
+      ...validMinimalData,
+      savingsAnchors: anchors,
+    };
+    expect(() => validateImport(data)).not.toThrow();
+  });
+
+  it('rejects savings anchor with non-integer balanceCents', () => {
+    const invalidAnchor = {
+      id: '1',
+      userId: 'local',
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      savingsGoalId: 'goal-1',
+      date: '2025-01-01',
+      balanceCents: 50.5,
+    };
+
+    const data = {
+      ...validMinimalData,
+      savingsAnchors: [invalidAnchor],
+    };
+    expect(() => validateImport(data)).toThrow();
+  });
+
+  it('rejects savings anchor without savingsGoalId', () => {
+    const invalidAnchor = {
+      id: '1',
+      userId: 'local',
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      date: '2025-01-01',
+      balanceCents: 50000,
+    };
+
+    const data = {
+      ...validMinimalData,
+      savingsAnchors: [invalidAnchor],
+    };
+    expect(() => validateImport(data)).toThrow();
+  });
+
+  it('accepts data without savingsAnchors field (backwards compatibility)', () => {
+    // v1 data won't have savingsAnchors
+    expect(() => validateImport(validMinimalData)).not.toThrow();
+  });
+});
+
+// =============================================================================
 // Constants Tests
 // =============================================================================
 
