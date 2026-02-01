@@ -21,6 +21,22 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.11.0',
+    date: '2026-02-02',
+    changes: [
+      'Renamed Money page to Past Averages for clearer terminology',
+      'Renamed Net Worth page to Net Wealth',
+      'Budget page now shows separate sections for Income, Fixed Expenses, Budgeted Expenses, and Savings',
+      'Fixed Expenses section lists all recurring expense commitments with orange styling',
+      'Budget page now shows budget status as a prominent hero display',
+      'Past Averages page now shows net gain/loss as a prominent hero display',
+      'Savings chart tooltip now says "Saved this month" instead of "Actual this month"',
+      'Spending chart tooltips now only show selected categories',
+      'Insights tabs now have colored icons',
+      'Snapshot month view has improved compact layout',
+    ],
+  },
+  {
     version: '0.10.0',
     date: '2026-02-02',
     changes: [
