@@ -51,6 +51,7 @@ export interface BudgetRule extends BaseEntity {
   dayOfWeek?: number; // 0-6 for weekly/fortnightly
   dayOfMonth?: number; // 1-31 for monthly/quarterly/yearly
   monthOfQuarter?: number; // 0-2 (1st, 2nd, 3rd month of quarter) for quarterly
+  monthOfYear?: number; // 0-11 for yearly
   startDate?: string; // Optional, omit = always active
   endDate?: string;
 }
