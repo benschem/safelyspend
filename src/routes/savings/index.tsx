@@ -164,7 +164,7 @@ export function SavingsIndexPage() {
             </div>
             Savings
           </h1>
-          <p className="page-description">Track progress toward your savings targets.</p>
+          <p className="page-description">Track progress toward your savings goals.</p>
           <div className="mt-2">
             <ScenarioSelector />
           </div>
