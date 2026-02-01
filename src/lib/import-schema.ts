@@ -99,6 +99,14 @@ const balanceAnchorSchema = baseEntitySchema.extend({
   label: z.string().max(100).optional(),
 });
 
+// Savings Anchor
+const savingsAnchorSchema = baseEntitySchema.extend({
+  savingsGoalId: z.string().min(1),
+  date: z.string(),
+  balanceCents: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+  label: z.string().max(100).optional(),
+});
+
 // Category Rule
 const categoryRuleSchema = baseEntitySchema.extend({
   name: z.string().min(1).max(100),
@@ -129,6 +137,7 @@ export const budgetDataSchema = z.object({
   forecastEvents: z.array(z.unknown()).max(10000).optional(),
   savingsGoals: z.array(savingsGoalSchema).max(100),
   balanceAnchors: z.array(balanceAnchorSchema).max(100).optional(),
+  savingsAnchors: z.array(savingsAnchorSchema).max(1000).optional(),
   categoryRules: z.array(categoryRuleSchema).max(500).optional(),
 
   // Optional state
@@ -177,12 +186,16 @@ function migrateImportData(data: ValidatedBudgetData): ValidatedBudgetData {
   debug.info('import', `Migrating import data from version ${version} to ${CURRENT_DATA_VERSION}`);
 
   // Clone to avoid mutating input
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { forecastEvents, ...migrated } = { ...data };
 
   // v1 -> v2: forecastEvents removed (already stripped above)
   if (version < 2 && forecastEvents && Array.isArray(forecastEvents) && forecastEvents.length > 0) {
     debug.info('import', `Discarding ${forecastEvents.length} forecastEvents (removed in v2)`);
+  }
+
+  // Ensure savingsAnchors array exists (added in v3)
+  if (!migrated.savingsAnchors) {
+    migrated.savingsAnchors = [];
   }
 
   // Update version to current

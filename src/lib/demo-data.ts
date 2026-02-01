@@ -135,6 +135,8 @@ function convertToBudgetData(generated: GeneratedData): BudgetData {
       label: a.description,
     })),
 
+    savingsAnchors: [],
+
     categoryRules: [],
   };
 }

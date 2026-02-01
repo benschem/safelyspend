@@ -59,6 +59,9 @@ export function useSavingsGoals() {
   );
 
   const deleteSavingsGoal = useCallback(async (id: string) => {
+    // Delete associated savings anchors first
+    await db.savingsAnchors.where('savingsGoalId').equals(id).delete();
+    // Then delete the goal
     await db.savingsGoals.delete(id);
   }, []);
 

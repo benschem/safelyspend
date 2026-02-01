@@ -8,6 +8,7 @@ import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useReportsData } from '@/hooks/use-reports-data';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
+import { useSavingsAnchors } from '@/hooks/use-savings-anchors';
 
 // Wide date range to capture all savings data
 const ALL_DATA_START = '2020-01-01';
@@ -30,6 +31,7 @@ export function SavingsIndexPage() {
   const { savingsTransactions, isLoading: transactionsLoading, addTransaction, updateTransaction } = useTransactions(ALL_DATA_START, ALL_DATA_END);
   const { savingsByGoal, savingsContributions, isLoading: reportsLoading } = useReportsData(activeScenarioId, ALL_DATA_START, ALL_DATA_END);
   const { anchors } = useBalanceAnchors();
+  const { addAnchor: addSavingsAnchor } = useSavingsAnchors();
 
   // Get the earliest anchor date (for determining if starting balances should be backdated)
   const earliestAnchorDate = useMemo(() => {
@@ -297,6 +299,7 @@ export function SavingsIndexPage() {
         updateSavingsGoal={updateSavingsGoal}
         deleteSavingsGoal={deleteSavingsGoal}
         addTransaction={addTransaction}
+        addSavingsAnchor={addSavingsAnchor}
         transactionCount={editingGoal ? transactionCountByGoal[editingGoal.id] ?? 0 : 0}
         earliestAnchorDate={earliestAnchorDate}
       />

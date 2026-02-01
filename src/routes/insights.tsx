@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useReportsData } from '@/hooks/use-reports-data';
 import { useViewState } from '@/hooks/use-view-state';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
+import { useSavingsAnchors } from '@/hooks/use-savings-anchors';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
@@ -219,6 +220,11 @@ export function InsightsPage() {
     }
   }, [effectiveSavingsView, savingsView]);
 
+  // Calculate total starting balance from all savings goals (sum of anchors)
+  const totalSavingsStartingBalance = useMemo(() => {
+    return savingsByGoal.reduce((sum, goal) => sum + (goal.startingBalance ?? 0), 0);
+  }, [savingsByGoal]);
+
   // Calculate dedicated savings (total minus emergency fund)
   const dedicatedSavings = useMemo(() => {
     if (!emergencyFund) return monthlySavings; // No emergency fund, dedicated = total
@@ -238,6 +244,103 @@ export function InsightsPage() {
       };
     });
   }, [monthlySavings, savingsByGoal, emergencyFund]);
+
+  // Calculate dedicated starting balance (total minus emergency fund)
+  const dedicatedSavingsStartingBalance = useMemo(() => {
+    if (!emergencyFund) return totalSavingsStartingBalance;
+    const emergencyGoalData = savingsByGoal.find((g) => g.goalId === emergencyFund.id);
+    return totalSavingsStartingBalance - (emergencyGoalData?.startingBalance ?? 0);
+  }, [totalSavingsStartingBalance, savingsByGoal, emergencyFund]);
+
+  // Get savings anchors to determine balance start month (like cash balance anchors)
+  const { anchors: savingsAnchorsData } = useSavingsAnchors();
+
+  // Calculate savings balance info (following same pattern as cash balanceInfo)
+  const savingsBalanceInfo = useMemo(() => {
+    // Check if any goal has an anchor before the start date
+    const hasAnchorBeforeStart = savingsAnchorsData.some((a) => a.date < startDate);
+
+    // Find first anchor within the date range (if any)
+    const anchorsInRange = savingsAnchorsData
+      .filter((a) => a.date >= startDate && a.date <= endDate)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    const firstAnchorInRange = anchorsInRange[0];
+
+    if (hasAnchorBeforeStart) {
+      // We have anchors before the start - startingBalance is already calculated in savingsByGoal
+      return {
+        balanceStartMonth: null, // Start from beginning
+        warning: null,
+      };
+    }
+
+    if (firstAnchorInRange) {
+      // No anchor before start, but there's one in the range
+      // Start balance from that anchor's month
+      const anchorMonth = firstAnchorInRange.date.slice(0, 7);
+
+      return {
+        balanceStartMonth: anchorMonth,
+        warning: {
+          title: `Savings shown only from ${formatCompactDate(firstAnchorInRange.date, true)}`,
+          linkText: 'Add an earlier savings balance',
+          linkSuffix: 'to see savings from the start of this period.',
+        },
+      };
+    }
+
+    // No anchors at all - check if there are any savings goals
+    if (savingsByGoal.length > 0) {
+      return {
+        balanceStartMonth: null,
+        warning: {
+          title: 'No initial savings balances set',
+          linkText: 'Add a savings balance',
+          linkSuffix: 'to see your savings over time.',
+        },
+      };
+    }
+
+    return {
+      balanceStartMonth: null,
+      warning: null,
+    };
+  }, [savingsAnchorsData, startDate, endDate, savingsByGoal]);
+
+  // Calculate per-goal balance start months
+  const perGoalBalanceInfo = useMemo(() => {
+    const byGoal: Record<string, { balanceStartMonth: string | null; startingBalance: number }> = {};
+
+    for (const goal of savingsByGoal) {
+      const goalAnchors = savingsAnchorsData.filter((a) => a.savingsGoalId === goal.goalId);
+      const anchorBeforeStart = goalAnchors.find((a) => a.date < startDate);
+      const anchorInRange = goalAnchors
+        .filter((a) => a.date >= startDate && a.date <= endDate)
+        .sort((a, b) => a.date.localeCompare(b.date))[0];
+
+      if (anchorBeforeStart) {
+        // Anchor before range - show from start
+        byGoal[goal.goalId] = {
+          balanceStartMonth: null,
+          startingBalance: goal.startingBalance,
+        };
+      } else if (anchorInRange) {
+        // Anchor in range - start from that month
+        byGoal[goal.goalId] = {
+          balanceStartMonth: anchorInRange.date.slice(0, 7),
+          startingBalance: goal.startingBalance,
+        };
+      } else {
+        // No anchor - no starting balance to show
+        byGoal[goal.goalId] = {
+          balanceStartMonth: null,
+          startingBalance: 0,
+        };
+      }
+    }
+
+    return byGoal;
+  }, [savingsAnchorsData, savingsByGoal, startDate, endDate]);
 
   // Build a shared colour map so categories have consistent colours across all charts
   const allCategoryIds = useMemo(() => {
@@ -526,51 +629,75 @@ export function InsightsPage() {
               monthlyNetFlow={monthlyNetFlow}
               startingBalance={balanceInfo.startingBalance}
               balanceStartMonth={balanceInfo.balanceStartMonth}
+              savingsStartingBalance={totalSavingsStartingBalance}
+              savingsBalanceStartMonth={savingsBalanceInfo.balanceStartMonth}
             />
           </div>
         </div>
       ) : activeTab === 'savings' ? (
-        <div className="rounded-xl border bg-card p-5">
-          <div className="mb-4 flex min-h-9 items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">
-              {isPastOnly
-                ? 'Cumulative savings contributions'
-                : 'Saved so far, plus planned contributions'}
-            </p>
-            {savingsByGoal.length > 0 && (
-              <Select value={effectiveSavingsView} onValueChange={handleSavingsViewChange}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="total">Total Savings</SelectItem>
-                  {emergencyFund && (
-                    <SelectItem value="dedicated">Dedicated Savings</SelectItem>
-                  )}
-                  {savingsByGoal.map((goal) => (
-                    <SelectItem key={goal.goalId} value={goal.goalId}>
-                      {goal.goalName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <div className="space-y-6">
+          {savingsBalanceInfo.warning && (
+            <Alert variant="warning">
+              <AlertTitle>{savingsBalanceInfo.warning.title}</AlertTitle>
+              <AlertDescription>
+                <Link to="/settings" className="underline">
+                  {savingsBalanceInfo.warning.linkText}
+                </Link>{' '}
+                {savingsBalanceInfo.warning.linkSuffix}
+              </AlertDescription>
+            </Alert>
+          )}
+          <div className="rounded-xl border bg-card p-5">
+            <div className="mb-4 flex min-h-9 items-center justify-between gap-4">
+              <p className="text-sm text-muted-foreground">
+                {isPastOnly
+                  ? 'Cumulative savings contributions'
+                  : 'Saved so far, plus planned contributions'}
+              </p>
+              {savingsByGoal.length > 0 && (
+                <Select value={effectiveSavingsView} onValueChange={handleSavingsViewChange}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="total">Total Savings</SelectItem>
+                    {emergencyFund && (
+                      <SelectItem value="dedicated">Dedicated Savings</SelectItem>
+                    )}
+                    {savingsByGoal.map((goal) => (
+                      <SelectItem key={goal.goalId} value={goal.goalId}>
+                        {goal.goalName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {effectiveSavingsView === 'total' ? (
+              <SavingsOverTimeChart
+                monthlySavings={monthlySavings}
+                startingBalance={totalSavingsStartingBalance}
+                balanceStartMonth={savingsBalanceInfo.balanceStartMonth}
+              />
+            ) : effectiveSavingsView === 'dedicated' ? (
+              <SavingsOverTimeChart
+                monthlySavings={dedicatedSavings}
+                startingBalance={dedicatedSavingsStartingBalance}
+                balanceStartMonth={savingsBalanceInfo.balanceStartMonth}
+              />
+            ) : (
+              <SavingsOverTimeChart
+                monthlySavings={
+                  savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.monthlySavings ?? []
+                }
+                deadline={savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.deadline}
+                targetAmount={savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.targetAmount}
+                startingBalance={perGoalBalanceInfo[effectiveSavingsView]?.startingBalance ?? 0}
+                balanceStartMonth={perGoalBalanceInfo[effectiveSavingsView]?.balanceStartMonth}
+              />
             )}
           </div>
-
-          {effectiveSavingsView === 'total' ? (
-            <SavingsOverTimeChart monthlySavings={monthlySavings} />
-          ) : effectiveSavingsView === 'dedicated' ? (
-            <SavingsOverTimeChart monthlySavings={dedicatedSavings} />
-          ) : (
-            <SavingsOverTimeChart
-              monthlySavings={
-                savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.monthlySavings ?? []
-              }
-              deadline={savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.deadline}
-              targetAmount={savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.targetAmount}
-              startingBalance={savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.startingBalance}
-            />
-          )}
         </div>
       ) : null}
     </div>

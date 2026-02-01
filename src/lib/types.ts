@@ -111,6 +111,17 @@ export interface BalanceAnchor extends BaseEntity {
 }
 
 // -----------------------------------------------------------------------------
+// Savings Anchor - Point-in-time balance record for a savings goal
+// -----------------------------------------------------------------------------
+
+export interface SavingsAnchor extends BaseEntity {
+  savingsGoalId: string; // Which goal this anchor applies to
+  date: string; // ISO date (YYYY-MM-DD) - balance as of START of this date
+  balanceCents: number; // Known balance as of this date
+  label?: string; // e.g., "Bank statement balance"
+}
+
+// -----------------------------------------------------------------------------
 // Category Rule - Auto-categorization rules for imported transactions
 // -----------------------------------------------------------------------------
 
@@ -178,6 +189,7 @@ export interface BudgetData {
   transactions: Transaction[];
   savingsGoals: SavingsGoal[];
   balanceAnchors: BalanceAnchor[];
+  savingsAnchors: SavingsAnchor[];
   categoryRules: CategoryRule[];
 }
 

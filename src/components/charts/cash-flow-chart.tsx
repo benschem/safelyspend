@@ -27,6 +27,8 @@ interface CashFlowChartProps {
   monthlyNetFlow: MonthlyNetFlow[];
   startingBalance?: number | null; // Balance at start of period (from anchor)
   balanceStartMonth?: string | null; // Month to start showing balance (if anchor is mid-range)
+  savingsStartingBalance?: number; // Total savings balance at start of period (from savings anchors)
+  savingsBalanceStartMonth?: string | null; // Month to start showing savings balance (if anchor is mid-range)
 }
 
 interface ChartDataPoint {
@@ -168,7 +170,7 @@ function CustomTooltip({
   );
 }
 
-export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMonth }: CashFlowChartProps) {
+export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMonth, savingsStartingBalance = 0, savingsBalanceStartMonth }: CashFlowChartProps) {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const hasCurrentMonth = monthlyNetFlow.some((m) => m.month === currentMonth);
   const hasFutureData = monthlyNetFlow.some((m) => m.month > currentMonth);
@@ -192,11 +194,25 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
     let cumulativeSavings = 0;
     let runningBalance: number | null = null;
     let balanceStarted = false;
+    let savingsBalanceStarted = false;
 
     return monthlyNetFlow.map((m) => {
       // Cumulative savings includes contributions + interest
-      cumulativeSavings += m.savings.actual + m.savings.forecast + m.interest;
+      const monthSavings = m.savings.actual + m.savings.forecast + m.interest;
       const netTotal = m.net.actual + m.net.forecast;
+
+      // Start tracking savings balance from the anchor month (or from start if no savingsBalanceStartMonth)
+      if (!savingsBalanceStarted && savingsStartingBalance > 0) {
+        if (!savingsBalanceStartMonth || m.month >= savingsBalanceStartMonth) {
+          cumulativeSavings = savingsStartingBalance;
+          savingsBalanceStarted = true;
+        }
+      }
+
+      // Add this month's savings if we've started tracking
+      if (savingsBalanceStarted) {
+        cumulativeSavings += monthSavings;
+      }
 
       // Start tracking balance from the anchor month (or from start if no balanceStartMonth)
       if (!balanceStarted && startingBalance !== null && startingBalance !== undefined) {
@@ -225,12 +241,12 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
         savingsForecast: m.savings.forecast,
         netActual: m.net.actual,
         netForecast: m.net.forecast,
-        // Total saved includes interest
-        cumulativeSavings,
+        // Total saved includes interest and starting balance
+        cumulativeSavings: savingsBalanceStarted ? cumulativeSavings : 0,
         balance: runningBalance,
       };
     });
-  }, [monthlyNetFlow, startingBalance, balanceStartMonth]);
+  }, [monthlyNetFlow, startingBalance, balanceStartMonth, savingsStartingBalance, savingsBalanceStartMonth]);
 
   const hasBalance = startingBalance !== null && startingBalance !== undefined;
 

@@ -21,6 +21,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.10.0',
+    date: '2026-02-02',
+    changes: [
+      'Set starting balances for savings goals without entering past transactions',
+      'New Savings Balances section in Settings for managing savings goal balances',
+      'Creating a new savings goal with existing savings now uses balance anchors',
+      'Savings starting balances now appear in the Cash Flow and Savings charts',
+    ],
+  },
+  {
     version: '0.9.0',
     date: '2026-02-01',
     changes: [

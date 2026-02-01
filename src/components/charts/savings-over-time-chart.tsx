@@ -26,15 +26,16 @@ interface SavingsOverTimeChartProps {
   deadline?: string | undefined; // ISO date string for goal deadline
   targetAmount?: number | undefined; // Target amount in cents for the goal
   startingBalance?: number | undefined; // Balance at start of date range (for individual goals)
+  balanceStartMonth?: string | null | undefined; // Month to start showing balance (if anchor is mid-range)
 }
 
 interface ChartDataPoint {
   month: string;
   actual: number;
   forecast: number;
-  cumulativeActual: number; // Includes startingBalance
+  cumulativeActual: number | null; // Includes startingBalance, null before balanceStartMonth
   cumulativeForecast: number;
-  cumulativeTotal: number; // Includes startingBalance
+  cumulativeTotal: number | null; // Includes startingBalance, null before balanceStartMonth
 }
 
 interface TooltipPayload {
@@ -91,29 +92,31 @@ function CustomTooltip({
           </div>
         )}
       </div>
-      <div className="mt-2 border-t pt-2 text-sm">
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground">Total saved:</span>
-          <span className="font-mono font-medium">{formatCents(data.cumulativeActual)}</span>
-        </div>
-        {data.cumulativeForecast > 0 && (
+      {data.cumulativeActual !== null && (
+        <div className="mt-2 border-t pt-2 text-sm">
           <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">+ Expected:</span>
-            <span className="font-mono text-blue-400">+{formatCents(data.cumulativeForecast)}</span>
+            <span className="text-muted-foreground">Total saved:</span>
+            <span className="font-mono font-medium">{formatCents(data.cumulativeActual)}</span>
           </div>
-        )}
-        {data.cumulativeForecast > 0 && (
-          <div className="flex items-center gap-2 font-medium">
-            <span className="text-muted-foreground">Projected total:</span>
-            <span className="font-mono">{formatCents(data.cumulativeTotal)}</span>
-          </div>
-        )}
-      </div>
+          {data.cumulativeForecast > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">+ Expected:</span>
+              <span className="font-mono text-blue-400">+{formatCents(data.cumulativeForecast)}</span>
+            </div>
+          )}
+          {data.cumulativeForecast > 0 && data.cumulativeTotal !== null && (
+            <div className="flex items-center gap-2 font-medium">
+              <span className="text-muted-foreground">Projected total:</span>
+              <span className="font-mono">{formatCents(data.cumulativeTotal)}</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-export function SavingsOverTimeChart({ monthlySavings, deadline, targetAmount, startingBalance = 0 }: SavingsOverTimeChartProps) {
+export function SavingsOverTimeChart({ monthlySavings, deadline, targetAmount, startingBalance = 0, balanceStartMonth }: SavingsOverTimeChartProps) {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const hasCurrentMonth = monthlySavings.some((m) => m.month === currentMonth);
 
@@ -161,8 +164,10 @@ export function SavingsOverTimeChart({ monthlySavings, deadline, targetAmount, s
 
   const expectedColor = getExpectedColor();
 
-  const hasSavings = monthlySavings.some((m) => m.actual > 0 || m.forecast > 0);
+  const hasContributions = monthlySavings.some((m) => m.actual > 0 || m.forecast > 0);
   const hasForecast = monthlySavings.some((m) => m.forecast > 0);
+  // Consider data present if there's a starting balance (from anchor) OR contributions
+  const hasSavings = hasContributions || startingBalance > 0;
 
   // Check if all legend items are hidden
   const allHidden = hiddenLegends.has('actual') && (!hasForecast || hiddenLegends.has('forecast'));
@@ -177,15 +182,21 @@ export function SavingsOverTimeChart({ monthlySavings, deadline, targetAmount, s
 
   // Transform data to show stacked cumulative values
   // Include startingBalance so the chart Y values match the target line
-  const chartData = monthlySavings.map((m) => ({
-    month: m.month,
-    actual: m.actual,
-    forecast: m.forecast,
-    cumulativeActual: startingBalance + m.cumulativeActual,
-    cumulativeForecast: m.cumulativeForecast,
-    // For stacked area, we need the total for the forecast layer
-    cumulativeTotal: startingBalance + m.cumulativeActual + m.cumulativeForecast,
-  }));
+  // Only show balance data from balanceStartMonth onwards (like cash flow chart)
+  const chartData = monthlySavings.map((m) => {
+    // Before balanceStartMonth, don't show cumulative values (they'll be null/hidden)
+    const showBalance = !balanceStartMonth || m.month >= balanceStartMonth;
+
+    return {
+      month: m.month,
+      actual: m.actual,
+      forecast: m.forecast,
+      cumulativeActual: showBalance ? startingBalance + m.cumulativeActual : null,
+      cumulativeForecast: m.cumulativeForecast,
+      // For stacked area, we need the total for the forecast layer
+      cumulativeTotal: showBalance ? startingBalance + m.cumulativeActual + m.cumulativeForecast : null,
+    };
+  });
 
   return (
     <div className="w-full">

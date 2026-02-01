@@ -14,9 +14,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Pencil, Trash2, Plus, AlertTriangle, Download, Upload, Check, Settings, Bug, Info, Sparkles } from 'lucide-react';
+import { Pencil, Trash2, Plus, AlertTriangle, Download, Upload, Check, Settings, Bug, Info, Sparkles, PiggyBank } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
+import { useSavingsAnchors } from '@/hooks/use-savings-anchors';
+import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { exportAllData, importAllData, fullReset, CURRENT_SCHEMA_VERSION, CURRENT_DATA_VERSION } from '@/lib/db';
 import { formatCents, formatDate, today } from '@/lib/utils';
 import { currentVersion } from '@/lib/changelog';
@@ -45,7 +48,7 @@ export function SettingsPage() {
   } | null>(null);
   const [importSuccess, setImportSuccess] = useState(false);
 
-  // Anchor management state
+  // Balance anchor management state
   const { anchors, addAnchor, updateAnchor, deleteAnchor } = useBalanceAnchors();
   const [anchorDialogOpen, setAnchorDialogOpen] = useState(false);
   const [editingAnchorId, setEditingAnchorId] = useState<string | null>(null);
@@ -54,6 +57,23 @@ export function SettingsPage() {
   const [anchorLabel, setAnchorLabel] = useState('');
   const [anchorError, setAnchorError] = useState<string | null>(null);
   const [deletingAnchorId, setDeletingAnchorId] = useState<string | null>(null);
+
+  // Savings anchor management state
+  const { savingsGoals } = useSavingsGoals();
+  const {
+    anchors: savingsAnchors,
+    addAnchor: addSavingsAnchor,
+    updateAnchor: updateSavingsAnchor,
+    deleteAnchor: deleteSavingsAnchor,
+  } = useSavingsAnchors();
+  const [savingsAnchorDialogOpen, setSavingsAnchorDialogOpen] = useState(false);
+  const [editingSavingsAnchorId, setEditingSavingsAnchorId] = useState<string | null>(null);
+  const [savingsAnchorGoalId, setSavingsAnchorGoalId] = useState('');
+  const [savingsAnchorDate, setSavingsAnchorDate] = useState(today());
+  const [savingsAnchorAmount, setSavingsAnchorAmount] = useState('');
+  const [savingsAnchorLabel, setSavingsAnchorLabel] = useState('');
+  const [savingsAnchorError, setSavingsAnchorError] = useState<string | null>(null);
+  const [deletingSavingsAnchorId, setDeletingSavingsAnchorId] = useState<string | null>(null);
 
   // Debug mode state - initialize from current debug setting
   const [debugEnabled, setDebugEnabled] = useState(() => debug.isEnabled());
@@ -256,6 +276,97 @@ export function SettingsPage() {
     showMessage('success', 'Anchor deleted');
   };
 
+  // Savings anchor handlers
+  const openAddSavingsAnchor = () => {
+    setEditingSavingsAnchorId(null);
+    setSavingsAnchorGoalId(savingsGoals[0]?.id ?? '');
+    setSavingsAnchorDate(today());
+    setSavingsAnchorAmount('');
+    setSavingsAnchorLabel('');
+    setSavingsAnchorError(null);
+    setSavingsAnchorDialogOpen(true);
+  };
+
+  const openEditSavingsAnchor = (anchor: (typeof savingsAnchors)[0]) => {
+    setEditingSavingsAnchorId(anchor.id);
+    setSavingsAnchorGoalId(anchor.savingsGoalId);
+    setSavingsAnchorDate(anchor.date);
+    setSavingsAnchorAmount((anchor.balanceCents / 100).toFixed(2));
+    setSavingsAnchorLabel(anchor.label ?? '');
+    setSavingsAnchorError(null);
+    setSavingsAnchorDialogOpen(true);
+  };
+
+  const handleSaveSavingsAnchor = async () => {
+    setSavingsAnchorError(null);
+
+    if (!savingsAnchorGoalId) {
+      setSavingsAnchorError('Please select a savings goal');
+      return;
+    }
+
+    // Clean input: remove $ signs, commas, and whitespace
+    const cleanedAmount = savingsAnchorAmount.replace(/[$,\s]/g, '');
+    const amount = parseFloat(cleanedAmount);
+
+    if (isNaN(amount)) {
+      setSavingsAnchorError('Please enter a valid amount');
+      return;
+    }
+
+    if (amount < 0) {
+      setSavingsAnchorError('Amount cannot be negative');
+      return;
+    }
+
+    const balanceCents = Math.round(amount * 100);
+
+    try {
+      if (editingSavingsAnchorId) {
+        const updates: Parameters<typeof updateSavingsAnchor>[1] = {
+          savingsGoalId: savingsAnchorGoalId,
+          date: savingsAnchorDate,
+          balanceCents,
+        };
+        if (savingsAnchorLabel) {
+          updates.label = savingsAnchorLabel;
+        }
+        await updateSavingsAnchor(editingSavingsAnchorId, updates);
+        showMessage('success', 'Savings anchor updated');
+      } else {
+        const data: Parameters<typeof addSavingsAnchor>[0] = {
+          savingsGoalId: savingsAnchorGoalId,
+          date: savingsAnchorDate,
+          balanceCents,
+        };
+        if (savingsAnchorLabel) {
+          data.label = savingsAnchorLabel;
+        }
+        await addSavingsAnchor(data);
+        showMessage('success', 'Savings anchor added');
+      }
+      setSavingsAnchorDialogOpen(false);
+    } catch (err) {
+      setSavingsAnchorError(err instanceof Error ? err.message : 'Failed to save anchor');
+    }
+  };
+
+  const handleDeleteSavingsAnchor = async (id: string) => {
+    if (deletingSavingsAnchorId !== id) {
+      setDeletingSavingsAnchorId(id);
+      return;
+    }
+    await deleteSavingsAnchor(id);
+    setDeletingSavingsAnchorId(null);
+    showMessage('success', 'Savings anchor deleted');
+  };
+
+  // Group savings anchors by goal
+  const savingsAnchorsByGoal = savingsGoals.map((goal) => ({
+    goal,
+    anchors: savingsAnchors.filter((a) => a.savingsGoalId === goal.id),
+  }));
+
   return (
     <div className="page-shell">
       <div className="page-header">
@@ -358,6 +469,94 @@ export function SettingsPage() {
             </div>
           </div>
         </section>
+
+        {/* Savings Initial Amounts Section */}
+        {savingsGoals.length > 0 && (
+          <>
+            <Separator />
+            <section className="section">
+              <div className="section-header">
+                <div className="flex items-center gap-2">
+                  <PiggyBank className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                  <h2>Savings Balances</h2>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Set known balances for your savings goals at specific dates. Useful when you have existing savings you don&apos;t want to enter as individual transactions.
+                </p>
+              </div>
+              <div className="section-content">
+                <div className="panel">
+                  <div className="panel-header">
+                    <h3>Initial Amounts</h3>
+                    <Button variant="outline" size="sm" onClick={openAddSavingsAnchor}>
+                      <Plus className="h-4 w-4" />
+                      Add
+                    </Button>
+                  </div>
+                  {savingsAnchors.length === 0 ? (
+                    <div className="empty-state">
+                      <p className="empty-state-text">No savings balances set.</p>
+                      <Button variant="outline" className="empty-state-action" onClick={openAddSavingsAnchor}>
+                        Add savings balance
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {savingsAnchorsByGoal
+                        .filter((g) => g.anchors.length > 0)
+                        .map(({ goal, anchors: goalAnchors }) => (
+                          <div key={goal.id} className="p-4">
+                            <h4 className="mb-2 text-sm font-medium text-muted-foreground">{goal.name}</h4>
+                            <div className="space-y-2">
+                              {goalAnchors.map((anchor) => (
+                                <div
+                                  key={anchor.id}
+                                  className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2"
+                                >
+                                  <div>
+                                    <p className="font-medium">{formatDate(anchor.date)}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {formatCents(anchor.balanceCents)}
+                                      {anchor.label && ` · ${anchor.label}`}
+                                    </p>
+                                  </div>
+                                  <div className="flex gap-1">
+                                    {deletingSavingsAnchorId === anchor.id && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setDeletingSavingsAnchorId(null)}
+                                      >
+                                        Cancel
+                                      </Button>
+                                    )}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => openEditSavingsAnchor(anchor)}
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant={deletingSavingsAnchorId === anchor.id ? 'destructive' : 'ghost'}
+                                      size="sm"
+                                      onClick={() => handleDeleteSavingsAnchor(anchor.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+          </>
+        )}
 
         <Separator />
 
@@ -575,6 +774,84 @@ export function SettingsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Savings Anchor Dialog */}
+      <Dialog open={savingsAnchorDialogOpen} onOpenChange={setSavingsAnchorDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingSavingsAnchorId ? 'Edit' : 'Add'} Savings Balance</DialogTitle>
+            <DialogDescription>
+              Enter how much you had saved for a goal on a specific date.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {savingsAnchorError && (
+              <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                {savingsAnchorError}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label htmlFor="savings-anchor-goal" className="text-sm font-medium">Savings Goal</label>
+              <Select value={savingsAnchorGoalId} onValueChange={setSavingsAnchorGoalId}>
+                <SelectTrigger id="savings-anchor-goal">
+                  <SelectValue placeholder="Select a goal" />
+                </SelectTrigger>
+                <SelectContent>
+                  {savingsGoals.map((goal) => (
+                    <SelectItem key={goal.id} value={goal.id}>
+                      {goal.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="savings-anchor-date" className="text-sm font-medium">Date</label>
+              <Input
+                id="savings-anchor-date"
+                type="date"
+                value={savingsAnchorDate}
+                onChange={(e) => setSavingsAnchorDate(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="savings-anchor-amount" className="text-sm font-medium">Balance ($)</label>
+              <Input
+                id="savings-anchor-amount"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={savingsAnchorAmount}
+                onChange={(e) => setSavingsAnchorAmount(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="savings-anchor-label" className="text-sm font-medium">Note (optional)</label>
+              <Input
+                id="savings-anchor-label"
+                placeholder="e.g., From bank statement"
+                value={savingsAnchorLabel}
+                onChange={(e) => setSavingsAnchorLabel(e.target.value)}
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => setSavingsAnchorDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveSavingsAnchor}>
+                {editingSavingsAnchorId ? 'Save' : 'Add'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Export Warning Dialog */}
       <Dialog open={exportWarningOpen} onOpenChange={setExportWarningOpen}>
         <DialogContent>
@@ -651,6 +928,12 @@ export function SettingsPage() {
                         <>
                           <div className="text-muted-foreground">Balance Anchors:</div>
                           <div>{pendingImport.data.balanceAnchors.length}</div>
+                        </>
+                      )}
+                      {pendingImport.data.savingsAnchors && (
+                        <>
+                          <div className="text-muted-foreground">Savings Anchors:</div>
+                          <div>{pendingImport.data.savingsAnchors.length}</div>
                         </>
                       )}
                       {pendingImport.data.categoryRules && (

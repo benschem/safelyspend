@@ -13,7 +13,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { today, parseCentsFromInput } from '@/lib/utils';
-import type { SavingsGoal, CreateEntity, Transaction } from '@/lib/types';
+import type { SavingsGoal, SavingsAnchor, CreateEntity, Transaction } from '@/lib/types';
 
 interface SavingsGoalDialogProps {
   open: boolean;
@@ -23,13 +23,14 @@ interface SavingsGoalDialogProps {
   updateSavingsGoal: (id: string, updates: Partial<Omit<SavingsGoal, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
   deleteSavingsGoal?: (id: string) => void;
   addTransaction: (data: CreateEntity<Transaction>) => Promise<Transaction>;
+  addSavingsAnchor?: (data: CreateEntity<SavingsAnchor>) => Promise<SavingsAnchor>;
   /** Number of transactions linked to this goal, for delete warning */
   transactionCount?: number;
   /** Earliest balance anchor date - used to determine if starting balance should be backdated */
   earliestAnchorDate?: string | null;
 }
 
-export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal, addTransaction, transactionCount = 0, earliestAnchorDate }: SavingsGoalDialogProps) {
+export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal, addTransaction, addSavingsAnchor, transactionCount = 0 }: SavingsGoalDialogProps) {
   const isEditing = !!goal;
 
   // Form state
@@ -37,6 +38,7 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
   const [targetAmount, setTargetAmount] = useState('');
   const [startingBalance, setStartingBalance] = useState('');
   const [balanceType, setBalanceType] = useState<'already-saved' | 'transfer-now'>('already-saved');
+  const [balanceDate, setBalanceDate] = useState(today());
   const [deadline, setDeadline] = useState('');
   const [interestRate, setInterestRate] = useState('');
   const [isEmergencyFund, setIsEmergencyFund] = useState(false);
@@ -50,6 +52,7 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
         setTargetAmount((goal.targetAmountCents / 100).toFixed(2));
         setStartingBalance('');
         setBalanceType('already-saved');
+        setBalanceDate(today());
         setDeadline(goal.deadline ?? '');
         setInterestRate(goal.annualInterestRate?.toString() ?? '');
         setIsEmergencyFund(goal.isEmergencyFund ?? false);
@@ -58,6 +61,7 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
         setTargetAmount('');
         setStartingBalance('');
         setBalanceType('already-saved');
+        setBalanceDate(today());
         setDeadline('');
         setInterestRate('');
         setIsEmergencyFund(false);
@@ -113,26 +117,28 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
           ...(parsedInterestRate ? { annualInterestRate: parsedInterestRate } : {}),
         });
 
-        // Create starting balance transaction if amount > 0
+        // Create starting balance if amount > 0
         const startingBalanceCents = parseCentsFromInput(startingBalance);
         if (startingBalanceCents > 0) {
-          // Determine the transaction date based on user's choice
-          let transactionDate = today();
-          if (balanceType === 'already-saved' && earliestAnchorDate) {
-            // Backdate to one day before the anchor so it doesn't affect checking balance
-            const anchorDate = new Date(earliestAnchorDate);
-            anchorDate.setDate(anchorDate.getDate() - 1);
-            transactionDate = anchorDate.toISOString().slice(0, 10);
+          if (balanceType === 'already-saved' && addSavingsAnchor) {
+            // Use a savings anchor - simpler than backdated transactions
+            await addSavingsAnchor({
+              savingsGoalId: newGoal.id,
+              date: balanceDate || today(),
+              balanceCents: startingBalanceCents,
+              label: 'Starting balance',
+            });
+          } else {
+            // Transfer now - create a regular transaction
+            await addTransaction({
+              type: 'savings',
+              date: today(),
+              amountCents: startingBalanceCents,
+              description: 'Transfer to savings',
+              categoryId: null,
+              savingsGoalId: newGoal.id,
+            });
           }
-
-          await addTransaction({
-            type: 'savings',
-            date: transactionDate,
-            amountCents: startingBalanceCents,
-            description: balanceType === 'already-saved' ? 'Initial amount' : 'Transfer to savings',
-            categoryId: null,
-            savingsGoalId: newGoal.id,
-          });
         }
       }
       onOpenChange(false);
@@ -201,8 +207,8 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
             )}
           </div>
 
-          {/* Balance type selector - only show when creating with a starting balance and anchor exists */}
-          {!isEditing && parseCentsFromInput(startingBalance) > 0 && earliestAnchorDate && (
+          {/* Balance type selector - only show when creating with a starting balance */}
+          {!isEditing && parseCentsFromInput(startingBalance) > 0 && (
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/50">
               <div className="mb-2 flex items-start gap-2">
                 <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
@@ -228,6 +234,21 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
                   </Label>
                 </div>
               </RadioGroup>
+              {balanceType === 'already-saved' && (
+                <div className="mt-3 space-y-2">
+                  <Label htmlFor="balance-date" className="text-sm font-normal text-blue-800 dark:text-blue-200">
+                    As of date
+                  </Label>
+                  <Input
+                    id="balance-date"
+                    type="date"
+                    value={balanceDate}
+                    onChange={(e) => setBalanceDate(e.target.value)}
+                    max={today()}
+                    className="bg-white dark:bg-gray-900"
+                  />
+                </div>
+              )}
             </div>
           )}
 
