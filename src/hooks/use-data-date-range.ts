@@ -1,14 +1,13 @@
 import { useMemo } from 'react';
 import { useLocalStorage } from './use-local-storage';
-import type { Transaction, ForecastEvent, BalanceAnchor } from '@/lib/types';
+import type { Transaction, BalanceAnchor } from '@/lib/types';
 
 /**
  * Hook that calculates the full date range of available data
- * Returns the earliest and latest dates across transactions, forecast events, and balance anchors
+ * Returns the earliest and latest dates across transactions and balance anchors
  */
 export function useDataDateRange() {
   const [transactions] = useLocalStorage<Transaction[]>('budget:transactions', []);
-  const [forecastEvents] = useLocalStorage<ForecastEvent[]>('budget:forecastEvents', []);
   const [balanceAnchors] = useLocalStorage<BalanceAnchor[]>('budget:balanceAnchors', []);
 
   const dataRange = useMemo((): { startDate: string; endDate: string } | null => {
@@ -17,9 +16,6 @@ export function useDataDateRange() {
     // Collect all dates
     for (const t of transactions) {
       allDates.push(t.date);
-    }
-    for (const e of forecastEvents) {
-      allDates.push(e.date);
     }
     for (const a of balanceAnchors) {
       allDates.push(a.date);
@@ -43,7 +39,7 @@ export function useDataDateRange() {
       startDate: first,
       endDate: last,
     };
-  }, [transactions, forecastEvents, balanceAnchors]);
+  }, [transactions, balanceAnchors]);
 
   return dataRange;
 }
