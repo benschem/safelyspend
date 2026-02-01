@@ -43,6 +43,7 @@ import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { useBudgetPeriodData } from '@/hooks/use-budget-period-data';
 import { YearGrid } from '@/components/year-grid';
 import { TrendSparkline } from '@/components/charts/trend-sparkline';
+import { BurnRateChart } from '@/components/charts/burn-rate-chart';
 import { CHART_COLORS } from '@/lib/chart-colors';
 import { cn, formatCents, toMonthlyCents, type CadenceType } from '@/lib/utils';
 import type { ForecastRule } from '@/lib/types';
@@ -73,11 +74,18 @@ export function SnapshotPage() {
   // Transaction dialog state
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
 
-  // Multi-period data for sparkline and year grid
+  // Multi-period data for year grid (full calendar year)
   const selectedYear = selectedMonth.getFullYear();
   const { months: yearMonths } = useMultiPeriodSummary({
     scenarioId: activeScenarioId,
     year: selectedYear,
+  });
+
+  // Multi-period data for sparkline (12 months around now)
+  const { months: sparklineMonths } = useMultiPeriodSummary({
+    scenarioId: activeScenarioId,
+    year: selectedYear,
+    aroundNow: true,
   });
 
   // Get forecast date range for the selected period
@@ -116,6 +124,7 @@ export function SnapshotPage() {
     periodCashFlow,
     periodSpending,
     forecastExpenses,
+    burnRateData,
     colorMap,
   } = useBudgetPeriodData({
     scenarioId: activeScenarioId,
@@ -614,10 +623,11 @@ export function SnapshotPage() {
         </div>
 
         {/* Trend Sparkline (month view only) */}
-        {viewMode === 'month' && yearMonths.length > 0 && (
-          <div className="mx-auto mt-4 max-w-xs sm:max-w-sm">
+        {viewMode === 'month' && sparklineMonths.length > 0 && (
+          <div className="mx-auto mt-4 max-w-xs sm:max-w-md">
             <TrendSparkline
-              data={yearMonths}
+              data={sparklineMonths}
+              showNowLine
               onMonthClick={(monthIndex, year) => {
                 setSelectedMonth(new Date(year, monthIndex, 1));
                 setViewMode('month');
@@ -805,7 +815,7 @@ export function SnapshotPage() {
                   )}>
                     <Target className={cn('h-5 w-5', budgetStatus.isPositive ? 'text-green-500' : 'text-red-500')} />
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <p className={cn(
                       'text-2xl font-bold',
                       budgetStatus.isPositive
@@ -817,6 +827,19 @@ export function SnapshotPage() {
                     <p className="text-sm text-muted-foreground">{budgetStatus.label}</p>
                   </div>
                 </div>
+                {/* Burn rate mini chart */}
+                {budgetStatus.hasBudget && burnRateData.totalBudget > 0 && (
+                  <div className="mt-4">
+                    <BurnRateChart
+                      dailySpending={burnRateData.dailySpending}
+                      totalBudget={burnRateData.totalBudget}
+                      periodStart={burnRateData.periodStart}
+                      periodEnd={burnRateData.periodEnd}
+                      periodLabel={burnRateData.periodLabel}
+                      compact
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>

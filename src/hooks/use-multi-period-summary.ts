@@ -24,6 +24,8 @@ export interface MonthSummary {
 interface UseMultiPeriodSummaryOptions {
   scenarioId: string | null;
   year: number;
+  /** If true, returns 12 months centered around current month instead of calendar year */
+  aroundNow?: boolean;
 }
 
 interface UseMultiPeriodSummaryResult {
@@ -53,10 +55,26 @@ const SHORT_LABELS = [
 export function useMultiPeriodSummary({
   scenarioId,
   year,
+  aroundNow = false,
 }: UseMultiPeriodSummaryOptions): UseMultiPeriodSummaryResult {
-  // Fetch data for the full year
-  const startDate = `${year}-01-01`;
-  const endDate = `${year}-12-31`;
+  // Calculate date range based on mode
+  const { startDate, endDate } = useMemo(() => {
+    if (aroundNow) {
+      // 6 months back, current month, 5 months forward = 12 months total
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 6, 0); // Last day of month 5 ahead
+      return {
+        startDate: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-01`,
+        endDate: `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`,
+      };
+    }
+    // Full calendar year
+    return {
+      startDate: `${year}-01-01`,
+      endDate: `${year}-12-31`,
+    };
+  }, [year, aroundNow]);
 
   const { allTransactions, isLoading: transactionsLoading } = useTransactions();
   const { budgetRules, isLoading: budgetLoading } = useBudgetRules(scenarioId);

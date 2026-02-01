@@ -1,10 +1,13 @@
-import { LineChart, Line, ReferenceLine, ResponsiveContainer, Tooltip } from 'recharts';
+import { useMemo } from 'react';
+import { ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, ReferenceArea } from 'recharts';
 import { formatCents, cn } from '@/lib/utils';
 import type { MonthSummary } from '@/hooks/use-multi-period-summary';
 
 interface TrendSparklineProps {
   data: MonthSummary[];
   onMonthClick?: (monthIndex: number, year: number) => void;
+  /** Show a "Now" reference line at the current month */
+  showNowLine?: boolean;
 }
 
 interface CustomDotProps {
@@ -61,19 +64,45 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
   );
 }
 
-export function TrendSparkline({ data, onMonthClick }: TrendSparklineProps) {
+export function TrendSparkline({ data, onMonthClick, showNowLine = false }: TrendSparklineProps) {
   if (data.length === 0) return null;
 
-  // Note: Y-axis is auto-scaled by recharts based on data values
+  // Find the current month index for the "Now" line
+  const currentMonthIndex = useMemo(() => {
+    return data.findIndex((d) => d.isCurrentMonth);
+  }, [data]);
+
+  // Add index to data for x-axis positioning
+  const chartData = useMemo(() => {
+    return data.map((d, i) => ({ ...d, index: i }));
+  }, [data]);
 
   return (
     <div className="w-full">
-      <ResponsiveContainer width="100%" height={56}>
-        <LineChart
-          data={data}
+      <ResponsiveContainer width="100%" height={64}>
+        <ComposedChart
+          data={chartData}
           margin={{ top: 8, right: 8, bottom: 8, left: 8 }}
         >
+          {/* Future months shaded area */}
+          {showNowLine && currentMonthIndex >= 0 && currentMonthIndex < data.length - 1 && (
+            <ReferenceArea
+              x1={currentMonthIndex}
+              x2={data.length - 1}
+              fill="#3b82f6"
+              fillOpacity={0.05}
+            />
+          )}
           <ReferenceLine y={0} stroke="#e5e7eb" strokeDasharray="3 3" />
+          {/* "Now" vertical line */}
+          {showNowLine && currentMonthIndex >= 0 && (
+            <ReferenceLine
+              x={currentMonthIndex}
+              stroke="#3b82f6"
+              strokeWidth={2}
+              strokeDasharray="3 3"
+            />
+          )}
           <Line
             type="monotone"
             dataKey="surplus"
@@ -91,17 +120,17 @@ export function TrendSparkline({ data, onMonthClick }: TrendSparklineProps) {
             activeDot={false}
           />
           <Tooltip content={<CustomTooltip />} />
-        </LineChart>
+        </ComposedChart>
       </ResponsiveContainer>
-      {/* Month labels */}
-      <div className="flex justify-between px-2 text-[10px] text-muted-foreground">
-        {data.length > 0 && (
-          <>
-            <span>{data[0]?.shortLabel}</span>
-            <span>{data[Math.floor(data.length / 2)]?.shortLabel}</span>
-            <span>{data[data.length - 1]?.shortLabel}</span>
-          </>
+      {/* Labels row */}
+      <div className="flex items-center justify-between px-2 text-[10px] text-muted-foreground">
+        <span>{data[0]?.shortLabel} {data[0]?.year !== data[data.length - 1]?.year ? data[0]?.year : ''}</span>
+        {showNowLine && currentMonthIndex >= 0 && (
+          <span className="flex items-center gap-1 rounded-full bg-blue-500/10 px-1.5 py-0.5 text-blue-600 dark:text-blue-400">
+            Now
+          </span>
         )}
+        <span>{data[data.length - 1]?.shortLabel} {data[0]?.year !== data[data.length - 1]?.year ? data[data.length - 1]?.year : ''}</span>
       </div>
     </div>
   );
