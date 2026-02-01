@@ -5,8 +5,8 @@ import { FirstRunWizard } from '@/components/first-run-wizard';
 import { ErrorBoundary } from '@/components/error-boundary';
 
 // Route components
-import { NetWorthPage } from '@/routes/net-worth';
-import { MoneyIndexPage } from '@/routes/money/index';
+import { NetWealthPage } from '@/routes/net-wealth';
+import { CashFlowPage } from '@/routes/cash-flow/index';
 import { BudgetPage } from '@/routes/budget';
 import { SnapshotPage } from '@/routes/snapshot';
 import { TransactionNewPage } from '@/routes/transactions/new';
@@ -40,15 +40,17 @@ const router = createBrowserRouter([
       // Snapshot (monthly/quarterly/yearly view)
       { path: 'snapshot', element: <SnapshotPage /> },
 
-      // Net Worth (balances overview)
-      { path: 'net-worth', element: <NetWorthPage /> },
+      // Net Wealth (balances overview)
+      { path: 'net-wealth', element: <NetWealthPage /> },
 
-      // Money (combined transactions + forecasts + recurring)
-      { path: 'money', element: <MoneyIndexPage /> },
+      // Cash Flow (combined transactions)
+      { path: 'cash-flow', element: <CashFlowPage /> },
 
       // Legacy redirects
-      { path: 'transactions', element: <Navigate to="/money" replace /> },
-      { path: 'forecasts', element: <Navigate to="/money?tab=expected" replace /> },
+      { path: 'net-worth', element: <Navigate to="/net-wealth" replace /> },
+      { path: 'money', element: <Navigate to="/cash-flow" replace /> },
+      { path: 'transactions', element: <Navigate to="/cash-flow" replace /> },
+      { path: 'forecasts', element: <Navigate to="/budget?tab=fixed-expenses" replace /> },
       { path: 'forecasts/recurring', element: <Navigate to="/budget?tab=fixed-expenses" replace /> },
       { path: 'recurring', element: <Navigate to="/budget?tab=fixed-expenses" replace /> },
       { path: 'check-in', element: <Navigate to="/snapshot" replace /> },

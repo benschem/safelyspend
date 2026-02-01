@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router';
 import {
   CalendarFold,
   HandCoins,
-  Receipt,
+  Banknote,
   Target,
   PiggyBank,
   Layers,
@@ -83,11 +83,14 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       <Separator className="my-2" />
 
       <NavSection title="Monitor">
-        <NavItem to="/net-worth" icon={<HandCoins className="h-4 w-4" />} onClick={onNavigate}>
-          Net Worth
+        <NavItem to="/cash-flow" icon={<Banknote className="h-4 w-4" />} onClick={onNavigate}>
+          Past Averages
         </NavItem>
         <NavItem to="/savings" icon={<PiggyBank className="h-4 w-4" />} onClick={onNavigate}>
           Savings
+        </NavItem>
+        <NavItem to="/net-wealth" icon={<HandCoins className="h-4 w-4" />} onClick={onNavigate}>
+          Net Wealth
         </NavItem>
       </NavSection>
 
@@ -99,14 +102,6 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         </NavItem>
         <NavItem to="/scenarios" icon={<Layers className="h-4 w-4" />} onClick={onNavigate}>
           Scenarios
-        </NavItem>
-      </NavSection>
-
-      <Separator className="my-2" />
-
-      <NavSection title="Track">
-        <NavItem to="/money" icon={<Receipt className="h-4 w-4" />} onClick={onNavigate}>
-          Money
         </NavItem>
       </NavSection>
 

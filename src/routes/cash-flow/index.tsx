@@ -29,25 +29,20 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Plus, Pencil, Trash2, Download, AlertTriangle, Receipt, RotateCcw, RotateCw, BanknoteArrowUp, BanknoteArrowDown, PiggyBank, ArrowLeftRight, Settings2, ChevronRight, ChevronDown, ChevronUp, Target, ArrowLeft } from 'lucide-react';
+import { Plus, Pencil, Trash2, Download, AlertTriangle, RotateCcw, BanknoteArrowUp, BanknoteArrowDown, PiggyBank, ArrowLeftRight, Settings2, ChevronRight, ChevronDown, ChevronUp, Target, ArrowLeft, Banknote } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
 import { useCategoryRules } from '@/hooks/use-category-rules';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
-import { useForecasts } from '@/hooks/use-forecasts';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { DateRangeFilter } from '@/components/date-range-filter';
 import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { UpImportDialog } from '@/components/up-import-dialog';
 import { AddToBudgetDialog } from '@/components/dialogs/add-to-budget-dialog';
-import { ForecastRuleDialog } from '@/components/dialogs/forecast-rule-dialog';
-import { DeleteForecastDialog } from '@/components/dialogs/delete-forecast-dialog';
-import { BudgetPromptDialog } from '@/components/dialogs/budget-prompt-dialog';
-import { ScenarioSelector } from '@/components/scenario-selector';
 import { formatCents, formatDate, today as getToday, toMonthlyCents, cn, type CadenceType } from '@/lib/utils';
-import type { Transaction, Cadence, ExpandedForecast, ForecastRule } from '@/lib/types';
+import type { Transaction, Cadence } from '@/lib/types';
 
 interface OutletContext {
   activeScenarioId: string | null;
@@ -55,26 +50,22 @@ interface OutletContext {
 
 type AveragePeriod = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly';
 type FilterType = 'all' | 'income' | 'expense' | 'savings' | 'adjustment';
-type ExpectedFilterType = 'all' | 'income' | 'expense' | 'savings';
 type CategoryFilter = 'all' | 'uncategorized' | string;
 
-// Default date ranges - Past ends at today, Expected starts at today
+// Default date ranges - Past ends at today
 const getPastDefaultStartDate = () => '';
 const getPastDefaultEndDate = () => getToday();
-const getExpectedDefaultStartDate = () => getToday();
-const getExpectedDefaultEndDate = () => '';
 
-export function MoneyIndexPage() {
+export function CashFlowPage() {
   const [searchParams] = useSearchParams();
   const { activeScenarioId } = useOutletContext<OutletContext>();
-  const { activeScenario, isLoading: scenariosLoading } = useScenarios();
+  const { isLoading: scenariosLoading } = useScenarios();
 
   // Check if user came from budget page
   const fromBudget = searchParams.get('from') === 'budget' || searchParams.get('from') === 'categories';
 
   // Section collapse state (persisted, default closed)
   const [pastSectionOpen, setPastSectionOpen] = useLocalStorage('money:pastSectionOpen', false);
-  const [expectedSectionOpen, setExpectedSectionOpen] = useLocalStorage('money:expectedSectionOpen', false);
 
   // Average period state
   const [averagePeriod, setAveragePeriod] = useState<AveragePeriod>('monthly');
@@ -84,19 +75,12 @@ export function MoneyIndexPage() {
   const [pastFilterEndDate, setPastFilterEndDate] = useState(getPastDefaultEndDate);
   const hasPastDateFilter = pastFilterStartDate !== getPastDefaultStartDate() || pastFilterEndDate !== getPastDefaultEndDate();
 
-  // Expected section date filter state
-  const [expectedFilterStartDate, setExpectedFilterStartDate] = useState(getExpectedDefaultStartDate);
-  const [expectedFilterEndDate, setExpectedFilterEndDate] = useState(getExpectedDefaultEndDate);
-  const hasExpectedDateFilter = expectedFilterStartDate !== getExpectedDefaultStartDate() || expectedFilterEndDate !== getExpectedDefaultEndDate();
-
   // Shared filter states
   const [filterType, setFilterType] = useState<FilterType>('all');
-  const [expectedFilterType, setExpectedFilterType] = useState<ExpectedFilterType>('all');
   const [filterCategory, setFilterCategory] = useState<CategoryFilter>(() => {
     const categoryParam = searchParams.get('category');
     return categoryParam ?? 'all';
   });
-  const [expectedFilterCategory, setExpectedFilterCategory] = useState<CategoryFilter>('all');
 
   // Data hooks - Past transactions
   const pastQueryStartDate = pastFilterStartDate || undefined;
@@ -106,20 +90,11 @@ export function MoneyIndexPage() {
   const { rules: categoryRules } = useCategoryRules();
   const { getRuleForCategory, setBudgetForCategory } = useBudgetRules(activeScenarioId);
 
-  // Data hooks - Expected forecasts
-  const expectedQueryStartDate = expectedFilterStartDate || getToday();
-  const expectedQueryEndDate = expectedFilterEndDate || '2099-12-31';
-  const { expandedForecasts, rules, isLoading: forecastsLoading, addRule, updateRule, deleteRule, excludeOccurrence } = useForecasts(activeScenarioId, expectedQueryStartDate, expectedQueryEndDate);
-
-  // Budget prompt preference
-  const [skipBudgetPrompt, setSkipBudgetPrompt] = useLocalStorage('budget:skipBudgetPrompt', false);
-
   // Combined loading state
-  const isLoading = transactionsLoading || categoriesLoading || scenariosLoading || forecastsLoading;
+  const isLoading = transactionsLoading || categoriesLoading || scenariosLoading;
 
   // Check if any data exists
   const hasAnyTransactions = allTransactions.length > 0;
-  const hasAnyForecasts = rules.length > 0;
 
   // Dialog states - Past
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
@@ -129,18 +104,6 @@ export function MoneyIndexPage() {
   const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
   const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
   const [budgetTransaction, setBudgetTransaction] = useState<Transaction | null>(null);
-
-  // Dialog states - Delete forecast
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deletingForecast, setDeletingForecast] = useState<ExpandedForecast | null>(null);
-
-  // Dialog states - Forecast rules
-  const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
-  const [editingRule, setEditingRule] = useState<ForecastRule | null>(null);
-
-  // Budget prompt dialog state (for expected)
-  const [budgetPromptOpen, setBudgetPromptOpen] = useState(false);
-  const [createdRule, setCreatedRule] = useState<ForecastRule | null>(null);
 
   const getCategoryName = useCallback(
     (id: string | null) => (id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-'),
@@ -164,11 +127,6 @@ export function MoneyIndexPage() {
   const resetPastFilters = useCallback(() => {
     setPastFilterStartDate(getPastDefaultStartDate());
     setPastFilterEndDate(getPastDefaultEndDate());
-  }, []);
-
-  const resetExpectedFilters = useCallback(() => {
-    setExpectedFilterStartDate(getExpectedDefaultStartDate());
-    setExpectedFilterEndDate(getExpectedDefaultEndDate());
   }, []);
 
   const openAddTransactionDialog = useCallback(() => {
@@ -228,94 +186,6 @@ export function MoneyIndexPage() {
     setBudgetTransaction(null);
   }, [budgetTransaction, getRuleForCategory, setBudgetForCategory]);
 
-  // Expected section handlers
-  const openAddRecurringDialog = useCallback(() => {
-    setEditingRule(null);
-    setRecurringDialogOpen(true);
-  }, []);
-
-  const openEditExpectedDialog = useCallback((forecast: ExpandedForecast) => {
-    const rule = rules.find(r => r.id === forecast.sourceId);
-    if (rule) {
-      setEditingRule(rule);
-      setRecurringDialogOpen(true);
-    }
-  }, [rules]);
-
-  const handleRecurringDialogClose = useCallback((open: boolean) => {
-    setRecurringDialogOpen(open);
-    if (!open) {
-      setEditingRule(null);
-    }
-  }, []);
-
-  const openDeleteForecastDialog = useCallback((forecast: ExpandedForecast) => {
-    setDeletingForecast(forecast);
-    setDeleteDialogOpen(true);
-  }, []);
-
-  const handleDeleteOccurrence = useCallback(() => {
-    if (!deletingForecast) return;
-    excludeOccurrence(deletingForecast.sourceId, deletingForecast.date);
-    setDeleteDialogOpen(false);
-    setDeletingForecast(null);
-  }, [deletingForecast, excludeOccurrence]);
-
-  const handleDeleteAll = useCallback(() => {
-    if (!deletingForecast) return;
-    deleteRule(deletingForecast.sourceId);
-    setDeleteDialogOpen(false);
-    setDeletingForecast(null);
-  }, [deletingForecast, deleteRule]);
-
-  // Handle when rule is created
-  const handleRuleCreated = useCallback((rule: ForecastRule) => {
-    if (rule.type === 'expense' && rule.categoryId && !skipBudgetPrompt) {
-      setCreatedRule(rule);
-      setBudgetPromptOpen(true);
-    }
-  }, [skipBudgetPrompt]);
-
-  const createdRuleCategoryName = useMemo(() => {
-    if (!createdRule?.categoryId) return '';
-    return categories.find((c) => c.id === createdRule.categoryId)?.name ?? 'Unknown';
-  }, [createdRule, categories]);
-
-  const existingBudgetForCreatedRule = useMemo(() => {
-    if (!createdRule?.categoryId) return null;
-    return getRuleForCategory(createdRule.categoryId);
-  }, [createdRule, getRuleForCategory]);
-
-  const handleAddToBudget = useCallback(async (dontAskAgain: boolean) => {
-    if (!createdRule?.categoryId) return;
-
-    const existingBudget = getRuleForCategory(createdRule.categoryId);
-    const newMonthly = toMonthlyCents(createdRule.amountCents, createdRule.cadence as CadenceType);
-    const existingMonthly = existingBudget
-      ? toMonthlyCents(existingBudget.amountCents, existingBudget.cadence as CadenceType)
-      : 0;
-
-    await setBudgetForCategory(createdRule.categoryId, existingMonthly + newMonthly, 'monthly');
-
-    if (dontAskAgain) setSkipBudgetPrompt(true);
-    setCreatedRule(null);
-  }, [createdRule, getRuleForCategory, setBudgetForCategory, setSkipBudgetPrompt]);
-
-  const handleReplaceBudget = useCallback(async (dontAskAgain: boolean) => {
-    if (!createdRule?.categoryId) return;
-
-    const newMonthly = toMonthlyCents(createdRule.amountCents, createdRule.cadence as CadenceType);
-    await setBudgetForCategory(createdRule.categoryId, newMonthly, 'monthly');
-
-    if (dontAskAgain) setSkipBudgetPrompt(true);
-    setCreatedRule(null);
-  }, [createdRule, setBudgetForCategory, setSkipBudgetPrompt]);
-
-  const handleSkipBudget = useCallback((dontAskAgain: boolean) => {
-    if (dontAskAgain) setSkipBudgetPrompt(true);
-    setCreatedRule(null);
-  }, [setSkipBudgetPrompt]);
-
   // Filtered data
   const filteredTransactions = useMemo(
     () =>
@@ -341,36 +211,6 @@ export function MoneyIndexPage() {
       .reduce((sum, t) => sum + t.amountCents, 0);
     return { income, expenses, savings };
   }, [transactions]);
-
-  const filteredForecasts = useMemo(
-    () => expandedForecasts.filter((f) => {
-      if (expectedFilterType !== 'all' && f.type !== expectedFilterType) return false;
-      if (expectedFilterCategory !== 'all' && f.categoryId !== expectedFilterCategory) return false;
-      return true;
-    }),
-    [expandedForecasts, expectedFilterType, expectedFilterCategory],
-  );
-
-  // Expected totals by type
-  const expectedTotals = useMemo(() => {
-    const income = expandedForecasts
-      .filter((f) => f.type === 'income')
-      .reduce((sum, f) => sum + f.amountCents, 0);
-    const expenses = expandedForecasts
-      .filter((f) => f.type === 'expense')
-      .reduce((sum, f) => sum + f.amountCents, 0);
-    const savings = expandedForecasts
-      .filter((f) => f.type === 'savings')
-      .reduce((sum, f) => sum + f.amountCents, 0);
-    return { income, expenses, savings };
-  }, [expandedForecasts]);
-
-  // Last expected date (furthest out forecast)
-  const lastExpectedDate = useMemo(() => {
-    if (expandedForecasts.length === 0) return null;
-    const firstDate = expandedForecasts[0]?.date ?? '';
-    return expandedForecasts.reduce((latest, f) => f.date > latest ? f.date : latest, firstDate);
-  }, [expandedForecasts]);
 
   // Period averages calculation
   const periodAverages = useMemo(() => {
@@ -698,177 +538,6 @@ export function MoneyIndexPage() {
     [deletingTransactionId, openEditTransactionDialog, handleDeleteTransaction, getCategoryName, openBudgetDialog, activeScenarioId],
   );
 
-  // Expected forecasts columns
-  const forecastColumns: ColumnDef<ExpandedForecast>[] = useMemo(
-    () => [
-      {
-        accessorKey: 'date',
-        header: ({ column }) => <SortableHeader column={column}>Date</SortableHeader>,
-        cell: ({ row }) => formatDate(row.getValue('date')),
-        sortingFn: 'datetime',
-      },
-      {
-        accessorKey: 'description',
-        header: ({ column }) => <SortableHeader column={column}>Description</SortableHeader>,
-        cell: ({ row }) => {
-          const forecast = row.original;
-          return (
-            <button
-              type="button"
-              onClick={() => openEditExpectedDialog(forecast)}
-              className="cursor-pointer text-left font-medium hover:underline"
-            >
-              {row.getValue('description')}
-            </button>
-          );
-        },
-      },
-      {
-        accessorKey: 'type',
-        header: 'Type',
-        cell: ({ row }) => {
-          const type = row.getValue('type') as string;
-          if (type === 'income') {
-            return (
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                <BanknoteArrowUp className="h-3 w-3" />
-                Income
-              </div>
-            );
-          }
-          if (type === 'savings') {
-            return (
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                <PiggyBank className="h-3 w-3" />
-                Savings
-              </div>
-            );
-          }
-          return (
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
-              <BanknoteArrowDown className="h-3 w-3" />
-              Expense
-            </div>
-          );
-        },
-      },
-      {
-        accessorKey: 'categoryId',
-        header: 'Category',
-        cell: ({ row }) => {
-          const categoryId = row.getValue('categoryId') as string | null;
-          const categoryName = getCategoryName(categoryId);
-          if (!categoryId) {
-            return <span className="text-muted-foreground">—</span>;
-          }
-          return (
-            <Link
-              to={`/categories/${categoryId}`}
-              className="hover:underline"
-            >
-              {categoryName}
-            </Link>
-          );
-        },
-      },
-      {
-        accessorKey: 'amountCents',
-        header: ({ column }) => (
-          <SortableHeader column={column} className="justify-end">
-            Amount
-          </SortableHeader>
-        ),
-        cell: ({ row }) => {
-          const type = row.original.type;
-          const amount = row.getValue('amountCents') as number;
-
-          if (type === 'savings') {
-            const isWithdrawal = amount < 0;
-            return (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex cursor-default items-center justify-end gap-1 font-mono text-blue-600">
-                      {isWithdrawal ? (
-                        <ChevronDown className="h-4 w-4 text-red-500" />
-                      ) : (
-                        <ChevronUp className="h-4 w-4 text-green-500" />
-                      )}
-                      {formatCents(Math.abs(amount))}
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {isWithdrawal ? 'Expected withdrawal from savings' : 'Expected contribution to savings'}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            );
-          }
-
-          const colorClass = type === 'income' ? 'text-green-600' : 'text-red-600';
-          const tooltipText = type === 'income' ? 'Expected income' : 'Expected expense';
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="cursor-default text-right font-mono">
-                    <span className={colorClass}>
-                      {type === 'income' ? '+' : '-'}
-                      {formatCents(amount)}
-                    </span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {tooltipText}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          );
-        },
-      },
-      {
-        id: 'actions',
-        cell: ({ row }) => {
-          const forecast = row.original;
-
-          return (
-            <TooltipProvider>
-              <div className="flex justify-end gap-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openEditExpectedDialog(forecast)}
-                      aria-label="Edit"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Edit</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openDeleteForecastDialog(forecast)}
-                      aria-label="Delete"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Delete</TooltipContent>
-                </Tooltip>
-              </div>
-            </TooltipProvider>
-          );
-        },
-      },
-    ],
-    [openEditExpectedDialog, openDeleteForecastDialog, getCategoryName],
-  );
-
   if (isLoading) {
     return (
       <div className="page-shell">
@@ -892,11 +561,11 @@ export function MoneyIndexPage() {
       <div className="page-header mb-8">
         <h1 className="page-title">
           <div className="page-title-icon bg-slate-500/10">
-            <Receipt className="h-5 w-5 text-slate-500" />
+            <Banknote className="h-5 w-5 text-slate-500" />
           </div>
-          Money
+          Past Averages
         </h1>
-        <p className="page-description">Track your income, expenses, and savings</p>
+        <p className="page-description">View your past average income, expenses, and savings</p>
       </div>
 
       {/* Summary Section */}
@@ -923,6 +592,30 @@ export function MoneyIndexPage() {
 
         {hasAnyTransactions ? (
           <>
+            {/* Net Status Hero */}
+            <div className="mb-6 min-h-28 text-center sm:min-h-32">
+              <div className="min-h-8" />
+              <p className={cn(
+                'flex items-center justify-center gap-2 text-sm font-medium uppercase tracking-wide',
+                periodAverages.net >= 0 ? 'text-green-500' : 'text-red-500',
+              )}>
+                <ArrowLeftRight className="h-4 w-4" />
+                {periodAverages.net >= 0 ? 'Net Gain' : 'Net Loss'}
+              </p>
+              <p className={cn(
+                'mt-2 text-5xl font-bold tracking-tight',
+                periodAverages.net >= 0 ? 'text-green-500' : 'text-red-500',
+              )}>
+                {periodAverages.net >= 0 ? '+' : '-'}{formatCents(Math.abs(periodAverages.net))}
+              </p>
+              <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
+              <p className="text-sm text-muted-foreground">
+                {periodAverages.net >= 0
+                  ? `You earn more than you spend ${periodLabels[averagePeriod]}`
+                  : `You spend more than you earn ${periodLabels[averagePeriod]}`}
+              </p>
+            </div>
+
             <div className="mb-4 grid gap-4 sm:grid-cols-3">
               <div className="rounded-xl border bg-card p-5">
                 <div className="flex items-center gap-2">
@@ -949,34 +642,6 @@ export function MoneyIndexPage() {
                 </div>
                 <p className="mt-2 text-2xl font-bold">{formatCents(periodAverages.savings)}</p>
                 <p className="text-sm text-muted-foreground">{periodLabels[averagePeriod]}</p>
-              </div>
-            </div>
-
-            {/* Net Status Card */}
-            <div className={cn(
-              'rounded-xl border p-4',
-              periodAverages.net >= 0
-                ? 'border-green-500/50 bg-green-500/5'
-                : 'border-red-500/50 bg-red-500/5',
-            )}>
-              <div className="flex items-center gap-3">
-                <ArrowLeftRight className={cn(
-                  'h-5 w-5',
-                  periodAverages.net >= 0 ? 'text-green-500' : 'text-red-500',
-                )} />
-                <div>
-                  <span className={cn(
-                    'font-medium',
-                    periodAverages.net >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400',
-                  )}>
-                    {periodAverages.net >= 0 ? '+' : ''}{formatCents(periodAverages.net)} net {periodLabels[averagePeriod]}
-                  </span>
-                  <p className="text-sm text-muted-foreground">
-                    {periodAverages.net >= 0
-                      ? 'You earn more than you spend on average'
-                      : 'You spend more than you earn on average'}
-                  </p>
-                </div>
               </div>
             </div>
           </>
@@ -1022,7 +687,7 @@ export function MoneyIndexPage() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button variant="ghost" size="sm" asChild>
-                      <Link to="/categories/import-rules?from=money">
+                      <Link to="/categories/import-rules?from=cash-flow">
                         <Settings2 className="h-4 w-4" />
                       </Link>
                     </Button>
@@ -1111,119 +776,6 @@ export function MoneyIndexPage() {
         </div>
       </Collapsible>
 
-      {/* Expected Transactions Section */}
-      <Collapsible open={expectedSectionOpen} onOpenChange={setExpectedSectionOpen}>
-        <div className="overflow-hidden rounded-lg border">
-          <div className="flex items-center justify-between bg-card p-4">
-            <CollapsibleTrigger className="flex flex-1 cursor-pointer items-center gap-2">
-              {expectedSectionOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              <RotateCw className="h-4 w-4 text-violet-500" />
-              <span className="font-medium">Expected Transactions</span>
-              {expandedForecasts.length > 0 ? (
-                <span className="hidden text-sm text-muted-foreground sm:inline">
-                  <span className="text-green-600">+{formatCents(expectedTotals.income)}</span>
-                  {' / '}
-                  <span className="text-red-600">-{formatCents(expectedTotals.expenses)}</span>
-                  {expectedTotals.savings > 0 && (
-                    <>
-                      {' / '}
-                      <span className="text-blue-600">{formatCents(expectedTotals.savings)} saved</span>
-                    </>
-                  )}
-                  {(expectedFilterEndDate || lastExpectedDate) && (
-                    <span className="text-muted-foreground"> until {formatDate(expectedFilterEndDate || lastExpectedDate!)}</span>
-                  )}
-                </span>
-              ) : (
-                <span className="text-sm text-muted-foreground">
-                  ({filteredForecasts.length})
-                </span>
-              )}
-            </CollapsibleTrigger>
-            <div className="flex items-center gap-2">
-              <ScenarioSelector hideLabel />
-              <Button size="sm" onClick={openAddRecurringDialog}>
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Add</span>
-              </Button>
-            </div>
-          </div>
-          <CollapsibleContent>
-            <div className="border-t p-4">
-              {!activeScenarioId || !activeScenario ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  Select a scenario to view expected transactions.{' '}
-                  <Link to="/scenarios" className="text-primary hover:underline">
-                    Manage Scenarios
-                  </Link>
-                </p>
-              ) : !hasAnyForecasts ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  No expected transactions yet.{' '}
-                  <button onClick={openAddRecurringDialog} className="cursor-pointer text-primary hover:underline">
-                    Add your first expected transaction
-                  </button>
-                </p>
-              ) : (
-                <DataTable
-                  emptyMessage="No expected transactions found matching your filters."
-                  columns={forecastColumns}
-                  data={filteredForecasts}
-                  searchKey="description"
-                  searchPlaceholder="Search expected..."
-                  initialSorting={[{ id: 'date', desc: false }]}
-                  pageSize={10}
-                  filterSlot={
-                    <>
-                      <DateRangeFilter
-                        startDate={expectedFilterStartDate}
-                        endDate={expectedFilterEndDate}
-                        onStartDateChange={setExpectedFilterStartDate}
-                        onEndDateChange={setExpectedFilterEndDate}
-                        onClear={resetExpectedFilters}
-                        hasFilter={hasExpectedDateFilter}
-                        minStartDate={getToday()}
-                      />
-                      <Select value={expectedFilterType} onValueChange={(v) => setExpectedFilterType(v as ExpectedFilterType)}>
-                        <SelectTrigger className={`w-36 ${expectedFilterType === 'all' ? 'text-muted-foreground' : ''}`}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Types</SelectItem>
-                          <SelectItem value="income">Income</SelectItem>
-                          <SelectItem value="expense">Expense</SelectItem>
-                          <SelectItem value="savings">Savings</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select value={expectedFilterCategory} onValueChange={setExpectedFilterCategory}>
-                        <SelectTrigger className={`w-44 ${expectedFilterCategory === 'all' ? 'text-muted-foreground' : ''}`}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Categories</SelectItem>
-                          {activeCategories
-                            .sort((a, b) => a.name.localeCompare(b.name))
-                            .map((cat) => (
-                              <SelectItem key={cat.id} value={cat.id}>
-                                {cat.name}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                      {hasExpectedDateFilter && (
-                        <Button variant="ghost" size="sm" onClick={resetExpectedFilters} title="Reset to defaults">
-                          <RotateCcw className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </>
-                  }
-                />
-              )}
-            </div>
-          </CollapsibleContent>
-        </div>
-      </Collapsible>
-
       {/* Dialogs */}
       <TransactionDialog
         open={transactionDialogOpen}
@@ -1269,39 +821,6 @@ export function MoneyIndexPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <ForecastRuleDialog
-        open={recurringDialogOpen}
-        onOpenChange={handleRecurringDialogClose}
-        scenarioId={activeScenarioId}
-        rule={editingRule}
-        addRule={addRule}
-        updateRule={updateRule}
-        onRuleCreated={handleRuleCreated}
-      />
-
-      <DeleteForecastDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        forecast={deletingForecast}
-        onDeleteOccurrence={handleDeleteOccurrence}
-        onDeleteAll={handleDeleteAll}
-      />
-
-      {createdRule && (
-        <BudgetPromptDialog
-          open={budgetPromptOpen}
-          onOpenChange={setBudgetPromptOpen}
-          categoryId={createdRule.categoryId ?? ''}
-          categoryName={createdRuleCategoryName}
-          forecastAmountCents={createdRule.amountCents}
-          forecastCadence={createdRule.cadence as CadenceType}
-          existingBudget={existingBudgetForCreatedRule}
-          onAddToBudget={handleAddToBudget}
-          onReplaceBudget={handleReplaceBudget}
-          onSkip={handleSkipBudget}
-        />
-      )}
     </div>
   );
 }

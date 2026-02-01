@@ -55,7 +55,7 @@ interface OutletContext {
   activeScenarioId: string | null;
 }
 
-export function NetWorthPage() {
+export function NetWealthPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
   const { getActiveAnchor } = useBalanceAnchors();
@@ -124,7 +124,7 @@ export function NetWorthPage() {
   // Dummy data for Debt and Investments (to be implemented later)
   const totalDebt = 0;
   const totalInvestments = 0;
-  const netWorth = (currentBalance ?? 0) + totalSavings + totalInvestments - totalDebt;
+  const netWealth = (currentBalance ?? 0) + totalSavings + totalInvestments - totalDebt;
 
   // Show loading spinner while data is being fetched
   if (isLoading) {
@@ -143,7 +143,7 @@ export function NetWorthPage() {
             <div className="page-title-icon bg-amber-500/10">
               <HandCoins className="h-5 w-5 text-amber-500" />
             </div>
-            Net Worth
+            Net Wealth
           </h1>
           <p className="page-description">Your financial position right now</p>
         </div>
@@ -165,7 +165,7 @@ export function NetWorthPage() {
           <div className="page-title-icon bg-amber-500/10">
             <HandCoins className="h-5 w-5 text-amber-500" />
           </div>
-          Net Worth
+          Net Wealth
         </h1>
         <p className="page-description">Your financial position right now</p>
       </div>
@@ -192,12 +192,12 @@ export function NetWorthPage() {
           <HandCoins className="h-4 w-4" />
           Net Wealth
         </p>
-        <p className={`mt-2 text-5xl font-bold tracking-tight ${netWorth >= 0 ? '' : 'text-red-500'}`}>
-          {netWorth >= 0 ? '' : '-'}{formatCents(Math.abs(netWorth))}
+        <p className={`mt-2 text-5xl font-bold tracking-tight ${netWealth >= 0 ? '' : 'text-red-500'}`}>
+          {netWealth >= 0 ? '' : '-'}{formatCents(Math.abs(netWealth))}
         </p>
         <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
         <p className="text-sm text-muted-foreground">
-          Wealthier than {getGlobalPercentile(netWorth)}% of the world
+          Wealthier than {getGlobalPercentile(netWealth)}% of the world
         </p>
       </div>
 
