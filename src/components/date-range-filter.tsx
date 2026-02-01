@@ -13,6 +13,10 @@ interface DateRangeFilterProps {
   onClear: () => void;
   hasFilter: boolean;
   placeholder?: string;
+  /** Minimum selectable start date (YYYY-MM-DD) */
+  minStartDate?: string;
+  /** Maximum selectable end date (YYYY-MM-DD) */
+  maxEndDate?: string;
 }
 
 export function DateRangeFilter({
@@ -23,6 +27,8 @@ export function DateRangeFilter({
   onClear,
   hasFilter,
   placeholder = 'All dates',
+  minStartDate,
+  maxEndDate,
 }: DateRangeFilterProps) {
   const [open, setOpen] = useState(false);
 
@@ -66,6 +72,8 @@ export function DateRangeFilter({
                 type="date"
                 value={startDate}
                 onChange={(e) => onStartDateChange(e.target.value)}
+                min={minStartDate}
+                max={endDate || maxEndDate}
                 className="h-9 w-36"
               />
             </div>
@@ -76,6 +84,8 @@ export function DateRangeFilter({
                 type="date"
                 value={endDate}
                 onChange={(e) => onEndDateChange(e.target.value)}
+                min={startDate || minStartDate}
+                max={maxEndDate}
                 className="h-9 w-36"
               />
             </div>

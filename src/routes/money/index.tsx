@@ -2,8 +2,6 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import { Link, useSearchParams, useOutletContext } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
-import { Alert } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -19,6 +17,11 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import {
   Tooltip,
@@ -26,7 +29,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Plus, Pencil, Trash2, Download, AlertTriangle, Receipt, RotateCcw, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, Settings2, ChevronUp, ChevronDown, Target, Repeat, ArrowLeft } from 'lucide-react';
+import { Plus, Pencil, Trash2, Download, AlertTriangle, Receipt, RotateCcw, RotateCw, BanknoteArrowUp, BanknoteArrowDown, PiggyBank, ArrowLeftRight, Settings2, ChevronRight, ChevronDown, ChevronUp, Target, ArrowLeft } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
@@ -39,65 +42,49 @@ import { DateRangeFilter } from '@/components/date-range-filter';
 import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { UpImportDialog } from '@/components/up-import-dialog';
 import { AddToBudgetDialog } from '@/components/dialogs/add-to-budget-dialog';
-import { ExpectedTransactionDialog } from '@/components/dialogs/expected-transaction-dialog';
 import { ForecastRuleDialog } from '@/components/dialogs/forecast-rule-dialog';
 import { DeleteForecastDialog } from '@/components/dialogs/delete-forecast-dialog';
 import { BudgetPromptDialog } from '@/components/dialogs/budget-prompt-dialog';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { formatCents, formatDate, today as getToday, toMonthlyCents, cn, type CadenceType } from '@/lib/utils';
-import type { Transaction, Cadence, ExpandedForecast, ForecastEvent, ForecastRule } from '@/lib/types';
+import type { Transaction, Cadence, ExpandedForecast, ForecastRule } from '@/lib/types';
 
 interface OutletContext {
   activeScenarioId: string | null;
 }
 
-type TabValue = 'past' | 'expected' | 'averages';
 type AveragePeriod = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly';
 type FilterType = 'all' | 'income' | 'expense' | 'savings' | 'adjustment';
 type ExpectedFilterType = 'all' | 'income' | 'expense' | 'savings';
 type CategoryFilter = 'all' | 'uncategorized' | string;
 
-// Default date ranges
+// Default date ranges - Past ends at today, Expected starts at today
 const getPastDefaultStartDate = () => '';
 const getPastDefaultEndDate = () => getToday();
 const getExpectedDefaultStartDate = () => getToday();
 const getExpectedDefaultEndDate = () => '';
 
 export function MoneyIndexPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario, isLoading: scenariosLoading } = useScenarios();
-
-  // Tab state from URL param
-  const [activeTab, setActiveTab] = useState<TabValue>(() => {
-    const tabParam = searchParams.get('tab');
-    if (tabParam === 'past') return 'past';
-    if (tabParam === 'expected') return 'expected';
-    return 'averages';
-  });
-
-  // Average period state
-  const [averagePeriod, setAveragePeriod] = useState<AveragePeriod>('monthly');
 
   // Check if user came from budget page
   const fromBudget = searchParams.get('from') === 'budget' || searchParams.get('from') === 'categories';
 
-  // Update URL when tab changes
-  useEffect(() => {
-    const currentTab = searchParams.get('tab');
-    if (activeTab === 'averages' && currentTab) {
-      setSearchParams({}, { replace: true });
-    } else if (activeTab !== 'averages' && currentTab !== activeTab) {
-      setSearchParams({ tab: activeTab }, { replace: true });
-    }
-  }, [activeTab, searchParams, setSearchParams]);
+  // Section collapse state (persisted, default closed)
+  const [pastSectionOpen, setPastSectionOpen] = useLocalStorage('money:pastSectionOpen', false);
+  const [expectedSectionOpen, setExpectedSectionOpen] = useLocalStorage('money:expectedSectionOpen', false);
 
-  // Past tab date filter state
+  // Average period state
+  const [averagePeriod, setAveragePeriod] = useState<AveragePeriod>('monthly');
+
+  // Past section date filter state
   const [pastFilterStartDate, setPastFilterStartDate] = useState(getPastDefaultStartDate);
   const [pastFilterEndDate, setPastFilterEndDate] = useState(getPastDefaultEndDate);
   const hasPastDateFilter = pastFilterStartDate !== getPastDefaultStartDate() || pastFilterEndDate !== getPastDefaultEndDate();
 
-  // Expected tab date filter state
+  // Expected section date filter state
   const [expectedFilterStartDate, setExpectedFilterStartDate] = useState(getExpectedDefaultStartDate);
   const [expectedFilterEndDate, setExpectedFilterEndDate] = useState(getExpectedDefaultEndDate);
   const hasExpectedDateFilter = expectedFilterStartDate !== getExpectedDefaultStartDate() || expectedFilterEndDate !== getExpectedDefaultEndDate();
@@ -109,6 +96,7 @@ export function MoneyIndexPage() {
     const categoryParam = searchParams.get('category');
     return categoryParam ?? 'all';
   });
+  const [expectedFilterCategory, setExpectedFilterCategory] = useState<CategoryFilter>('all');
 
   // Data hooks - Past transactions
   const pastQueryStartDate = pastFilterStartDate || undefined;
@@ -119,22 +107,19 @@ export function MoneyIndexPage() {
   const { getRuleForCategory, setBudgetForCategory } = useBudgetRules(activeScenarioId);
 
   // Data hooks - Expected forecasts
-  const defaultStart = '2020-01-01';
-  const defaultEnd = '2099-12-31';
-  const expectedQueryStartDate = expectedFilterStartDate || defaultStart;
-  const expectedQueryEndDate = expectedFilterEndDate || defaultEnd;
-  const { expandedForecasts, rules, events, isLoading: forecastsLoading, addRule, updateRule, deleteRule, excludeOccurrence, addEvent, updateEvent, deleteEvent } = useForecasts(activeScenarioId, expectedQueryStartDate, expectedQueryEndDate);
+  const expectedQueryStartDate = expectedFilterStartDate || getToday();
+  const expectedQueryEndDate = expectedFilterEndDate || '2099-12-31';
+  const { expandedForecasts, rules, isLoading: forecastsLoading, addRule, updateRule, deleteRule, excludeOccurrence } = useForecasts(activeScenarioId, expectedQueryStartDate, expectedQueryEndDate);
 
   // Budget prompt preference
   const [skipBudgetPrompt, setSkipBudgetPrompt] = useLocalStorage('budget:skipBudgetPrompt', false);
 
   // Combined loading state
-  const isLoading = transactionsLoading || categoriesLoading ||
-    (activeTab === 'expected' && (scenariosLoading || forecastsLoading));
+  const isLoading = transactionsLoading || categoriesLoading || scenariosLoading || forecastsLoading;
 
   // Check if any data exists
   const hasAnyTransactions = allTransactions.length > 0;
-  const hasAnyForecasts = rules.length > 0 || events.length > 0;
+  const hasAnyForecasts = rules.length > 0;
 
   // Dialog states - Past
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
@@ -145,13 +130,11 @@ export function MoneyIndexPage() {
   const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
   const [budgetTransaction, setBudgetTransaction] = useState<Transaction | null>(null);
 
-  // Dialog states - Expected (one-time events)
-  const [expectedDialogOpen, setExpectedDialogOpen] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<ForecastEvent | null>(null);
+  // Dialog states - Delete forecast
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingForecast, setDeletingForecast] = useState<ExpandedForecast | null>(null);
 
-  // Dialog states - Recurring rules
+  // Dialog states - Forecast rules
   const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<ForecastRule | null>(null);
 
@@ -164,7 +147,7 @@ export function MoneyIndexPage() {
     [categories],
   );
 
-  // Past tab handlers
+  // Past section handlers
   const handleImportClick = useCallback(() => {
     if (categoryRules.length === 0) {
       setImportWarningOpen(true);
@@ -245,55 +228,19 @@ export function MoneyIndexPage() {
     setBudgetTransaction(null);
   }, [budgetTransaction, getRuleForCategory, setBudgetForCategory]);
 
-  const handleCreateOneTimeForecast = useCallback(async (amountCents: number) => {
-    if (!budgetTransaction?.categoryId || !activeScenarioId) return;
-
-    await addEvent({
-      scenarioId: activeScenarioId,
-      type: 'expense',
-      description: `Budget allowance: ${budgetTransaction.description}`,
-      amountCents,
-      date: getToday(),
-      categoryId: budgetTransaction.categoryId,
-      savingsGoalId: null,
-    });
-
-    setBudgetTransaction(null);
-  }, [budgetTransaction, activeScenarioId, addEvent]);
-
-  // Expected tab handlers
-  const openAddExpectedDialog = useCallback(() => {
-    setEditingEvent(null);
-    setExpectedDialogOpen(true);
-  }, []);
-
+  // Expected section handlers
   const openAddRecurringDialog = useCallback(() => {
     setEditingRule(null);
     setRecurringDialogOpen(true);
   }, []);
 
   const openEditExpectedDialog = useCallback((forecast: ExpandedForecast) => {
-    if (forecast.sourceType === 'rule') {
-      const rule = rules.find(r => r.id === forecast.sourceId);
-      if (rule) {
-        setEditingRule(rule);
-        setRecurringDialogOpen(true);
-      }
-    } else {
-      const event = events.find(e => e.id === forecast.sourceId);
-      if (event) {
-        setEditingEvent(event);
-        setExpectedDialogOpen(true);
-      }
+    const rule = rules.find(r => r.id === forecast.sourceId);
+    if (rule) {
+      setEditingRule(rule);
+      setRecurringDialogOpen(true);
     }
-  }, [rules, events]);
-
-  const handleExpectedDialogClose = useCallback((open: boolean) => {
-    setExpectedDialogOpen(open);
-    if (!open) {
-      setEditingEvent(null);
-    }
-  }, []);
+  }, [rules]);
 
   const handleRecurringDialogClose = useCallback((open: boolean) => {
     setRecurringDialogOpen(open);
@@ -316,14 +263,10 @@ export function MoneyIndexPage() {
 
   const handleDeleteAll = useCallback(() => {
     if (!deletingForecast) return;
-    if (deletingForecast.sourceType === 'rule') {
-      deleteRule(deletingForecast.sourceId);
-    } else {
-      deleteEvent(deletingForecast.sourceId);
-    }
+    deleteRule(deletingForecast.sourceId);
     setDeleteDialogOpen(false);
     setDeletingForecast(null);
-  }, [deletingForecast, deleteRule, deleteEvent]);
+  }, [deletingForecast, deleteRule]);
 
   // Handle when rule is created
   const handleRuleCreated = useCallback((rule: ForecastRule) => {
@@ -385,14 +328,49 @@ export function MoneyIndexPage() {
     [transactions, filterType, filterCategory],
   );
 
+  // Past transaction totals (from queried range)
+  const pastTotals = useMemo(() => {
+    const income = transactions
+      .filter((t) => t.type === 'income')
+      .reduce((sum, t) => sum + t.amountCents, 0);
+    const expenses = transactions
+      .filter((t) => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amountCents, 0);
+    const savings = transactions
+      .filter((t) => t.type === 'savings')
+      .reduce((sum, t) => sum + t.amountCents, 0);
+    return { income, expenses, savings };
+  }, [transactions]);
+
   const filteredForecasts = useMemo(
     () => expandedForecasts.filter((f) => {
       if (expectedFilterType !== 'all' && f.type !== expectedFilterType) return false;
-      if (filterCategory !== 'all' && f.categoryId !== filterCategory) return false;
+      if (expectedFilterCategory !== 'all' && f.categoryId !== expectedFilterCategory) return false;
       return true;
     }),
-    [expandedForecasts, expectedFilterType, filterCategory],
+    [expandedForecasts, expectedFilterType, expectedFilterCategory],
   );
+
+  // Expected totals by type
+  const expectedTotals = useMemo(() => {
+    const income = expandedForecasts
+      .filter((f) => f.type === 'income')
+      .reduce((sum, f) => sum + f.amountCents, 0);
+    const expenses = expandedForecasts
+      .filter((f) => f.type === 'expense')
+      .reduce((sum, f) => sum + f.amountCents, 0);
+    const savings = expandedForecasts
+      .filter((f) => f.type === 'savings')
+      .reduce((sum, f) => sum + f.amountCents, 0);
+    return { income, expenses, savings };
+  }, [expandedForecasts]);
+
+  // Last expected date (furthest out forecast)
+  const lastExpectedDate = useMemo(() => {
+    if (expandedForecasts.length === 0) return null;
+    const firstDate = expandedForecasts[0]?.date ?? '';
+    return expandedForecasts.reduce((latest, f) => f.date > latest ? f.date : latest, firstDate);
+  }, [expandedForecasts]);
 
   // Period averages calculation
   const periodAverages = useMemo(() => {
@@ -460,11 +438,11 @@ export function MoneyIndexPage() {
   }, [allTransactions, averagePeriod]);
 
   const periodLabels: Record<AveragePeriod, string> = {
-    weekly: 'Weekly',
-    fortnightly: 'Fortnightly',
-    monthly: 'Monthly',
-    quarterly: 'Quarterly',
-    yearly: 'Yearly',
+    weekly: 'per week',
+    fortnightly: 'per fortnight',
+    monthly: 'per month',
+    quarterly: 'per quarter',
+    yearly: 'per year',
   };
 
   // Get date range for averages display
@@ -479,6 +457,17 @@ export function MoneyIndexPage() {
       count: allTransactions.length,
     };
   }, [allTransactions]);
+
+  // Close delete confirmation on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (deletingTransactionId) setDeletingTransactionId(null);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [deletingTransactionId]);
 
   // Past transactions columns
   const transactionColumns: ColumnDef<Transaction>[] = useMemo(
@@ -539,7 +528,7 @@ export function MoneyIndexPage() {
           if (type === 'income') {
             return (
               <div className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                <TrendingUp className="h-3 w-3" />
+                <BanknoteArrowUp className="h-3 w-3" />
                 Income
               </div>
             );
@@ -562,7 +551,7 @@ export function MoneyIndexPage() {
           }
           return (
             <div className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
-              <TrendingDown className="h-3 w-3" />
+              <BanknoteArrowDown className="h-3 w-3" />
               Expense
             </div>
           );
@@ -742,7 +731,7 @@ export function MoneyIndexPage() {
           if (type === 'income') {
             return (
               <div className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                <TrendingUp className="h-3 w-3" />
+                <BanknoteArrowUp className="h-3 w-3" />
                 Income
               </div>
             );
@@ -757,22 +746,9 @@ export function MoneyIndexPage() {
           }
           return (
             <div className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
-              <TrendingDown className="h-3 w-3" />
+              <BanknoteArrowDown className="h-3 w-3" />
               Expense
             </div>
-          );
-        },
-      },
-      {
-        accessorKey: 'sourceType',
-        header: 'Source',
-        cell: ({ row }) => {
-          const isRecurring = row.getValue('sourceType') === 'rule';
-          return (
-            <Badge variant="outline" className="gap-1">
-              {isRecurring && <Repeat className="h-3 w-3" />}
-              {isRecurring ? 'Recurring' : 'One-time'}
-            </Badge>
           );
         },
       },
@@ -893,45 +869,13 @@ export function MoneyIndexPage() {
     [openEditExpectedDialog, openDeleteForecastDialog, getCategoryName],
   );
 
-  // Get the right action button based on tab
-  // Both tabs use the same layout structure to prevent layout jump
-  const getActionButton = () => {
+  if (isLoading) {
     return (
-      <div className="flex gap-2">
-        {/* Import column - only visible on Past tab but takes space on both */}
-        <div className={cn('flex flex-col gap-1', activeTab !== 'past' && 'invisible')}>
-          <Button variant="secondary" onClick={handleImportClick}>
-            <Download className="h-4 w-4" />
-            Import CSV
-          </Button>
-          <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
-            <Link to="/categories/import-rules?from=money">
-              <Settings2 className="h-4 w-4" />
-              Import Rules
-            </Link>
-          </Button>
-        </div>
-        {/* Add button - changes based on tab */}
-        {activeTab === 'past' ? (
-          <Button onClick={openAddTransactionDialog}>
-            <Plus className="h-4 w-4" />
-            Add Past
-          </Button>
-        ) : (
-          <>
-            <Button variant="secondary" onClick={openAddRecurringDialog}>
-              <Repeat className="h-4 w-4" />
-              Add Recurring
-            </Button>
-            <Button onClick={openAddExpectedDialog}>
-              <Plus className="h-4 w-4" />
-              Add Expected
-            </Button>
-          </>
-        )}
+      <div className="page-shell">
+        <PageLoading />
       </div>
     );
-  };
+  }
 
   return (
     <div className="page-shell">
@@ -943,305 +887,344 @@ export function MoneyIndexPage() {
           </Link>
         </Button>
       )}
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="page-title">
-            <div className="page-title-icon bg-slate-500/10">
-              <Receipt className="h-5 w-5 text-slate-500" />
-            </div>
-            Money
-          </h1>
-          <p className="page-description">
-            {activeTab === 'past' && 'Actual income, expenses, and savings.'}
-            {activeTab === 'expected' && `Expected income, expenses, and savings${activeScenario ? ` for ${activeScenario.name}` : ''}.`}
-            {activeTab === 'averages' && 'Average income, expenses, and savings based on your transaction history.'}
-          </p>
-        </div>
-        <div className="flex flex-col items-stretch gap-2 sm:items-end">
-          {getActionButton()}
-        </div>
+
+      {/* Page Header */}
+      <div className="page-header mb-8">
+        <h1 className="page-title">
+          <div className="page-title-icon bg-slate-500/10">
+            <Receipt className="h-5 w-5 text-slate-500" />
+          </div>
+          Money
+        </h1>
+        <p className="page-description">Track your income, expenses, and savings</p>
       </div>
 
-      {/* Tabs */}
-      <div className="mb-6 inline-flex h-10 items-center rounded-lg bg-muted p-1 text-muted-foreground">
-        <button
-          type="button"
-          onClick={() => setActiveTab('averages')}
-          className={cn(
-            'inline-flex h-8 cursor-pointer items-center justify-center rounded-md px-4 text-sm font-medium transition-all',
-            activeTab === 'averages'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'hover:text-foreground',
+      {/* Summary Section */}
+      <div className="mb-8">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <Select value={averagePeriod} onValueChange={(v) => setAveragePeriod(v as AveragePeriod)}>
+            <SelectTrigger className="w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="fortnightly">Fortnightly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="quarterly">Quarterly</SelectItem>
+              <SelectItem value="yearly">Yearly</SelectItem>
+            </SelectContent>
+          </Select>
+          {transactionDateRange && (
+            <p className="text-sm text-muted-foreground">
+              Based on {transactionDateRange.count.toLocaleString()} transactions from {transactionDateRange.from} to {transactionDateRange.to}
+            </p>
           )}
-        >
-          Averages
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('past')}
-          className={cn(
-            'inline-flex h-8 cursor-pointer items-center justify-center rounded-md px-4 text-sm font-medium transition-all',
-            activeTab === 'past'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'hover:text-foreground',
-          )}
-        >
-          Past Transactions
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('expected')}
-          className={cn(
-            'inline-flex h-8 cursor-pointer items-center justify-center rounded-md px-4 text-sm font-medium transition-all',
-            activeTab === 'expected'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'hover:text-foreground',
-          )}
-        >
-          Expected Transactions
-        </button>
-      </div>
+        </div>
 
-      {isLoading ? (
-        <PageLoading />
-      ) : activeTab === 'past' ? (
-        // Past tab content
-        !hasAnyTransactions ? (
-          <div className="space-y-4">
-            <Alert variant="info">
-              Past transactions are actual income, expenses, and savings that have already occurred.
-            </Alert>
-            <div className="empty-state">
-              <p className="empty-state-text">No transactions yet.</p>
-              <Button onClick={openAddTransactionDialog} className="empty-state-action">
-                Add a transaction
-              </Button>
-            </div>
-          </div>
-        ) : (
+        {hasAnyTransactions ? (
           <>
-            <Alert variant="info" className="mb-6">
-              Past transactions are actual income, expenses, and savings that have already occurred.
-            </Alert>
-            <DataTable
-              emptyMessage="No transactions found matching your filters."
-              columns={transactionColumns}
-              data={filteredTransactions}
-              searchKey="description"
-              searchPlaceholder="Search transactions..."
-              initialSorting={[{ id: 'date', desc: true }]}
-              filterSlot={
-                <>
-                  <DateRangeFilter
-                    startDate={pastFilterStartDate}
-                    endDate={pastFilterEndDate}
-                    onStartDateChange={setPastFilterStartDate}
-                    onEndDateChange={setPastFilterEndDate}
-                    onClear={resetPastFilters}
-                    hasFilter={hasPastDateFilter}
-                  />
-                  <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
-                    <SelectTrigger className={`w-36 ${filterType === 'all' ? 'text-muted-foreground' : ''}`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="income">Income</SelectItem>
-                      <SelectItem value="expense">Expense</SelectItem>
-                      <SelectItem value="savings">Savings</SelectItem>
-                      <SelectItem value="adjustment">Adjustment</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={filterCategory} onValueChange={setFilterCategory}>
-                    <SelectTrigger className={`w-44 ${filterCategory === 'all' ? 'text-muted-foreground' : ''}`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      <SelectItem value="uncategorized">Uncategorised</SelectItem>
-                      {activeCategories
-                        .sort((a, b) => a.name.localeCompare(b.name))
-                        .map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  {hasPastDateFilter && (
-                    <Button variant="ghost" size="sm" onClick={resetPastFilters} title="Reset to defaults">
-                      <RotateCcw className="h-4 w-4" />
-                    </Button>
-                  )}
-                </>
-              }
-            />
-          </>
-        )
-      ) : activeTab === 'expected' ? (
-        // Expected tab content
-        !activeScenarioId || !activeScenario ? (
-          <div className="empty-state">
-            <p className="empty-state-text">Select a scenario to view expected transactions.</p>
-            <Button asChild className="empty-state-action">
-              <Link to="/scenarios">Manage Scenarios</Link>
-            </Button>
-          </div>
-        ) : !hasAnyForecasts ? (
-          <div className="space-y-4">
-            <Alert variant="info">
-              Expected transactions are known future income, expenses, and savings. They vary by scenario.
-            </Alert>
-            <div className="empty-state">
-              <p className="empty-state-text">No expected transactions yet.</p>
-              <Button onClick={openAddExpectedDialog} className="empty-state-action">
-                Add expected transaction
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <Alert variant="info" className="mb-6">
-              Expected transactions are known future income, expenses, and savings. They vary by scenario.
-            </Alert>
-            <DataTable
-              emptyMessage="No expected transactions found matching your filters."
-              columns={forecastColumns}
-              data={filteredForecasts}
-              searchKey="description"
-              searchPlaceholder="Search expected..."
-              initialSorting={[{ id: 'date', desc: false }]}
-              filterSlot={
-                <>
-                  <DateRangeFilter
-                    startDate={expectedFilterStartDate}
-                    endDate={expectedFilterEndDate}
-                    onStartDateChange={setExpectedFilterStartDate}
-                    onEndDateChange={setExpectedFilterEndDate}
-                    onClear={resetExpectedFilters}
-                    hasFilter={hasExpectedDateFilter}
-                  />
-                  <Select value={expectedFilterType} onValueChange={(v) => setExpectedFilterType(v as ExpectedFilterType)}>
-                    <SelectTrigger className={`w-36 ${expectedFilterType === 'all' ? 'text-muted-foreground' : ''}`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="income">Income</SelectItem>
-                      <SelectItem value="expense">Expense</SelectItem>
-                      <SelectItem value="savings">Savings</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={filterCategory} onValueChange={setFilterCategory}>
-                    <SelectTrigger className={`w-44 ${filterCategory === 'all' ? 'text-muted-foreground' : ''}`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      {activeCategories
-                        .sort((a, b) => a.name.localeCompare(b.name))
-                        .map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <ScenarioSelector hideLabel />
-                  {hasExpectedDateFilter && (
-                    <Button variant="ghost" size="sm" onClick={resetExpectedFilters} title="Reset to defaults">
-                      <RotateCcw className="h-4 w-4" />
-                    </Button>
-                  )}
-                </>
-              }
-            />
-          </>
-        )
-      ) : activeTab === 'averages' ? (
-        // Averages tab content
-        !hasAnyTransactions ? (
-          <div className="empty-state">
-            <p className="empty-state-text">No transactions yet to calculate averages.</p>
-            <Button onClick={openAddTransactionDialog} className="empty-state-action">
-              Add a transaction
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Period dropdown and explanation */}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <Select value={averagePeriod} onValueChange={(v) => setAveragePeriod(v as AveragePeriod)}>
-                <SelectTrigger className="w-36">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="fortnightly">Fortnightly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="quarterly">Quarterly</SelectItem>
-                  <SelectItem value="yearly">Yearly</SelectItem>
-                </SelectContent>
-              </Select>
-              {transactionDateRange && (
-                <p className="text-sm text-muted-foreground">
-                  Based on {transactionDateRange.count.toLocaleString()} transactions from {transactionDateRange.from} to {transactionDateRange.to}
-                </p>
-              )}
-            </div>
-
-            {/* Stats cards */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {/* Earned card */}
+            <div className="mb-4 grid gap-4 sm:grid-cols-3">
               <div className="rounded-xl border bg-card p-5">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-green-500" />
-                  <span className="text-sm text-muted-foreground">Earned</span>
+                  <BanknoteArrowUp className="h-4 w-4 text-green-500" />
+                  <span className="text-sm text-muted-foreground">Average Earned</span>
                 </div>
                 <p className="mt-2 text-2xl font-bold">{formatCents(periodAverages.income)}</p>
-                <p className="text-sm text-muted-foreground">{periodLabels[averagePeriod]} average</p>
+                <p className="text-sm text-muted-foreground">{periodLabels[averagePeriod]}</p>
               </div>
 
-              {/* Spent card */}
               <div className="rounded-xl border bg-card p-5">
                 <div className="flex items-center gap-2">
-                  <TrendingDown className="h-4 w-4 text-red-500" />
-                  <span className="text-sm text-muted-foreground">Spent</span>
+                  <BanknoteArrowDown className="h-4 w-4 text-red-500" />
+                  <span className="text-sm text-muted-foreground">Average Spent</span>
                 </div>
                 <p className="mt-2 text-2xl font-bold">{formatCents(periodAverages.expenses)}</p>
-                <p className="text-sm text-muted-foreground">{periodLabels[averagePeriod]} average</p>
+                <p className="text-sm text-muted-foreground">{periodLabels[averagePeriod]}</p>
               </div>
 
-              {/* Saved card */}
               <div className="rounded-xl border bg-card p-5">
                 <div className="flex items-center gap-2">
                   <PiggyBank className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm text-muted-foreground">Saved</span>
+                  <span className="text-sm text-muted-foreground">Average Saved</span>
                 </div>
                 <p className="mt-2 text-2xl font-bold">{formatCents(periodAverages.savings)}</p>
-                <p className="text-sm text-muted-foreground">{periodLabels[averagePeriod]} average</p>
-              </div>
-
-              {/* Net card */}
-              <div className="rounded-xl border bg-card p-5">
-                <div className="flex items-center gap-2">
-                  <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Net</span>
-                </div>
-                <p className={cn(
-                  'mt-2 text-2xl font-bold',
-                  periodAverages.net >= 0 ? 'text-green-600' : 'text-red-600',
-                )}>
-                  {periodAverages.net >= 0 ? '+' : ''}{formatCents(periodAverages.net)}
-                </p>
-                <p className="text-sm text-muted-foreground">{periodLabels[averagePeriod]} average</p>
+                <p className="text-sm text-muted-foreground">{periodLabels[averagePeriod]}</p>
               </div>
             </div>
-          </div>
-        )
-      ) : null}
 
-      {/* Past tab dialogs */}
+            {/* Net Status Card */}
+            <div className={cn(
+              'rounded-xl border p-4',
+              periodAverages.net >= 0
+                ? 'border-green-500/50 bg-green-500/5'
+                : 'border-red-500/50 bg-red-500/5',
+            )}>
+              <div className="flex items-center gap-3">
+                <ArrowLeftRight className={cn(
+                  'h-5 w-5',
+                  periodAverages.net >= 0 ? 'text-green-500' : 'text-red-500',
+                )} />
+                <div>
+                  <span className={cn(
+                    'font-medium',
+                    periodAverages.net >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400',
+                  )}>
+                    {periodAverages.net >= 0 ? '+' : ''}{formatCents(periodAverages.net)} net {periodLabels[averagePeriod]}
+                  </span>
+                  <p className="text-sm text-muted-foreground">
+                    {periodAverages.net >= 0
+                      ? 'You earn more than you spend on average'
+                      : 'You spend more than you earn on average'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No transactions yet.{' '}
+            <button onClick={openAddTransactionDialog} className="cursor-pointer text-primary hover:underline">
+              Add your first transaction
+            </button>{' '}
+            to see averages.
+          </p>
+        )}
+      </div>
+
+      {/* Past Transactions Section */}
+      <Collapsible open={pastSectionOpen} onOpenChange={setPastSectionOpen} className="mb-6">
+        <div className="overflow-hidden rounded-lg border">
+          <div className="flex items-center justify-between bg-card p-4">
+            <CollapsibleTrigger className="flex flex-1 cursor-pointer items-center gap-2">
+              {pastSectionOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              <RotateCcw className="h-4 w-4 text-amber-500" />
+              <span className="font-medium">Past Transactions</span>
+              {transactions.length > 0 ? (
+                <span className="hidden text-sm text-muted-foreground sm:inline">
+                  <span className="text-green-600">+{formatCents(pastTotals.income)}</span>
+                  {' / '}
+                  <span className="text-red-600">-{formatCents(pastTotals.expenses)}</span>
+                  {pastTotals.savings > 0 && (
+                    <>
+                      {' / '}
+                      <span className="text-blue-600">{formatCents(pastTotals.savings)} saved</span>
+                    </>
+                  )}
+                </span>
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  ({filteredTransactions.length})
+                </span>
+              )}
+            </CollapsibleTrigger>
+            <div className="flex gap-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="sm" asChild>
+                      <Link to="/categories/import-rules?from=money">
+                        <Settings2 className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Import Rules</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <Button variant="secondary" size="sm" onClick={handleImportClick}>
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Import</span>
+              </Button>
+              <Button size="sm" onClick={openAddTransactionDialog}>
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Add</span>
+              </Button>
+            </div>
+          </div>
+          <CollapsibleContent>
+            <div className="border-t p-4">
+              {!hasAnyTransactions ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  No transactions yet.{' '}
+                  <button onClick={openAddTransactionDialog} className="cursor-pointer text-primary hover:underline">
+                    Add your first transaction
+                  </button>
+                </p>
+              ) : (
+                <DataTable
+                  emptyMessage="No transactions found matching your filters."
+                  columns={transactionColumns}
+                  data={filteredTransactions}
+                  searchKey="description"
+                  searchPlaceholder="Search transactions..."
+                  initialSorting={[{ id: 'date', desc: true }]}
+                  pageSize={10}
+                  filterSlot={
+                    <>
+                      <DateRangeFilter
+                        startDate={pastFilterStartDate}
+                        endDate={pastFilterEndDate}
+                        onStartDateChange={setPastFilterStartDate}
+                        onEndDateChange={setPastFilterEndDate}
+                        onClear={resetPastFilters}
+                        hasFilter={hasPastDateFilter}
+                        maxEndDate={getToday()}
+                      />
+                      <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
+                        <SelectTrigger className={`w-36 ${filterType === 'all' ? 'text-muted-foreground' : ''}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Types</SelectItem>
+                          <SelectItem value="income">Income</SelectItem>
+                          <SelectItem value="expense">Expense</SelectItem>
+                          <SelectItem value="savings">Savings</SelectItem>
+                          <SelectItem value="adjustment">Adjustment</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={filterCategory} onValueChange={setFilterCategory}>
+                        <SelectTrigger className={`w-44 ${filterCategory === 'all' ? 'text-muted-foreground' : ''}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Categories</SelectItem>
+                          <SelectItem value="uncategorized">Uncategorised</SelectItem>
+                          {activeCategories
+                            .sort((a, b) => a.name.localeCompare(b.name))
+                            .map((cat) => (
+                              <SelectItem key={cat.id} value={cat.id}>
+                                {cat.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      {hasPastDateFilter && (
+                        <Button variant="ghost" size="sm" onClick={resetPastFilters} title="Reset to defaults">
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </>
+                  }
+                />
+              )}
+            </div>
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+
+      {/* Expected Transactions Section */}
+      <Collapsible open={expectedSectionOpen} onOpenChange={setExpectedSectionOpen}>
+        <div className="overflow-hidden rounded-lg border">
+          <div className="flex items-center justify-between bg-card p-4">
+            <CollapsibleTrigger className="flex flex-1 cursor-pointer items-center gap-2">
+              {expectedSectionOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              <RotateCw className="h-4 w-4 text-violet-500" />
+              <span className="font-medium">Expected Transactions</span>
+              {expandedForecasts.length > 0 ? (
+                <span className="hidden text-sm text-muted-foreground sm:inline">
+                  <span className="text-green-600">+{formatCents(expectedTotals.income)}</span>
+                  {' / '}
+                  <span className="text-red-600">-{formatCents(expectedTotals.expenses)}</span>
+                  {expectedTotals.savings > 0 && (
+                    <>
+                      {' / '}
+                      <span className="text-blue-600">{formatCents(expectedTotals.savings)} saved</span>
+                    </>
+                  )}
+                  {(expectedFilterEndDate || lastExpectedDate) && (
+                    <span className="text-muted-foreground"> until {formatDate(expectedFilterEndDate || lastExpectedDate!)}</span>
+                  )}
+                </span>
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  ({filteredForecasts.length})
+                </span>
+              )}
+            </CollapsibleTrigger>
+            <div className="flex items-center gap-2">
+              <ScenarioSelector hideLabel />
+              <Button size="sm" onClick={openAddRecurringDialog}>
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Add</span>
+              </Button>
+            </div>
+          </div>
+          <CollapsibleContent>
+            <div className="border-t p-4">
+              {!activeScenarioId || !activeScenario ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  Select a scenario to view expected transactions.{' '}
+                  <Link to="/scenarios" className="text-primary hover:underline">
+                    Manage Scenarios
+                  </Link>
+                </p>
+              ) : !hasAnyForecasts ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  No expected transactions yet.{' '}
+                  <button onClick={openAddRecurringDialog} className="cursor-pointer text-primary hover:underline">
+                    Add your first expected transaction
+                  </button>
+                </p>
+              ) : (
+                <DataTable
+                  emptyMessage="No expected transactions found matching your filters."
+                  columns={forecastColumns}
+                  data={filteredForecasts}
+                  searchKey="description"
+                  searchPlaceholder="Search expected..."
+                  initialSorting={[{ id: 'date', desc: false }]}
+                  pageSize={10}
+                  filterSlot={
+                    <>
+                      <DateRangeFilter
+                        startDate={expectedFilterStartDate}
+                        endDate={expectedFilterEndDate}
+                        onStartDateChange={setExpectedFilterStartDate}
+                        onEndDateChange={setExpectedFilterEndDate}
+                        onClear={resetExpectedFilters}
+                        hasFilter={hasExpectedDateFilter}
+                        minStartDate={getToday()}
+                      />
+                      <Select value={expectedFilterType} onValueChange={(v) => setExpectedFilterType(v as ExpectedFilterType)}>
+                        <SelectTrigger className={`w-36 ${expectedFilterType === 'all' ? 'text-muted-foreground' : ''}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Types</SelectItem>
+                          <SelectItem value="income">Income</SelectItem>
+                          <SelectItem value="expense">Expense</SelectItem>
+                          <SelectItem value="savings">Savings</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={expectedFilterCategory} onValueChange={setExpectedFilterCategory}>
+                        <SelectTrigger className={`w-44 ${expectedFilterCategory === 'all' ? 'text-muted-foreground' : ''}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Categories</SelectItem>
+                          {activeCategories
+                            .sort((a, b) => a.name.localeCompare(b.name))
+                            .map((cat) => (
+                              <SelectItem key={cat.id} value={cat.id}>
+                                {cat.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      {hasExpectedDateFilter && (
+                        <Button variant="ghost" size="sm" onClick={resetExpectedFilters} title="Reset to defaults">
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </>
+                  }
+                />
+              )}
+            </div>
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+
+      {/* Dialogs */}
       <TransactionDialog
         open={transactionDialogOpen}
         onOpenChange={handleTransactionDialogClose}
@@ -1259,10 +1242,8 @@ export function MoneyIndexPage() {
         categoryName={budgetTransactionCategoryName}
         existingBudget={existingBudgetForTransaction}
         onCreateRecurringBudget={handleCreateRecurringBudget}
-        onCreateOneTimeForecast={handleCreateOneTimeForecast}
       />
 
-      {/* Warning dialog for no category rules */}
       <Dialog open={importWarningOpen} onOpenChange={setImportWarningOpen}>
         <DialogContent>
           <DialogHeader>
@@ -1288,16 +1269,6 @@ export function MoneyIndexPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Expected tab dialogs */}
-      <ExpectedTransactionDialog
-        open={expectedDialogOpen}
-        onOpenChange={handleExpectedDialogClose}
-        scenarioId={activeScenarioId}
-        event={editingEvent}
-        addEvent={addEvent}
-        updateEvent={updateEvent}
-      />
 
       <ForecastRuleDialog
         open={recurringDialogOpen}
