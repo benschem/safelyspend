@@ -21,7 +21,7 @@ export const studentSooJin: PersonaConfig = {
   income: {
     primary: {
       description: 'Pay - Morning Brew Cafe',
-      amountCents: 48800, // $488/week, casual rates (~$2,114/month) - exactly covers tight budget
+      amountCents: 49654, // $496.54/week, casual rates (~$2,151/month) - balanced tight budget
       cadence: 'weekly',
       variance: 0.08,
     },

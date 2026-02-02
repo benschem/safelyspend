@@ -140,8 +140,8 @@ export function NetWealthPage() {
       <div className="page-shell">
         <div className="page-header">
           <h1 className="page-title">
-            <div className="page-title-icon bg-amber-500/10">
-              <HandCoins className="h-5 w-5 text-amber-500" />
+            <div className="page-title-icon bg-slate-500/10">
+              <HandCoins className="h-5 w-5 text-slate-500" />
             </div>
             Net Wealth
           </h1>
@@ -162,8 +162,8 @@ export function NetWealthPage() {
       {/* Header */}
       <div className="page-header">
         <h1 className="page-title">
-          <div className="page-title-icon bg-amber-500/10">
-            <HandCoins className="h-5 w-5 text-amber-500" />
+          <div className="page-title-icon bg-slate-500/10">
+            <HandCoins className="h-5 w-5 text-slate-500" />
           </div>
           Net Wealth
         </h1>

@@ -28,6 +28,8 @@ interface SpendingBreakdownChartProps {
   toggleableIds?: string[];
   /** When set, shows a dashed vertical line at this percentage (0-100) to indicate income mark */
   incomeMarker?: number;
+  /** Array of segment IDs that should show dollar amounts instead of percentages in legend */
+  showDollarAmountIds?: string[];
 }
 
 export function SpendingBreakdownChart({
@@ -39,6 +41,7 @@ export function SpendingBreakdownChart({
   disableToggle = false,
   toggleableIds = [],
   incomeMarker,
+  showDollarAmountIds = [],
 }: SpendingBreakdownChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredSegment, setHoveredSegment] = useState<BreakdownSegment | null>(null);
@@ -236,6 +239,8 @@ export function SpendingBreakdownChart({
           const percentage = ((segment.amount / total) * 100).toFixed(0);
           const isHidden = hiddenSegments.has(segment.id);
           const canToggle = !disableToggle || toggleableIds.includes(segment.id);
+          const showDollar = showDollarAmountIds.includes(segment.id);
+          const displayValue = showDollar ? formatCents(segment.amount) : `${percentage}%`;
           return canToggle ? (
             <button
               key={segment.id}
@@ -250,7 +255,7 @@ export function SpendingBreakdownChart({
                 style={{ backgroundColor: colorMap[segment.id] ?? CHART_COLORS.uncategorized }}
               />
               <span className={isHidden ? 'line-through' : ''}>
-                {segment.name} ({percentage}%)
+                {segment.name} ({displayValue})
               </span>
             </button>
           ) : (
@@ -262,7 +267,7 @@ export function SpendingBreakdownChart({
                 className="h-2.5 w-2.5 rounded-sm"
                 style={{ backgroundColor: colorMap[segment.id] ?? CHART_COLORS.uncategorized }}
               />
-              <span>{segment.name} ({percentage}%)</span>
+              <span>{segment.name} ({displayValue})</span>
             </div>
           );
         })}

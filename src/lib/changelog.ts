@@ -21,6 +21,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.12.2',
+    date: '2026-02-02',
+    changes: [
+      'Spending pace chart now shows a Safe Limit line when you have surplus buffer',
+      'Improved chart with clearer labels, colors, and complete legend',
+      'Spending section now shows amounts against budgeted totals',
+      'Pace text now clarifies when spending is against your budget',
+    ],
+  },
+  {
     version: '0.12.1',
     date: '2026-02-02',
     changes: [

@@ -13,8 +13,8 @@ export function StyleGuidePage() {
       {/* Page Header */}
       <div className="page-header">
         <h1 className="page-title">
-          <div className="page-title-icon bg-violet-500/10">
-            <Palette className="h-5 w-5 text-violet-500" />
+          <div className="page-title-icon bg-slate-500/10">
+            <Palette className="h-5 w-5 text-slate-500" />
           </div>
           Style Guide
         </h1>

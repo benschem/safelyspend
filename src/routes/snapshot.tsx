@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Link, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -18,8 +19,7 @@ import {
 import {
   CalendarFold,
   PiggyBank,
-  TrendingUp,
-  TrendingDown,
+  Banknote,
   BanknoteArrowUp,
   BanknoteArrowDown,
   Receipt,
@@ -32,6 +32,7 @@ import {
   Pin,
   Target,
   CircleDot,
+  CircleGauge,
 } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -68,7 +69,9 @@ export function SnapshotPage() {
 
   // Selected period state - defaults to current month
   const [selectedMonth, setSelectedMonth] = useState(() => new Date());
-  const [viewMode, setViewMode] = useState<'month' | 'quarter' | 'year'>('month');
+  // Read default view preference from settings
+  const [defaultSnapshotView] = useLocalStorage<'month' | 'quarter' | 'year'>('budget:defaultSnapshotView', 'month');
+  const [viewMode, setViewMode] = useState<'month' | 'quarter' | 'year'>(defaultSnapshotView);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState(() => new Date().getFullYear());
 
@@ -309,6 +312,16 @@ export function SnapshotPage() {
     };
   }, [isPastPeriod, isFuturePeriod, periodCashFlow]);
 
+  // Calculate surplus for safe limit line
+  const surplus = useMemo(() => {
+    return periodCashFlow.income.expected
+      - periodCashFlow.expenses.expected
+      - periodCashFlow.budgeted.expected
+      - periodCashFlow.savings.expected;
+  }, [periodCashFlow]);
+
+  const hasSurplusBuffer = surplus > 0;
+
   // Calculate budget status (spending pace vs budget)
   const budgetStatus = useMemo(() => {
     const totalBudget = periodCashFlow.expenses.expected + periodCashFlow.budgeted.expected;
@@ -338,16 +351,20 @@ export function SnapshotPage() {
     // For current period, compare pace: expected spending by now vs actual
     const periodProgress = periodCashFlow.dayOfPeriod / periodCashFlow.daysInPeriod;
     const expectedByNow = Math.round(totalBudget * periodProgress);
-    const paceDiff = expectedByNow - actualSpending;
+    const burnRate = expectedByNow > 0 ? Math.round((actualSpending / expectedByNow) * 100) : 0;
 
-    if (paceDiff > 0) {
-      return { amount: paceDiff, label: 'Spending under pace', isPositive: true, hasBudget: true };
-    } else if (paceDiff < 0) {
-      return { amount: Math.abs(paceDiff), label: 'Spending over pace', isPositive: false, hasBudget: true };
+    // Descriptive message based on burn rate
+    if (burnRate > 120) {
+      const bufferNote = hasSurplusBuffer
+        ? ' You have surplus buffer.'
+        : ' Consider slowing down.';
+      return { amount: 0, label: `Spending faster than your budget allows.${bufferNote}`, isPositive: false, hasBudget: true };
+    } else if (burnRate > 100) {
+      return { amount: 0, label: 'Slightly ahead of your budget.', isPositive: false, hasBudget: true };
     } else {
-      return { amount: 0, label: 'Spending on pace', isPositive: true, hasBudget: true };
+      return { amount: 0, label: 'On track with your budget. Keep it up!', isPositive: true, hasBudget: true };
     }
-  }, [isFuturePeriod, isPastPeriod, periodCashFlow]);
+  }, [isFuturePeriod, isPastPeriod, periodCashFlow, hasSurplusBuffer]);
 
   // Show loading spinner while data is being fetched
   if (isLoading) {
@@ -364,8 +381,8 @@ export function SnapshotPage() {
         {/* Page Header */}
         <div className="page-header">
           <h1 className="page-title">
-            <div className="page-title-icon bg-primary/10">
-              <CalendarFold className="h-5 w-5 text-primary" />
+            <div className="page-title-icon bg-slate-500/10">
+              <CalendarFold className="h-5 w-5 text-slate-500" />
             </div>
             Snapshot
           </h1>
@@ -476,8 +493,8 @@ export function SnapshotPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="page-title">
-            <div className="page-title-icon bg-primary/10">
-              <CalendarFold className="h-5 w-5 text-primary" />
+            <div className="page-title-icon bg-slate-500/10">
+              <CalendarFold className="h-5 w-5 text-slate-500" />
             </div>
             Snapshot
           </h1>
@@ -689,14 +706,41 @@ export function SnapshotPage() {
       {/* View-specific content */}
       {viewMode === 'year' ? (
         /* Year Grid View */
-        <YearGrid
-          year={selectedYear}
-          months={yearMonths}
-          onMonthClick={(monthIndex) => {
-            setSelectedMonth(new Date(selectedYear, monthIndex, 1));
-            setViewMode('month');
-          }}
-        />
+        <div className="space-y-6">
+          <YearGrid
+            year={selectedYear}
+            months={yearMonths}
+            onMonthClick={(monthIndex) => {
+              setSelectedMonth(new Date(selectedYear, monthIndex, 1));
+              setViewMode('month');
+            }}
+          />
+
+          {/* Year Burn Rate Chart - only show for current period */}
+          {isCurrentPeriod && burnRateData.totalBudget > 0 && budgetStatus && (
+            <div className="rounded-xl border bg-card p-5">
+              <div className="mb-3 flex items-center gap-2">
+                <CircleGauge className="h-5 w-5 text-muted-foreground" />
+                <h3 className="text-lg font-semibold">Spending Pace</h3>
+              </div>
+              <p className={cn(
+                'mb-4 text-sm',
+                budgetStatus.isPositive ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400',
+              )}>
+                {budgetStatus.label}
+              </p>
+              <BurnRateChart
+                dailySpending={burnRateData.dailySpending}
+                totalBudget={burnRateData.totalBudget}
+                periodStart={burnRateData.periodStart}
+                periodEnd={burnRateData.periodEnd}
+                periodLabel={burnRateData.periodLabel}
+                viewMode="year"
+                surplusAmount={hasSurplusBuffer ? surplus : undefined}
+              />
+            </div>
+          )}
+        </div>
       ) : viewMode === 'quarter' ? (
         /* Quarter View - 3 months side by side */
         <div className="space-y-6">
@@ -708,7 +752,7 @@ export function SnapshotPage() {
                 'text-xl font-bold',
                 quarterMonths.reduce((sum, m) => sum + m.surplus, 0) >= 0
                   ? 'text-green-600 dark:text-green-400'
-                  : 'text-red-600 dark:text-red-400',
+                  : 'text-amber-600 dark:text-amber-400',
               )}
             >
               {quarterMonths.reduce((sum, m) => sum + m.surplus, 0) >= 0 ? '+' : ''}
@@ -755,7 +799,7 @@ export function SnapshotPage() {
                 {/* Surplus/Shortfall */}
                 <div className={cn(
                   'rounded-lg p-3',
-                  month.surplus >= 0 ? 'bg-green-500/10' : 'bg-red-500/10',
+                  month.surplus >= 0 ? 'bg-green-500/10' : 'bg-amber-500/10',
                 )}>
                   <p className="text-xs text-muted-foreground">
                     {month.surplus >= 0 ? 'Surplus' : 'Shortfall'}
@@ -764,7 +808,7 @@ export function SnapshotPage() {
                     'text-xl font-bold',
                     month.surplus >= 0
                       ? 'text-green-600 dark:text-green-400'
-                      : 'text-red-600 dark:text-red-400',
+                      : 'text-amber-600 dark:text-amber-400',
                   )}>
                     {month.surplus >= 0 ? '+' : ''}{formatCents(month.surplus)}
                   </p>
@@ -788,6 +832,31 @@ export function SnapshotPage() {
               </button>
             ))}
           </div>
+
+          {/* Quarter Burn Rate Chart - only show for current period */}
+          {isCurrentPeriod && burnRateData.totalBudget > 0 && budgetStatus && (
+            <div className="rounded-xl border bg-card p-5">
+              <div className="mb-3 flex items-center gap-2">
+                <CircleGauge className="h-5 w-5 text-muted-foreground" />
+                <h3 className="text-lg font-semibold">Spending Pace</h3>
+              </div>
+              <p className={cn(
+                'mb-4 text-sm',
+                budgetStatus.isPositive ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400',
+              )}>
+                {budgetStatus.label}
+              </p>
+              <BurnRateChart
+                dailySpending={burnRateData.dailySpending}
+                totalBudget={burnRateData.totalBudget}
+                periodStart={burnRateData.periodStart}
+                periodEnd={burnRateData.periodEnd}
+                periodLabel={burnRateData.periodLabel}
+                viewMode="quarter"
+                surplusAmount={hasSurplusBuffer ? surplus : undefined}
+              />
+            </div>
+          )}
         </div>
       ) : (
         /* Month View - detailed view */
@@ -799,23 +868,24 @@ export function SnapshotPage() {
               'rounded-xl border p-4 text-center',
               headline.isPositive
                 ? headline.hasPlan ? 'border-green-500/50 bg-green-500/5' : 'bg-card'
-                : 'border-red-500/50 bg-red-500/5',
+                : 'border-amber-500/50 bg-amber-500/5',
             )}>
               <div className={cn(
                 'mx-auto flex h-9 w-9 items-center justify-center rounded-full',
-                headline.isPositive ? 'bg-green-500/10' : 'bg-red-500/10',
+                headline.isPositive ? 'bg-green-500/10' : 'bg-amber-500/10',
               )}>
-                {headline.isPositive ? (
-                  <TrendingUp className={cn('h-4 w-4', headline.hasPlan ? 'text-green-500' : 'text-slate-500')} />
-                ) : (
-                  <TrendingDown className="h-4 w-4 text-red-500" />
-                )}
+                <Banknote className={cn(
+                  'h-4 w-4',
+                  headline.isPositive
+                    ? headline.hasPlan ? 'text-green-500' : 'text-slate-500'
+                    : 'text-amber-500',
+                )} />
               </div>
               <p className={cn(
                 'mt-2 text-xl font-bold',
                 headline.isPositive
                   ? headline.hasPlan ? 'text-green-600 dark:text-green-400' : ''
-                  : 'text-red-600 dark:text-red-400',
+                  : 'text-amber-600 dark:text-amber-400',
               )}>
                 {headline.isPositive ? '+' : ''}{formatCents(headline.amount)}
               </p>
@@ -862,35 +932,33 @@ export function SnapshotPage() {
             </div>
           </div>
 
-          {/* Budget Status with burn rate chart - full width */}
+          {/* Spending Pace with burn rate chart - full width */}
           {budgetStatus && (
-            <div className={cn(
-              'rounded-xl border p-5',
-              budgetStatus.isPositive
-                ? budgetStatus.hasBudget ? 'border-green-500/50 bg-green-500/5' : 'bg-card'
-                : 'border-red-500/50 bg-red-500/5',
-            )}>
-              <div className="flex items-center gap-3">
-                <div className={cn(
-                  'flex h-10 w-10 items-center justify-center rounded-full',
-                  budgetStatus.isPositive ? 'bg-green-500/10' : 'bg-red-500/10',
-                )}>
-                  <Target className={cn('h-5 w-5', budgetStatus.isPositive ? 'text-green-500' : 'text-red-500')} />
-                </div>
-                <div className="flex-1">
-                  <p className={cn(
-                    'text-xl font-bold',
-                    budgetStatus.isPositive
-                      ? budgetStatus.hasBudget ? 'text-green-600 dark:text-green-400' : ''
-                      : 'text-red-600 dark:text-red-400',
-                  )}>
-                    {budgetStatus.isPositive && budgetStatus.amount > 0 ? '+' : ''}{budgetStatus.amount > 0 ? formatCents(budgetStatus.amount) : '—'}
-                    <span className="ml-2 text-sm font-normal text-muted-foreground">{budgetStatus.label}</span>
-                  </p>
-                </div>
+            <div className="rounded-xl border bg-card p-5">
+              <div className="mb-3 flex items-center gap-2">
+                <CircleGauge className="h-5 w-5 text-muted-foreground" />
+                <h3 className="text-lg font-semibold">Spending Pace</h3>
               </div>
-              {/* Burn rate chart - larger now that it's full width */}
-              {budgetStatus.hasBudget && burnRateData.totalBudget > 0 && (
+              {budgetStatus.amount > 0 ? (
+                <p className={cn(
+                  'text-xl font-bold',
+                  budgetStatus.isPositive
+                    ? budgetStatus.hasBudget ? 'text-green-600 dark:text-green-400' : ''
+                    : 'text-amber-600 dark:text-amber-400',
+                )}>
+                  {budgetStatus.isPositive ? '+' : ''}{formatCents(budgetStatus.amount)}
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">{budgetStatus.label}</span>
+                </p>
+              ) : (
+                <p className={cn(
+                  'text-sm',
+                  budgetStatus.isPositive ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400',
+                )}>
+                  {budgetStatus.label}
+                </p>
+              )}
+              {/* Burn rate chart - only show for current period */}
+              {isCurrentPeriod && budgetStatus.hasBudget && burnRateData.totalBudget > 0 && (
                 <div className="mt-4">
                   <BurnRateChart
                     dailySpending={burnRateData.dailySpending}
@@ -898,16 +966,20 @@ export function SnapshotPage() {
                     periodStart={burnRateData.periodStart}
                     periodEnd={burnRateData.periodEnd}
                     periodLabel={burnRateData.periodLabel}
-                    compact
+                    viewMode="month"
+                    surplusAmount={hasSurplusBuffer ? surplus : undefined}
                   />
                 </div>
               )}
             </div>
           )}
 
-          {/* Category Progress */}
+          {/* Spending by Category */}
           <div className="rounded-xl border bg-card p-6">
-            <h3 className="mb-4 text-lg font-semibold">Category Progress</h3>
+            <div className="mb-4 flex items-center gap-2">
+              <BanknoteArrowDown className="h-5 w-5 text-muted-foreground" />
+              <h3 className="text-lg font-semibold">Spending</h3>
+            </div>
 
             {categoryProgress.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">
@@ -934,7 +1006,7 @@ export function SnapshotPage() {
                           <span className="font-medium">{item.name}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
-                          <Pin className="h-3 w-3 text-indigo-500" />
+                          <Pin className="h-3 w-3 text-amber-500" />
                           <span className="text-muted-foreground">Fixed</span>
                           <span className="font-mono">{formatCents(item.fixedAmount)}</span>
                         </div>
@@ -957,7 +1029,7 @@ export function SnapshotPage() {
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger>
-                                  <span className="flex items-center gap-1 rounded bg-indigo-500/10 px-1.5 py-0.5 text-xs text-indigo-600 dark:text-indigo-400">
+                                  <span className="flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-600 dark:text-amber-400">
                                     <Pin className="h-3 w-3" />
                                     {formatCents(item.fixedAmount)} fixed
                                   </span>
@@ -973,7 +1045,7 @@ export function SnapshotPage() {
                         )}>
                           {hasBudget ? (
                             <>
-                              {formatCents(item.spent)} of {formatCents(item.budget)}
+                              {formatCents(item.spent)} of budgeted {formatCents(item.budget)}
                               <span className="ml-1">({percentage}%)</span>
                             </>
                           ) : (
@@ -1008,9 +1080,9 @@ export function SnapshotPage() {
       {/* Quick Actions */}
       <div className="flex flex-wrap justify-center gap-3">
         <Button variant="outline" asChild>
-          <Link to="/money">
+          <Link to="/budget#track-record">
             <Receipt className="h-4 w-4" />
-            View All Transactions
+            View Transactions
           </Link>
         </Button>
         <Button variant="outline" asChild>

@@ -119,15 +119,39 @@ function calculatePeriodCashFlow(
   savingsForecasts: ExpandedForecast[],
   allTransactions: Transaction[],
 ): PeriodCashFlow {
-  const daysInPeriod = viewMode === 'year'
-    ? (selectedYear % 4 === 0 ? 366 : 365)
-    : new Date(selectedYear, selectedMonthIndex + 1, 0).getDate();
+  // Calculate quarter boundaries
+  const quarterStartMonth = Math.floor(selectedMonthIndex / 3) * 3;
+  const quarterEndMonth = quarterStartMonth + 2;
+
+  // Calculate days in period based on view mode
+  let daysInPeriod: number;
+  if (viewMode === 'year') {
+    daysInPeriod = selectedYear % 4 === 0 ? 366 : 365;
+  } else if (viewMode === 'quarter') {
+    // Sum days in all 3 months of the quarter
+    daysInPeriod = 0;
+    for (let m = quarterStartMonth; m <= quarterEndMonth; m++) {
+      daysInPeriod += new Date(selectedYear, m + 1, 0).getDate();
+    }
+  } else {
+    daysInPeriod = new Date(selectedYear, selectedMonthIndex + 1, 0).getDate();
+  }
+
   const effectiveDateObj = new Date(effectiveDate);
-  const dayOfPeriod = isCurrentPeriod
-    ? (viewMode === 'year'
-      ? Math.ceil((effectiveDateObj.getTime() - new Date(selectedYear, 0, 1).getTime()) / (1000 * 60 * 60 * 24)) + 1
-      : effectiveDateObj.getDate())
-    : daysInPeriod;
+  const periodStartDate = new Date(periodStart);
+
+  // Calculate day of period based on view mode
+  let dayOfPeriod: number;
+  if (!isCurrentPeriod) {
+    dayOfPeriod = daysInPeriod;
+  } else if (viewMode === 'year') {
+    dayOfPeriod = Math.ceil((effectiveDateObj.getTime() - new Date(selectedYear, 0, 1).getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  } else if (viewMode === 'quarter') {
+    // Days from quarter start to today
+    dayOfPeriod = Math.ceil((effectiveDateObj.getTime() - periodStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  } else {
+    dayOfPeriod = effectiveDateObj.getDate();
+  }
 
   // Get category IDs that have budgets
   const budgetedCategoryIds = new Set(budgetRules.map((r) => r.categoryId));
@@ -146,7 +170,7 @@ function calculatePeriodCashFlow(
     .reduce((sum, f) => sum + f.amountCents, 0);
 
   // Total budget for period
-  const periodMultiplier = viewMode === 'year' ? 12 : 1;
+  const periodMultiplier = viewMode === 'year' ? 12 : viewMode === 'quarter' ? 3 : 1;
   const totalBudget = budgetRules.reduce(
     (sum, r) => sum + toMonthlyAmount(r.amountCents, r.cadence) * periodMultiplier,
     0,
@@ -229,22 +253,45 @@ function calculateSummary(
   periodForecasts: ExpandedForecast[],
   allTransactions: Transaction[],
 ): BudgetSummary {
-  const daysInPeriod = viewMode === 'year'
-    ? (selectedYear % 4 === 0 ? 366 : 365)
-    : new Date(selectedYear, selectedMonthIndex + 1, 0).getDate();
+  // Calculate quarter boundaries
+  const quarterStartMonth = Math.floor(selectedMonthIndex / 3) * 3;
+  const quarterEndMonth = quarterStartMonth + 2;
+
+  // Calculate days in period based on view mode
+  let daysInPeriod: number;
+  if (viewMode === 'year') {
+    daysInPeriod = selectedYear % 4 === 0 ? 366 : 365;
+  } else if (viewMode === 'quarter') {
+    daysInPeriod = 0;
+    for (let m = quarterStartMonth; m <= quarterEndMonth; m++) {
+      daysInPeriod += new Date(selectedYear, m + 1, 0).getDate();
+    }
+  } else {
+    daysInPeriod = new Date(selectedYear, selectedMonthIndex + 1, 0).getDate();
+  }
+
   const effectiveDateObj = new Date(effectiveDate);
-  const dayOfPeriod = isCurrentPeriod
-    ? (viewMode === 'year'
-      ? Math.ceil((effectiveDateObj.getTime() - new Date(selectedYear, 0, 1).getTime()) / (1000 * 60 * 60 * 24)) + 1
-      : effectiveDateObj.getDate())
-    : daysInPeriod;
+  const periodStartDate = new Date(periodStart);
+
+  // Calculate day of period based on view mode
+  let dayOfPeriod: number;
+  if (!isCurrentPeriod) {
+    dayOfPeriod = daysInPeriod;
+  } else if (viewMode === 'year') {
+    dayOfPeriod = Math.ceil((effectiveDateObj.getTime() - new Date(selectedYear, 0, 1).getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  } else if (viewMode === 'quarter') {
+    dayOfPeriod = Math.ceil((effectiveDateObj.getTime() - periodStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  } else {
+    dayOfPeriod = effectiveDateObj.getDate();
+  }
+
   const periodProgress = dayOfPeriod / daysInPeriod;
 
   let overCount = 0;
   let overspendingCount = 0;
   let goodCount = 0;
 
-  const periodMultiplier = viewMode === 'year' ? 12 : 1;
+  const periodMultiplier = viewMode === 'year' ? 12 : viewMode === 'quarter' ? 3 : 1;
 
   for (const rule of budgetRules) {
     const periodBudget = toMonthlyAmount(rule.amountCents, rule.cadence) * periodMultiplier;
@@ -294,7 +341,7 @@ function calculatePeriodSpending(
     (t) => t.type === 'expense' && t.date >= periodStart && t.date <= effectiveDate,
   );
 
-  const periodMultiplier = viewMode === 'year' ? 12 : 1;
+  const periodMultiplier = viewMode === 'year' ? 12 : viewMode === 'quarter' ? 3 : 1;
   const budgetByCategory = new Map<string, number>();
   for (const rule of budgetRules) {
     budgetByCategory.set(rule.categoryId, Math.round(toMonthlyAmount(rule.amountCents, rule.cadence) * periodMultiplier));
@@ -396,7 +443,7 @@ function calculateBurnRateData(
     amount: t.amountCents,
   }));
 
-  const periodMultiplier = viewMode === 'year' ? 12 : 1;
+  const periodMultiplier = viewMode === 'year' ? 12 : viewMode === 'quarter' ? 3 : 1;
   const totalBudget = budgetRules.reduce(
     (sum, r) => sum + toMonthlyAmount(r.amountCents, r.cadence) * periodMultiplier,
     0,
@@ -429,23 +476,35 @@ export function useBudgetPeriodData({
   const selectedYear = selectedMonth.getFullYear();
   const selectedMonthIndex = selectedMonth.getMonth();
 
+  // Calculate quarter start month (0, 3, 6, or 9)
+  const quarterStartMonth = Math.floor(selectedMonthIndex / 3) * 3;
+  const quarterEndMonth = quarterStartMonth + 2;
+  const lastDayOfQuarter = new Date(selectedYear, quarterEndMonth + 1, 0).getDate();
+
   const periodStart = viewMode === 'year'
     ? `${selectedYear}-01-01`
-    : `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-01`;
+    : viewMode === 'quarter'
+      ? `${selectedYear}-${String(quarterStartMonth + 1).padStart(2, '0')}-01`
+      : `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-01`;
   const lastDayOfMonth = new Date(selectedYear, selectedMonthIndex + 1, 0).getDate();
   const periodEnd = viewMode === 'year'
     ? `${selectedYear}-12-31`
-    : `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-${String(lastDayOfMonth).padStart(2, '0')}`;
+    : viewMode === 'quarter'
+      ? `${selectedYear}-${String(quarterEndMonth + 1).padStart(2, '0')}-${String(lastDayOfQuarter).padStart(2, '0')}`
+      : `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-${String(lastDayOfMonth).padStart(2, '0')}`;
 
-  const isCurrentPeriod = viewMode === 'year'
-    ? today.slice(0, 4) === String(selectedYear)
-    : today.slice(0, 7) === periodStart.slice(0, 7);
+  const isCurrentPeriod = today >= periodStart && today <= periodEnd;
   const isFuturePeriod = periodStart > today;
   const isPastPeriod = periodEnd < today;
   const effectiveDate = isCurrentPeriod ? today : (isFuturePeriod ? periodStart : periodEnd);
 
   const shortMonthName = selectedMonth.toLocaleDateString('en-AU', { month: 'long' });
-  const periodLabel = viewMode === 'year' ? String(selectedYear) : `${shortMonthName} ${selectedYear}`;
+  const quarterNames = ['Q1', 'Q2', 'Q3', 'Q4'];
+  const periodLabel = viewMode === 'year'
+    ? String(selectedYear)
+    : viewMode === 'quarter'
+      ? `${quarterNames[Math.floor(selectedMonthIndex / 3)]} ${selectedYear}`
+      : `${shortMonthName} ${selectedYear}`;
 
   // Get forecasts for the period
   const { expandedForecasts: periodForecasts, savingsForecasts, isLoading: forecastsLoading } = useForecasts(scenarioId, periodStart, periodEnd);
