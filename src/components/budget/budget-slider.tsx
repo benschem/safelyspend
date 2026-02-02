@@ -103,6 +103,9 @@ export function BudgetSlider({
   const hasAdjustment = delta !== 0;
   const styles = variantStyles[variant];
 
+  // Calculate baseline marker position (percentage along the track)
+  const baselinePercent = max > min ? ((baseline - min) / (max - min)) * 100 : 0;
+
   return (
     <div
       className={cn(
@@ -125,14 +128,25 @@ export function BudgetSlider({
         </div>
       </div>
 
-      <Slider
-        value={[localValue]}
-        min={min}
-        max={max}
-        step={step}
-        onValueChange={handleChange}
-        className={cn('cursor-pointer', styles.track, styles.thumb)}
-      />
+      {/* Slider with baseline marker */}
+      <div className="relative">
+        <Slider
+          value={[localValue]}
+          min={min}
+          max={max}
+          step={step}
+          onValueChange={handleChange}
+          className={cn('cursor-pointer', styles.track, styles.thumb)}
+        />
+        {/* Baseline marker - shows original value position */}
+        {hasAdjustment && (
+          <div
+            className="pointer-events-none absolute top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-gray-400 dark:bg-gray-500"
+            style={{ left: `${baselinePercent}%` }}
+            title={`Original: ${formatCents(baseline)}`}
+          />
+        )}
+      </div>
 
       {hasAdjustment && (
         <div className="mt-2 flex justify-end">

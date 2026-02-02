@@ -25,6 +25,7 @@ export const changelog: ChangelogEntry[] = [
     date: '2026-02-02',
     changes: [
       'What-If adjustments now update the Budget page cards, chart, and all other pages in real-time',
+      'Sliders show a baseline marker indicating the original value when adjusted',
       'See how your budget changes affect all parts of the app before saving',
     ],
   },
