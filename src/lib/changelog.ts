@@ -21,6 +21,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.13.0',
+    date: '2026-02-02',
+    changes: [
+      'Budget page now features sliders for exploring what-if scenarios',
+      'Adjust income, expenses, and savings to see how changes affect your surplus',
+      'What-If mode banner shows when you have unsaved adjustments',
+      'Save your adjustments as a new preset to keep your changes',
+      'Reset button discards adjustments and returns to baseline values',
+    ],
+  },
+  {
     version: '0.12.2',
     date: '2026-02-02',
     changes: [

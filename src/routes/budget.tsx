@@ -2,7 +2,6 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Link, useOutletContext, useSearchParams, useLocation } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -39,13 +38,9 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
-  Tag,
   CreditCard,
   Scale,
   Banknote,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
   BanknoteArrowUp,
   BanknoteArrowDown,
   ArrowLeftRight,
@@ -74,6 +69,13 @@ import { AddToBudgetDialog } from '@/components/dialogs/add-to-budget-dialog';
 import { DateRangeFilter } from '@/components/date-range-filter';
 import { SpendingBreakdownChart } from '@/components/charts/spending-breakdown-chart';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
+import {
+  IncomeSliderSection,
+  FixedExpenseSliderSection,
+  BudgetedSpendingSliderSection,
+  SavingsSliderSection,
+} from '@/components/budget/slider-sections';
+import { useWhatIf } from '@/contexts/what-if-context';
 import type { Cadence, BudgetRule, Category, ForecastRule, Transaction } from '@/lib/types';
 
 type BudgetPeriod = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly';
@@ -113,8 +115,10 @@ export function BudgetPage() {
   const location = useLocation();
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
+  // What-If context is used by the slider section components
+  void useWhatIf();
   const { categories, activeCategories, isLoading: categoriesLoading, addCategory, updateCategory, deleteCategory } = useCategories();
-  const { getRuleForCategory, isLoading: budgetLoading, setBudgetForCategory, deleteBudgetRule } =
+  const { budgetRules, getRuleForCategory, isLoading: budgetLoading, setBudgetForCategory, deleteBudgetRule } =
     useBudgetRules(activeScenarioId);
   const { savingsGoals, isLoading: savingsLoading } = useSavingsGoals();
   const { rules: categoryRules } = useCategoryRules();
@@ -209,21 +213,6 @@ export function BudgetPage() {
   // Chart visibility state
   const [hiddenSegments, setHiddenSegments] = useState<Set<string>>(new Set());
 
-  // Sort state for category table
-  type SortField = 'name' | 'fixed' | 'variable' | 'total';
-  type SortDirection = 'asc' | 'desc';
-  const [sortField, setSortField] = useState<SortField>('name');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-
-  const toggleSort = useCallback((field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection(field === 'name' ? 'asc' : 'desc'); // Default desc for amounts
-    }
-  }, [sortField]);
-
   // Filter forecast rules by type
   const incomeRules = useMemo(() => forecastRules.filter(r => r.type === 'income'), [forecastRules]);
   const expenseRules = useMemo(() => forecastRules.filter(r => r.type === 'expense'), [forecastRules]);
@@ -298,28 +287,15 @@ export function BudgetPage() {
       };
     });
 
-    // Sort: archived always at bottom, then by selected field
+    // Sort: archived always at bottom, then by name
     return rows.sort((a, b) => {
       // Archived categories always at the bottom
       if (a.category.isArchived !== b.category.isArchived) {
         return a.category.isArchived ? 1 : -1;
       }
-
-      const multiplier = sortDirection === 'asc' ? 1 : -1;
-      switch (sortField) {
-        case 'name':
-          return multiplier * a.categoryName.localeCompare(b.categoryName);
-        case 'fixed':
-          return multiplier * (a.fixedAmount - b.fixedAmount);
-        case 'variable':
-          return multiplier * (a.variableAmount - b.variableAmount);
-        case 'total':
-          return multiplier * (a.totalAmount - b.totalAmount);
-        default:
-          return 0;
-      }
+      return a.categoryName.localeCompare(b.categoryName);
     });
-  }, [categories, allTransactions, getRuleForCategory, fixedExpensesPerCategory, toPeriod, breakdownPeriod, sortField, sortDirection]);
+  }, [categories, allTransactions, getRuleForCategory, fixedExpensesPerCategory, toPeriod, breakdownPeriod]);
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -532,11 +508,13 @@ export function BudgetPage() {
     });
   }, []);
 
+  // Note: openEditCategoryDialog is kept for future enhancement to add edit icons to slider sections
   const openEditCategoryDialog = useCallback((row: CategoryRow, shouldFocusLimit = false) => {
     setEditingRow(row);
     setFocusLimit(shouldFocusLimit);
     setEditCategoryDialogOpen(true);
   }, []);
+  void openEditCategoryDialog; // Mark as intentionally unused for now
 
   const handleEditDialogClose = useCallback((open: boolean) => {
     setEditCategoryDialogOpen(open);
@@ -552,11 +530,13 @@ export function BudgetPage() {
     setRuleDialogOpen(true);
   }, []);
 
+  // Note: openEditRuleDialog is kept for future enhancement to add edit icons to slider sections
   const openEditRuleDialog = useCallback((rule: ForecastRule) => {
     setEditingRule(rule);
     setRuleDialogType(rule.type);
     setRuleDialogOpen(true);
   }, []);
+  void openEditRuleDialog; // Mark as intentionally unused for now
 
   const handleRuleDialogClose = useCallback((open: boolean) => {
     setRuleDialogOpen(open);
@@ -566,6 +546,7 @@ export function BudgetPage() {
     }
   }, []);
 
+  // Note: handleDeleteRule is kept for future enhancement to add delete icons to slider sections
   const handleDeleteRule = useCallback((id: string) => {
     if (deletingRuleId === id) {
       deleteRule(id);
@@ -574,6 +555,7 @@ export function BudgetPage() {
       setDeletingRuleId(id);
     }
   }, [deletingRuleId, deleteRule]);
+  void handleDeleteRule; // Mark as intentionally unused for now
 
   // Get category name helper
   const getCategoryName = useCallback(
@@ -581,11 +563,12 @@ export function BudgetPage() {
     [categories],
   );
 
-  // Get savings goal name helper
+  // Get savings goal name helper - used in transaction table
   const getSavingsGoalName = useCallback(
     (id: string | null) => (id ? (savingsGoals.find((g) => g.id === id)?.name ?? 'Unknown') : '—'),
     [savingsGoals],
   );
+  void getSavingsGoalName; // Mark as intentionally unused for now
 
   // Transaction handlers
   const handleImportClick = useCallback(() => {
@@ -1173,373 +1156,47 @@ export function BudgetPage() {
       </div>
 
       {/* Income Sources Section */}
-      <Collapsible open={incomeOpen} onOpenChange={setIncomeOpen} className="mb-4">
-        <div className="overflow-hidden rounded-lg border">
-          <div className="flex items-center justify-between bg-card p-4">
-            <CollapsibleTrigger className="flex flex-1 cursor-pointer items-center gap-2">
-              {incomeOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              <BanknoteArrowUp className="h-4 w-4 text-green-500" />
-              <span className="font-medium">Income Sources</span>
-              <span className="text-sm text-muted-foreground">
-                {incomeRules.length} source{incomeRules.length !== 1 ? 's' : ''} totaling {formatCents(totals.income)} {FREQUENCY_PER_LABELS[breakdownPeriod]}
-              </span>
-            </CollapsibleTrigger>
-            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openAddRuleDialog('income'); }}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-          <CollapsibleContent>
-            {incomeRules.length === 0 ? (
-              <p className="border-t bg-card py-4 text-center text-sm text-muted-foreground">
-                No income sources yet.{' '}
-                <button onClick={() => openAddRuleDialog('income')} className="cursor-pointer text-primary hover:underline">
-                  Add one
-                </button>
-              </p>
-            ) : (
-              <table className="w-full">
-                <tbody className="divide-y border-t">
-                  {incomeRules.map((rule) => (
-                    <tr key={rule.id} className="bg-card transition-colors hover:bg-muted/50">
-                      <td className="px-4 py-3 font-medium">{rule.description}</td>
-                      <td className="px-4 py-3 text-right text-sm text-muted-foreground">
-                        {formatCents(rule.amountCents)} {FREQUENCY_PER_LABELS[rule.cadence]}
-                      </td>
-                      <td className="w-20 px-4 py-3">
-                        <div className="flex justify-end gap-1">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="sm" onClick={() => openEditRuleDialog(rule)}>
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Edit</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant={deletingRuleId === rule.id ? 'destructive' : 'ghost'}
-                                  size="sm"
-                                  onClick={() => handleDeleteRule(rule.id)}
-                                  onBlur={() => setTimeout(() => setDeletingRuleId(null), 200)}
-                                >
-                                  {deletingRuleId === rule.id ? 'Confirm' : <Trash2 className="h-4 w-4" />}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>{deletingRuleId === rule.id ? 'Click to confirm' : 'Delete'}</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </CollapsibleContent>
-        </div>
-      </Collapsible>
+      <IncomeSliderSection
+        incomeRules={incomeRules}
+        isOpen={incomeOpen}
+        onOpenChange={setIncomeOpen}
+        onAddClick={() => openAddRuleDialog('income')}
+        periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
+        periodTotal={totals.income}
+      />
 
       {/* Fixed Expenses Section */}
-      <Collapsible open={fixedExpensesOpen} onOpenChange={setFixedExpensesOpen} className="mb-4">
-        <div className="overflow-hidden rounded-lg border">
-          <div className="flex items-center justify-between bg-card p-4">
-            <CollapsibleTrigger className="flex flex-1 cursor-pointer items-center gap-2">
-              {fixedExpensesOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              <BanknoteArrowDown className="h-4 w-4 text-red-500" />
-              <span className="font-medium">Fixed Expenses</span>
-              <span className="text-sm text-muted-foreground">
-                {expenseRules.length} expense{expenseRules.length !== 1 ? 's' : ''} totaling {formatCents(totals.fixed)} {FREQUENCY_PER_LABELS[breakdownPeriod]}
-              </span>
-            </CollapsibleTrigger>
-            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openAddRuleDialog('expense'); }}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-          <CollapsibleContent>
-            {expenseRules.length === 0 ? (
-              <p className="border-t bg-card py-4 text-center text-sm text-muted-foreground">
-                No fixed expenses yet.{' '}
-                <button onClick={() => openAddRuleDialog('expense')} className="cursor-pointer text-primary hover:underline">
-                  Add one
-                </button>
-              </p>
-            ) : (
-              <table className="w-full">
-                <tbody className="divide-y border-t">
-                  {expenseRules.map((rule) => (
-                    <tr key={rule.id} className="bg-card transition-colors hover:bg-muted/50">
-                      <td className="px-4 py-3 font-medium">{rule.description}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">
-                        {rule.categoryId ? getCategoryName(rule.categoryId) : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm text-muted-foreground">
-                        {formatCents(rule.amountCents)} {FREQUENCY_PER_LABELS[rule.cadence]}
-                      </td>
-                      <td className="w-20 px-4 py-3">
-                        <div className="flex justify-end gap-1">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="sm" onClick={() => openEditRuleDialog(rule)}>
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Edit</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant={deletingRuleId === rule.id ? 'destructive' : 'ghost'}
-                                  size="sm"
-                                  onClick={() => handleDeleteRule(rule.id)}
-                                  onBlur={() => setTimeout(() => setDeletingRuleId(null), 200)}
-                                >
-                                  {deletingRuleId === rule.id ? 'Confirm' : <Trash2 className="h-4 w-4" />}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>{deletingRuleId === rule.id ? 'Click to confirm' : 'Delete'}</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </CollapsibleContent>
-        </div>
-      </Collapsible>
+      <FixedExpenseSliderSection
+        expenseRules={expenseRules}
+        categories={categories}
+        isOpen={fixedExpensesOpen}
+        onOpenChange={setFixedExpensesOpen}
+        onAddClick={() => openAddRuleDialog('expense')}
+        periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
+        periodTotal={totals.fixed}
+      />
 
       {/* Budgeted Expenses */}
-      <Collapsible open={budgetedExpensesOpen} onOpenChange={setBudgetedExpensesOpen} className="mb-4">
-        <div className="overflow-hidden rounded-lg border">
-          <div className="flex items-center justify-between bg-card p-4">
-            <CollapsibleTrigger className="flex flex-1 cursor-pointer items-center gap-2">
-              {budgetedExpensesOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              <BanknoteArrowDown className="h-4 w-4 text-red-500" />
-              <span className="font-medium">Budgeted Expenses</span>
-              <span className="text-sm text-muted-foreground">
-                {categoryRows.filter(r => !r.category.isArchived && r.variableAmount > 0).length} categories totaling {formatCents(totals.variable)} {FREQUENCY_PER_LABELS[breakdownPeriod]}
-              </span>
-            </CollapsibleTrigger>
-            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setAddCategoryDialogOpen(true); }}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-          <CollapsibleContent>
-        {categoryRows.length === 0 ? (
-          <p className="border-t bg-card py-4 text-center text-sm text-muted-foreground">
-            No categories yet.{' '}
-            <button onClick={() => setAddCategoryDialogOpen(true)} className="cursor-pointer text-primary hover:underline">
-              Add one
-            </button>
-          </p>
-        ) : (
-            <table className="w-full">
-              <thead className="border-t bg-muted/50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    <button
-                      type="button"
-                      onClick={() => toggleSort('name')}
-                      className="flex cursor-pointer items-center gap-1 hover:text-foreground"
-                    >
-                      Category
-                      {sortField === 'name' ? (
-                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
-                      ) : (
-                        <ArrowUpDown className="h-3 w-3 opacity-50" />
-                      )}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 text-right text-sm font-medium">
-                    <button
-                      type="button"
-                      onClick={() => toggleSort('variable')}
-                      className="ml-auto flex cursor-pointer items-center gap-1 hover:text-foreground"
-                    >
-                      Budget
-                      {sortField === 'variable' ? (
-                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
-                      ) : (
-                        <ArrowUpDown className="h-3 w-3 opacity-50" />
-                      )}
-                    </button>
-                  </th>
-                  <th className="w-20 px-4 py-3 text-right text-sm font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {categoryRows.map((row) => {
-                  const isArchived = row.category.isArchived;
-                  return (
-                    <tr
-                      key={row.id}
-                      className={cn(
-                        'transition-colors hover:bg-muted/50',
-                        isArchived && 'opacity-50',
-                      )}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Tag className="h-4 w-4 text-muted-foreground" />
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Link
-                                  to={`/categories/${row.id}`}
-                                  className="font-medium hover:underline"
-                                >
-                                  {row.categoryName}
-                                </Link>
-                              </TooltipTrigger>
-                              <TooltipContent>View category details</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          {isArchived && <Badge variant="secondary">Archived</Badge>}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {row.variableAmount > 0 ? (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  onClick={() => openEditCategoryDialog(row, true)}
-                                  className="cursor-pointer font-mono hover:underline"
-                                >
-                                  {formatCents(row.variableAmount)}
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent>Edit budget</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        ) : (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  onClick={() => openEditCategoryDialog(row, true)}
-                                  className="cursor-pointer text-muted-foreground hover:underline hover:text-foreground"
-                                >
-                                  —
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent>Set a budget</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-1">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openEditCategoryDialog(row)}
-                                  aria-label="Edit"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Edit category</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-        )}
-          </CollapsibleContent>
-        </div>
-      </Collapsible>
+      <BudgetedSpendingSliderSection
+        budgetRules={budgetRules}
+        categories={categories}
+        isOpen={budgetedExpensesOpen}
+        onOpenChange={setBudgetedExpensesOpen}
+        onAddClick={() => setAddCategoryDialogOpen(true)}
+        periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
+        periodTotal={totals.variable}
+      />
 
       {/* Savings Contributions Section */}
-      <Collapsible open={savingsOpen} onOpenChange={setSavingsOpen}>
-        <div className="overflow-hidden rounded-lg border">
-          <div className="flex items-center justify-between bg-card p-4">
-            <CollapsibleTrigger className="flex flex-1 cursor-pointer items-center gap-2">
-              {savingsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              <PiggyBank className="h-4 w-4 text-blue-500" />
-              <span className="font-medium">Savings Contributions</span>
-              <span className="text-sm text-muted-foreground">
-                {savingsRules.length} contribution{savingsRules.length !== 1 ? 's' : ''} totaling {formatCents(totals.savings)} {FREQUENCY_PER_LABELS[breakdownPeriod]}
-              </span>
-            </CollapsibleTrigger>
-            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openAddRuleDialog('savings'); }}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-          <CollapsibleContent>
-            {savingsRules.length === 0 ? (
-              <p className="border-t bg-card py-4 text-center text-sm text-muted-foreground">
-                No savings contributions yet.{' '}
-                <button onClick={() => openAddRuleDialog('savings')} className="cursor-pointer text-primary hover:underline">
-                  Add one
-                </button>
-              </p>
-            ) : (
-              <table className="w-full">
-                <tbody className="divide-y border-t">
-                  {savingsRules.map((rule) => (
-                    <tr key={rule.id} className="bg-card transition-colors hover:bg-muted/50">
-                      <td className="px-4 py-3 font-medium">
-                        {rule.savingsGoalId ? getSavingsGoalName(rule.savingsGoalId) : 'Savings'}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm text-muted-foreground">
-                        {formatCents(rule.amountCents)} {FREQUENCY_PER_LABELS[rule.cadence]}
-                      </td>
-                      <td className="w-20 px-4 py-3">
-                        <div className="flex justify-end gap-1">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="sm" onClick={() => openEditRuleDialog(rule)}>
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Edit</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant={deletingRuleId === rule.id ? 'destructive' : 'ghost'}
-                                  size="sm"
-                                  onClick={() => handleDeleteRule(rule.id)}
-                                  onBlur={() => setTimeout(() => setDeletingRuleId(null), 200)}
-                                >
-                                  {deletingRuleId === rule.id ? 'Confirm' : <Trash2 className="h-4 w-4" />}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>{deletingRuleId === rule.id ? 'Click to confirm' : 'Delete'}</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </CollapsibleContent>
-        </div>
-      </Collapsible>
+      <SavingsSliderSection
+        savingsRules={savingsRules}
+        savingsGoals={savingsGoals}
+        isOpen={savingsOpen}
+        onOpenChange={setSavingsOpen}
+        onAddClick={() => openAddRuleDialog('savings')}
+        periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
+        periodTotal={totals.savings}
+      />
 
       {/* Your Track Record Divider */}
       <div id="track-record" className="flex items-center gap-4 py-6 scroll-mt-20">
