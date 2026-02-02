@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.12.1',
+    date: '2026-02-02',
+    changes: [
+      'Spending pace chart now shows Expected Pace line in green for better visibility',
+    ],
+  },
+  {
     version: '0.12.0',
     date: '2026-02-02',
     changes: [
