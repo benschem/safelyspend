@@ -231,6 +231,14 @@ export const CADENCE_SHORT_LABELS: Record<CadenceType, string> = {
   yearly: '/year',
 };
 
+export const CADENCE_PER_LABELS: Record<CadenceType, string> = {
+  weekly: 'per week',
+  fortnightly: 'per fortnight',
+  monthly: 'per month',
+  quarterly: 'per quarter',
+  yearly: 'per year',
+};
+
 /**
  * Format a date range for compact display
  * e.g., "1 Jul 2025 – 30 Jun 2026" or "Jul 2025 – Jun 2026" if full months

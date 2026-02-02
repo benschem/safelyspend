@@ -21,6 +21,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.13.2',
+    date: '2026-02-02',
+    changes: [
+      'Improved What-If slider feedback with descriptive text like "spending $50 less per month"',
+      'Click on any slider amount to enter a custom value beyond slider limits',
+      'Income sliders now allow adjusting down to $0',
+      'Expense adjustments show green when spending less, red when spending more',
+      'Savings adjustments always show in blue',
+    ],
+  },
+  {
     version: '0.13.1',
     date: '2026-02-02',
     changes: [
