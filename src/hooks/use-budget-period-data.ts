@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
-import { useBudgetRules } from './use-budget-rules';
+import { useAdjustedBudgets, useAdjustedForecasts } from './use-adjusted-values';
 import { useTransactions } from './use-transactions';
-import { useForecasts } from './use-forecasts';
 import { useCategories } from './use-categories';
 import type { BudgetRule, Category, Transaction, ExpandedForecast } from '@/lib/types';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
@@ -467,7 +466,7 @@ export function useBudgetPeriodData({
   viewMode,
 }: UseBudgetPeriodDataOptions): UseBudgetPeriodDataResult {
   const { allTransactions, isLoading: transactionsLoading } = useTransactions();
-  const { budgetRules, isLoading: budgetLoading } = useBudgetRules(scenarioId);
+  const { budgetRules, isLoading: budgetLoading } = useAdjustedBudgets(scenarioId);
   const { activeCategories, isLoading: categoriesLoading } = useCategories();
 
   // Calculate dates
@@ -506,8 +505,8 @@ export function useBudgetPeriodData({
       ? `${quarterNames[Math.floor(selectedMonthIndex / 3)]} ${selectedYear}`
       : `${shortMonthName} ${selectedYear}`;
 
-  // Get forecasts for the period
-  const { expandedForecasts: periodForecasts, savingsForecasts, isLoading: forecastsLoading } = useForecasts(scenarioId, periodStart, periodEnd);
+  // Get forecasts for the period (with What-If adjustments applied)
+  const { expandedForecasts: periodForecasts, savingsForecasts, isLoading: forecastsLoading } = useAdjustedForecasts(scenarioId, periodStart, periodEnd);
 
   const isLoading = transactionsLoading || budgetLoading || categoriesLoading || forecastsLoading;
 

@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.13.1',
+    date: '2026-02-02',
+    changes: [
+      'What-If adjustments now update Snapshot, Insights, and Savings pages in real-time',
+      'See how your budget changes affect all parts of the app before saving',
+    ],
+  },
+  {
     version: '0.13.0',
     date: '2026-02-02',
     changes: [
