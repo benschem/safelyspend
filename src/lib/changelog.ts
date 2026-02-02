@@ -21,6 +21,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.12.0',
+    date: '2026-02-02',
+    changes: [
+      'Budget page now shows your Track Record - historical averages alongside your plan',
+      'Past Transactions section moved to Budget page for easy reference',
+      'Summary cards show budget values with track record averages below',
+      'Variable expenses card shows green/amber based on spending vs budget',
+      'Removed Past Averages page - all functionality now in Budget',
+    ],
+  },
+  {
     version: '0.11.1',
     date: '2026-02-02',
     changes: [

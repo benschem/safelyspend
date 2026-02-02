@@ -6,7 +6,6 @@ import { ErrorBoundary } from '@/components/error-boundary';
 
 // Route components
 import { NetWealthPage } from '@/routes/net-wealth';
-import { CashFlowPage } from '@/routes/cash-flow/index';
 import { BudgetPage } from '@/routes/budget';
 import { SnapshotPage } from '@/routes/snapshot';
 import { TransactionNewPage } from '@/routes/transactions/new';
@@ -43,8 +42,8 @@ const router = createBrowserRouter([
       // Net Wealth (balances overview)
       { path: 'net-wealth', element: <NetWealthPage /> },
 
-      // Cash Flow (combined transactions)
-      { path: 'cash-flow', element: <CashFlowPage /> },
+      // Cash Flow redirects to Budget (pages merged)
+      { path: 'cash-flow', element: <Navigate to="/budget" replace /> },
 
       // Legacy redirects
       { path: 'net-worth', element: <Navigate to="/net-wealth" replace /> },
