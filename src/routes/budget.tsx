@@ -56,9 +56,10 @@ import { useLocalStorage } from '@/hooks/use-local-storage';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
+import { useForecasts } from '@/hooks/use-forecasts';
+import { useAdjustedBudgets, useAdjustedForecasts } from '@/hooks/use-adjusted-values';
 import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
-import { useForecasts } from '@/hooks/use-forecasts';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useCategoryRules } from '@/hooks/use-category-rules';
 import { CategoryBudgetDialog } from '@/components/dialogs/category-budget-dialog';
@@ -118,8 +119,11 @@ export function BudgetPage() {
   // What-If context is used by the slider section components
   void useWhatIf();
   const { categories, activeCategories, isLoading: categoriesLoading, addCategory, updateCategory, deleteCategory } = useCategories();
-  const { budgetRules, getRuleForCategory, isLoading: budgetLoading, setBudgetForCategory, deleteBudgetRule } =
+  // Base hooks for CRUD operations
+  const { getRuleForCategory, isLoading: budgetLoading, setBudgetForCategory, deleteBudgetRule } =
     useBudgetRules(activeScenarioId);
+  // Adjusted hooks for display (reflects What-If slider adjustments)
+  const { budgetRules } = useAdjustedBudgets(activeScenarioId);
   const { savingsGoals, isLoading: savingsLoading } = useSavingsGoals();
   const { rules: categoryRules } = useCategoryRules();
 
@@ -141,15 +145,25 @@ export function BudgetPage() {
     return { startDate, endDate };
   }, []);
 
+  // Base forecasts hook for CRUD operations and slider sections
   const {
     rules: forecastRules,
-    savingsForecasts,
-    incomeForecasts,
     isLoading: forecastsLoading,
     addRule,
     updateRule,
     deleteRule,
   } = useForecasts(
+    activeScenarioId,
+    forecastDateRange.startDate,
+    forecastDateRange.endDate,
+  );
+
+  // Adjusted forecasts for display (reflects What-If slider adjustments)
+  const {
+    rules: adjustedForecastRules,
+    savingsForecasts,
+    incomeForecasts,
+  } = useAdjustedForecasts(
     activeScenarioId,
     forecastDateRange.startDate,
     forecastDateRange.endDate,
@@ -213,10 +227,13 @@ export function BudgetPage() {
   // Chart visibility state
   const [hiddenSegments, setHiddenSegments] = useState<Set<string>>(new Set());
 
-  // Filter forecast rules by type
+  // Filter forecast rules by type (base rules for slider sections)
   const incomeRules = useMemo(() => forecastRules.filter(r => r.type === 'income'), [forecastRules]);
   const expenseRules = useMemo(() => forecastRules.filter(r => r.type === 'expense'), [forecastRules]);
   const savingsRules = useMemo(() => forecastRules.filter(r => r.type === 'savings'), [forecastRules]);
+
+  // Adjusted expense rules for display calculations (reflects What-If adjustments)
+  const adjustedExpenseRules = useMemo(() => adjustedForecastRules.filter(r => r.type === 'expense'), [adjustedForecastRules]);
 
   // Normalize amounts to selected period
   const toPeriod = useCallback((amount: number, cadence: Cadence, period: BudgetPeriod): number => {
@@ -237,11 +254,12 @@ export function BudgetPage() {
     }
   }, []);
 
-  // Calculate fixed expenses per category (from ForecastRules type=expense)
+  // Calculate fixed expenses per category (from adjusted ForecastRules type=expense)
+  // Uses adjustedExpenseRules so display reflects What-If slider changes
   const fixedExpensesPerCategory = useMemo(() => {
     const result: Record<string, { amount: number; rules: ForecastRule[] }> = {};
 
-    for (const rule of expenseRules) {
+    for (const rule of adjustedExpenseRules) {
       if (rule.categoryId) {
         if (!result[rule.categoryId]) {
           result[rule.categoryId] = { amount: 0, rules: [] };
@@ -257,7 +275,7 @@ export function BudgetPage() {
     }
 
     return result;
-  }, [expenseRules, toPeriod, breakdownPeriod]);
+  }, [adjustedExpenseRules, toPeriod, breakdownPeriod]);
 
   // Build category rows
   const categoryRows: CategoryRow[] = useMemo(() => {
