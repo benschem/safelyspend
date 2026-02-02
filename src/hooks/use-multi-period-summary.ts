@@ -59,10 +59,10 @@ export function useMultiPeriodSummary({
   // Calculate date range based on mode
   const { startDate, endDate } = useMemo(() => {
     if (centerMonth) {
-      // 6 months back from center, center month, 5 months forward = 12 months total
+      // 6 months back from center, center month, 6 months forward = 13 months total
       const center = new Date(centerMonth.year, centerMonth.monthIndex, 1);
       const start = new Date(center.getFullYear(), center.getMonth() - 6, 1);
-      const end = new Date(center.getFullYear(), center.getMonth() + 6, 0); // Last day of month 5 ahead
+      const end = new Date(center.getFullYear(), center.getMonth() + 7, 0); // Last day of month 6 ahead
       return {
         startDate: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-01`,
         endDate: `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`,
