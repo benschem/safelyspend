@@ -3,19 +3,7 @@ import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Link, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   CalendarFold,
   PiggyBank,
@@ -36,13 +24,15 @@ import {
 } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
+import { useScenarioDiff } from '@/hooks/use-scenario-diff';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useMultiPeriodSummary } from '@/hooks/use-multi-period-summary';
-import { ScenarioSelector } from '@/components/scenario-selector';
 import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { useBudgetPeriodData } from '@/hooks/use-budget-period-data';
+import { ScenarioDelta } from '@/components/ui/scenario-delta';
+import { useWhatIf } from '@/contexts/what-if-context';
 import { YearGrid } from '@/components/year-grid';
 import { TrendSparkline } from '@/components/charts/trend-sparkline';
 import { BurnRateChart } from '@/components/charts/burn-rate-chart';
@@ -51,8 +41,18 @@ import { cn, formatCents, toMonthlyCents, type CadenceType } from '@/lib/utils';
 import type { ForecastRule } from '@/lib/types';
 
 const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 interface OutletContext {
@@ -63,14 +63,21 @@ interface OutletContext {
 
 export function SnapshotPage() {
   const { activeScenarioId, startDate, endDate } = useOutletContext<OutletContext>();
-  const { activeScenario, scenarios, setActiveScenarioId } = useScenarios();
+  const { activeScenario } = useScenarios();
+  const { getTotalDelta, isViewingDefault, defaultBudgetByCategoryMonthly } = useScenarioDiff();
+  const { isWhatIfMode } = useWhatIf();
   const { addTransaction, updateTransaction } = useTransactions(startDate, endDate);
   const { budgetRules } = useBudgetRules(activeScenarioId);
+  // Show deltas when viewing non-default scenario OR when there are What-If adjustments
+  const showDeltas = !isViewingDefault || isWhatIfMode;
 
   // Selected period state - defaults to current month
   const [selectedMonth, setSelectedMonth] = useState(() => new Date());
   // Read default view preference from settings
-  const [defaultSnapshotView] = useLocalStorage<'month' | 'quarter' | 'year'>('budget:defaultSnapshotView', 'month');
+  const [defaultSnapshotView] = useLocalStorage<'month' | 'quarter' | 'year'>(
+    'budget:defaultSnapshotView',
+    'month',
+  );
   const [viewMode, setViewMode] = useState<'month' | 'quarter' | 'year'>(defaultSnapshotView);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState(() => new Date().getFullYear());
@@ -116,7 +123,10 @@ export function SnapshotPage() {
   );
 
   // Get expense rules for fixed category detection
-  const expenseRules = useMemo(() => forecastRules.filter(r => r.type === 'expense'), [forecastRules]);
+  const expenseRules = useMemo(
+    () => forecastRules.filter((r) => r.type === 'expense'),
+    [forecastRules],
+  );
 
   // Use the extracted hook for all business logic
   const {
@@ -181,13 +191,14 @@ export function SnapshotPage() {
   // Get months for current quarter view
   const quarterMonths = useMemo(() => {
     const quarterStart = (selectedQuarter - 1) * 3;
-    return yearMonths.filter((m) => m.monthIndex >= quarterStart && m.monthIndex < quarterStart + 3);
+    return yearMonths.filter(
+      (m) => m.monthIndex >= quarterStart && m.monthIndex < quarterStart + 3,
+    );
   }, [yearMonths, selectedQuarter]);
 
   // Compute display label (override for quarter mode)
-  const displayPeriodLabel = viewMode === 'quarter'
-    ? `Q${selectedQuarter} ${selectedYear}`
-    : periodLabel;
+  const displayPeriodLabel =
+    viewMode === 'quarter' ? `Q${selectedQuarter} ${selectedYear}` : periodLabel;
 
   // Calculate fixed expenses per category for this period
   const fixedExpensesPerCategory = useMemo(() => {
@@ -264,19 +275,33 @@ export function SnapshotPage() {
         color: colorMap[cat.id] ?? CHART_COLORS.uncategorized,
       };
     });
-  }, [isFuturePeriod, forecastExpenses, periodSpending, fixedExpensesPerCategory, variableBudgetsPerCategory, colorMap]);
+  }, [
+    isFuturePeriod,
+    forecastExpenses,
+    periodSpending,
+    fixedExpensesPerCategory,
+    variableBudgetsPerCategory,
+    colorMap,
+  ]);
 
   // Calculate headline metric
   const headline = useMemo(() => {
-    const hasPlan = periodCashFlow.income.expected > 0 || periodCashFlow.budgeted.expected > 0 || periodCashFlow.expenses.expected > 0;
+    const hasPlan =
+      periodCashFlow.income.expected > 0 ||
+      periodCashFlow.budgeted.expected > 0 ||
+      periodCashFlow.expenses.expected > 0;
     // Match Budget page: income - fixed expenses - variable budget - savings
-    const planned = periodCashFlow.income.expected
-      - periodCashFlow.expenses.expected   // fixed expenses (ForecastRules)
-      - periodCashFlow.budgeted.expected   // variable budget (BudgetRules)
-      - periodCashFlow.savings.expected;
+    const planned =
+      periodCashFlow.income.expected -
+      periodCashFlow.expenses.expected - // fixed expenses (ForecastRules)
+      periodCashFlow.budgeted.expected - // variable budget (BudgetRules)
+      periodCashFlow.savings.expected;
 
     if (isPastPeriod) {
-      const leftover = periodCashFlow.income.actual - periodCashFlow.expenses.actual - periodCashFlow.savings.actual;
+      const leftover =
+        periodCashFlow.income.actual -
+        periodCashFlow.expenses.actual -
+        periodCashFlow.savings.actual;
       return {
         amount: leftover,
         label: leftover > 0 ? 'Actual surplus' : leftover < 0 ? 'Actual shortfall' : 'Broke even',
@@ -291,7 +316,8 @@ export function SnapshotPage() {
       }
       return {
         amount: planned,
-        label: planned > 0 ? 'Expected surplus' : planned < 0 ? 'Expected shortfall' : 'Budget balanced',
+        label:
+          planned > 0 ? 'Expected surplus' : planned < 0 ? 'Expected shortfall' : 'Budget balanced',
         isPositive: planned >= 0,
         hasPlan,
       };
@@ -300,13 +326,22 @@ export function SnapshotPage() {
     // Current period - use same calculation as Budget page for consistency
     // planned = income - fixed expenses - variable budget - savings
     if (!hasPlan) {
-      const actualSoFar = periodCashFlow.income.actual - periodCashFlow.expenses.actual - periodCashFlow.savings.actual;
-      return { amount: actualSoFar, label: 'No plan set', isPositive: actualSoFar >= 0, hasPlan: false };
+      const actualSoFar =
+        periodCashFlow.income.actual -
+        periodCashFlow.expenses.actual -
+        periodCashFlow.savings.actual;
+      return {
+        amount: actualSoFar,
+        label: 'No plan set',
+        isPositive: actualSoFar >= 0,
+        hasPlan: false,
+      };
     }
 
     return {
       amount: planned,
-      label: planned > 0 ? 'Expected surplus' : planned < 0 ? 'Expected shortfall' : 'Budget balanced',
+      label:
+        planned > 0 ? 'Expected surplus' : planned < 0 ? 'Expected shortfall' : 'Budget balanced',
       isPositive: planned >= 0,
       hasPlan,
     };
@@ -314,10 +349,12 @@ export function SnapshotPage() {
 
   // Calculate surplus for safe limit line
   const surplus = useMemo(() => {
-    return periodCashFlow.income.expected
-      - periodCashFlow.expenses.expected
-      - periodCashFlow.budgeted.expected
-      - periodCashFlow.savings.expected;
+    return (
+      periodCashFlow.income.expected -
+      periodCashFlow.expenses.expected -
+      periodCashFlow.budgeted.expected -
+      periodCashFlow.savings.expected
+    );
   }, [periodCashFlow]);
 
   const hasSurplusBuffer = surplus > 0;
@@ -333,7 +370,12 @@ export function SnapshotPage() {
     }
 
     if (!hasBudget) {
-      return { amount: actualSpending, label: 'Spent (no budget set)', isPositive: true, hasBudget: false };
+      return {
+        amount: actualSpending,
+        label: 'Spent (no budget set)',
+        isPositive: true,
+        hasBudget: false,
+      };
     }
 
     // For past periods, compare actual to full budget
@@ -342,7 +384,12 @@ export function SnapshotPage() {
       if (diff > 0) {
         return { amount: diff, label: 'Spending under budget', isPositive: true, hasBudget: true };
       } else if (diff < 0) {
-        return { amount: Math.abs(diff), label: 'Spending over budget', isPositive: false, hasBudget: true };
+        return {
+          amount: Math.abs(diff),
+          label: 'Spending over budget',
+          isPositive: false,
+          hasBudget: true,
+        };
       } else {
         return { amount: 0, label: 'Spending on budget', isPositive: true, hasBudget: true };
       }
@@ -355,14 +402,27 @@ export function SnapshotPage() {
 
     // Descriptive message based on burn rate
     if (burnRate > 120) {
-      const bufferNote = hasSurplusBuffer
-        ? ' You have surplus buffer.'
-        : ' Consider slowing down.';
-      return { amount: 0, label: `Spending faster than your budget allows.${bufferNote}`, isPositive: false, hasBudget: true };
+      const bufferNote = hasSurplusBuffer ? ' You have surplus buffer.' : ' Consider slowing down.';
+      return {
+        amount: 0,
+        label: `Spending faster than your budget allows.${bufferNote}`,
+        isPositive: false,
+        hasBudget: true,
+      };
     } else if (burnRate > 100) {
-      return { amount: 0, label: 'Slightly ahead of your budget.', isPositive: false, hasBudget: true };
+      return {
+        amount: 0,
+        label: 'Slightly ahead of your budget.',
+        isPositive: false,
+        hasBudget: true,
+      };
     } else {
-      return { amount: 0, label: 'On track with your budget. Keep it up!', isPositive: true, hasBudget: true };
+      return {
+        amount: 0,
+        label: 'On track with your budget. Keep it up!',
+        isPositive: true,
+        hasBudget: true,
+      };
     }
   }, [isFuturePeriod, isPastPeriod, periodCashFlow, hasSurplusBuffer]);
 
@@ -403,12 +463,18 @@ export function SnapshotPage() {
             <Button variant="ghost" size="icon" onClick={goToPrevious} className="h-10 w-10">
               <ChevronLeft className="h-5 w-5" />
             </Button>
-            <Popover open={calendarOpen} onOpenChange={(open) => {
-              setCalendarOpen(open);
-              if (open) setPickerYear(selectedYear);
-            }}>
+            <Popover
+              open={calendarOpen}
+              onOpenChange={(open) => {
+                setCalendarOpen(open);
+                if (open) setPickerYear(selectedYear);
+              }}
+            >
               <PopoverTrigger asChild>
-                <Button variant="ghost" className="w-52 text-3xl font-bold tracking-tight hover:bg-transparent hover:text-foreground/80 sm:w-56">
+                <Button
+                  variant="ghost"
+                  className="w-52 text-3xl font-bold tracking-tight hover:bg-transparent hover:text-foreground/80 sm:w-56"
+                >
                   {periodLabel}
                 </Button>
               </PopoverTrigger>
@@ -423,7 +489,9 @@ export function SnapshotPage() {
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   <Button
-                    variant={viewMode === 'year' && pickerYear === selectedYear ? 'default' : 'ghost'}
+                    variant={
+                      viewMode === 'year' && pickerYear === selectedYear ? 'default' : 'ghost'
+                    }
                     size="sm"
                     className="text-sm font-semibold"
                     onClick={() => selectYear(pickerYear)}
@@ -441,8 +509,12 @@ export function SnapshotPage() {
                 </div>
                 <div className="grid grid-cols-3 gap-1">
                   {MONTHS.map((month, index) => {
-                    const isSelected = viewMode === 'month' && pickerYear === selectedYear && index === selectedMonthIndex;
-                    const isCurrent = pickerYear === new Date().getFullYear() && index === new Date().getMonth();
+                    const isSelected =
+                      viewMode === 'month' &&
+                      pickerYear === selectedYear &&
+                      index === selectedMonthIndex;
+                    const isCurrent =
+                      pickerYear === new Date().getFullYear() && index === new Date().getMonth();
                     return (
                       <Button
                         key={month}
@@ -471,14 +543,12 @@ export function SnapshotPage() {
           </div>
           {/* Status line placeholder for consistent height */}
           <div className="mt-2 min-h-9" />
-          <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
-          <div className="flex items-center justify-center">
-            <ScenarioSelector />
-          </div>
         </div>
 
         <div className="empty-state">
-          <p className="empty-state-text">Select a scenario to track your budget.</p>
+          <p className="empty-state-text">
+            Select a scenario from the banner to track your budget.
+          </p>
           <Button asChild className="empty-state-action">
             <Link to="/scenarios">Manage Scenarios</Link>
           </Button>
@@ -523,12 +593,18 @@ export function SnapshotPage() {
           <Button variant="ghost" size="icon" onClick={goToPrevious} className="h-10 w-10">
             <ChevronLeft className="h-5 w-5" />
           </Button>
-          <Popover open={calendarOpen} onOpenChange={(open) => {
-            setCalendarOpen(open);
-            if (open) setPickerYear(selectedYear);
-          }}>
+          <Popover
+            open={calendarOpen}
+            onOpenChange={(open) => {
+              setCalendarOpen(open);
+              if (open) setPickerYear(selectedYear);
+            }}
+          >
             <PopoverTrigger asChild>
-              <Button variant="ghost" className="w-52 text-3xl font-bold tracking-tight hover:bg-transparent hover:text-foreground/80 sm:w-56">
+              <Button
+                variant="ghost"
+                className="w-52 text-3xl font-bold tracking-tight hover:bg-transparent hover:text-foreground/80 sm:w-56"
+              >
                 {displayPeriodLabel}
               </Button>
             </PopoverTrigger>
@@ -563,7 +639,8 @@ export function SnapshotPage() {
               {/* Quarter selector */}
               <div className="mb-3 grid grid-cols-4 gap-1">
                 {[1, 2, 3, 4].map((q) => {
-                  const isSelected = viewMode === 'quarter' && pickerYear === selectedYear && q === selectedQuarter;
+                  const isSelected =
+                    viewMode === 'quarter' && pickerYear === selectedYear && q === selectedQuarter;
                   return (
                     <Button
                       key={q}
@@ -580,8 +657,12 @@ export function SnapshotPage() {
               {/* Month grid */}
               <div className="grid grid-cols-3 gap-1">
                 {MONTHS.map((month, index) => {
-                  const isSelected = viewMode === 'month' && pickerYear === selectedYear && index === selectedMonthIndex;
-                  const isCurrent = pickerYear === new Date().getFullYear() && index === new Date().getMonth();
+                  const isSelected =
+                    viewMode === 'month' &&
+                    pickerYear === selectedYear &&
+                    index === selectedMonthIndex;
+                  const isCurrent =
+                    pickerYear === new Date().getFullYear() && index === new Date().getMonth();
                   return (
                     <Button
                       key={month}
@@ -629,7 +710,7 @@ export function SnapshotPage() {
                 Today
               </span>
               <span className="text-sm text-muted-foreground">
-                Month {((selectedMonthIndex % 3) + 1)} of 3
+                Month {(selectedMonthIndex % 3) + 1} of 3
               </span>
             </>
           )}
@@ -664,7 +745,10 @@ export function SnapshotPage() {
             <TrendSparkline
               data={sparklineMonths}
               showNowLine
-              selectedMonth={{ monthIndex: selectedMonth.getMonth(), year: selectedMonth.getFullYear() }}
+              selectedMonth={{
+                monthIndex: selectedMonth.getMonth(),
+                year: selectedMonth.getFullYear(),
+              }}
               onMonthClick={(monthIndex, year) => {
                 setSelectedMonth(new Date(year, monthIndex, 1));
                 setViewMode('month');
@@ -672,35 +756,6 @@ export function SnapshotPage() {
             />
           </div>
         )}
-
-        {/* Divider */}
-        <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
-
-        {/* Controls */}
-        <div className="flex items-center justify-center">
-          {isFuturePeriod && scenarios.length > 1 ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Scenario:</span>
-              <Select
-                value={activeScenarioId ?? undefined}
-                onValueChange={(value) => setActiveScenarioId(value)}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Select scenario" />
-                </SelectTrigger>
-                <SelectContent>
-                  {scenarios.map((scenario) => (
-                    <SelectItem key={scenario.id} value={scenario.id}>
-                      {scenario.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : (
-            <ScenarioSelector />
-          )}
-        </div>
       </div>
 
       {/* View-specific content */}
@@ -723,10 +778,14 @@ export function SnapshotPage() {
                 <CircleGauge className="h-5 w-5 text-muted-foreground" />
                 <h3 className="text-lg font-semibold">Spending Pace</h3>
               </div>
-              <p className={cn(
-                'mb-4 text-sm',
-                budgetStatus.isPositive ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400',
-              )}>
+              <p
+                className={cn(
+                  'mb-4 text-sm',
+                  budgetStatus.isPositive
+                    ? 'text-green-600 dark:text-green-400'
+                    : 'text-amber-600 dark:text-amber-400',
+                )}
+              >
                 {budgetStatus.label}
               </p>
               <BurnRateChart
@@ -797,20 +856,25 @@ export function SnapshotPage() {
                 </div>
 
                 {/* Surplus/Shortfall */}
-                <div className={cn(
-                  'rounded-lg p-3',
-                  month.surplus >= 0 ? 'bg-green-500/10' : 'bg-amber-500/10',
-                )}>
+                <div
+                  className={cn(
+                    'rounded-lg p-3',
+                    month.surplus >= 0 ? 'bg-green-500/10' : 'bg-amber-500/10',
+                  )}
+                >
                   <p className="text-xs text-muted-foreground">
                     {month.surplus >= 0 ? 'Surplus' : 'Shortfall'}
                   </p>
-                  <p className={cn(
-                    'text-xl font-bold',
-                    month.surplus >= 0
-                      ? 'text-green-600 dark:text-green-400'
-                      : 'text-amber-600 dark:text-amber-400',
-                  )}>
-                    {month.surplus >= 0 ? '+' : ''}{formatCents(month.surplus)}
+                  <p
+                    className={cn(
+                      'text-xl font-bold',
+                      month.surplus >= 0
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-amber-600 dark:text-amber-400',
+                    )}
+                  >
+                    {month.surplus >= 0 ? '+' : ''}
+                    {formatCents(month.surplus)}
                   </p>
                 </div>
 
@@ -840,10 +904,14 @@ export function SnapshotPage() {
                 <CircleGauge className="h-5 w-5 text-muted-foreground" />
                 <h3 className="text-lg font-semibold">Spending Pace</h3>
               </div>
-              <p className={cn(
-                'mb-4 text-sm',
-                budgetStatus.isPositive ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400',
-              )}>
+              <p
+                className={cn(
+                  'mb-4 text-sm',
+                  budgetStatus.isPositive
+                    ? 'text-green-600 dark:text-green-400'
+                    : 'text-amber-600 dark:text-amber-400',
+                )}
+              >
                 {budgetStatus.label}
               </p>
               <BurnRateChart
@@ -863,97 +931,202 @@ export function SnapshotPage() {
         <>
           {/* Top Row: Surplus + Earned + Spent + Saved */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {/* Expected Surplus/Shortfall */}
-            <div className={cn(
-              'rounded-xl border p-4 text-center',
-              headline.isPositive
-                ? headline.hasPlan ? 'border-green-500/50 bg-green-500/5' : 'bg-card'
-                : 'border-amber-500/50 bg-amber-500/5',
-            )}>
-              <div className={cn(
-                'mx-auto flex h-9 w-9 items-center justify-center rounded-full',
-                headline.isPositive ? 'bg-green-500/10' : 'bg-amber-500/10',
-              )}>
-                <Banknote className={cn(
-                  'h-4 w-4',
-                  headline.isPositive
-                    ? headline.hasPlan ? 'text-green-500' : 'text-slate-500'
-                    : 'text-amber-500',
-                )} />
-              </div>
-              <p className={cn(
-                'mt-2 text-xl font-bold',
+            {/* Surplus/Shortfall */}
+            <div
+              className={cn(
+                'rounded-xl border p-4',
                 headline.isPositive
-                  ? headline.hasPlan ? 'text-green-600 dark:text-green-400' : ''
-                  : 'text-amber-600 dark:text-amber-400',
-              )}>
-                {headline.isPositive ? '+' : ''}{formatCents(headline.amount)}
-              </p>
-              <p className="text-xs text-muted-foreground">{headline.label}</p>
-            </div>
-
-            {/* Earned */}
-            <div className="rounded-xl border bg-card p-4 text-center">
-              <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-green-500/10">
-                <BanknoteArrowUp className="h-4 w-4 text-green-500" />
+                  ? headline.hasPlan
+                    ? 'border-green-500/50 bg-green-500/5'
+                    : 'bg-card'
+                  : 'border-amber-500/50 bg-amber-500/5',
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <div
+                  className={cn(
+                    'flex h-8 w-8 items-center justify-center rounded-full',
+                    headline.isPositive ? 'bg-green-500/10' : 'bg-amber-500/10',
+                  )}
+                >
+                  <Banknote
+                    className={cn(
+                      'h-4 w-4',
+                      headline.isPositive
+                        ? headline.hasPlan
+                          ? 'text-green-500'
+                          : 'text-slate-500'
+                        : 'text-amber-500',
+                    )}
+                  />
+                </div>
+                <span className="text-sm text-muted-foreground">
+                  {headline.isPositive ? 'Surplus' : 'Shortfall'}
+                </span>
               </div>
-              <p className="mt-2 text-xl font-bold">
-                {formatCents(isFuturePeriod ? periodCashFlow.income.expected : periodCashFlow.income.actual)}
+              <p
+                className={cn(
+                  'mt-2 text-2xl font-bold',
+                  headline.isPositive
+                    ? headline.hasPlan
+                      ? 'text-green-600 dark:text-green-400'
+                      : ''
+                    : 'text-amber-600 dark:text-amber-400',
+                )}
+              >
+                {headline.isPositive ? '+' : ''}
+                {formatCents(headline.amount)}
               </p>
               <p className="text-xs text-muted-foreground">
-                {isFuturePeriod ? 'Expected' : 'Earned'}
+                {isFuturePeriod ? 'projected' : isPastPeriod ? 'actual' : 'expected by end'}
               </p>
+              <ScenarioDelta
+                delta={getTotalDelta('surplus', periodCashFlow.income.expected - periodCashFlow.expenses.expected - periodCashFlow.budgeted.expected - periodCashFlow.savings.expected)}
+                periodLabel=""
+                show={showDeltas}
+              />
             </div>
 
-            {/* Spent */}
-            <div className="rounded-xl border bg-card p-4 text-center">
-              <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-red-500/10">
-                <BanknoteArrowDown className="h-4 w-4 text-red-500" />
+            {/* Earned/Income */}
+            <div className="rounded-xl border bg-card p-4">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/10">
+                  <BanknoteArrowUp className="h-4 w-4 text-green-500" />
+                </div>
+                <span className="text-sm text-muted-foreground">Income</span>
               </div>
-              <p className="mt-2 text-xl font-bold">
-                {formatCents(isFuturePeriod ? periodCashFlow.budgeted.expected : periodCashFlow.expenses.actual)}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {isFuturePeriod ? 'Planned' : 'Spent'}
-              </p>
+              {isFuturePeriod ? (
+                <>
+                  <p className="mt-2 text-2xl font-bold">
+                    {formatCents(periodCashFlow.income.expected)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">expected</p>
+                </>
+              ) : (
+                <>
+                  <p className="mt-2 text-2xl font-bold">
+                    {formatCents(periodCashFlow.income.actual)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    of {formatCents(periodCashFlow.income.expected)} expected
+                  </p>
+                </>
+              )}
+              <ScenarioDelta
+                delta={getTotalDelta('income', periodCashFlow.income.expected)}
+                periodLabel=""
+                show={showDeltas}
+              />
             </div>
 
-            {/* Saved */}
-            <div className="rounded-xl border bg-card p-4 text-center">
-              <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-blue-500/10">
-                <PiggyBank className="h-4 w-4 text-blue-500" />
+            {/* Spent/Expenses */}
+            <div className="rounded-xl border bg-card p-4">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10">
+                  <BanknoteArrowDown className="h-4 w-4 text-red-500" />
+                </div>
+                <span className="text-sm text-muted-foreground">Spending</span>
               </div>
-              <p className="mt-2 text-xl font-bold">
-                {formatCents(isFuturePeriod ? periodCashFlow.savings.expected : periodCashFlow.savings.actual)}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {isFuturePeriod ? 'To Save' : 'Saved'}
-              </p>
+              {isFuturePeriod ? (
+                <>
+                  <p className="mt-2 text-2xl font-bold">
+                    {formatCents(periodCashFlow.expenses.expected + periodCashFlow.budgeted.expected)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">budgeted</p>
+                </>
+              ) : (
+                <>
+                  <p className="mt-2 text-2xl font-bold">
+                    {formatCents(periodCashFlow.expenses.actual)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    of {formatCents(periodCashFlow.expenses.expected + periodCashFlow.budgeted.expected)} budgeted
+                  </p>
+                </>
+              )}
+              <ScenarioDelta
+                delta={getTotalDelta('fixed', periodCashFlow.expenses.expected) + getTotalDelta('budget', periodCashFlow.budgeted.expected)}
+                periodLabel=""
+                show={showDeltas}
+              />
+            </div>
+
+            {/* Saved/Savings */}
+            <div className="rounded-xl border bg-card p-4">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10">
+                  <PiggyBank className="h-4 w-4 text-blue-500" />
+                </div>
+                <span className="text-sm text-muted-foreground">Savings</span>
+              </div>
+              {isFuturePeriod ? (
+                <>
+                  <p className="mt-2 text-2xl font-bold">
+                    {formatCents(periodCashFlow.savings.expected)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">planned</p>
+                </>
+              ) : (
+                <>
+                  <p className="mt-2 text-2xl font-bold">
+                    {formatCents(periodCashFlow.savings.actual)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    of {formatCents(periodCashFlow.savings.expected)} planned
+                  </p>
+                </>
+              )}
+              <ScenarioDelta
+                delta={getTotalDelta('savings', periodCashFlow.savings.expected)}
+                periodLabel=""
+                show={showDeltas}
+              />
             </div>
           </div>
 
           {/* Spending Pace with burn rate chart - full width */}
           {budgetStatus && (
-            <div className="rounded-xl border bg-card p-5">
+            <div className={cn(
+              'rounded-xl border bg-card p-5',
+              showDeltas && 'border-violet-500/30'
+            )}>
               <div className="mb-3 flex items-center gap-2">
                 <CircleGauge className="h-5 w-5 text-muted-foreground" />
                 <h3 className="text-lg font-semibold">Spending Pace</h3>
               </div>
+              <p
+                className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
+              >
+                {isWhatIfMode && isViewingDefault
+                  ? 'Based on your adjustments'
+                  : `Based on "${activeScenario?.name ?? 'scenario'}"`}
+              </p>
               {budgetStatus.amount > 0 ? (
-                <p className={cn(
-                  'text-xl font-bold',
-                  budgetStatus.isPositive
-                    ? budgetStatus.hasBudget ? 'text-green-600 dark:text-green-400' : ''
-                    : 'text-amber-600 dark:text-amber-400',
-                )}>
-                  {budgetStatus.isPositive ? '+' : ''}{formatCents(budgetStatus.amount)}
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">{budgetStatus.label}</span>
+                <p
+                  className={cn(
+                    'text-xl font-bold',
+                    budgetStatus.isPositive
+                      ? budgetStatus.hasBudget
+                        ? 'text-green-600 dark:text-green-400'
+                        : ''
+                      : 'text-amber-600 dark:text-amber-400',
+                  )}
+                >
+                  {budgetStatus.isPositive ? '+' : ''}
+                  {formatCents(budgetStatus.amount)}
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    {budgetStatus.label}
+                  </span>
                 </p>
               ) : (
-                <p className={cn(
-                  'text-sm',
-                  budgetStatus.isPositive ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400',
-                )}>
+                <p
+                  className={cn(
+                    'text-sm',
+                    budgetStatus.isPositive
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-amber-600 dark:text-amber-400',
+                  )}
+                >
                   {budgetStatus.label}
                 </p>
               )}
@@ -975,11 +1148,21 @@ export function SnapshotPage() {
           )}
 
           {/* Spending by Category */}
-          <div className="rounded-xl border bg-card p-6">
+          <div className={cn(
+            'rounded-xl border bg-card p-6',
+            showDeltas && 'border-violet-500/30'
+          )}>
             <div className="mb-4 flex items-center gap-2">
               <BanknoteArrowDown className="h-5 w-5 text-muted-foreground" />
               <h3 className="text-lg font-semibold">Spending</h3>
             </div>
+            <p
+              className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
+            >
+              {isWhatIfMode && isViewingDefault
+                ? 'Based on your adjustments'
+                : `Based on "${activeScenario?.name ?? 'scenario'}"`}
+            </p>
 
             {categoryProgress.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">
@@ -993,7 +1176,10 @@ export function SnapshotPage() {
                   // Fixed-only categories show checkmark + "Paid"
                   if (item.isFixedOnly) {
                     return (
-                      <div key={item.id} className="flex items-center justify-between rounded-lg bg-muted/30 p-3">
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between rounded-lg bg-muted/30 p-3"
+                      >
                         <div className="flex items-center gap-3">
                           <TooltipProvider>
                             <Tooltip>
@@ -1034,18 +1220,40 @@ export function SnapshotPage() {
                                     {formatCents(item.fixedAmount)} fixed
                                   </span>
                                 </TooltipTrigger>
-                                <TooltipContent>Includes {formatCents(item.fixedAmount)} in fixed expenses</TooltipContent>
+                                <TooltipContent>
+                                  Includes {formatCents(item.fixedAmount)} in fixed expenses
+                                </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
                           )}
                         </div>
-                        <span className={cn(
-                          'font-mono',
-                          isOverBudget ? 'text-red-500' : isWarning ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground',
-                        )}>
+                        <span
+                          className={cn(
+                            'font-mono',
+                            isOverBudget
+                              ? 'text-red-500'
+                              : isWarning
+                                ? 'text-amber-600 dark:text-amber-400'
+                                : 'text-muted-foreground',
+                          )}
+                        >
                           {hasBudget ? (
                             <>
                               {formatCents(item.spent)} of budgeted {formatCents(item.budget)}
+                              {(() => {
+                                // In month view, compare monthly budgets directly
+                                const defaultBudget = defaultBudgetByCategoryMonthly[item.id] ?? 0;
+                                const currentBudget = variableBudgetsPerCategory[item.id] ?? 0;
+                                const delta = currentBudget - defaultBudget;
+                                const showDelta = showDeltas && delta !== 0;
+                                return (
+                                  <span
+                                    className={`ml-1 inline-block min-w-[3.5rem] ${showDelta ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
+                                  >
+                                    ({delta > 0 ? '+' : ''}{formatCents(delta)})
+                                  </span>
+                                );
+                              })()}
                               <span className="ml-1">({percentage}%)</span>
                             </>
                           ) : (
