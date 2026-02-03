@@ -17,17 +17,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import {
   Pencil,
@@ -49,12 +40,18 @@ import {
   AlertTriangle,
   Settings2,
 } from 'lucide-react';
-import { cn, formatCents, formatDate, today as getToday, toMonthlyCents, type CadenceType } from '@/lib/utils';
+import {
+  cn,
+  formatCents,
+  formatDate,
+  today as getToday,
+  toMonthlyCents,
+  type CadenceType,
+} from '@/lib/utils';
 import { CHART_COLORS } from '@/lib/chart-colors';
 import { PageLoading } from '@/components/page-loading';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { useScenarios } from '@/hooks/use-scenarios';
-import { ScenarioSelector } from '@/components/scenario-selector';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useAdjustedBudgets, useAdjustedForecasts } from '@/hooks/use-adjusted-values';
@@ -77,6 +74,8 @@ import {
   SavingsSliderSection,
 } from '@/components/budget/slider-sections';
 import { useWhatIf } from '@/contexts/what-if-context';
+import { useScenarioDiff } from '@/hooks/use-scenario-diff';
+import { ScenarioDelta } from '@/components/ui/scenario-delta';
 import type { Cadence, BudgetRule, Category, ForecastRule, Transaction } from '@/lib/types';
 
 type BudgetPeriod = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly';
@@ -116,12 +115,27 @@ export function BudgetPage() {
   const location = useLocation();
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
-  // What-If context is used by the slider section components
-  void useWhatIf();
-  const { categories, activeCategories, isLoading: categoriesLoading, addCategory, updateCategory, deleteCategory } = useCategories();
+  // What-If context for detecting active adjustments
+  const { isWhatIfMode } = useWhatIf();
+  // Scenario diff for comparing against Current Plan
+  const { getTotalDelta, isViewingDefault } = useScenarioDiff();
+  // Show deltas when viewing non-default scenario OR when there are What-If adjustments
+  const showDeltas = !isViewingDefault || isWhatIfMode;
+  const {
+    categories,
+    activeCategories,
+    isLoading: categoriesLoading,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+  } = useCategories();
   // Base hooks for CRUD operations
-  const { getRuleForCategory, isLoading: budgetLoading, setBudgetForCategory, deleteBudgetRule } =
-    useBudgetRules(activeScenarioId);
+  const {
+    getRuleForCategory,
+    isLoading: budgetLoading,
+    setBudgetForCategory,
+    deleteBudgetRule,
+  } = useBudgetRules(activeScenarioId);
   // Adjusted hooks for display (reflects What-If slider adjustments)
   const { budgetRules } = useAdjustedBudgets(activeScenarioId);
   const { savingsGoals, isLoading: savingsLoading } = useSavingsGoals();
@@ -130,18 +144,29 @@ export function BudgetPage() {
   // Past section date filter state
   const [pastFilterStartDate, setPastFilterStartDate] = useState(getPastDefaultStartDate);
   const [pastFilterEndDate, setPastFilterEndDate] = useState(getPastDefaultEndDate);
-  const hasPastDateFilter = pastFilterStartDate !== getPastDefaultStartDate() || pastFilterEndDate !== getPastDefaultEndDate();
+  const hasPastDateFilter =
+    pastFilterStartDate !== getPastDefaultStartDate() ||
+    pastFilterEndDate !== getPastDefaultEndDate();
 
   // Transaction hooks with date filtering
   const pastQueryStartDate = pastFilterStartDate || undefined;
   const pastQueryEndDate = pastFilterEndDate || undefined;
-  const { transactions, allTransactions, isLoading: transactionsLoading, addTransaction, updateTransaction, deleteTransaction } = useTransactions(pastQueryStartDate, pastQueryEndDate);
+  const {
+    transactions,
+    allTransactions,
+    isLoading: transactionsLoading,
+    addTransaction,
+    updateTransaction,
+    deleteTransaction,
+  } = useTransactions(pastQueryStartDate, pastQueryEndDate);
 
   // Calculate date range for next 12 months (for expected income)
   const forecastDateRange = useMemo(() => {
     const today = new Date();
     const startDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
-    const endDate = new Date(today.getFullYear() + 1, today.getMonth(), 0).toISOString().slice(0, 10);
+    const endDate = new Date(today.getFullYear() + 1, today.getMonth(), 0)
+      .toISOString()
+      .slice(0, 10);
     return { startDate, endDate };
   }, []);
 
@@ -152,11 +177,7 @@ export function BudgetPage() {
     addRule,
     updateRule,
     deleteRule,
-  } = useForecasts(
-    activeScenarioId,
-    forecastDateRange.startDate,
-    forecastDateRange.endDate,
-  );
+  } = useForecasts(activeScenarioId, forecastDateRange.startDate, forecastDateRange.endDate);
 
   // Adjusted forecasts for display (reflects What-If slider adjustments)
   const {
@@ -169,7 +190,8 @@ export function BudgetPage() {
     forecastDateRange.endDate,
   );
 
-  const isLoading = categoriesLoading || budgetLoading || forecastsLoading || savingsLoading || transactionsLoading;
+  const isLoading =
+    categoriesLoading || budgetLoading || forecastsLoading || savingsLoading || transactionsLoading;
 
   // Period state for breakdown chart
   const [breakdownPeriod, setBreakdownPeriod] = useState<BudgetPeriod>('monthly');
@@ -184,14 +206,25 @@ export function BudgetPage() {
   const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<ForecastRule | null>(null);
   const [deletingRuleId, setDeletingRuleId] = useState<string | null>(null);
-  const [ruleDialogType, setRuleDialogType] = useState<'income' | 'expense' | 'savings' | null>(null);
+  const [ruleDialogType, setRuleDialogType] = useState<'income' | 'expense' | 'savings' | null>(
+    null,
+  );
 
   // Collapsible sections state (persisted)
-  const [budgetedExpensesOpen, setBudgetedExpensesOpen] = useLocalStorage('budget:budgetedExpensesOpen', false);
+  const [budgetedExpensesOpen, setBudgetedExpensesOpen] = useLocalStorage(
+    'budget:budgetedExpensesOpen',
+    false,
+  );
   const [incomeOpen, setIncomeOpen] = useLocalStorage('budget:incomeOpen', false);
-  const [fixedExpensesOpen, setFixedExpensesOpen] = useLocalStorage('budget:fixedExpensesOpen', false);
+  const [fixedExpensesOpen, setFixedExpensesOpen] = useLocalStorage(
+    'budget:fixedExpensesOpen',
+    false,
+  );
   const [savingsOpen, setSavingsOpen] = useLocalStorage('budget:savingsOpen', false);
-  const [pastTransactionsOpen, setPastTransactionsOpen] = useLocalStorage('budget:pastTransactionsOpen', false);
+  const [pastTransactionsOpen, setPastTransactionsOpen] = useLocalStorage(
+    'budget:pastTransactionsOpen',
+    false,
+  );
 
   // Handle hash navigation to track record section
   useEffect(() => {
@@ -228,29 +261,56 @@ export function BudgetPage() {
   const [hiddenSegments, setHiddenSegments] = useState<Set<string>>(new Set());
 
   // Filter forecast rules by type (base rules for slider sections)
-  const incomeRules = useMemo(() => forecastRules.filter(r => r.type === 'income'), [forecastRules]);
-  const expenseRules = useMemo(() => forecastRules.filter(r => r.type === 'expense'), [forecastRules]);
-  const savingsRules = useMemo(() => forecastRules.filter(r => r.type === 'savings'), [forecastRules]);
+  const incomeRules = useMemo(
+    () => forecastRules.filter((r) => r.type === 'income'),
+    [forecastRules],
+  );
+  const expenseRules = useMemo(
+    () => forecastRules.filter((r) => r.type === 'expense'),
+    [forecastRules],
+  );
+  const savingsRules = useMemo(
+    () => forecastRules.filter((r) => r.type === 'savings'),
+    [forecastRules],
+  );
 
   // Adjusted expense rules for display calculations (reflects What-If adjustments)
-  const adjustedExpenseRules = useMemo(() => adjustedForecastRules.filter(r => r.type === 'expense'), [adjustedForecastRules]);
+  const adjustedExpenseRules = useMemo(
+    () => adjustedForecastRules.filter((r) => r.type === 'expense'),
+    [adjustedForecastRules],
+  );
 
   // Normalize amounts to selected period
   const toPeriod = useCallback((amount: number, cadence: Cadence, period: BudgetPeriod): number => {
     let yearly: number;
     switch (cadence) {
-      case 'weekly': yearly = amount * 52; break;
-      case 'fortnightly': yearly = amount * 26; break;
-      case 'monthly': yearly = amount * 12; break;
-      case 'quarterly': yearly = amount * 4; break;
-      case 'yearly': yearly = amount; break;
+      case 'weekly':
+        yearly = amount * 52;
+        break;
+      case 'fortnightly':
+        yearly = amount * 26;
+        break;
+      case 'monthly':
+        yearly = amount * 12;
+        break;
+      case 'quarterly':
+        yearly = amount * 4;
+        break;
+      case 'yearly':
+        yearly = amount;
+        break;
     }
     switch (period) {
-      case 'weekly': return Math.round(yearly / 52);
-      case 'fortnightly': return Math.round(yearly / 26);
-      case 'monthly': return Math.round(yearly / 12);
-      case 'quarterly': return Math.round(yearly / 4);
-      case 'yearly': return yearly;
+      case 'weekly':
+        return Math.round(yearly / 52);
+      case 'fortnightly':
+        return Math.round(yearly / 26);
+      case 'monthly':
+        return Math.round(yearly / 12);
+      case 'quarterly':
+        return Math.round(yearly / 4);
+      case 'yearly':
+        return yearly;
     }
   }, []);
 
@@ -281,7 +341,7 @@ export function BudgetPage() {
   const categoryRows: CategoryRow[] = useMemo(() => {
     // Build a set of category IDs that have transactions
     const categoriesWithTransactions = new Set(
-      allTransactions.filter(t => t.categoryId).map(t => t.categoryId),
+      allTransactions.filter((t) => t.categoryId).map((t) => t.categoryId),
     );
 
     const rows = categories.map((category) => {
@@ -313,7 +373,14 @@ export function BudgetPage() {
       }
       return a.categoryName.localeCompare(b.categoryName);
     });
-  }, [categories, allTransactions, getRuleForCategory, fixedExpensesPerCategory, toPeriod, breakdownPeriod]);
+  }, [
+    categories,
+    allTransactions,
+    getRuleForCategory,
+    fixedExpensesPerCategory,
+    toPeriod,
+    breakdownPeriod,
+  ]);
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -329,12 +396,12 @@ export function BudgetPage() {
 
     // Total fixed expenses
     const totalFixed = categoryRows
-      .filter(r => !r.category.isArchived)
+      .filter((r) => !r.category.isArchived)
       .reduce((sum, r) => sum + r.fixedAmount, 0);
 
     // Total variable budgets
     const totalVariable = categoryRows
-      .filter(r => !r.category.isArchived)
+      .filter((r) => !r.category.isArchived)
       .reduce((sum, r) => sum + r.variableAmount, 0);
 
     // Total savings (averaged to period)
@@ -352,6 +419,28 @@ export function BudgetPage() {
     const totalSpending = totalFixed + totalVariable;
     const unallocated = income - totalSpending - savings;
 
+    // Also compute monthly totals for scenario comparison
+    const monthlyIncome = periodIncome.monthly;
+    const monthlyFixed = Math.round(
+      categoryRows
+        .filter((r) => !r.category.isArchived)
+        .reduce((sum, r) => {
+          // Convert fixed amount from breakdownPeriod to monthly
+          const yearly = r.fixedAmount * (breakdownPeriod === 'weekly' ? 52 : breakdownPeriod === 'fortnightly' ? 26 : breakdownPeriod === 'monthly' ? 12 : breakdownPeriod === 'quarterly' ? 4 : 1);
+          return sum + yearly / 12;
+        }, 0),
+    );
+    const monthlyVariable = Math.round(
+      categoryRows
+        .filter((r) => !r.category.isArchived)
+        .reduce((sum, r) => {
+          const yearly = r.variableAmount * (breakdownPeriod === 'weekly' ? 52 : breakdownPeriod === 'fortnightly' ? 26 : breakdownPeriod === 'monthly' ? 12 : breakdownPeriod === 'quarterly' ? 4 : 1);
+          return sum + yearly / 12;
+        }, 0),
+    );
+    const monthlySavings = periodSavings.monthly;
+    const monthlySurplus = monthlyIncome - monthlyFixed - monthlyVariable - monthlySavings;
+
     return {
       income,
       fixed: totalFixed,
@@ -359,6 +448,12 @@ export function BudgetPage() {
       savings,
       totalSpending,
       unallocated,
+      // Monthly totals for scenario comparison
+      monthlyIncome,
+      monthlyFixed,
+      monthlyVariable,
+      monthlySavings,
+      monthlySurplus,
     };
   }, [categoryRows, incomeForecasts, savingsForecasts, breakdownPeriod]);
 
@@ -394,7 +489,8 @@ export function BudgetPage() {
         periods = Math.max(
           1,
           (lastDate.getFullYear() - firstDate.getFullYear()) * 12 +
-            (lastDate.getMonth() - firstDate.getMonth()) + 1,
+            (lastDate.getMonth() - firstDate.getMonth()) +
+            1,
         );
         break;
       case 'quarterly':
@@ -462,7 +558,12 @@ export function BudgetPage() {
       transactions.filter((t) => {
         if (filterType !== 'all' && t.type !== filterType) return false;
         if (filterCategory === 'uncategorized' && t.categoryId !== null) return false;
-        if (filterCategory !== 'all' && filterCategory !== 'uncategorized' && t.categoryId !== filterCategory) return false;
+        if (
+          filterCategory !== 'all' &&
+          filterCategory !== 'uncategorized' &&
+          t.categoryId !== filterCategory
+        )
+          return false;
         return true;
       }),
     [transactions, filterType, filterCategory],
@@ -480,7 +581,7 @@ export function BudgetPage() {
     ];
 
     // Filter out zero-amount segments but maintain order
-    return orderedSegments.filter(s => s.amount > 0);
+    return orderedSegments.filter((s) => s.amount > 0);
   }, [totals]);
 
   // Category color map
@@ -565,14 +666,17 @@ export function BudgetPage() {
   }, []);
 
   // Note: handleDeleteRule is kept for future enhancement to add delete icons to slider sections
-  const handleDeleteRule = useCallback((id: string) => {
-    if (deletingRuleId === id) {
-      deleteRule(id);
-      setDeletingRuleId(null);
-    } else {
-      setDeletingRuleId(id);
-    }
-  }, [deletingRuleId, deleteRule]);
+  const handleDeleteRule = useCallback(
+    (id: string) => {
+      if (deletingRuleId === id) {
+        deleteRule(id);
+        setDeletingRuleId(null);
+      } else {
+        setDeletingRuleId(id);
+      }
+    },
+    [deletingRuleId, deleteRule],
+  );
   void handleDeleteRule; // Mark as intentionally unused for now
 
   // Get category name helper
@@ -624,14 +728,17 @@ export function BudgetPage() {
     }
   }, []);
 
-  const handleDeleteTransaction = useCallback((id: string) => {
-    if (deletingTransactionId === id) {
-      deleteTransaction(id);
-      setDeletingTransactionId(null);
-    } else {
-      setDeletingTransactionId(id);
-    }
-  }, [deletingTransactionId, deleteTransaction]);
+  const handleDeleteTransaction = useCallback(
+    (id: string) => {
+      if (deletingTransactionId === id) {
+        deleteTransaction(id);
+        setDeletingTransactionId(null);
+      } else {
+        setDeletingTransactionId(id);
+      }
+    },
+    [deletingTransactionId, deleteTransaction],
+  );
 
   const openBudgetDialog = useCallback((transaction: Transaction) => {
     setBudgetTransaction(transaction);
@@ -648,21 +755,31 @@ export function BudgetPage() {
     return getRuleForCategory(budgetTransaction.categoryId);
   }, [budgetTransaction, getRuleForCategory]);
 
-  const handleCreateRecurringBudget = useCallback(async (amountCents: number, cadence: Cadence, updateMode: 'add' | 'replace') => {
-    if (!budgetTransaction?.categoryId) return;
+  const handleCreateRecurringBudget = useCallback(
+    async (amountCents: number, cadence: Cadence, updateMode: 'add' | 'replace') => {
+      if (!budgetTransaction?.categoryId) return;
 
-    const existingBudget = getRuleForCategory(budgetTransaction.categoryId);
-    const newMonthly = toMonthlyCents(amountCents, cadence);
+      const existingBudget = getRuleForCategory(budgetTransaction.categoryId);
+      const newMonthly = toMonthlyCents(amountCents, cadence);
 
-    if (updateMode === 'add' && existingBudget) {
-      const existingMonthly = toMonthlyCents(existingBudget.amountCents, existingBudget.cadence as CadenceType);
-      await setBudgetForCategory(budgetTransaction.categoryId, existingMonthly + newMonthly, 'monthly');
-    } else {
-      await setBudgetForCategory(budgetTransaction.categoryId, newMonthly, 'monthly');
-    }
+      if (updateMode === 'add' && existingBudget) {
+        const existingMonthly = toMonthlyCents(
+          existingBudget.amountCents,
+          existingBudget.cadence as CadenceType,
+        );
+        await setBudgetForCategory(
+          budgetTransaction.categoryId,
+          existingMonthly + newMonthly,
+          'monthly',
+        );
+      } else {
+        await setBudgetForCategory(budgetTransaction.categoryId, newMonthly, 'monthly');
+      }
 
-    setBudgetTransaction(null);
-  }, [budgetTransaction, getRuleForCategory, setBudgetForCategory]);
+      setBudgetTransaction(null);
+    },
+    [budgetTransaction, getRuleForCategory, setBudgetForCategory],
+  );
 
   // Close delete confirmation on Escape key
   useEffect(() => {
@@ -778,10 +895,7 @@ export function BudgetPage() {
             return <span className="text-muted-foreground">—</span>;
           }
           return (
-            <Link
-              to={`/categories/${categoryId}`}
-              className="hover:underline"
-            >
+            <Link to={`/categories/${categoryId}`} className="hover:underline">
               {categoryName}
             </Link>
           );
@@ -824,7 +938,8 @@ export function BudgetPage() {
 
           const isPositive = type === 'income' || type === 'adjustment';
           const colorClass = isPositive ? 'text-green-600' : 'text-red-600';
-          const tooltipText = type === 'income' ? 'Earned' : type === 'adjustment' ? 'Adjustment' : 'Spent';
+          const tooltipText =
+            type === 'income' ? 'Earned' : type === 'adjustment' ? 'Adjustment' : 'Spent';
           return (
             <TooltipProvider>
               <Tooltip>
@@ -836,9 +951,7 @@ export function BudgetPage() {
                     </span>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent>
-                  {tooltipText}
-                </TooltipContent>
+                <TooltipContent>{tooltipText}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           );
@@ -849,7 +962,8 @@ export function BudgetPage() {
         cell: ({ row }) => {
           const transaction = row.original;
           const isDeleting = deletingTransactionId === transaction.id;
-          const canAddToBudget = transaction.type === 'expense' && transaction.categoryId && activeScenarioId;
+          const canAddToBudget =
+            transaction.type === 'expense' && transaction.categoryId && activeScenarioId;
 
           return (
             <TooltipProvider>
@@ -902,7 +1016,14 @@ export function BudgetPage() {
         },
       },
     ],
-    [deletingTransactionId, openEditTransactionDialog, handleDeleteTransaction, getCategoryName, openBudgetDialog, activeScenarioId],
+    [
+      deletingTransactionId,
+      openEditTransactionDialog,
+      handleDeleteTransaction,
+      getCategoryName,
+      openBudgetDialog,
+      activeScenarioId,
+    ],
   );
 
   // Show loading spinner while data is being fetched
@@ -939,15 +1060,17 @@ export function BudgetPage() {
   // Use a tolerance to account for rounding when converting between periods
   // Scale with period: yearly accumulates more rounding error than weekly
   const roundingToleranceByPeriod: Record<BudgetPeriod, number> = {
-    weekly: 100,      // $1
+    weekly: 100, // $1
     fortnightly: 200, // $2
-    monthly: 300,     // $3
-    quarterly: 500,   // $5
-    yearly: 1000,     // $10
+    monthly: 300, // $3
+    quarterly: 500, // $5
+    yearly: 1000, // $10
   };
   const roundingTolerance = roundingToleranceByPeriod[breakdownPeriod];
   const isFullyAllocated = Math.abs(totals.unallocated) <= roundingTolerance && totals.income > 0;
-  const isOvercommitted = totals.unallocated < -roundingTolerance || (totals.income === 0 && totals.totalSpending + totals.savings > 0);
+  const isOvercommitted =
+    totals.unallocated < -roundingTolerance ||
+    (totals.income === 0 && totals.totalSpending + totals.savings > 0);
   const hasAvailable = totals.unallocated > roundingTolerance && totals.income > 0;
 
   return (
@@ -962,9 +1085,12 @@ export function BudgetPage() {
         <p className="page-description">Plan your spending and savings</p>
       </div>
 
-      {/* Period selector and scenario */}
-      <div className="mb-6 flex flex-wrap items-center gap-4">
-        <Select value={breakdownPeriod} onValueChange={(v) => setBreakdownPeriod(v as BudgetPeriod)}>
+      {/* Period selector */}
+      <div className="mb-6">
+        <Select
+          value={breakdownPeriod}
+          onValueChange={(v) => setBreakdownPeriod(v as BudgetPeriod)}
+        >
           <SelectTrigger className="w-36">
             <SelectValue />
           </SelectTrigger>
@@ -976,7 +1102,6 @@ export function BudgetPage() {
             <SelectItem value="yearly">Yearly</SelectItem>
           </SelectContent>
         </Select>
-        <ScenarioSelector hideLabel />
       </div>
 
       {/* Budget Status Hero */}
@@ -992,13 +1117,25 @@ export function BudgetPage() {
               <p className="mt-2 text-5xl font-bold tracking-tight text-amber-500">
                 {formatCents(Math.abs(totals.unallocated))}
               </p>
+              <ScenarioDelta
+                delta={getTotalDelta('surplus', totals.monthlySurplus)}
+                className="mt-1"
+                show={showDeltas}
+              />
               <p className="mt-1 text-sm text-muted-foreground">
-                {totals.income > 0 ? `${FREQUENCY_PER_LABELS[breakdownPeriod]} on average` : 'Add income to cover your planned expenses and savings'}
+                {totals.income > 0
+                  ? `${FREQUENCY_PER_LABELS[breakdownPeriod]} on average`
+                  : 'Add income to cover your planned expenses and savings'}
               </p>
               <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
               {hasAnyTransactions && (
                 <p className="text-sm text-muted-foreground">
-                  Track Record: <span className={trackRecord.net >= 0 ? 'text-green-500' : 'text-amber-500'}>{trackRecord.net >= 0 ? '+' : ''}{formatCents(trackRecord.net)}</span> {FREQUENCY_PER_LABELS[breakdownPeriod]}
+                  Track Record:{' '}
+                  <span className={trackRecord.net >= 0 ? 'text-green-500' : 'text-amber-500'}>
+                    {trackRecord.net >= 0 ? '+' : ''}
+                    {formatCents(trackRecord.net)}
+                  </span>{' '}
+                  {FREQUENCY_PER_LABELS[breakdownPeriod]}
                 </p>
               )}
             </>
@@ -1011,13 +1148,23 @@ export function BudgetPage() {
               <p className="mt-2 text-5xl font-bold tracking-tight text-green-500">
                 Every dollar accounted for
               </p>
+              <ScenarioDelta
+                delta={getTotalDelta('surplus', totals.monthlySurplus)}
+                className="mt-1"
+                show={showDeltas}
+              />
               <p className="mt-1 text-sm text-muted-foreground">
                 {FREQUENCY_PER_LABELS[breakdownPeriod]} on average
               </p>
               <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
               {hasAnyTransactions && (
                 <p className="text-sm text-muted-foreground">
-                  Track Record: <span className={trackRecord.net >= 0 ? 'text-green-500' : 'text-amber-500'}>{trackRecord.net >= 0 ? '+' : ''}{formatCents(trackRecord.net)}</span> {FREQUENCY_PER_LABELS[breakdownPeriod]}
+                  Track Record:{' '}
+                  <span className={trackRecord.net >= 0 ? 'text-green-500' : 'text-amber-500'}>
+                    {trackRecord.net >= 0 ? '+' : ''}
+                    {formatCents(trackRecord.net)}
+                  </span>{' '}
+                  {FREQUENCY_PER_LABELS[breakdownPeriod]}
                 </p>
               )}
             </>
@@ -1030,13 +1177,23 @@ export function BudgetPage() {
               <p className="mt-2 text-5xl font-bold tracking-tight text-green-500">
                 {formatCents(totals.unallocated)}
               </p>
+              <ScenarioDelta
+                delta={getTotalDelta('surplus', totals.monthlySurplus)}
+                className="mt-1"
+                show={showDeltas}
+              />
               <p className="mt-1 text-sm text-muted-foreground">
                 {FREQUENCY_PER_LABELS[breakdownPeriod]} on average
               </p>
               <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
               {hasAnyTransactions && (
                 <p className="text-sm text-muted-foreground">
-                  Track Record: <span className={trackRecord.net >= 0 ? 'text-green-500' : 'text-amber-500'}>{trackRecord.net >= 0 ? '+' : ''}{formatCents(trackRecord.net)}</span> {FREQUENCY_PER_LABELS[breakdownPeriod]}
+                  Track Record:{' '}
+                  <span className={trackRecord.net >= 0 ? 'text-green-500' : 'text-amber-500'}>
+                    {trackRecord.net >= 0 ? '+' : ''}
+                    {formatCents(trackRecord.net)}
+                  </span>{' '}
+                  {FREQUENCY_PER_LABELS[breakdownPeriod]}
                 </p>
               )}
             </>
@@ -1058,14 +1215,13 @@ export function BudgetPage() {
             {totals.income > 0 ? formatCents(totals.income) : '—'}
           </p>
           {hasAnyTransactions ? (
-            <p className="text-sm text-muted-foreground">
-              {formatCents(trackRecord.income)} avg
-            </p>
+            <p className="text-sm text-muted-foreground">{formatCents(trackRecord.income)} avg</p>
           ) : totals.income > 0 ? (
             <p className="text-sm text-muted-foreground">
               {incomeRules.length} source{incomeRules.length !== 1 ? 's' : ''}
             </p>
           ) : null}
+          <ScenarioDelta delta={getTotalDelta('income', totals.monthlyIncome)} show={showDeltas} />
         </div>
 
         {/* Fixed Expenses Card */}
@@ -1084,6 +1240,7 @@ export function BudgetPage() {
               {Math.round((totals.fixed / totals.income) * 100)}% of income
             </p>
           )}
+          <ScenarioDelta delta={getTotalDelta('fixed', totals.monthlyFixed)} show={showDeltas} />
         </div>
 
         {/* Budgeted Expenses Card */}
@@ -1098,10 +1255,12 @@ export function BudgetPage() {
             {totals.variable > 0 ? formatCents(totals.variable) : '—'}
           </p>
           {hasAnyTransactions && trackRecord.expenses > 0 ? (
-            <p className={cn(
-              'text-sm',
-              trackRecord.expenses <= totals.variable ? 'text-green-500' : 'text-amber-500',
-            )}>
+            <p
+              className={cn(
+                'text-sm',
+                trackRecord.expenses <= totals.variable ? 'text-green-500' : 'text-amber-500',
+              )}
+            >
               {formatCents(trackRecord.expenses)} avg
             </p>
           ) : totals.income > 0 && totals.variable > 0 ? (
@@ -1109,6 +1268,7 @@ export function BudgetPage() {
               {Math.round((totals.variable / totals.income) * 100)}% of income
             </p>
           ) : null}
+          <ScenarioDelta delta={getTotalDelta('budget', totals.monthlyVariable)} show={showDeltas} />
         </div>
 
         {/* Savings Card */}
@@ -1123,10 +1283,12 @@ export function BudgetPage() {
             {totals.savings > 0 ? formatCents(totals.savings) : '—'}
           </p>
           {hasAnyTransactions && trackRecord.savings > 0 ? (
-            <p className={cn(
-              'text-sm',
-              trackRecord.savings >= totals.savings ? 'text-green-500' : 'text-amber-500',
-            )}>
+            <p
+              className={cn(
+                'text-sm',
+                trackRecord.savings >= totals.savings ? 'text-green-500' : 'text-amber-500',
+              )}
+            >
               {formatCents(trackRecord.savings)} avg
             </p>
           ) : totals.income > 0 && totals.savings > 0 ? (
@@ -1134,37 +1296,68 @@ export function BudgetPage() {
               {Math.round((totals.savings / totals.income) * 100)}% of income
             </p>
           ) : null}
+          <ScenarioDelta delta={getTotalDelta('savings', totals.monthlySavings)} show={showDeltas} />
         </div>
       </div>
 
       {/* Breakdown Chart */}
-      {budgetBreakdownSegments.length > 0 && (() => {
-        const surplusHidden = hiddenSegments.has('surplus');
-        const budgetTotal = totals.fixed + totals.savings + totals.variable;
-        return (
-          <div className="mb-8 rounded-xl border bg-card p-5">
-            <h3 className="mb-2 text-lg font-semibold">
-              {surplusHidden ? 'Budget Breakdown' : 'Income Breakdown'}
-            </h3>
-            <p className="mb-4 text-sm text-muted-foreground">
-              {surplusHidden
-                ? `How your ${formatCents(budgetTotal)} budget is allocated`
-                : `How your ${formatCents(totals.income)} income is allocated`}
-            </p>
-            <SpendingBreakdownChart
-              segments={budgetBreakdownSegments}
-              total={surplusHidden ? budgetTotal : chartTotal}
-              colorMap={categoryColorMap}
-              disableToggle
-              toggleableIds={['surplus']}
-              hiddenSegmentIds={hiddenSegments}
-              onSegmentToggle={handleSegmentToggle}
-              showDollarAmountIds={surplusHidden ? ['surplus'] : []}
-              {...(incomeMarkerPercent !== undefined && !surplusHidden && { incomeMarker: incomeMarkerPercent })}
-            />
-          </div>
-        );
-      })()}
+      {budgetBreakdownSegments.length > 0 &&
+        (() => {
+          const surplusHidden = hiddenSegments.has('surplus');
+          const budgetTotal = totals.fixed + totals.savings + totals.variable;
+          // Calculate segment deltas for comparison with default scenario
+          const segmentDeltas = showDeltas
+            ? {
+                fixed: getTotalDelta('fixed', totals.monthlyFixed),
+                savings: getTotalDelta('savings', totals.monthlySavings),
+                variable: getTotalDelta('budget', totals.monthlyVariable),
+                surplus: getTotalDelta('surplus', totals.monthlySurplus),
+              }
+            : undefined;
+          return (
+            <div className={cn(
+              'mb-8 rounded-xl border bg-card p-5',
+              showDeltas && 'border-violet-500/30'
+            )}>
+              <h3 className="mb-2 text-lg font-semibold">
+                {surplusHidden ? 'Budget Breakdown' : 'Income Breakdown'}
+              </h3>
+              <p className="mb-4 text-sm text-muted-foreground">
+                {surplusHidden
+                  ? `How your ${formatCents(budgetTotal)} budget is allocated`
+                  : (
+                    <>
+                      How your {formatCents(totals.income)}
+                      {(() => {
+                        const incomeDelta = showDeltas ? getTotalDelta('income', totals.monthlyIncome) : 0;
+                        return (
+                          <span
+                            className={`inline-block min-w-[4.5rem] ${incomeDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
+                          >
+                            {' '}({incomeDelta > 0 ? '+' : ''}{formatCents(incomeDelta)})
+                          </span>
+                        );
+                      })()}
+                      {' '}income is allocated
+                    </>
+                  )}
+              </p>
+              <SpendingBreakdownChart
+                segments={budgetBreakdownSegments}
+                total={surplusHidden ? budgetTotal : chartTotal}
+                colorMap={categoryColorMap}
+                disableToggle
+                toggleableIds={['surplus']}
+                hiddenSegmentIds={hiddenSegments}
+                onSegmentToggle={handleSegmentToggle}
+                showDollarAmountIds={surplusHidden ? ['surplus'] : []}
+                segmentDeltas={segmentDeltas}
+                {...(incomeMarkerPercent !== undefined &&
+                  !surplusHidden && { incomeMarker: incomeMarkerPercent })}
+              />
+            </div>
+          );
+        })()}
 
       {/* Your Plan Divider */}
       <div className="flex items-center gap-4 py-6">
@@ -1181,6 +1374,7 @@ export function BudgetPage() {
         onAddClick={() => openAddRuleDialog('income')}
         periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
         periodTotal={totals.income}
+        monthlyDelta={showDeltas ? getTotalDelta('income', totals.monthlyIncome) : undefined}
       />
 
       {/* Fixed Expenses Section */}
@@ -1192,6 +1386,7 @@ export function BudgetPage() {
         onAddClick={() => openAddRuleDialog('expense')}
         periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
         periodTotal={totals.fixed}
+        monthlyDelta={showDeltas ? getTotalDelta('fixed', totals.monthlyFixed) : undefined}
       />
 
       {/* Budgeted Expenses */}
@@ -1203,6 +1398,7 @@ export function BudgetPage() {
         onAddClick={() => setAddCategoryDialogOpen(true)}
         periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
         periodTotal={totals.variable}
+        monthlyDelta={showDeltas ? getTotalDelta('budget', totals.monthlyVariable) : undefined}
       />
 
       {/* Savings Contributions Section */}
@@ -1214,6 +1410,7 @@ export function BudgetPage() {
         onAddClick={() => openAddRuleDialog('savings')}
         periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
         periodTotal={totals.savings}
+        monthlyDelta={showDeltas ? getTotalDelta('savings', totals.monthlySavings) : undefined}
       />
 
       {/* Your Track Record Divider */}
@@ -1226,16 +1423,25 @@ export function BudgetPage() {
       {/* Track Record Summary */}
       {hasAnyTransactions && transactionDateRange && (
         <p className="mb-4 text-sm text-muted-foreground">
-          Based on {transactionDateRange.count.toLocaleString()} transactions from {transactionDateRange.from} to {transactionDateRange.to}
+          Based on {transactionDateRange.count.toLocaleString()} transactions from{' '}
+          {transactionDateRange.from} to {transactionDateRange.to}
         </p>
       )}
 
       {/* Past Transactions Section */}
-      <Collapsible open={pastTransactionsOpen} onOpenChange={setPastTransactionsOpen} className="mb-6">
+      <Collapsible
+        open={pastTransactionsOpen}
+        onOpenChange={setPastTransactionsOpen}
+        className="mb-6"
+      >
         <div className="overflow-hidden rounded-lg border">
           <div className="flex items-center justify-between bg-card p-4">
             <CollapsibleTrigger className="flex flex-1 cursor-pointer items-center gap-2">
-              {pastTransactionsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              {pastTransactionsOpen ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
               <RotateCcw className="h-4 w-4 text-amber-500" />
               <span className="font-medium">Past Transactions</span>
               {transactions.length > 0 ? (
@@ -1284,7 +1490,10 @@ export function BudgetPage() {
               {!hasAnyTransactions ? (
                 <p className="py-8 text-center text-sm text-muted-foreground">
                   No transactions yet.{' '}
-                  <button onClick={openAddTransactionDialog} className="cursor-pointer text-primary hover:underline">
+                  <button
+                    onClick={openAddTransactionDialog}
+                    className="cursor-pointer text-primary hover:underline"
+                  >
                     Add your first transaction
                   </button>
                 </p>
@@ -1308,8 +1517,13 @@ export function BudgetPage() {
                         hasFilter={hasPastDateFilter}
                         maxEndDate={getToday()}
                       />
-                      <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
-                        <SelectTrigger className={`w-36 ${filterType === 'all' ? 'text-muted-foreground' : ''}`}>
+                      <Select
+                        value={filterType}
+                        onValueChange={(v) => setFilterType(v as FilterType)}
+                      >
+                        <SelectTrigger
+                          className={`w-36 ${filterType === 'all' ? 'text-muted-foreground' : ''}`}
+                        >
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1321,7 +1535,9 @@ export function BudgetPage() {
                         </SelectContent>
                       </Select>
                       <Select value={filterCategory} onValueChange={setFilterCategory}>
-                        <SelectTrigger className={`w-44 ${filterCategory === 'all' ? 'text-muted-foreground' : ''}`}>
+                        <SelectTrigger
+                          className={`w-44 ${filterCategory === 'all' ? 'text-muted-foreground' : ''}`}
+                        >
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1337,7 +1553,12 @@ export function BudgetPage() {
                         </SelectContent>
                       </Select>
                       {hasPastDateFilter && (
-                        <Button variant="ghost" size="sm" onClick={resetPastFilters} title="Reset to defaults">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={resetPastFilters}
+                          title="Reset to defaults"
+                        >
                           <RotateCcw className="h-4 w-4" />
                         </Button>
                       )}
@@ -1431,9 +1652,7 @@ export function BudgetPage() {
             <Button variant="outline" onClick={() => setImportWarningOpen(false)} asChild>
               <Link to="/categories/import-rules">Set Up Rules</Link>
             </Button>
-            <Button onClick={handleSkipWarning}>
-              Continue Without Rules
-            </Button>
+            <Button onClick={handleSkipWarning}>Continue Without Rules</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

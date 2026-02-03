@@ -1,9 +1,5 @@
 import { useMemo } from 'react';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import {
   ChevronDown,
@@ -16,6 +12,7 @@ import {
 import { formatCents, type CadenceType } from '@/lib/utils';
 import { BudgetSlider, getSliderRange, getIncomeSliderRange } from './budget-slider';
 import { useWhatIf } from '@/contexts/what-if-context';
+import { useScenarioDiff } from '@/hooks/use-scenario-diff';
 import type { ForecastRule, BudgetRule, Category, SavingsGoal } from '@/lib/types';
 
 interface IncomeSectionProps {
@@ -25,6 +22,8 @@ interface IncomeSectionProps {
   onAddClick: () => void;
   periodLabel: string;
   periodTotal: number;
+  /** Monthly delta from default scenario (current - default) */
+  monthlyDelta?: number | undefined;
 }
 
 export function IncomeSliderSection({
@@ -34,8 +33,10 @@ export function IncomeSliderSection({
   onAddClick,
   periodLabel,
   periodTotal,
+  monthlyDelta,
 }: IncomeSectionProps) {
   const { adjustments, baselineValues, setIncomeAdjustment } = useWhatIf();
+  const { isIncomeDifferent, defaultIncomeByDescription } = useScenarioDiff();
 
   return (
     <Collapsible open={isOpen} onOpenChange={onOpenChange} className="mb-4">
@@ -47,9 +48,22 @@ export function IncomeSliderSection({
             <span className="font-medium">Income</span>
             <span className="text-sm text-muted-foreground">
               {formatCents(periodTotal)} {periodLabel}
+              <span
+                className={`ml-1 inline-block min-w-[4.5rem] ${monthlyDelta !== undefined && monthlyDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
+              >
+                ({monthlyDelta !== undefined && monthlyDelta > 0 ? '+' : ''}
+                {formatCents(monthlyDelta ?? 0)})
+              </span>
             </span>
           </CollapsibleTrigger>
-          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onAddClick(); }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddClick();
+            }}
+          >
             <Plus className="h-4 w-4" />
           </Button>
         </div>
@@ -58,7 +72,10 @@ export function IncomeSliderSection({
             {incomeRules.length === 0 ? (
               <p className="py-2 text-center text-sm text-muted-foreground">
                 No income sources yet.{' '}
-                <button onClick={onAddClick} className="cursor-pointer text-primary hover:underline">
+                <button
+                  onClick={onAddClick}
+                  className="cursor-pointer text-primary hover:underline"
+                >
                   Add one
                 </button>
               </p>
@@ -67,6 +84,8 @@ export function IncomeSliderSection({
                 const baseline = baselineValues.incomeAdjustments[rule.id] ?? rule.amountCents;
                 const value = adjustments.incomeAdjustments[rule.id] ?? baseline;
                 const range = getIncomeSliderRange(baseline);
+                const differsFromDefault = isIncomeDifferent(rule.description, baseline);
+                const defaultValue = defaultIncomeByDescription[rule.description];
 
                 return (
                   <BudgetSlider
@@ -80,6 +99,8 @@ export function IncomeSliderSection({
                     onChange={(cents) => setIncomeAdjustment(rule.id, cents)}
                     cadence={rule.cadence as CadenceType}
                     variant="income"
+                    differsFromDefault={differsFromDefault}
+                    defaultValue={defaultValue}
                   />
                 );
               })
@@ -99,6 +120,8 @@ interface FixedExpenseSectionProps {
   onAddClick: () => void;
   periodLabel: string;
   periodTotal: number;
+  /** Monthly delta from default scenario (current - default) */
+  monthlyDelta?: number | undefined;
 }
 
 export function FixedExpenseSliderSection({
@@ -109,11 +132,13 @@ export function FixedExpenseSliderSection({
   onAddClick,
   periodLabel,
   periodTotal,
+  monthlyDelta,
 }: FixedExpenseSectionProps) {
   const { adjustments, baselineValues, setFixedExpenseAdjustment } = useWhatIf();
+  const { isExpenseDifferent, defaultExpenseByDescription } = useScenarioDiff();
 
   const getCategoryName = (id: string | null) =>
-    id ? categories.find((c) => c.id === id)?.name ?? 'Unknown' : '—';
+    id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '—';
 
   return (
     <Collapsible open={isOpen} onOpenChange={onOpenChange} className="mb-4">
@@ -125,9 +150,22 @@ export function FixedExpenseSliderSection({
             <span className="font-medium">Fixed Expenses</span>
             <span className="text-sm text-muted-foreground">
               {formatCents(periodTotal)} {periodLabel}
+              <span
+                className={`ml-1 inline-block min-w-[4.5rem] ${monthlyDelta !== undefined && monthlyDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
+              >
+                ({monthlyDelta !== undefined && monthlyDelta > 0 ? '+' : ''}
+                {formatCents(monthlyDelta ?? 0)})
+              </span>
             </span>
           </CollapsibleTrigger>
-          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onAddClick(); }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddClick();
+            }}
+          >
             <Plus className="h-4 w-4" />
           </Button>
         </div>
@@ -136,16 +174,22 @@ export function FixedExpenseSliderSection({
             {expenseRules.length === 0 ? (
               <p className="py-2 text-center text-sm text-muted-foreground">
                 No fixed expenses yet.{' '}
-                <button onClick={onAddClick} className="cursor-pointer text-primary hover:underline">
+                <button
+                  onClick={onAddClick}
+                  className="cursor-pointer text-primary hover:underline"
+                >
                   Add one
                 </button>
               </p>
             ) : (
               expenseRules.map((rule) => {
-                const baseline = baselineValues.fixedExpenseAdjustments[rule.id] ?? rule.amountCents;
+                const baseline =
+                  baselineValues.fixedExpenseAdjustments[rule.id] ?? rule.amountCents;
                 const value = adjustments.fixedExpenseAdjustments[rule.id] ?? baseline;
                 const range = getSliderRange(baseline);
                 const categoryName = getCategoryName(rule.categoryId);
+                const differsFromDefault = isExpenseDifferent(rule.description, baseline);
+                const defaultValue = defaultExpenseByDescription[rule.description];
 
                 return (
                   <BudgetSlider
@@ -159,6 +203,8 @@ export function FixedExpenseSliderSection({
                     onChange={(cents) => setFixedExpenseAdjustment(rule.id, cents)}
                     cadence={rule.cadence as CadenceType}
                     variant="expense"
+                    differsFromDefault={differsFromDefault}
+                    defaultValue={defaultValue}
                   />
                 );
               })
@@ -178,6 +224,8 @@ interface BudgetedSpendingSectionProps {
   onAddClick: () => void;
   periodLabel: string;
   periodTotal: number;
+  /** Monthly delta from default scenario (current - default) */
+  monthlyDelta?: number | undefined;
 }
 
 export function BudgetedSpendingSliderSection({
@@ -188,8 +236,10 @@ export function BudgetedSpendingSliderSection({
   onAddClick,
   periodLabel,
   periodTotal,
+  monthlyDelta,
 }: BudgetedSpendingSectionProps) {
   const { adjustments, baselineValues, setBudgetAdjustment } = useWhatIf();
+  const { isBudgetDifferent, defaultBudgetByCategory } = useScenarioDiff();
 
   // Create a map of categoryId to category for quick lookup
   const categoryMap = useMemo(() => {
@@ -216,9 +266,22 @@ export function BudgetedSpendingSliderSection({
             <span className="font-medium">Budgeted Spending</span>
             <span className="text-sm text-muted-foreground">
               {formatCents(periodTotal)} {periodLabel}
+              <span
+                className={`ml-1 inline-block min-w-[4.5rem] ${monthlyDelta !== undefined && monthlyDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
+              >
+                ({monthlyDelta !== undefined && monthlyDelta > 0 ? '+' : ''}
+                {formatCents(monthlyDelta ?? 0)})
+              </span>
             </span>
           </CollapsibleTrigger>
-          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onAddClick(); }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddClick();
+            }}
+          >
             <Plus className="h-4 w-4" />
           </Button>
         </div>
@@ -227,7 +290,10 @@ export function BudgetedSpendingSliderSection({
             {activeRules.length === 0 ? (
               <p className="py-2 text-center text-sm text-muted-foreground">
                 No budgets set yet.{' '}
-                <button onClick={onAddClick} className="cursor-pointer text-primary hover:underline">
+                <button
+                  onClick={onAddClick}
+                  className="cursor-pointer text-primary hover:underline"
+                >
                   Add one
                 </button>
               </p>
@@ -235,9 +301,12 @@ export function BudgetedSpendingSliderSection({
               activeRules.map((rule) => {
                 const category = categoryMap.get(rule.categoryId);
                 const categoryName = category?.name ?? 'Unknown';
-                const baseline = baselineValues.budgetAdjustments[rule.categoryId] ?? rule.amountCents;
+                const baseline =
+                  baselineValues.budgetAdjustments[rule.categoryId] ?? rule.amountCents;
                 const value = adjustments.budgetAdjustments[rule.categoryId] ?? baseline;
                 const range = getSliderRange(baseline);
+                const differsFromDefault = isBudgetDifferent(rule.categoryId, baseline);
+                const defaultValue = defaultBudgetByCategory[rule.categoryId];
 
                 return (
                   <BudgetSlider
@@ -251,6 +320,8 @@ export function BudgetedSpendingSliderSection({
                     onChange={(cents) => setBudgetAdjustment(rule.categoryId, cents)}
                     cadence={rule.cadence as CadenceType}
                     variant="expense"
+                    differsFromDefault={differsFromDefault}
+                    defaultValue={defaultValue}
                   />
                 );
               })
@@ -270,6 +341,8 @@ interface SavingsSectionProps {
   onAddClick: () => void;
   periodLabel: string;
   periodTotal: number;
+  /** Monthly delta from default scenario (current - default) */
+  monthlyDelta?: number | undefined;
 }
 
 export function SavingsSliderSection({
@@ -280,11 +353,13 @@ export function SavingsSliderSection({
   onAddClick,
   periodLabel,
   periodTotal,
+  monthlyDelta,
 }: SavingsSectionProps) {
   const { adjustments, baselineValues, setSavingsAdjustment } = useWhatIf();
+  const { isSavingsDifferent, defaultSavingsByDescription } = useScenarioDiff();
 
   const getGoalName = (id: string | null) =>
-    id ? savingsGoals.find((g) => g.id === id)?.name ?? 'Unknown' : 'Savings';
+    id ? (savingsGoals.find((g) => g.id === id)?.name ?? 'Unknown') : 'Savings';
 
   return (
     <Collapsible open={isOpen} onOpenChange={onOpenChange} className="mb-4">
@@ -296,9 +371,22 @@ export function SavingsSliderSection({
             <span className="font-medium">Savings</span>
             <span className="text-sm text-muted-foreground">
               {formatCents(periodTotal)} {periodLabel}
+              <span
+                className={`ml-1 inline-block min-w-[4.5rem] ${monthlyDelta !== undefined && monthlyDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
+              >
+                ({monthlyDelta !== undefined && monthlyDelta > 0 ? '+' : ''}
+                {formatCents(monthlyDelta ?? 0)})
+              </span>
             </span>
           </CollapsibleTrigger>
-          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onAddClick(); }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddClick();
+            }}
+          >
             <Plus className="h-4 w-4" />
           </Button>
         </div>
@@ -307,7 +395,10 @@ export function SavingsSliderSection({
             {savingsRules.length === 0 ? (
               <p className="py-2 text-center text-sm text-muted-foreground">
                 No savings contributions yet.{' '}
-                <button onClick={onAddClick} className="cursor-pointer text-primary hover:underline">
+                <button
+                  onClick={onAddClick}
+                  className="cursor-pointer text-primary hover:underline"
+                >
                   Add one
                 </button>
               </p>
@@ -317,6 +408,8 @@ export function SavingsSliderSection({
                 const value = adjustments.savingsAdjustments[rule.id] ?? baseline;
                 const range = getSliderRange(baseline);
                 const goalName = getGoalName(rule.savingsGoalId);
+                const differsFromDefault = isSavingsDifferent(rule.description, baseline);
+                const defaultValue = defaultSavingsByDescription[rule.description];
 
                 return (
                   <BudgetSlider
@@ -330,6 +423,8 @@ export function SavingsSliderSection({
                     onChange={(cents) => setSavingsAdjustment(rule.id, cents)}
                     cadence={rule.cadence as CadenceType}
                     variant="savings"
+                    differsFromDefault={differsFromDefault}
+                    defaultValue={defaultValue}
                   />
                 );
               })
