@@ -21,14 +21,99 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.15.6',
+    date: '2026-02-04',
+    changes: [
+      'What-If page redesigned with cleaner scenario cards',
+      'Current Plan card shows amber/orange theme when active with "Planning" badge',
+      'Alternative scenarios show purple theme when active with "Imagining" badge',
+      'Forecasts and budgets counts now link to the Budget page sliders',
+    ],
+  },
+  {
+    version: '0.15.5',
+    date: '2026-02-04',
+    changes: [
+      'Sliders now compare against Current Plan when viewing alternative scenarios',
+      'Delta indicators show difference from plan (e.g., "spending $50 less from plan")',
+      'Save button updates the current scenario with your adjustments (with confirmation)',
+      'Save as New button creates a new scenario from your adjustments',
+    ],
+  },
+  {
+    version: '0.15.4',
+    date: '2026-02-04',
+    changes: [
+      'Income breakdown shows delta inline: "How your $5,379 (+$645) income is allocated"',
+      'What-If page now shows impact comparison when viewing any non-default scenario',
+    ],
+  },
+  {
+    version: '0.15.3',
+    date: '2026-02-04',
+    changes: [
+      'Insights page graphs and tabs show purple indicator when exploring scenarios',
+      'Budget page breakdown chart shows purple border and scenario indicator',
+      'What-If page: Edit button added to Current Plan card',
+      'What-If page: Star button on scenarios lets you make any scenario your Current Plan',
+    ],
+  },
+  {
+    version: '0.15.2',
+    date: '2026-02-04',
+    changes: [
+      'Income breakdown chart legend shows deltas for each category when exploring scenarios',
+      'Spending pace and category sections show purple border with scenario name indicator',
+      'Clearer "Based on [scenario]" or "Based on your adjustments" text in Snapshot',
+    ],
+  },
+  {
+    version: '0.15.1',
+    date: '2026-02-04',
+    changes: [
+      'Budget page cards and hero section show deltas from Current Plan',
+      'Slider section headers show inline comparison with your Current Plan',
+      'Deltas now appear when making What-If adjustments, even on your Current Plan',
+      'Snapshot page cards, spending pace, and category progress show plan deltas',
+      'Purple delta indicators (e.g., "+$100/mo from plan") appear where values differ',
+    ],
+  },
+  {
+    version: '0.15.0',
+    date: '2026-02-04',
+    changes: [
+      'What-If page now shows Current Plan as a separate card at the top',
+      'Impact comparison with waterfall chart shown directly on the What-If page',
+      'Values that differ from your Current Plan now appear in purple',
+      'Scenario banner turns purple when you make adjustments or explore alternatives',
+      'Cleaner, more neutral default theme',
+    ],
+  },
+  {
+    version: '0.14.0',
+    date: '2026-02-03',
+    changes: [
+      'Renamed Scenarios page to "What If" for clearer purpose',
+      'Scenario selector now appears in a banner on all pages',
+      'Banner shows Reset and Save buttons when you have unsaved adjustments',
+      'Option to save adjustments as a new scenario when switching scenarios',
+      'New scenarios are now called "Current Plan" by default',
+      'Purple theme applied site-wide when exploring non-default scenarios',
+      'Collapse the banner to the sidebar using the X button',
+    ],
+  },
+  {
     version: '0.13.2',
     date: '2026-02-02',
     changes: [
-      'Improved What-If slider feedback with descriptive text like "spending $50 less per month"',
+      'Improved What-If slider feedback with descriptive text like "spending $50 less (+28%) per month"',
+      'Slider adjustments now show percentage change alongside dollar amounts',
+      'Finer slider increments for more precise adjustments on smaller budgets',
       'Click on any slider amount to enter a custom value beyond slider limits',
       'Income sliders now allow adjusting down to $0',
       'Expense adjustments show green when spending less, red when spending more',
       'Savings adjustments always show in blue',
+      'Reset button on adjusted sliders to quickly restore original value',
     ],
   },
   {
@@ -64,9 +149,7 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '0.12.1',
     date: '2026-02-02',
-    changes: [
-      'Spending pace chart now shows Expected Pace line in green for better visibility',
-    ],
+    changes: ['Spending pace chart now shows Expected Pace line in green for better visibility'],
   },
   {
     version: '0.12.0',
@@ -253,9 +336,7 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '0.2.1',
     date: '2026-01-31',
-    changes: [
-      'Fixed tables jumping back to page 1 after editing items',
-    ],
+    changes: ['Fixed tables jumping back to page 1 after editing items'],
   },
   {
     version: '0.2.0',
