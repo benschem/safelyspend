@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.15.7',
+    date: '2026-02-04',
+    changes: [
+      'Improved accessibility for custom budget amount input',
+      'Fixed various minor stability issues',
+    ],
+  },
+  {
     version: '0.15.6',
     date: '2026-02-04',
     changes: [

@@ -110,7 +110,6 @@ export function useReportsData(scenarioId: string | null, startDate: string, end
   } = useAdjustedBudgets(scenarioId, startDate, endDate);
   const { savingsGoals, isLoading: savingsLoading } = useSavingsGoals();
   const {
-    anchors: savingsAnchors,
     getActiveAnchor,
     isLoading: anchorsLoading,
   } = useSavingsAnchors();
@@ -434,7 +433,7 @@ export function useReportsData(scenarioId: string | null, startDate: string, end
         deadline: goal.deadline,
       };
     });
-  }, [savingsGoals, allTransactions, getActiveAnchor, savingsAnchors, todayStr]);
+  }, [savingsGoals, allTransactions, getActiveAnchor, todayStr]);
 
   // Monthly savings contributions over time (actual + forecast)
   // Interest is treated as "actual" since it's earned money on existing balances
@@ -581,7 +580,6 @@ export function useReportsData(scenarioId: string | null, startDate: string, end
     interestForecasts,
     allTransactions,
     getActiveAnchor,
-    savingsAnchors,
   ]);
 
   // Get unique categories used in monthly spending for legend

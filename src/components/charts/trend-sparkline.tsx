@@ -81,14 +81,18 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
   );
 }
 
+interface DotRenderProps {
+  cx?: number;
+  cy?: number;
+  payload?: MonthSummary;
+}
+
 export function TrendSparkline({
   data,
   onMonthClick,
   showNowLine = false,
   selectedMonth,
 }: TrendSparklineProps) {
-  if (data.length === 0) return null;
-
   // Find the current month index for the "Now" line
   const currentMonthIndex = useMemo(() => {
     return data.findIndex((d) => d.isCurrentMonth);
@@ -102,16 +106,18 @@ export function TrendSparkline({
     );
   }, [data, selectedMonth]);
 
+  // Add index to data for x-axis positioning
+  const chartData = useMemo(() => {
+    return data.map((d, i) => ({ ...d, index: i }));
+  }, [data]);
+
+  if (data.length === 0) return null;
+
   // Determine which month to highlight and label
   const isViewingCurrentMonth =
     selectedMonthIndex === currentMonthIndex || selectedMonthIndex === -1;
   const highlightIndex = selectedMonthIndex >= 0 ? selectedMonthIndex : currentMonthIndex;
   const highlightedMonth = highlightIndex >= 0 ? data[highlightIndex] : null;
-
-  // Add index to data for x-axis positioning
-  const chartData = useMemo(() => {
-    return data.map((d, i) => ({ ...d, index: i }));
-  }, [data]);
 
   return (
     <div className="w-full">
@@ -140,7 +146,7 @@ export function TrendSparkline({
             dataKey="surplus"
             stroke="#9ca3af"
             strokeWidth={1.5}
-            dot={(props) => {
+            dot={(props: DotRenderProps) => {
               const isSelected =
                 selectedMonthIndex >= 0 &&
                 props.payload?.monthIndex === selectedMonth?.monthIndex &&

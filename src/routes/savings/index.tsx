@@ -148,7 +148,7 @@ export function SavingsIndexPage() {
       plannedMonthlyRate,
       annualInterest,
     };
-  }, [savingsByGoal, savingsTransactions, savingsContributions, savingsGoals]);
+  }, [savingsByGoal, savingsTransactions, savingsContributions]);
 
   // Get transaction count per goal for delete warning
   const transactionCountByGoal = useMemo(() => {

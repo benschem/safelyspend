@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, type ReactNode } from 'react';
+import { useCallback, useState, useEffect, useRef, type ReactNode } from 'react';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -83,6 +83,7 @@ export function BudgetSlider({
   // Custom value input state
   const [customInputOpen, setCustomInputOpen] = useState(false);
   const [customInputValue, setCustomInputValue] = useState('');
+  const customInputRef = useRef<HTMLInputElement>(null);
 
   // Sync with external value changes
   useEffect(() => {
@@ -143,6 +144,15 @@ export function BudgetSlider({
     setCustomInputValue(centsToDollars(localValue).toString());
     setCustomInputOpen(true);
   }, [localValue]);
+
+  // Focus custom input when popover opens
+  useEffect(() => {
+    if (customInputOpen) {
+      requestAnimationFrame(() => {
+        customInputRef.current?.focus();
+      });
+    }
+  }, [customInputOpen]);
 
   // When viewing a non-default scenario, show delta from Current Plan (defaultValue)
   // Otherwise show delta from this scenario's baseline
@@ -253,9 +263,11 @@ export function BudgetSlider({
             </PopoverTrigger>
             <PopoverContent className="w-48 p-3" align="end">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Custom amount</label>
+                <label htmlFor="custom-amount" className="text-sm font-medium">Custom amount</label>
                 <div className="flex gap-2">
                   <Input
+                    id="custom-amount"
+                    ref={customInputRef}
                     type="text"
                     inputMode="decimal"
                     value={customInputValue}
@@ -267,7 +279,6 @@ export function BudgetSlider({
                     }}
                     placeholder="0"
                     className="h-8"
-                    autoFocus
                   />
                   <Button size="sm" className="h-8" onClick={handleCustomValueSubmit}>
                     Set
