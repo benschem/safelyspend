@@ -1088,7 +1088,7 @@ export function SnapshotPage() {
           {budgetStatus && (
             <div className={cn(
               'rounded-xl border bg-card p-5',
-              showDeltas && 'border-violet-500/30'
+              showDeltas && 'border-violet-500/30',
             )}>
               <div className="mb-3 flex items-center gap-2">
                 <CircleGauge className="h-5 w-5 text-muted-foreground" />
@@ -1150,7 +1150,7 @@ export function SnapshotPage() {
           {/* Spending by Category */}
           <div className={cn(
             'rounded-xl border bg-card p-6',
-            showDeltas && 'border-violet-500/30'
+            showDeltas && 'border-violet-500/30',
           )}>
             <div className="mb-4 flex items-center gap-2">
               <BanknoteArrowDown className="h-5 w-5 text-muted-foreground" />

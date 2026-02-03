@@ -1317,7 +1317,7 @@ export function BudgetPage() {
           return (
             <div className={cn(
               'mb-8 rounded-xl border bg-card p-5',
-              showDeltas && 'border-violet-500/30'
+              showDeltas && 'border-violet-500/30',
             )}>
               <h3 className="mb-2 text-lg font-semibold">
                 {surplusHidden ? 'Budget Breakdown' : 'Income Breakdown'}

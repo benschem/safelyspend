@@ -69,6 +69,7 @@ export function useAdjustedForecasts(
 ) {
   const {
     rules,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     expandedForecasts,
     incomeForecasts,
     expenseForecasts,

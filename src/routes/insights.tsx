@@ -566,7 +566,7 @@ export function InsightsPage() {
       {/* Tabs */}
       <div className={cn(
         'inline-flex h-9 items-center rounded-lg bg-muted p-1 text-muted-foreground',
-        showDeltas && 'ring-2 ring-violet-500/30'
+        showDeltas && 'ring-2 ring-violet-500/30',
       )}>
         {[
           { value: 'cashflow', label: 'Cash Flow', icon: Banknote, color: 'text-emerald-500' },
@@ -596,7 +596,7 @@ export function InsightsPage() {
       ) : activeTab === 'spending' ? (
         <div className={cn(
           'rounded-xl border bg-card p-5',
-          showDeltas && 'border-violet-500/30'
+          showDeltas && 'border-violet-500/30',
         )}>
           <div className="mb-4 flex min-h-9 items-center">
             <p className="text-sm text-muted-foreground">
@@ -644,7 +644,7 @@ export function InsightsPage() {
           )}
           <div className={cn(
             'rounded-xl border bg-card p-5',
-            showDeltas && 'border-violet-500/30'
+            showDeltas && 'border-violet-500/30',
           )}>
             <div className="mb-4 flex min-h-9 items-center">
               <p className="text-sm text-muted-foreground">
@@ -684,7 +684,7 @@ export function InsightsPage() {
           )}
           <div className={cn(
             'rounded-xl border bg-card p-5',
-            showDeltas && 'border-violet-500/30'
+            showDeltas && 'border-violet-500/30',
           )}>
             <div className="mb-4 flex min-h-9 items-center justify-between gap-4">
               <p className="text-sm text-muted-foreground">
