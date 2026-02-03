@@ -13,6 +13,9 @@ import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useSavingsAnchors } from '@/hooks/use-savings-anchors';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
+import { useScenarios } from '@/hooks/use-scenarios';
+import { useScenarioDiff } from '@/hooks/use-scenario-diff';
+import { useWhatIf } from '@/contexts/what-if-context';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 import { formatCompactDate, TIMELINE_UNIT_BOUNDS } from '@/lib/utils';
 import {
@@ -23,12 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import {
-  BudgetComparisonChart,
-  CashFlowChart,
-  SavingsOverTimeChart,
-} from '@/components/charts';
-import { ScenarioSelector } from '@/components/scenario-selector';
+import { BudgetComparisonChart, CashFlowChart, SavingsOverTimeChart } from '@/components/charts';
 import type { TimelineMode, TimelineUnit } from '@/lib/types';
 
 interface OutletContext {
@@ -52,9 +50,10 @@ const UNITS: { value: TimelineUnit; label: string; pluralLabel: string }[] = [
 ];
 
 function formatTimelineDescription(amount: number, unit: TimelineUnit, mode: TimelineMode): string {
-  const unitLabel = amount === 1
-    ? UNITS.find((u) => u.value === unit)?.label
-    : UNITS.find((u) => u.value === unit)?.pluralLabel;
+  const unitLabel =
+    amount === 1
+      ? UNITS.find((u) => u.value === unit)?.label
+      : UNITS.find((u) => u.value === unit)?.pluralLabel;
 
   switch (mode) {
     case 'past':
@@ -75,6 +74,12 @@ function formatTimelineDescription(amount: number, unit: TimelineUnit, mode: Tim
 
 export function InsightsPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
+  const { activeScenario } = useScenarios();
+  const { isViewingDefault } = useScenarioDiff();
+  const { isWhatIfMode } = useWhatIf();
+  // Show purple indicators when viewing non-default scenario OR when there are What-If adjustments
+  const showDeltas = !isViewingDefault || isWhatIfMode;
+
   const [searchParams, setSearchParams] = useSearchParams();
   const {
     mode,
@@ -309,7 +314,8 @@ export function InsightsPage() {
 
   // Calculate per-goal balance start months
   const perGoalBalanceInfo = useMemo(() => {
-    const byGoal: Record<string, { balanceStartMonth: string | null; startingBalance: number }> = {};
+    const byGoal: Record<string, { balanceStartMonth: string | null; startingBalance: number }> =
+      {};
 
     for (const goal of savingsByGoal) {
       const goalAnchors = savingsAnchorsData.filter((a) => a.savingsGoalId === goal.goalId);
@@ -347,10 +353,7 @@ export function InsightsPage() {
     return budgetCategories.map((c) => c.id);
   }, [budgetCategories]);
 
-  const categoryColorMap = useMemo(
-    () => buildCategoryColorMap(allCategoryIds),
-    [allCategoryIds],
-  );
+  const categoryColorMap = useMemo(() => buildCategoryColorMap(allCategoryIds), [allCategoryIds]);
 
   // Determine if viewing past period
   const today = new Date().toISOString().slice(0, 10);
@@ -453,7 +456,10 @@ export function InsightsPage() {
             <div className="space-y-4">
               {/* Preset controls */}
               <div className={cn('flex items-center gap-2', isCustomActive && 'opacity-50')}>
-                <Select value={isCustomActive ? '' : amount.toString()} onValueChange={handleAmountChange}>
+                <Select
+                  value={isCustomActive ? '' : amount.toString()}
+                  onValueChange={handleAmountChange}
+                >
                   <SelectTrigger className="w-16 cursor-pointer">
                     <SelectValue placeholder="—" />
                   </SelectTrigger>
@@ -557,41 +563,41 @@ export function InsightsPage() {
         </p>
       </div>
 
-      {/* Controls row: Tabs left, Scenario right */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* Tabs */}
-        <div className="inline-flex h-9 items-center rounded-lg bg-muted p-1 text-muted-foreground">
-          {[
-            { value: 'cashflow', label: 'Cash Flow', icon: Banknote, color: 'text-emerald-500' },
-            { value: 'spending', label: 'Spending', icon: BanknoteArrowDown, color: 'text-red-500' },
-            { value: 'savings', label: 'Savings', icon: PiggyBank, color: 'text-blue-500' },
-          ].map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              onClick={() => handleTabChange(tab.value)}
-              className={cn(
-                'inline-flex cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all',
-                activeTab === tab.value
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'hover:text-foreground',
-              )}
-            >
-              <tab.icon className={cn('h-4 w-4', activeTab === tab.value && tab.color)} />
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Scenario selector */}
-        <ScenarioSelector />
+      {/* Tabs */}
+      <div className={cn(
+        'inline-flex h-9 items-center rounded-lg bg-muted p-1 text-muted-foreground',
+        showDeltas && 'ring-2 ring-violet-500/30'
+      )}>
+        {[
+          { value: 'cashflow', label: 'Cash Flow', icon: Banknote, color: 'text-emerald-500' },
+          { value: 'spending', label: 'Spending', icon: BanknoteArrowDown, color: 'text-red-500' },
+          { value: 'savings', label: 'Savings', icon: PiggyBank, color: 'text-blue-500' },
+        ].map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => handleTabChange(tab.value)}
+            className={cn(
+              'inline-flex cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all',
+              activeTab === tab.value
+                ? 'bg-background text-foreground shadow-sm'
+                : 'hover:text-foreground',
+            )}
+          >
+            <tab.icon className={cn('h-4 w-4', activeTab === tab.value && tab.color)} />
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Content sections */}
       {isLoading ? (
         <PageLoading />
       ) : activeTab === 'spending' ? (
-        <div className="rounded-xl border bg-card p-5">
+        <div className={cn(
+          'rounded-xl border bg-card p-5',
+          showDeltas && 'border-violet-500/30'
+        )}>
           <div className="mb-4 flex min-h-9 items-center">
             <p className="text-sm text-muted-foreground">
               {isPastOnly
@@ -599,6 +605,13 @@ export function InsightsPage() {
                 : 'Actual and expected spending vs budget'}
             </p>
           </div>
+          <p
+            className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
+          >
+            {isWhatIfMode && isViewingDefault
+              ? 'Based on your adjustments'
+              : `Based on "${activeScenario?.name ?? 'scenario'}"`}
+          </p>
           <BudgetComparisonChart
             monthlyBudgetComparison={monthlyBudgetComparison}
             budgetCategories={budgetCategories}
@@ -629,7 +642,10 @@ export function InsightsPage() {
               </AlertDescription>
             </Alert>
           )}
-          <div className="rounded-xl border bg-card p-5">
+          <div className={cn(
+            'rounded-xl border bg-card p-5',
+            showDeltas && 'border-violet-500/30'
+          )}>
             <div className="mb-4 flex min-h-9 items-center">
               <p className="text-sm text-muted-foreground">
                 {isPastOnly
@@ -637,6 +653,13 @@ export function InsightsPage() {
                   : 'Cash and savings over time, including planned income, spending and saving'}
               </p>
             </div>
+            <p
+              className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
+            >
+              {isWhatIfMode && isViewingDefault
+                ? 'Based on your adjustments'
+                : `Based on "${activeScenario?.name ?? 'scenario'}"`}
+            </p>
             <CashFlowChart
               monthlyNetFlow={monthlyNetFlow}
               startingBalance={balanceInfo.startingBalance}
@@ -659,7 +682,10 @@ export function InsightsPage() {
               </AlertDescription>
             </Alert>
           )}
-          <div className="rounded-xl border bg-card p-5">
+          <div className={cn(
+            'rounded-xl border bg-card p-5',
+            showDeltas && 'border-violet-500/30'
+          )}>
             <div className="mb-4 flex min-h-9 items-center justify-between gap-4">
               <p className="text-sm text-muted-foreground">
                 {isPastOnly
@@ -673,9 +699,7 @@ export function InsightsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="total">Total Savings</SelectItem>
-                    {emergencyFund && (
-                      <SelectItem value="dedicated">Dedicated Savings</SelectItem>
-                    )}
+                    {emergencyFund && <SelectItem value="dedicated">Dedicated Savings</SelectItem>}
                     {savingsByGoal.map((goal) => (
                       <SelectItem key={goal.goalId} value={goal.goalId}>
                         {goal.goalName}
@@ -685,6 +709,13 @@ export function InsightsPage() {
                 </Select>
               )}
             </div>
+            <p
+              className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
+            >
+              {isWhatIfMode && isViewingDefault
+                ? 'Based on your adjustments'
+                : `Based on "${activeScenario?.name ?? 'scenario'}"`}
+            </p>
 
             {effectiveSavingsView === 'total' ? (
               <SavingsOverTimeChart
@@ -704,7 +735,9 @@ export function InsightsPage() {
                   savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.monthlySavings ?? []
                 }
                 deadline={savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.deadline}
-                targetAmount={savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.targetAmount}
+                targetAmount={
+                  savingsByGoal.find((g) => g.goalId === effectiveSavingsView)?.targetAmount
+                }
                 startingBalance={perGoalBalanceInfo[effectiveSavingsView]?.startingBalance ?? 0}
                 balanceStartMonth={perGoalBalanceInfo[effectiveSavingsView]?.balanceStartMonth}
               />
