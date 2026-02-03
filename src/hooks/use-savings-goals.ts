@@ -25,9 +25,14 @@ export function useSavingsGoals() {
   const addSavingsGoal = useCallback(async (data: CreateEntity<SavingsGoal>) => {
     // If this goal is being set as emergency fund, clear the flag from any existing one
     if (data.isEmergencyFund) {
-      const existingEmergencyFund = await db.savingsGoals.filter((g) => g.isEmergencyFund === true).first();
+      const existingEmergencyFund = await db.savingsGoals
+        .filter((g) => g.isEmergencyFund === true)
+        .first();
       if (existingEmergencyFund) {
-        await db.savingsGoals.update(existingEmergencyFund.id, { isEmergencyFund: false, updatedAt: now() });
+        await db.savingsGoals.update(existingEmergencyFund.id, {
+          isEmergencyFund: false,
+          updatedAt: now(),
+        });
       }
     }
 
@@ -47,9 +52,14 @@ export function useSavingsGoals() {
     async (id: string, updates: Partial<Omit<SavingsGoal, 'id' | 'userId' | 'createdAt'>>) => {
       // If this goal is being set as emergency fund, clear the flag from any existing one
       if (updates.isEmergencyFund) {
-        const existingEmergencyFund = await db.savingsGoals.filter((g) => g.isEmergencyFund === true && g.id !== id).first();
+        const existingEmergencyFund = await db.savingsGoals
+          .filter((g) => g.isEmergencyFund === true && g.id !== id)
+          .first();
         if (existingEmergencyFund) {
-          await db.savingsGoals.update(existingEmergencyFund.id, { isEmergencyFund: false, updatedAt: now() });
+          await db.savingsGoals.update(existingEmergencyFund.id, {
+            isEmergencyFund: false,
+            updatedAt: now(),
+          });
         }
       }
 

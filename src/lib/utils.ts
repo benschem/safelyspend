@@ -182,9 +182,9 @@ export type CadenceType = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | '
 export function toMonthlyCents(amountCents: number, cadence: CadenceType): number {
   switch (cadence) {
     case 'weekly':
-      return Math.round(amountCents * 52 / 12);
+      return Math.round((amountCents * 52) / 12);
     case 'fortnightly':
-      return Math.round(amountCents * 26 / 12);
+      return Math.round((amountCents * 26) / 12);
     case 'monthly':
       return amountCents;
     case 'quarterly':
@@ -200,9 +200,9 @@ export function toMonthlyCents(amountCents: number, cadence: CadenceType): numbe
 export function fromMonthlyCents(monthlyAmountCents: number, targetCadence: CadenceType): number {
   switch (targetCadence) {
     case 'weekly':
-      return Math.round(monthlyAmountCents * 12 / 52);
+      return Math.round((monthlyAmountCents * 12) / 52);
     case 'fortnightly':
-      return Math.round(monthlyAmountCents * 12 / 26);
+      return Math.round((monthlyAmountCents * 12) / 26);
     case 'monthly':
       return monthlyAmountCents;
     case 'quarterly':
@@ -410,7 +410,10 @@ import type { TimelineMode, TimelineUnit } from './types';
 /**
  * Bounds for timeline amount based on unit
  */
-export const TIMELINE_UNIT_BOUNDS: Record<TimelineUnit, { min: number; max: number; default: number }> = {
+export const TIMELINE_UNIT_BOUNDS: Record<
+  TimelineUnit,
+  { min: number; max: number; default: number }
+> = {
   months: { min: 3, max: 24, default: 6 },
   years: { min: 1, max: 10, default: 2 },
 };
@@ -525,10 +528,14 @@ export function formatCompactDate(isoDate: string, includeYear = false): string 
 function getOrdinalSuffix(day: number): string {
   if (day > 3 && day < 21) return 'th';
   switch (day % 10) {
-    case 1: return 'st';
-    case 2: return 'nd';
-    case 3: return 'rd';
-    default: return 'th';
+    case 1:
+      return 'st';
+    case 2:
+      return 'nd';
+    case 3:
+      return 'rd';
+    default:
+      return 'th';
   }
 }
 
@@ -581,6 +588,11 @@ export function calculateInterestEarned(
   compoundingFrequency: 'daily' | 'monthly' | 'yearly',
   years: number,
 ): number {
-  const finalAmount = calculateCompoundInterest(principalCents, annualRate, compoundingFrequency, years);
+  const finalAmount = calculateCompoundInterest(
+    principalCents,
+    annualRate,
+    compoundingFrequency,
+    years,
+  );
   return finalAmount - principalCents;
 }

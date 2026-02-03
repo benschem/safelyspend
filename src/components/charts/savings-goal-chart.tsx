@@ -48,7 +48,8 @@ function CustomTooltip({
   if (!data) return null;
 
   const totalCumulative = data.cumulativeActual + data.cumulativeForecast;
-  const percentComplete = targetAmount > 0 ? Math.min(100, (totalCumulative / targetAmount) * 100) : 0;
+  const percentComplete =
+    targetAmount > 0 ? Math.min(100, (totalCumulative / targetAmount) * 100) : 0;
 
   return (
     <div className="rounded-lg border bg-background p-3 shadow-sm">
@@ -87,7 +88,11 @@ function CustomTooltip({
   );
 }
 
-export function SavingsGoalChart({ goalName, targetAmount, monthlySavings }: SavingsGoalChartProps) {
+export function SavingsGoalChart({
+  goalName,
+  targetAmount,
+  monthlySavings,
+}: SavingsGoalChartProps) {
   const hasSavings = monthlySavings.some((m) => m.actual > 0 || m.forecast > 0);
 
   if (!hasSavings) {
@@ -108,10 +113,7 @@ export function SavingsGoalChart({ goalName, targetAmount, monthlySavings }: Sav
   const percentComplete = targetAmount > 0 ? Math.min(100, (finalTotal / targetAmount) * 100) : 0;
 
   // Determine Y-axis max to show target line properly
-  const maxValue = Math.max(
-    targetAmount,
-    ...chartData.map((d) => d.cumulativeTotal),
-  );
+  const maxValue = Math.max(targetAmount, ...chartData.map((d) => d.cumulativeTotal));
 
   return (
     <div className="rounded-lg border p-4">

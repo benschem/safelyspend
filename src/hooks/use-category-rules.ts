@@ -13,19 +13,16 @@ export function useCategoryRules() {
   const isLoading = rawRules === undefined;
 
   // Sort rules by priority (lower = higher priority)
-  const sortedRules = useMemo(
-    () => [...rules].sort((a, b) => a.priority - b.priority),
-    [rules],
-  );
+  const sortedRules = useMemo(() => [...rules].sort((a, b) => a.priority - b.priority), [rules]);
 
-  const enabledRules = useMemo(
-    () => sortedRules.filter((r) => r.enabled),
-    [sortedRules],
-  );
+  const enabledRules = useMemo(() => sortedRules.filter((r) => r.enabled), [sortedRules]);
 
   // Check if a transaction matches a rule
   const matchesRule = useCallback(
-    (transaction: Pick<Transaction, 'description' | 'amountCents' | 'type'>, rule: CategoryRule): boolean => {
+    (
+      transaction: Pick<Transaction, 'description' | 'amountCents' | 'type'>,
+      rule: CategoryRule,
+    ): boolean => {
       // Check transaction type constraint
       if (rule.transactionType && transaction.type !== rule.transactionType) {
         return false;
@@ -72,7 +69,9 @@ export function useCategoryRules() {
 
   // Apply rules to multiple transactions, returns a map of transaction index to category ID
   const applyRulesToBatch = useCallback(
-    (transactions: Array<Pick<Transaction, 'description' | 'amountCents' | 'type'>>): Map<number, string> => {
+    (
+      transactions: Array<Pick<Transaction, 'description' | 'amountCents' | 'type'>>,
+    ): Map<number, string> => {
       const result = new Map<number, string>();
       for (let i = 0; i < transactions.length; i++) {
         const tx = transactions[i];

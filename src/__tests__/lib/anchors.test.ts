@@ -218,10 +218,7 @@ describe('balance calculation with anchors', () => {
    * Calculate balance from anchor + transactions after anchor date
    * This mirrors the logic in use-reports-data.ts
    */
-  function calculateBalance(
-    anchor: TestAnchor,
-    transactions: TestTransaction[],
-  ): number {
+  function calculateBalance(anchor: TestAnchor, transactions: TestTransaction[]): number {
     let balance = anchor.balanceCents;
 
     for (const t of transactions) {
@@ -304,9 +301,7 @@ describe('anchor edge cases', () => {
   });
 
   describe('boundary dates', () => {
-    const anchors = sortAnchors([
-      { id: '1', date: '2025-01-01', balanceCents: 100000 },
-    ]);
+    const anchors = sortAnchors([{ id: '1', date: '2025-01-01', balanceCents: 100000 }]);
 
     it('handles first day of year', () => {
       expect(getActiveAnchor(anchors, '2025-01-01')?.id).toBe('1');

@@ -92,10 +92,7 @@ function CustomTooltip({
       <div className="space-y-1 text-sm">
         <div className="flex items-center justify-between gap-6">
           <div className="flex items-center gap-2">
-            <div
-              className="h-2.5 w-2.5 rounded"
-              style={{ backgroundColor: statusColor }}
-            />
+            <div className="h-2.5 w-2.5 rounded" style={{ backgroundColor: statusColor }} />
             <span>Spent</span>
           </div>
           <span className="font-mono">{formatCents(data.actual)}</span>
@@ -121,7 +118,9 @@ function CustomTooltip({
             <div className="border-t pt-1 mt-1">
               <div className="flex justify-between font-medium" style={{ color: statusColor }}>
                 <span>{data.actual > data.budget ? 'Over' : 'Under'}</span>
-                <span className="font-mono">{formatCents(Math.abs(data.budget - data.actual))}</span>
+                <span className="font-mono">
+                  {formatCents(Math.abs(data.budget - data.actual))}
+                </span>
               </div>
             </div>
           </>
@@ -131,18 +130,19 @@ function CustomTooltip({
   );
 }
 
-export function CategoryMonthlyChart({ monthlyData, monthlyBudget, currentMonth }: CategoryMonthlyChartProps) {
+export function CategoryMonthlyChart({
+  monthlyData,
+  monthlyBudget,
+  currentMonth,
+}: CategoryMonthlyChartProps) {
   const chartData: ChartDataPoint[] = useMemo(() => {
     return monthlyData.map((m) => {
       const isCurrentMonth = m.month === currentMonth;
-      const budgetPercent = monthlyBudget && monthlyBudget > 0
-        ? Math.round((m.actual / monthlyBudget) * 100)
-        : null;
+      const budgetPercent =
+        monthlyBudget && monthlyBudget > 0 ? Math.round((m.actual / monthlyBudget) * 100) : null;
 
       // For current month, show remaining budget as separate segment
-      const remaining = isCurrentMonth && monthlyBudget
-        ? Math.max(0, monthlyBudget - m.actual)
-        : 0;
+      const remaining = isCurrentMonth && monthlyBudget ? Math.max(0, monthlyBudget - m.actual) : 0;
 
       return {
         month: m.month,
@@ -166,11 +166,8 @@ export function CategoryMonthlyChart({ monthlyData, monthlyBudget, currentMonth 
   }
 
   // Calculate Y-axis max to ensure budget line is visible
-  const maxValue = Math.max(
-    ...monthlyData.map((m) => m.actual),
-    monthlyBudget ?? 0,
-  );
-  const yAxisMax = Math.ceil(maxValue * 1.1 / 10000) * 10000 || 10000;
+  const maxValue = Math.max(...monthlyData.map((m) => m.actual), monthlyBudget ?? 0);
+  const yAxisMax = Math.ceil((maxValue * 1.1) / 10000) * 10000 || 10000;
 
   return (
     <div className="w-full">
@@ -208,21 +205,11 @@ export function CategoryMonthlyChart({ monthlyData, monthlyBudget, currentMonth 
           )}
 
           {/* Actual spending bars */}
-          <Bar
-            dataKey="actual"
-            name="Spent"
-            stackId="spending"
-            maxBarSize={40}
-          >
+          <Bar dataKey="actual" name="Spent" stackId="spending" maxBarSize={40}>
             {chartData.map((entry, index) => {
               const isFaded = !entry.isCurrentMonth;
               const color = getBudgetStatusColor(entry.budgetPercent, isFaded);
-              return (
-                <Cell
-                  key={`actual-${index}`}
-                  fill={color}
-                />
-              );
+              return <Cell key={`actual-${index}`} fill={color} />;
             })}
           </Bar>
 
@@ -269,7 +256,10 @@ export function CategoryMonthlyChart({ monthlyData, monthlyBudget, currentMonth 
             <div className="flex items-center gap-1.5">
               <div
                 className="h-3 w-3 rounded border border-dashed"
-                style={{ borderColor: STATUS_COLORS.under, backgroundColor: `${STATUS_COLORS.under}30` }}
+                style={{
+                  borderColor: STATUS_COLORS.under,
+                  backgroundColor: `${STATUS_COLORS.under}30`,
+                }}
               />
               <span>Remaining</span>
             </div>

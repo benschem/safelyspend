@@ -29,18 +29,16 @@ export const moneyInputSchema = z
   );
 
 /** Optional money amount (can be empty string or positive number within bounds) */
-export const optionalMoneyInputSchema = z
-  .string()
-  .refine(
-    (val) => {
-      if (val === '') return true;
-      const num = parseFloat(val);
-      return !isNaN(num) && isFinite(num) && num >= 0 && num <= MAX_AMOUNT_DOLLARS;
-    },
-    {
-      message: `Amount must be between $0 and $${MAX_AMOUNT_DOLLARS.toLocaleString()}`,
-    },
-  );
+export const optionalMoneyInputSchema = z.string().refine(
+  (val) => {
+    if (val === '') return true;
+    const num = parseFloat(val);
+    return !isNaN(num) && isFinite(num) && num >= 0 && num <= MAX_AMOUNT_DOLLARS;
+  },
+  {
+    message: `Amount must be between $0 and $${MAX_AMOUNT_DOLLARS.toLocaleString()}`,
+  },
+);
 
 /** ISO date string (YYYY-MM-DD) */
 export const dateSchema = z.string().min(1, 'Date is required');

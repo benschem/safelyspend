@@ -24,7 +24,11 @@ export class PageErrorBoundary extends Component<Props, State> {
   }
 
   override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    debug.error('ui', 'Page error caught by boundary', { error: error.message, stack: error.stack, componentStack: errorInfo.componentStack });
+    debug.error('ui', 'Page error caught by boundary', {
+      error: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack,
+    });
   }
 
   override render() {
@@ -64,7 +68,6 @@ export class PageErrorBoundary extends Component<Props, State> {
                 </Link>
               </Button>
             </div>
-
           </div>
 
           {isDev && errorStack && (

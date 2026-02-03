@@ -15,12 +15,7 @@ import {
   Tag,
   Trash2,
 } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PageLoading } from '@/components/page-loading';
 import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
@@ -32,8 +27,18 @@ import { cn, formatCents, formatDate, formatISODate } from '@/lib/utils';
 import type { Transaction, BudgetRule } from '@/lib/types';
 
 const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 interface OutletContext {
@@ -103,17 +108,20 @@ export function CategoryDetailPage() {
   const dayOfMonth = now.getDate();
 
   // Data hooks - get all transactions then filter
-  const { categories, isLoading: categoriesLoading, updateCategory, addCategory, deleteCategory } = useCategories();
+  const {
+    categories,
+    isLoading: categoriesLoading,
+    updateCategory,
+    addCategory,
+    deleteCategory,
+  } = useCategories();
   const { allTransactions, isLoading: transactionsLoading } = useTransactions();
   const { getRuleForCategory, isLoading: budgetLoading } = useBudgetRules(activeScenarioId);
 
   const isLoading = categoriesLoading || transactionsLoading || budgetLoading;
 
   // Find the category
-  const category = useMemo(
-    () => categories.find((c) => c.id === id),
-    [categories, id],
-  );
+  const category = useMemo(() => categories.find((c) => c.id === id), [categories, id]);
 
   // Filter transactions to this category (expenses only)
   const allCategoryTransactions = useMemo(
@@ -140,10 +148,7 @@ export function CategoryDetailPage() {
   );
 
   // Get budget info
-  const budgetRule = useMemo(
-    () => (id ? getRuleForCategory(id) : null),
-    [getRuleForCategory, id],
-  );
+  const budgetRule = useMemo(() => (id ? getRuleForCategory(id) : null), [getRuleForCategory, id]);
 
   const monthlyBudget = useMemo(() => {
     if (!budgetRule) return null;
@@ -183,18 +188,20 @@ export function CategoryDetailPage() {
   }, [chartTransactions, currentYear, currentMonthIndex]);
 
   // Budget calculations
-  const budgetUsedPercent = monthlyBudget && monthlyBudget > 0
-    ? Math.round((thisMonthSpent / monthlyBudget) * 100)
-    : null;
+  const budgetUsedPercent =
+    monthlyBudget && monthlyBudget > 0 ? Math.round((thisMonthSpent / monthlyBudget) * 100) : null;
   const isOverBudget = budgetUsedPercent !== null && budgetUsedPercent > 100;
 
   // Expected progress (how much of the month has passed)
   const expectedProgress = Math.round((dayOfMonth / lastDayOfMonth) * 100);
 
   // vs Last Month calculation
-  const vsLastMonth = lastMonthSpent > 0
-    ? Math.round(((thisMonthSpent - lastMonthSpent) / lastMonthSpent) * 100)
-    : thisMonthSpent > 0 ? 100 : 0;
+  const vsLastMonth =
+    lastMonthSpent > 0
+      ? Math.round(((thisMonthSpent - lastMonthSpent) / lastMonthSpent) * 100)
+      : thisMonthSpent > 0
+        ? 100
+        : 0;
 
   // Recent transactions (last 10 from this month)
   const recentTransactions = useMemo(
@@ -277,15 +284,13 @@ export function CategoryDetailPage() {
                 Budget: {formatCents(budgetRule.amountCents)}/{budgetRule.cadence}
                 {budgetRule.cadence !== 'monthly' && (
                   <span className="text-muted-foreground/60">
-                    {' '}({formatCents(monthlyBudget ?? 0)}/mo)
+                    {' '}
+                    ({formatCents(monthlyBudget ?? 0)}/mo)
                   </span>
                 )}
               </>
             ) : (
-              <Link
-                to="/budget"
-                className="text-primary hover:underline"
-              >
+              <Link to="/budget" className="text-primary hover:underline">
                 No budget set – Set one →
               </Link>
             )}
@@ -324,7 +329,9 @@ export function CategoryDetailPage() {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {confirmingDelete ? 'Click again to confirm deletion' : 'Permanently delete this category'}
+                  {confirmingDelete
+                    ? 'Click again to confirm deletion'
+                    : 'Permanently delete this category'}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -356,7 +363,9 @@ export function CategoryDetailPage() {
                 className="cursor-pointer hover:underline"
                 onClick={(e) => {
                   e.preventDefault();
-                  document.getElementById('recent-transactions')?.scrollIntoView({ behavior: 'smooth' });
+                  document
+                    .getElementById('recent-transactions')
+                    ?.scrollIntoView({ behavior: 'smooth' });
                 }}
               >
                 {periodTransactions.length} transaction{periodTransactions.length !== 1 ? 's' : ''}
@@ -422,7 +431,8 @@ export function CategoryDetailPage() {
                 {formatCents(thisMonthSpent)} of {formatCents(monthlyBudget)}
                 {!isOverBudget && (
                   <span className="text-muted-foreground/70">
-                    {' '}· {formatCents(monthlyBudget - thisMonthSpent)} left
+                    {' '}
+                    · {formatCents(monthlyBudget - thisMonthSpent)} left
                   </span>
                 )}
               </p>
@@ -435,7 +445,11 @@ export function CategoryDetailPage() {
           <div
             className={cn(
               'flex h-10 w-10 items-center justify-center rounded-full',
-              vsLastMonth > 0 ? 'bg-red-500/10' : vsLastMonth < 0 ? 'bg-green-500/10' : 'bg-slate-500/10',
+              vsLastMonth > 0
+                ? 'bg-red-500/10'
+                : vsLastMonth < 0
+                  ? 'bg-green-500/10'
+                  : 'bg-slate-500/10',
             )}
           >
             {vsLastMonth > 0 ? (
@@ -450,7 +464,11 @@ export function CategoryDetailPage() {
           <p
             className={cn(
               'mt-1 text-2xl font-semibold',
-              vsLastMonth > 0 ? 'text-red-600' : vsLastMonth < 0 ? 'text-green-600' : 'text-muted-foreground',
+              vsLastMonth > 0
+                ? 'text-red-600'
+                : vsLastMonth < 0
+                  ? 'text-green-600'
+                  : 'text-muted-foreground',
             )}
           >
             {vsLastMonth === 0 ? '—' : `${vsLastMonth > 0 ? '+' : ''}${vsLastMonth}%`}
@@ -459,9 +477,7 @@ export function CategoryDetailPage() {
             {lastMonthSpent === 0 ? (
               'No spending last month'
             ) : (
-              <>
-                {formatCents(lastMonthSpent)} last month
-              </>
+              <>{formatCents(lastMonthSpent)} last month</>
             )}
           </p>
         </div>
@@ -482,10 +498,7 @@ export function CategoryDetailPage() {
         {/* Description Breakdown */}
         <div className="rounded-xl border bg-card p-6">
           <h2 className="mb-4 font-semibold">Where It Went</h2>
-          <DescriptionBreakdown
-            transactions={periodTransactions}
-            totalSpent={thisMonthSpent}
-          />
+          <DescriptionBreakdown transactions={periodTransactions} totalSpent={thisMonthSpent} />
         </div>
 
         {/* Recent Transactions */}
@@ -533,9 +546,7 @@ function TransactionRow({ transaction }: { transaction: Transaction }) {
         <p className="truncate font-medium">{transaction.description}</p>
         <p className="text-muted-foreground">{formatDate(transaction.date)}</p>
       </div>
-      <p className="ml-4 font-mono text-muted-foreground">
-        {formatCents(transaction.amountCents)}
-      </p>
+      <p className="ml-4 font-mono text-muted-foreground">{formatCents(transaction.amountCents)}</p>
     </div>
   );
 }

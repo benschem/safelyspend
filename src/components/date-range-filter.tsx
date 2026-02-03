@@ -66,7 +66,9 @@ export function DateRangeFilter({
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <div className="space-y-1">
-              <label htmlFor="date-filter-from" className="text-xs text-muted-foreground">From</label>
+              <label htmlFor="date-filter-from" className="text-xs text-muted-foreground">
+                From
+              </label>
               <Input
                 id="date-filter-from"
                 type="date"
@@ -78,7 +80,9 @@ export function DateRangeFilter({
               />
             </div>
             <div className="space-y-1">
-              <label htmlFor="date-filter-to" className="text-xs text-muted-foreground">To</label>
+              <label htmlFor="date-filter-to" className="text-xs text-muted-foreground">
+                To
+              </label>
               <Input
                 id="date-filter-to"
                 type="date"

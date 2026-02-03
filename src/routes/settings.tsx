@@ -15,13 +15,38 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Pencil, Trash2, Plus, AlertTriangle, Download, Upload, Check, Settings, Bug, Info, Sparkles, PiggyBank } from 'lucide-react';
+import {
+  Pencil,
+  Trash2,
+  Plus,
+  AlertTriangle,
+  Download,
+  Upload,
+  Check,
+  Settings,
+  Bug,
+  Info,
+  Sparkles,
+  PiggyBank,
+} from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useSavingsAnchors } from '@/hooks/use-savings-anchors';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
-import { exportAllData, importAllData, fullReset, CURRENT_SCHEMA_VERSION, CURRENT_DATA_VERSION } from '@/lib/db';
+import {
+  exportAllData,
+  importAllData,
+  fullReset,
+  CURRENT_SCHEMA_VERSION,
+  CURRENT_DATA_VERSION,
+} from '@/lib/db';
 import { formatCents, formatDate, today } from '@/lib/utils';
 import { currentVersion } from '@/lib/changelog';
 import {
@@ -80,7 +105,9 @@ export function SettingsPage() {
   const [debugEnabled, setDebugEnabled] = useState(() => debug.isEnabled());
 
   // Default snapshot view preference
-  const [defaultSnapshotView, setDefaultSnapshotView] = useLocalStorage<'month' | 'quarter' | 'year'>('budget:defaultSnapshotView', 'month');
+  const [defaultSnapshotView, setDefaultSnapshotView] = useLocalStorage<
+    'month' | 'quarter' | 'year'
+  >('budget:defaultSnapshotView', 'month');
 
   const handleDebugToggle = (enabled: boolean) => {
     debug.setEnabled(enabled);
@@ -167,7 +194,9 @@ export function SettingsPage() {
 
     try {
       // Cast ValidatedBudgetData to BudgetData (schema-validated)
-      await importAllData(pendingImport.data as unknown as BudgetData & { activeScenarioId?: string | null });
+      await importAllData(
+        pendingImport.data as unknown as BudgetData & { activeScenarioId?: string | null },
+      );
 
       // Show success state in dialog before reload
       setImportSuccess(true);
@@ -384,10 +413,7 @@ export function SettingsPage() {
       </div>
 
       {message && (
-        <Alert
-          variant={message.type === 'success' ? 'success' : 'destructive'}
-          className="mb-6"
-        >
+        <Alert variant={message.type === 'success' ? 'success' : 'destructive'} className="mb-6">
           {message.text}
         </Alert>
       )}
@@ -398,15 +424,16 @@ export function SettingsPage() {
           <div className="section-header">
             <h2>Initial Cash</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Tell us how much cash you had on a specific date. We&apos;ll calculate your current cash
-              from there using your transactions.
+              Tell us how much cash you had on a specific date. We&apos;ll calculate your current
+              cash from there using your transactions.
             </p>
             <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/50">
               <div className="flex items-start gap-2">
                 <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                  You&apos;ll need to enter all transactions from this date onwards for the numbers to be accurate.
-                  If you don&apos;t want to backfill, just use today&apos;s date and start fresh.
+                  You&apos;ll need to enter all transactions from this date onwards for the numbers
+                  to be accurate. If you don&apos;t want to backfill, just use today&apos;s date and
+                  start fresh.
                 </p>
               </div>
             </div>
@@ -430,10 +457,7 @@ export function SettingsPage() {
               ) : (
                 <div className="divide-y">
                   {anchors.map((anchor) => (
-                    <div
-                      key={anchor.id}
-                      className="flex items-center justify-between p-4"
-                    >
+                    <div key={anchor.id} className="flex items-center justify-between p-4">
                       <div>
                         <p className="font-medium">{formatDate(anchor.date)}</p>
                         <p className="text-sm text-muted-foreground">
@@ -451,11 +475,7 @@ export function SettingsPage() {
                             Cancel
                           </Button>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openEditAnchor(anchor)}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => openEditAnchor(anchor)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
@@ -485,7 +505,8 @@ export function SettingsPage() {
                   <h2>Savings Balances</h2>
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Set known balances for your savings goals at specific dates. Useful when you have existing savings you don&apos;t want to enter as individual transactions.
+                  Set known balances for your savings goals at specific dates. Useful when you have
+                  existing savings you don&apos;t want to enter as individual transactions.
                 </p>
               </div>
               <div className="section-content">
@@ -500,7 +521,11 @@ export function SettingsPage() {
                   {savingsAnchors.length === 0 ? (
                     <div className="empty-state">
                       <p className="empty-state-text">No savings balances set.</p>
-                      <Button variant="outline" className="empty-state-action" onClick={openAddSavingsAnchor}>
+                      <Button
+                        variant="outline"
+                        className="empty-state-action"
+                        onClick={openAddSavingsAnchor}
+                      >
                         Add savings balance
                       </Button>
                     </div>
@@ -510,7 +535,9 @@ export function SettingsPage() {
                         .filter((g) => g.anchors.length > 0)
                         .map(({ goal, anchors: goalAnchors }) => (
                           <div key={goal.id} className="p-4">
-                            <h4 className="mb-2 text-sm font-medium text-muted-foreground">{goal.name}</h4>
+                            <h4 className="mb-2 text-sm font-medium text-muted-foreground">
+                              {goal.name}
+                            </h4>
                             <div className="space-y-2">
                               {goalAnchors.map((anchor) => (
                                 <div
@@ -542,7 +569,11 @@ export function SettingsPage() {
                                       <Pencil className="h-4 w-4" />
                                     </Button>
                                     <Button
-                                      variant={deletingSavingsAnchorId === anchor.id ? 'destructive' : 'ghost'}
+                                      variant={
+                                        deletingSavingsAnchorId === anchor.id
+                                          ? 'destructive'
+                                          : 'ghost'
+                                      }
                                       size="sm"
                                       onClick={() => handleDeleteSavingsAnchor(anchor.id)}
                                     >
@@ -577,7 +608,9 @@ export function SettingsPage() {
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3>Export Data</h3>
-                  <p className="text-sm text-muted-foreground">Download all your budget data as JSON.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Download all your budget data as JSON.
+                  </p>
                 </div>
                 <Button variant="outline" onClick={handleExportClick} className="w-full sm:w-auto">
                   <Upload className="h-4 w-4" />
@@ -608,15 +641,25 @@ export function SettingsPage() {
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="text-destructive">Delete All Data</h3>
-                  <p className="text-sm text-muted-foreground">Permanently delete all data and start fresh.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Permanently delete all data and start fresh.
+                  </p>
                 </div>
                 <div className="flex w-full gap-2 sm:w-auto">
                   {confirmingDelete && (
-                    <Button variant="outline" onClick={() => setConfirmingDelete(false)} className="flex-1 sm:flex-none">
+                    <Button
+                      variant="outline"
+                      onClick={() => setConfirmingDelete(false)}
+                      className="flex-1 sm:flex-none"
+                    >
                       Cancel
                     </Button>
                   )}
-                  <Button variant="destructive" onClick={handleDeleteAll} className="flex-1 sm:flex-none">
+                  <Button
+                    variant="destructive"
+                    onClick={handleDeleteAll}
+                    className="flex-1 sm:flex-none"
+                  >
                     <Trash2 className="h-4 w-4" />
                     {confirmingDelete ? 'Confirm Delete' : 'Delete All'}
                   </Button>
@@ -632,16 +675,16 @@ export function SettingsPage() {
         <section className="section">
           <div className="section-header">
             <h2>Appearance</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Customize how the app looks.
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Customize how the app looks.</p>
           </div>
           <div className="section-content">
             <div className="panel">
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3>Theme</h3>
-                  <p className="text-sm text-muted-foreground">Choose light, dark, or system theme.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Choose light, dark, or system theme.
+                  </p>
                 </div>
                 <ThemeToggle />
               </div>
@@ -649,9 +692,16 @@ export function SettingsPage() {
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3>Default Snapshot View</h3>
-                  <p className="text-sm text-muted-foreground">Choose which view to show when opening Snapshot.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Choose which view to show when opening Snapshot.
+                  </p>
                 </div>
-                <Select value={defaultSnapshotView} onValueChange={(value: 'month' | 'quarter' | 'year') => setDefaultSnapshotView(value)}>
+                <Select
+                  value={defaultSnapshotView}
+                  onValueChange={(value: 'month' | 'quarter' | 'year') =>
+                    setDefaultSnapshotView(value)
+                  }
+                >
                   <SelectTrigger className="w-[140px]">
                     <SelectValue />
                   </SelectTrigger>
@@ -684,7 +734,8 @@ export function SettingsPage() {
                   <div>
                     <h3>Debug Mode</h3>
                     <p className="text-sm text-muted-foreground">
-                      Enable detailed logging to browser console. Can also be enabled via <code className="rounded bg-muted px-1 text-xs">?debug=1</code> URL parameter.
+                      Enable detailed logging to browser console. Can also be enabled via{' '}
+                      <code className="rounded bg-muted px-1 text-xs">?debug=1</code> URL parameter.
                     </p>
                   </div>
                 </div>
@@ -739,8 +790,8 @@ export function SettingsPage() {
           <DialogHeader>
             <DialogTitle>{editingAnchorId ? 'Edit' : 'Add'} Initial Cash</DialogTitle>
             <DialogDescription>
-              Enter how much cash you had on a specific date. Check your bank statement if you&apos;re
-              not sure.
+              Enter how much cash you had on a specific date. Check your bank statement if
+              you&apos;re not sure.
             </DialogDescription>
           </DialogHeader>
 
@@ -752,7 +803,9 @@ export function SettingsPage() {
             )}
 
             <div className="space-y-2">
-              <label htmlFor="anchor-date" className="text-sm font-medium">Date</label>
+              <label htmlFor="anchor-date" className="text-sm font-medium">
+                Date
+              </label>
               <Input
                 id="anchor-date"
                 type="date"
@@ -762,7 +815,9 @@ export function SettingsPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="anchor-amount" className="text-sm font-medium">Cash ($)</label>
+              <label htmlFor="anchor-amount" className="text-sm font-medium">
+                Cash ($)
+              </label>
               <Input
                 id="anchor-amount"
                 type="number"
@@ -774,7 +829,9 @@ export function SettingsPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="anchor-label" className="text-sm font-medium">Note (optional)</label>
+              <label htmlFor="anchor-label" className="text-sm font-medium">
+                Note (optional)
+              </label>
               <Input
                 id="anchor-label"
                 placeholder="e.g., From bank statement"
@@ -787,9 +844,7 @@ export function SettingsPage() {
               <Button variant="outline" onClick={() => setAnchorDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSaveAnchor}>
-                {editingAnchorId ? 'Save' : 'Add'}
-              </Button>
+              <Button onClick={handleSaveAnchor}>{editingAnchorId ? 'Save' : 'Add'}</Button>
             </div>
           </div>
         </DialogContent>
@@ -813,7 +868,9 @@ export function SettingsPage() {
             )}
 
             <div className="space-y-2">
-              <label htmlFor="savings-anchor-goal" className="text-sm font-medium">Savings Goal</label>
+              <label htmlFor="savings-anchor-goal" className="text-sm font-medium">
+                Savings Goal
+              </label>
               <Select value={savingsAnchorGoalId} onValueChange={setSavingsAnchorGoalId}>
                 <SelectTrigger id="savings-anchor-goal">
                   <SelectValue placeholder="Select a goal" />
@@ -829,7 +886,9 @@ export function SettingsPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="savings-anchor-date" className="text-sm font-medium">Date</label>
+              <label htmlFor="savings-anchor-date" className="text-sm font-medium">
+                Date
+              </label>
               <Input
                 id="savings-anchor-date"
                 type="date"
@@ -839,7 +898,9 @@ export function SettingsPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="savings-anchor-amount" className="text-sm font-medium">Balance ($)</label>
+              <label htmlFor="savings-anchor-amount" className="text-sm font-medium">
+                Balance ($)
+              </label>
               <Input
                 id="savings-anchor-amount"
                 type="number"
@@ -852,7 +913,9 @@ export function SettingsPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="savings-anchor-label" className="text-sm font-medium">Note (optional)</label>
+              <label htmlFor="savings-anchor-label" className="text-sm font-medium">
+                Note (optional)
+              </label>
               <Input
                 id="savings-anchor-label"
                 placeholder="e.g., From bank statement"
@@ -897,15 +960,16 @@ export function SettingsPage() {
             <Button variant="outline" onClick={() => setExportWarningOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleExportConfirm}>
-              Download Export
-            </Button>
+            <Button onClick={handleExportConfirm}>Download Export</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Import Preview Dialog */}
-      <Dialog open={importPreviewOpen} onOpenChange={(open) => !open && !importSuccess && handleImportCancel()}>
+      <Dialog
+        open={importPreviewOpen}
+        onOpenChange={(open) => !open && !importSuccess && handleImportCancel()}
+      >
         <DialogContent>
           {importSuccess ? (
             <div className="flex flex-col items-center justify-center py-8">
@@ -967,8 +1031,8 @@ export function SettingsPage() {
                   </div>
 
                   <Alert variant="warning" className="text-sm">
-                    This will <strong>replace all existing data</strong>. Make sure you have a backup
-                    if you need to preserve your current data.
+                    This will <strong>replace all existing data</strong>. Make sure you have a
+                    backup if you need to preserve your current data.
                   </Alert>
                 </div>
               )}
@@ -977,9 +1041,7 @@ export function SettingsPage() {
                 <Button variant="outline" onClick={handleImportCancel}>
                   Cancel
                 </Button>
-                <Button onClick={handleImportConfirm}>
-                  Import Data
-                </Button>
+                <Button onClick={handleImportConfirm}>Import Data</Button>
               </DialogFooter>
             </>
           )}

@@ -23,15 +23,12 @@ function parseLocalDate(dateStr: string): Date {
   return new Date(year!, month! - 1, day);
 }
 
-function expandRule(
-  rule: ForecastRule,
-  rangeStart: string,
-  rangeEnd: string,
-): ExpandedForecast[] {
+function expandRule(rule: ForecastRule, rangeStart: string, rangeEnd: string): ExpandedForecast[] {
   const results: ExpandedForecast[] = [];
 
   // Determine effective start/end for the rule
-  const effectiveStart = rule.startDate && rule.startDate > rangeStart ? rule.startDate : rangeStart;
+  const effectiveStart =
+    rule.startDate && rule.startDate > rangeStart ? rule.startDate : rangeStart;
   const effectiveEnd = rule.endDate && rule.endDate < rangeEnd ? rule.endDate : rangeEnd;
 
   if (effectiveStart > effectiveEnd) return results;
@@ -206,7 +203,9 @@ function generateInterestForecasts(
   const results: ExpandedForecast[] = [];
 
   // Filter goals with interest rates
-  const goalsWithInterest = savingsGoals.filter((g) => g.annualInterestRate && g.annualInterestRate > 0);
+  const goalsWithInterest = savingsGoals.filter(
+    (g) => g.annualInterestRate && g.annualInterestRate > 0,
+  );
   if (goalsWithInterest.length === 0) return results;
 
   // Calculate current balance per goal (from transactions up to rangeStart)
@@ -246,11 +245,12 @@ function generateInterestForecasts(
   // Generate monthly interest for each goal
   for (const goal of goalsWithInterest) {
     const rate = goal.annualInterestRate! / 100; // Convert percentage to decimal
-    const monthlyRate = goal.compoundingFrequency === 'yearly'
-      ? 0 // Yearly compounding - only apply at year end
-      : goal.compoundingFrequency === 'daily'
-        ? Math.pow(1 + rate / 365, 30) - 1 // Approximate daily compounding per month
-        : rate / 12; // Monthly compounding
+    const monthlyRate =
+      goal.compoundingFrequency === 'yearly'
+        ? 0 // Yearly compounding - only apply at year end
+        : goal.compoundingFrequency === 'daily'
+          ? Math.pow(1 + rate / 365, 30) - 1 // Approximate daily compounding per month
+          : rate / 12; // Monthly compounding
 
     let balance = currentBalances[goal.id] ?? 0;
 
@@ -418,13 +418,16 @@ export function useForecasts(scenarioId: string | null, startDate?: string, endD
   }, []);
 
   // Exclude a single occurrence of a recurring rule by adding the date to excludedDates
-  const excludeOccurrence = useCallback(async (ruleId: string, date: string) => {
-    const rule = allRules.find((r) => r.id === ruleId);
-    if (!rule) return;
+  const excludeOccurrence = useCallback(
+    async (ruleId: string, date: string) => {
+      const rule = allRules.find((r) => r.id === ruleId);
+      if (!rule) return;
 
-    const excludedDates = [...(rule.excludedDates ?? []), date];
-    await db.forecastRules.update(ruleId, { excludedDates, updatedAt: now() });
-  }, [allRules]);
+      const excludedDates = [...(rule.excludedDates ?? []), date];
+      await db.forecastRules.update(ruleId, { excludedDates, updatedAt: now() });
+    },
+    [allRules],
+  );
 
   // Duplicate rules from one scenario to another
   const duplicateToScenario = useCallback(

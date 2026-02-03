@@ -16,10 +16,19 @@ interface CategoryDialogProps {
   onOpenChange: (open: boolean) => void;
   category?: Category | null;
   addCategory: (data: CreateEntity<Category>) => Promise<Category>;
-  updateCategory: (id: string, updates: Partial<Omit<Category, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
+  updateCategory: (
+    id: string,
+    updates: Partial<Omit<Category, 'id' | 'userId' | 'createdAt'>>,
+  ) => Promise<void>;
 }
 
-export function CategoryDialog({ open, onOpenChange, category, addCategory, updateCategory }: CategoryDialogProps) {
+export function CategoryDialog({
+  open,
+  onOpenChange,
+  category,
+  addCategory,
+  updateCategory,
+}: CategoryDialogProps) {
   const isEditing = !!category;
 
   const [name, setName] = useState('');
@@ -48,7 +57,9 @@ export function CategoryDialog({ open, onOpenChange, category, addCategory, upda
       }
       onOpenChange(false);
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Failed to save category. Please try again.');
+      setFormError(
+        error instanceof Error ? error.message : 'Failed to save category. Please try again.',
+      );
     }
   };
 
@@ -58,7 +69,9 @@ export function CategoryDialog({ open, onOpenChange, category, addCategory, upda
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit' : 'Add'} Category</DialogTitle>
           <DialogDescription>
-            {isEditing ? 'Update the category name.' : 'Create a new category for organising expenses.'}
+            {isEditing
+              ? 'Update the category name.'
+              : 'Create a new category for organising expenses.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -70,7 +83,9 @@ export function CategoryDialog({ open, onOpenChange, category, addCategory, upda
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="category-name" className="select-none">Name</Label>
+            <Label htmlFor="category-name" className="select-none">
+              Name
+            </Label>
             <Input
               id="category-name"
               placeholder="e.g., Groceries, Utilities"
@@ -89,9 +104,7 @@ export function CategoryDialog({ open, onOpenChange, category, addCategory, upda
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>
-              {isEditing ? 'Save' : 'Add'} Category
-            </Button>
+            <Button onClick={handleSave}>{isEditing ? 'Save' : 'Add'} Category</Button>
           </div>
         </div>
       </DialogContent>

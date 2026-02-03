@@ -31,7 +31,7 @@ interface BudgetRuleDialogProps {
     cadence: Cadence,
     dayOfWeek?: number,
     dayOfMonth?: number,
-    monthOfQuarter?: number
+    monthOfQuarter?: number,
   ) => Promise<void>;
   deleteBudgetRule: (id: string) => Promise<void>;
 }
@@ -109,7 +109,9 @@ export function BudgetRuleDialog({
       );
       onOpenChange(false);
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Failed to save budget. Please try again.');
+      setFormError(
+        error instanceof Error ? error.message : 'Failed to save budget. Please try again.',
+      );
     }
   };
 
@@ -119,7 +121,11 @@ export function BudgetRuleDialog({
         await deleteBudgetRule(rule.id);
         onOpenChange(false);
       } catch (error) {
-        setFormError(error instanceof Error ? error.message : 'Failed to remove expectation. Please try again.');
+        setFormError(
+          error instanceof Error
+            ? error.message
+            : 'Failed to remove expectation. Please try again.',
+        );
       }
     }
   };
@@ -133,7 +139,8 @@ export function BudgetRuleDialog({
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit' : 'Set'} Spending Expectation</DialogTitle>
           <DialogDescription>
-            {isEditing ? 'Update the spending expectation for' : 'Set a spending expectation for'} {categoryName}.
+            {isEditing ? 'Update the spending expectation for' : 'Set a spending expectation for'}{' '}
+            {categoryName}.
           </DialogDescription>
         </DialogHeader>
 
@@ -146,7 +153,9 @@ export function BudgetRuleDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="budget-amount" className="select-none">Expected Amount ($)</Label>
+              <Label htmlFor="budget-amount" className="select-none">
+                Expected Amount ($)
+              </Label>
               <Input
                 id="budget-amount"
                 type="number"
@@ -268,9 +277,7 @@ export function BudgetRuleDialog({
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSave}>
-                {isEditing ? 'Save' : 'Set'}
-              </Button>
+              <Button onClick={handleSave}>{isEditing ? 'Save' : 'Set'}</Button>
             </div>
           </div>
         </div>

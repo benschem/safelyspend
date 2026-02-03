@@ -101,7 +101,9 @@ function CustomTooltip({
           {data.cumulativeForecast > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">+ Expected:</span>
-              <span className="font-mono text-blue-400">+{formatCents(data.cumulativeForecast)}</span>
+              <span className="font-mono text-blue-400">
+                +{formatCents(data.cumulativeForecast)}
+              </span>
             </div>
           )}
           {data.cumulativeForecast > 0 && data.cumulativeTotal !== null && (
@@ -116,7 +118,13 @@ function CustomTooltip({
   );
 }
 
-export function SavingsOverTimeChart({ monthlySavings, deadline, targetAmount, startingBalance = 0, balanceStartMonth }: SavingsOverTimeChartProps) {
+export function SavingsOverTimeChart({
+  monthlySavings,
+  deadline,
+  targetAmount,
+  startingBalance = 0,
+  balanceStartMonth,
+}: SavingsOverTimeChartProps) {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const hasCurrentMonth = monthlySavings.some((m) => m.month === currentMonth);
 
@@ -140,9 +148,12 @@ export function SavingsOverTimeChart({ monthlySavings, deadline, targetAmount, s
 
   // Find the month when target is reached (if target is set)
   // Need to add startingBalance to cumulative values since they start from 0 for the date range
-  const targetReachedMonth = targetAmount && targetAmount > 0
-    ? monthlySavings.find((m) => startingBalance + m.cumulativeActual + m.cumulativeForecast >= targetAmount)?.month
-    : undefined;
+  const targetReachedMonth =
+    targetAmount && targetAmount > 0
+      ? monthlySavings.find(
+          (m) => startingBalance + m.cumulativeActual + m.cumulativeForecast >= targetAmount,
+        )?.month
+      : undefined;
 
   // Calculate "Expected" line color based on deadline comparison
   // Green: on or before deadline, Amber: 1-2 months late, Red: 3+ months late
@@ -194,7 +205,9 @@ export function SavingsOverTimeChart({ monthlySavings, deadline, targetAmount, s
       cumulativeActual: showBalance ? startingBalance + m.cumulativeActual : null,
       cumulativeForecast: m.cumulativeForecast,
       // For stacked area, we need the total for the forecast layer
-      cumulativeTotal: showBalance ? startingBalance + m.cumulativeActual + m.cumulativeForecast : null,
+      cumulativeTotal: showBalance
+        ? startingBalance + m.cumulativeActual + m.cumulativeForecast
+        : null,
     };
   });
 
@@ -205,119 +218,119 @@ export function SavingsOverTimeChart({ monthlySavings, deadline, targetAmount, s
           All data hidden. Click a legend item to show it.
         </div>
       ) : (
-      <ResponsiveContainer width="100%" height={250}>
-        <AreaChart data={chartData} margin={{ top: 20, right: 55, bottom: 20, left: 10 }}>
-          <defs>
-            <linearGradient id="actualSavingsGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={CHART_COLORS.savings} stopOpacity={0.4} />
-              <stop offset="95%" stopColor={CHART_COLORS.savings} stopOpacity={0.1} />
-            </linearGradient>
-            <linearGradient id="forecastSavingsGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={CHART_COLORS.savings} stopOpacity={0.2} />
-              <stop offset="95%" stopColor={CHART_COLORS.savings} stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <XAxis
-            dataKey="month"
-            tickFormatter={(value) => formatMonth(value)}
-            tick={{ fontSize: 12 }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            tickFormatter={(value) => formatCentsShort(value)}
-            tick={{ fontSize: 12 }}
-            axisLine={false}
-            tickLine={false}
-            width={50}
-          />
-          <Tooltip content={<CustomTooltip />} />
+        <ResponsiveContainer width="100%" height={250}>
+          <AreaChart data={chartData} margin={{ top: 20, right: 55, bottom: 20, left: 10 }}>
+            <defs>
+              <linearGradient id="actualSavingsGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={CHART_COLORS.savings} stopOpacity={0.4} />
+                <stop offset="95%" stopColor={CHART_COLORS.savings} stopOpacity={0.1} />
+              </linearGradient>
+              <linearGradient id="forecastSavingsGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={CHART_COLORS.savings} stopOpacity={0.2} />
+                <stop offset="95%" stopColor={CHART_COLORS.savings} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <XAxis
+              dataKey="month"
+              tickFormatter={(value) => formatMonth(value)}
+              tick={{ fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              tickFormatter={(value) => formatCentsShort(value)}
+              tick={{ fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+              width={50}
+            />
+            <Tooltip content={<CustomTooltip />} />
 
-          {/* "Now" reference line - only show if current month is in range */}
-          {hasCurrentMonth && (
-            <ReferenceLine
-              x={currentMonth}
-              stroke="#6b7280"
-              strokeWidth={2}
-              label={{
-                value: 'Now',
-                position: 'top',
-                fontSize: 11,
-                fill: '#6b7280',
-              }}
-            />
-          )}
+            {/* "Now" reference line - only show if current month is in range */}
+            {hasCurrentMonth && (
+              <ReferenceLine
+                x={currentMonth}
+                stroke="#6b7280"
+                strokeWidth={2}
+                label={{
+                  value: 'Now',
+                  position: 'top',
+                  fontSize: 11,
+                  fill: '#6b7280',
+                }}
+              />
+            )}
 
-          {/* Deadline reference line - always grey */}
-          {hasDeadline && (
-            <ReferenceLine
-              x={deadlineMonth}
-              stroke="#6b7280"
-              strokeWidth={2}
-              strokeDasharray="4 4"
-              label={{
-                value: 'Deadline',
-                position: 'top',
-                fontSize: 11,
-                fill: '#6b7280',
-              }}
-            />
-          )}
+            {/* Deadline reference line - always grey */}
+            {hasDeadline && (
+              <ReferenceLine
+                x={deadlineMonth}
+                stroke="#6b7280"
+                strokeWidth={2}
+                strokeDasharray="4 4"
+                label={{
+                  value: 'Deadline',
+                  position: 'top',
+                  fontSize: 11,
+                  fill: '#6b7280',
+                }}
+              />
+            )}
 
-          {/* Target amount horizontal line */}
-          {targetAmount && targetAmount > 0 && (
-            <ReferenceLine
-              y={targetAmount}
-              stroke="#22c55e"
-              strokeWidth={1.5}
-              strokeDasharray="4 4"
-              label={{
-                value: 'Target',
-                position: 'right',
-                fontSize: 11,
-                fill: '#22c55e',
-              }}
-            />
-          )}
+            {/* Target amount horizontal line */}
+            {targetAmount && targetAmount > 0 && (
+              <ReferenceLine
+                y={targetAmount}
+                stroke="#22c55e"
+                strokeWidth={1.5}
+                strokeDasharray="4 4"
+                label={{
+                  value: 'Target',
+                  position: 'right',
+                  fontSize: 11,
+                  fill: '#22c55e',
+                }}
+              />
+            )}
 
-          {/* Goal reached vertical line - only show if in future, color based on deadline comparison */}
-          {targetReachedMonth && targetReachedMonth > currentMonth && (
-            <ReferenceLine
-              x={targetReachedMonth}
-              stroke={expectedColor}
-              strokeWidth={2}
-              label={{
-                value: 'Goal reached',
-                position: 'top',
-                fontSize: 11,
-                fill: expectedColor,
-              }}
-            />
-          )}
+            {/* Goal reached vertical line - only show if in future, color based on deadline comparison */}
+            {targetReachedMonth && targetReachedMonth > currentMonth && (
+              <ReferenceLine
+                x={targetReachedMonth}
+                stroke={expectedColor}
+                strokeWidth={2}
+                label={{
+                  value: 'Goal reached',
+                  position: 'top',
+                  fontSize: 11,
+                  fill: expectedColor,
+                }}
+              />
+            )}
 
-          {hasForecast && !hiddenLegends.has('forecast') && (
-            <Area
-              type="monotone"
-              dataKey="cumulativeTotal"
-              name="Projected Total"
-              stroke={`${CHART_COLORS.savings}60`}
-              strokeWidth={2}
-              strokeDasharray="4 4"
-              fill="url(#forecastSavingsGradient)"
-            />
-          )}
-          {!hiddenLegends.has('actual') && (
-            <Area
-              type="monotone"
-              dataKey="cumulativeActual"
-              name="Actual Savings"
-              stroke={CHART_COLORS.savings}
-              strokeWidth={2}
-              fill="url(#actualSavingsGradient)"
-            />
-          )}
-        </AreaChart>
-      </ResponsiveContainer>
+            {hasForecast && !hiddenLegends.has('forecast') && (
+              <Area
+                type="monotone"
+                dataKey="cumulativeTotal"
+                name="Projected Total"
+                stroke={`${CHART_COLORS.savings}60`}
+                strokeWidth={2}
+                strokeDasharray="4 4"
+                fill="url(#forecastSavingsGradient)"
+              />
+            )}
+            {!hiddenLegends.has('actual') && (
+              <Area
+                type="monotone"
+                dataKey="cumulativeActual"
+                name="Actual Savings"
+                stroke={CHART_COLORS.savings}
+                strokeWidth={2}
+                fill="url(#actualSavingsGradient)"
+              />
+            )}
+          </AreaChart>
+        </ResponsiveContainer>
       )}
 
       {/* Legend */}
@@ -347,14 +360,14 @@ export function SavingsOverTimeChart({ monthlySavings, deadline, targetAmount, s
               className="h-2.5 w-2.5 rounded-full"
               style={{ backgroundColor: `${CHART_COLORS.savings}60` }}
             />
-            <span className={hiddenLegends.has('forecast') ? 'line-through' : ''}>Planned contributions</span>
+            <span className={hiddenLegends.has('forecast') ? 'line-through' : ''}>
+              Planned contributions
+            </span>
           </button>
         )}
       </div>
 
-      <p className="mt-3 text-center text-xs text-muted-foreground">
-        Data includes interest.
-      </p>
+      <p className="mt-3 text-center text-xs text-muted-foreground">Data includes interest.</p>
     </div>
   );
 }

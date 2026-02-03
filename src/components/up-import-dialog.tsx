@@ -91,7 +91,8 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
         }
 
         const isValidExtension = file.name.toLowerCase().endsWith('.csv');
-        const isValidMimeType = file.type === 'text/csv' || file.type === 'application/vnd.ms-excel' || file.type === '';
+        const isValidMimeType =
+          file.type === 'text/csv' || file.type === 'application/vnd.ms-excel' || file.type === '';
 
         if (isValidExtension && isValidMimeType) {
           validFiles.push(file);
@@ -101,10 +102,7 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
       }
 
       if (oversizedFiles.length > 0) {
-        setErrors([
-          `File too large: ${oversizedFiles.join(', ')}`,
-          'Maximum file size is 50MB.',
-        ]);
+        setErrors([`File too large: ${oversizedFiles.join(', ')}`, 'Maximum file size is 50MB.']);
         return;
       }
 
@@ -172,7 +170,9 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
         setSkippedCount(totalSkipped);
         setStep('preview');
       } catch (err) {
-        setErrors([`Failed to read files: ${err instanceof Error ? err.message : 'Unknown error'}`]);
+        setErrors([
+          `Failed to read files: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        ]);
       }
     },
     [getExistingFingerprints],
@@ -281,7 +281,14 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
       needsReview,
     });
     setStep('complete');
-  }, [transactions, duplicates, skippedCount, bulkGetOrCreateCategories, bulkImport, applyRulesToBatch]);
+  }, [
+    transactions,
+    duplicates,
+    skippedCount,
+    bulkGetOrCreateCategories,
+    bulkImport,
+    applyRulesToBatch,
+  ]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -350,21 +357,25 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
         {step === 'preview' && (
           <div className="space-y-4">
             {fileCount > 1 && (
-              <p className="text-sm text-muted-foreground">
-                Loaded {fileCount} files
-              </p>
+              <p className="text-sm text-muted-foreground">Loaded {fileCount} files</p>
             )}
             <div className="flex gap-4">
               <div className="flex-1 rounded-lg border p-4 text-center">
-                <p className="text-2xl font-bold text-green-600">{transactions.length.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {transactions.length.toLocaleString()}
+                </p>
                 <p className="text-sm text-muted-foreground">To import</p>
               </div>
               <div className="flex-1 rounded-lg border p-4 text-center">
-                <p className="text-2xl font-bold text-yellow-600">{duplicates.length.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-yellow-600">
+                  {duplicates.length.toLocaleString()}
+                </p>
                 <p className="text-sm text-muted-foreground">Duplicates</p>
               </div>
               <div className="flex-1 rounded-lg border p-4 text-center">
-                <p className="text-2xl font-bold text-muted-foreground">{skippedCount.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-muted-foreground">
+                  {skippedCount.toLocaleString()}
+                </p>
                 <p className="text-sm text-muted-foreground">Skipped</p>
               </div>
             </div>
@@ -373,7 +384,9 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
               <>
                 <Separator />
                 <div>
-                  <p className="mb-2 font-medium">Preview ({Math.min(transactions.length, 10)} of {transactions.length})</p>
+                  <p className="mb-2 font-medium">
+                    Preview ({Math.min(transactions.length, 10)} of {transactions.length})
+                  </p>
                   <ScrollArea className="h-64 rounded-lg border">
                     <div className="divide-y">
                       {transactions.slice(0, 10).map((tx, i) => (
@@ -417,9 +430,7 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
                   {errors.slice(0, 5).map((error, i) => (
                     <li key={i}>{error}</li>
                   ))}
-                  {errors.length > 5 && (
-                    <li>...and {errors.length - 5} more</li>
-                  )}
+                  {errors.length > 5 && <li>...and {errors.length - 5} more</li>}
                 </ul>
               </div>
             )}
@@ -485,8 +496,8 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
             {stats.needsReview > 0 && (
               <div className="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4 text-center">
                 <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                  {stats.needsReview} expense{stats.needsReview !== 1 ? 's' : ''} need categorization.
-                  Review them in the Transactions page.
+                  {stats.needsReview} expense{stats.needsReview !== 1 ? 's' : ''} need
+                  categorization. Review them in the Transactions page.
                 </p>
               </div>
             )}

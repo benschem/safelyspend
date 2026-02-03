@@ -65,8 +65,7 @@ export function FirstRunWizard() {
         // Create default scenario if none exists
         if (scenarios.length === 0) {
           const scenario = await addScenario({
-            name: 'Main Budget',
-            description: 'My primary budget scenario',
+            name: 'Current Plan',
             isDefault: true,
           });
           await setActiveScenarioId(scenario.id);
@@ -158,7 +157,9 @@ export function FirstRunWizard() {
             <div className="flex items-start gap-2">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
               <p className="text-sm text-blue-800 dark:text-blue-200">
-                You&apos;ll need to enter all transactions from this date onwards for the numbers to be accurate. If you don&apos;t want to backfill, just use today&apos;s date and start fresh.
+                You&apos;ll need to enter all transactions from this date onwards for the numbers to
+                be accurate. If you don&apos;t want to backfill, just use today&apos;s date and
+                start fresh.
               </p>
             </div>
           </div>

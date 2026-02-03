@@ -13,25 +13,22 @@ const USER_ID = 'local';
  */
 export function useTransactions(startDate?: string, endDate?: string) {
   // Use indexed date query for transactions in range (supports partial ranges)
-  const rawTransactions = useLiveQuery(
-    () => {
-      if (startDate && endDate) {
-        // Both dates: range query
-        return db.transactions.where('date').between(startDate, endDate, true, true).toArray();
-      }
-      if (startDate) {
-        // From date only: all from this date onwards
-        return db.transactions.where('date').aboveOrEqual(startDate).toArray();
-      }
-      if (endDate) {
-        // To date only: all up to this date
-        return db.transactions.where('date').belowOrEqual(endDate).toArray();
-      }
-      // No dates: return all
-      return db.transactions.toArray();
-    },
-    [startDate, endDate],
-  );
+  const rawTransactions = useLiveQuery(() => {
+    if (startDate && endDate) {
+      // Both dates: range query
+      return db.transactions.where('date').between(startDate, endDate, true, true).toArray();
+    }
+    if (startDate) {
+      // From date only: all from this date onwards
+      return db.transactions.where('date').aboveOrEqual(startDate).toArray();
+    }
+    if (endDate) {
+      // To date only: all up to this date
+      return db.transactions.where('date').belowOrEqual(endDate).toArray();
+    }
+    // No dates: return all
+    return db.transactions.toArray();
+  }, [startDate, endDate]);
   const transactions = useMemo(() => rawTransactions ?? [], [rawTransactions]);
 
   // For allTransactions, we need all of them (used for balance calculations, fingerprints, etc.)
@@ -58,12 +55,9 @@ export function useTransactions(startDate?: string, endDate?: string) {
   );
 
   // Get transactions up to a specific date (for balance calculations)
-  const getTransactionsUpTo = useCallback(
-    async (date: string) => {
-      return db.transactions.where('date').belowOrEqual(date).toArray();
-    },
-    [],
-  );
+  const getTransactionsUpTo = useCallback(async (date: string) => {
+    return db.transactions.where('date').belowOrEqual(date).toArray();
+  }, []);
 
   const addTransaction = useCallback(async (data: CreateEntity<Transaction>) => {
     const timestamp = now();

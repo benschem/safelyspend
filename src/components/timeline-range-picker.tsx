@@ -39,9 +39,10 @@ const UNITS: { value: TimelineUnit; label: string; pluralLabel: string }[] = [
 ];
 
 function formatTimelineDescription(amount: number, unit: TimelineUnit, mode: TimelineMode): string {
-  const unitLabel = amount === 1
-    ? UNITS.find((u) => u.value === unit)?.label
-    : UNITS.find((u) => u.value === unit)?.pluralLabel;
+  const unitLabel =
+    amount === 1
+      ? UNITS.find((u) => u.value === unit)?.label
+      : UNITS.find((u) => u.value === unit)?.pluralLabel;
 
   switch (mode) {
     case 'past':
@@ -152,7 +153,10 @@ export function TimelineRangePicker({
         <div className="space-y-4">
           {/* Preset controls */}
           <div className={cn('flex items-center gap-2', isCustomActive && 'opacity-50')}>
-            <Select value={isCustomActive ? '' : amount.toString()} onValueChange={handleAmountChange}>
+            <Select
+              value={isCustomActive ? '' : amount.toString()}
+              onValueChange={handleAmountChange}
+            >
               <SelectTrigger className="w-16 cursor-pointer">
                 <SelectValue placeholder="—" />
               </SelectTrigger>
@@ -183,9 +187,7 @@ export function TimelineRangePicker({
             {/* Direction Toggle */}
             <div className="inline-flex h-9 flex-1 rounded-md border border-input bg-background p-1 shadow-sm">
               {MODES.map((m) => {
-                const isSelected = isCustomActive
-                  ? m.value === lastPresetMode
-                  : m.value === mode;
+                const isSelected = isCustomActive ? m.value === lastPresetMode : m.value === mode;
                 return (
                   <button
                     key={m.value}

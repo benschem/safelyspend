@@ -16,7 +16,6 @@ const ALL_DATA_END = '2099-12-31';
 import { SavingsGoalDialog } from '@/components/dialogs/savings-goal-dialog';
 import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { SavingsGoalProgressCard } from '@/components/charts';
-import { ScenarioSelector } from '@/components/scenario-selector';
 import { formatCents, today as getToday } from '@/lib/utils';
 import type { SavingsGoal } from '@/lib/types';
 
@@ -27,18 +26,34 @@ interface OutletContext {
 export function SavingsIndexPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { savingsGoals, isLoading: savingsLoading, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal } = useSavingsGoals();
-  const { savingsTransactions, isLoading: transactionsLoading, addTransaction, updateTransaction } = useTransactions(ALL_DATA_START, ALL_DATA_END);
-  const { savingsByGoal, savingsContributions, isLoading: reportsLoading } = useReportsData(activeScenarioId, ALL_DATA_START, ALL_DATA_END);
+  const {
+    savingsGoals,
+    isLoading: savingsLoading,
+    addSavingsGoal,
+    updateSavingsGoal,
+    deleteSavingsGoal,
+  } = useSavingsGoals();
+  const {
+    savingsTransactions,
+    isLoading: transactionsLoading,
+    addTransaction,
+    updateTransaction,
+  } = useTransactions(ALL_DATA_START, ALL_DATA_END);
+  const {
+    savingsByGoal,
+    savingsContributions,
+    isLoading: reportsLoading,
+  } = useReportsData(activeScenarioId, ALL_DATA_START, ALL_DATA_END);
   const { anchors } = useBalanceAnchors();
   const { addAnchor: addSavingsAnchor } = useSavingsAnchors();
 
   // Get the earliest anchor date (for determining if starting balances should be backdated)
   const earliestAnchorDate = useMemo(() => {
     if (anchors.length === 0) return null;
-    return anchors.reduce((earliest: string, anchor) =>
-      anchor.date < earliest ? anchor.date : earliest,
-    anchors[0]!.date);
+    return anchors.reduce(
+      (earliest: string, anchor) => (anchor.date < earliest ? anchor.date : earliest),
+      anchors[0]!.date,
+    );
   }, [anchors]);
 
   const isLoading = savingsLoading || transactionsLoading || reportsLoading;
@@ -83,29 +98,39 @@ export function SavingsIndexPage() {
     // Actual monthly rate: from first contribution to today
     const today = getToday();
     const contributions = savingsTransactions.filter(
-      (t) => !t.description.toLowerCase().includes('opening balance') &&
-             !t.description.toLowerCase().includes('starting balance'),
+      (t) =>
+        !t.description.toLowerCase().includes('opening balance') &&
+        !t.description.toLowerCase().includes('starting balance'),
     );
     const totalActualSavings = contributions.reduce((sum, t) => sum + t.amountCents, 0);
 
     // Calculate months from first contribution to today
     let actualMonthlyRate = 0;
     if (contributions.length > 0) {
-      const firstDate = contributions.reduce((earliest, t) => t.date < earliest ? t.date : earliest, contributions[0]!.date);
+      const firstDate = contributions.reduce(
+        (earliest, t) => (t.date < earliest ? t.date : earliest),
+        contributions[0]!.date,
+      );
       const [firstYear, firstMonth] = firstDate.split('-').map(Number);
       const [todayYear, todayMonth] = today.split('-').map(Number);
-      const actualMonthCount = Math.max(1, (todayYear! - firstYear!) * 12 + (todayMonth! - firstMonth!) + 1);
+      const actualMonthCount = Math.max(
+        1,
+        (todayYear! - firstYear!) * 12 + (todayMonth! - firstMonth!) + 1,
+      );
       actualMonthlyRate = Math.round(totalActualSavings / actualMonthCount);
     }
 
     // Planned monthly rate: next 12 months of forecasts
-    const totalPlannedSavings = savingsContributions.filter((c) => {
-      const contributionDate = new Date(c.date);
-      const todayDate = new Date(today);
-      const monthsDiff = (contributionDate.getFullYear() - todayDate.getFullYear()) * 12 +
-                         (contributionDate.getMonth() - todayDate.getMonth());
-      return c.date >= today && monthsDiff < 12;
-    }).reduce((sum, c) => sum + c.amountCents, 0);
+    const totalPlannedSavings = savingsContributions
+      .filter((c) => {
+        const contributionDate = new Date(c.date);
+        const todayDate = new Date(today);
+        const monthsDiff =
+          (contributionDate.getFullYear() - todayDate.getFullYear()) * 12 +
+          (contributionDate.getMonth() - todayDate.getMonth());
+        return c.date >= today && monthsDiff < 12;
+      })
+      .reduce((sum, c) => sum + c.amountCents, 0);
     const plannedMonthlyRate = Math.round(totalPlannedSavings / 12);
 
     // Annual interest (based on current balances and interest rates)
@@ -141,13 +166,16 @@ export function SavingsIndexPage() {
     setDialogOpen(true);
   }, []);
 
-  const openEditDialog = useCallback((goalId: string) => {
-    const goal = goalMap[goalId];
-    if (goal) {
-      setEditingGoal(goal);
-      setDialogOpen(true);
-    }
-  }, [goalMap]);
+  const openEditDialog = useCallback(
+    (goalId: string) => {
+      const goal = goalMap[goalId];
+      if (goal) {
+        setEditingGoal(goal);
+        setDialogOpen(true);
+      }
+    },
+    [goalMap],
+  );
 
   const handleDialogClose = useCallback((open: boolean) => {
     setDialogOpen(open);
@@ -167,12 +195,13 @@ export function SavingsIndexPage() {
             Savings
           </h1>
           <p className="page-description">Track progress toward your savings goals.</p>
-          <div className="mt-2">
-            <ScenarioSelector />
-          </div>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Button variant="outline" className="h-10" onClick={() => setContributionDialogOpen(true)}>
+          <Button
+            variant="outline"
+            className="h-10"
+            onClick={() => setContributionDialogOpen(true)}
+          >
             <Plus className="h-4 w-4" />
             Add Contribution
           </Button>
@@ -211,7 +240,8 @@ export function SavingsIndexPage() {
               </div>
               {summaryStats.totalTarget > 0 && (
                 <div className="mt-0.5 text-sm text-muted-foreground">
-                  of <span className="font-mono">{formatCents(summaryStats.totalTarget)}</span> target
+                  of <span className="font-mono">{formatCents(summaryStats.totalTarget)}</span>{' '}
+                  target
                 </div>
               )}
             </div>
@@ -226,7 +256,8 @@ export function SavingsIndexPage() {
                   <>
                     {summaryStats.goalsReached}
                     <span className="text-base font-normal text-muted-foreground">
-                      {' '}of {summaryStats.totalGoals}
+                      {' '}
+                      of {summaryStats.totalGoals}
                     </span>
                   </>
                 ) : (
@@ -241,11 +272,14 @@ export function SavingsIndexPage() {
                 Savings Rate
               </div>
               <div className="mt-1">
-                <span className="font-mono text-2xl font-semibold">{formatCents(summaryStats.actualMonthlyRate)}</span>
+                <span className="font-mono text-2xl font-semibold">
+                  {formatCents(summaryStats.actualMonthlyRate)}
+                </span>
                 <span className="ml-1 text-sm text-muted-foreground">/mo avg</span>
               </div>
               <div className="mt-0.5 text-sm text-muted-foreground">
-                <span className="font-mono">{formatCents(summaryStats.plannedMonthlyRate)}</span>/mo planned (next 12mo)
+                <span className="font-mono">{formatCents(summaryStats.plannedMonthlyRate)}</span>/mo
+                planned (next 12mo)
               </div>
             </div>
 
@@ -300,7 +334,7 @@ export function SavingsIndexPage() {
         deleteSavingsGoal={deleteSavingsGoal}
         addTransaction={addTransaction}
         addSavingsAnchor={addSavingsAnchor}
-        transactionCount={editingGoal ? transactionCountByGoal[editingGoal.id] ?? 0 : 0}
+        transactionCount={editingGoal ? (transactionCountByGoal[editingGoal.id] ?? 0) : 0}
         earliestAnchorDate={earliestAnchorDate}
       />
 

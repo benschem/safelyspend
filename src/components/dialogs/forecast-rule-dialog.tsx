@@ -38,7 +38,10 @@ interface ForecastRuleDialogProps {
   scenarioId: string | null;
   rule?: ForecastRule | null;
   addRule: (data: CreateEntity<ForecastRule>) => Promise<ForecastRule>;
-  updateRule: (id: string, updates: Partial<Omit<ForecastRule, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
+  updateRule: (
+    id: string,
+    updates: Partial<Omit<ForecastRule, 'id' | 'userId' | 'createdAt'>>,
+  ) => Promise<void>;
   /** Called after a new rule is created (not on edit) */
   onRuleCreated?: (rule: ForecastRule) => void;
   /** Pre-fill data when converting from a one-time event */
@@ -48,8 +51,18 @@ interface ForecastRuleDialogProps {
 }
 
 const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 // Ordered Monday-first for display, with correct JS dayOfWeek values (0=Sun, 1=Mon, etc.)
@@ -63,7 +76,17 @@ const DAYS_OF_WEEK = [
   { value: 0, label: 'Sunday' },
 ];
 
-export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRule, updateRule, onRuleCreated, prefill, restrictType }: ForecastRuleDialogProps) {
+export function ForecastRuleDialog({
+  open,
+  onOpenChange,
+  scenarioId,
+  rule,
+  addRule,
+  updateRule,
+  onRuleCreated,
+  prefill,
+  restrictType,
+}: ForecastRuleDialogProps) {
   const isEditing = !!rule;
 
   // Form state
@@ -187,7 +210,9 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
       }
       onOpenChange(false);
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Failed to save rule. Please try again.');
+      setFormError(
+        error instanceof Error ? error.message : 'Failed to save rule. Please try again.',
+      );
     }
   };
 
@@ -201,7 +226,12 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? 'Edit' : 'Add'} Recurring {restrictType ? (restrictType === 'savings' ? 'Savings Contribution' : restrictType.charAt(0).toUpperCase() + restrictType.slice(1)) : 'Forecast'}
+            {isEditing ? 'Edit' : 'Add'} Recurring{' '}
+            {restrictType
+              ? restrictType === 'savings'
+                ? 'Savings Contribution'
+                : restrictType.charAt(0).toUpperCase() + restrictType.slice(1)
+              : 'Forecast'}
           </DialogTitle>
           <DialogDescription>
             {isEditing
@@ -238,7 +268,9 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
 
           {/* Amount - full width */}
           <div className="space-y-2">
-            <Label htmlFor="rule-amount" className="select-none">Amount ($)</Label>
+            <Label htmlFor="rule-amount" className="select-none">
+              Amount ($)
+            </Label>
             <Input
               id="rule-amount"
               type="number"
@@ -278,7 +310,9 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
                   </SelectTrigger>
                   <SelectContent>
                     {MONTH_NAMES.map((name, i) => (
-                      <SelectItem key={i} value={String(i)}>{name}</SelectItem>
+                      <SelectItem key={i} value={String(i)}>
+                        {name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -291,7 +325,9 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
                   </SelectTrigger>
                   <SelectContent>
                     {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                      <SelectItem key={day} value={String(day)}>{day}</SelectItem>
+                      <SelectItem key={day} value={String(day)}>
+                        {day}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -322,7 +358,9 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
                   </SelectTrigger>
                   <SelectContent>
                     {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                      <SelectItem key={day} value={String(day)}>{day}</SelectItem>
+                      <SelectItem key={day} value={String(day)}>
+                        {day}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -339,7 +377,9 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
                 </SelectTrigger>
                 <SelectContent>
                   {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                    <SelectItem key={day} value={String(day)}>{day}</SelectItem>
+                    <SelectItem key={day} value={String(day)}>
+                      {day}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -360,7 +400,9 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
                 </SelectTrigger>
                 <SelectContent>
                   {DAYS_OF_WEEK.map((day) => (
-                    <SelectItem key={day.value} value={String(day.value)}>{day.label}</SelectItem>
+                    <SelectItem key={day.value} value={String(day.value)}>
+                      {day.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -370,7 +412,9 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
           {/* Description - hidden for savings (uses goal name instead) */}
           {type !== 'savings' && (
             <div className="space-y-2">
-              <Label htmlFor="rule-description" className="select-none">Description</Label>
+              <Label htmlFor="rule-description" className="select-none">
+                Description
+              </Label>
               <Input
                 id="rule-description"
                 placeholder="e.g., Salary, Rent, Car payment"
@@ -383,16 +427,15 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
           {type === 'savings' ? (
             <div className="space-y-2">
               <Label className="select-none">Savings Goal</Label>
-              <SavingsGoalSelect
-                value={savingsGoalId}
-                onChange={setSavingsGoalId}
-              />
+              <SavingsGoalSelect value={savingsGoalId} onChange={setSavingsGoalId} />
             </div>
           ) : (
             <div className="space-y-2">
               <Label className="select-none">
                 Category
-                {type === 'income' && <span className="ml-1 font-normal text-muted-foreground">(optional)</span>}
+                {type === 'income' && (
+                  <span className="ml-1 font-normal text-muted-foreground">(optional)</span>
+                )}
                 {type === 'expense' && <span className="ml-1 font-normal text-destructive">*</span>}
               </Label>
               <CategorySelect
@@ -412,9 +455,7 @@ export function ForecastRuleDialog({ open, onOpenChange, scenarioId, rule, addRu
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>
-              {isEditing ? 'Save' : 'Add'}
-            </Button>
+            <Button onClick={handleSave}>{isEditing ? 'Save' : 'Add'}</Button>
           </div>
         </div>
       </DialogContent>

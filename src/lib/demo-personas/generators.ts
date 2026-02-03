@@ -160,10 +160,7 @@ export function generatePersonaData(
   }
 
   // Calculate opening balance (what balance would result in current state)
-  const balanceAnchors: GeneratedBalanceAnchor[] = calculateBalanceAnchor(
-    config,
-    startDate,
-  );
+  const balanceAnchors: GeneratedBalanceAnchor[] = calculateBalanceAnchor(config, startDate);
 
   return {
     categories,
@@ -495,7 +492,11 @@ function generateSavingsTransactions(
 
         if (!shouldSkip) {
           // Regular contribution with variance
-          const amount = applyVariance(goalConfig.monthlyContributionCents, contributionVariance, random);
+          const amount = applyVariance(
+            goalConfig.monthlyContributionCents,
+            contributionVariance,
+            random,
+          );
           transactions.push({
             id: generateId(),
             date: formatDate(contributeDate),
@@ -516,7 +517,9 @@ function generateSavingsTransactions(
                 `Top up - ${goalConfig.name}`,
               ];
               // Extra is 50-150% of regular contribution
-              const extraAmount = Math.round(goalConfig.monthlyContributionCents * (0.5 + random()));
+              const extraAmount = Math.round(
+                goalConfig.monthlyContributionCents * (0.5 + random()),
+              );
               transactions.push({
                 id: generateId(),
                 date: formatDate(extraDate),
@@ -714,10 +717,7 @@ function ensureCurrentMonthTransactions(
   }
 }
 
-function calculateBalanceAnchor(
-  config: PersonaConfig,
-  startDate: Date,
-): GeneratedBalanceAnchor[] {
+function calculateBalanceAnchor(config: PersonaConfig, startDate: Date): GeneratedBalanceAnchor[] {
   // Calculate a realistic checking account balance at start of data period.
   // This needs to account for 12 months of transaction variance.
 
@@ -966,7 +966,11 @@ function ensureCurrentMonthIncome(
         // Find most recent Friday before or on today
         const daysUntilFriday = (today.getDay() + 2) % 7; // Days since last Friday
         if (daysUntilFriday <= today.getDate()) {
-          payDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - daysUntilFriday);
+          payDate = new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate() - daysUntilFriday,
+          );
         }
         break;
       }

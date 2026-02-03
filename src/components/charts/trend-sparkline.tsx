@@ -1,5 +1,12 @@
 import { useMemo } from 'react';
-import { ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, ReferenceArea } from 'recharts';
+import {
+  ComposedChart,
+  Line,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  ReferenceArea,
+} from 'recharts';
 import { formatCents, cn } from '@/lib/utils';
 import type { MonthSummary } from '@/hooks/use-multi-period-summary';
 
@@ -54,12 +61,12 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
 
   return (
     <div className="rounded-md border bg-popover px-3 py-2 text-sm shadow-md">
-      <p className="font-medium">{data.label} {data.year}</p>
-      <p className={cn(
-        'font-mono',
-        isPositive ? 'text-green-600' : 'text-red-600',
-      )}>
-        {isPositive ? '+' : ''}{formatCents(data.surplus)}
+      <p className="font-medium">
+        {data.label} {data.year}
+      </p>
+      <p className={cn('font-mono', isPositive ? 'text-green-600' : 'text-red-600')}>
+        {isPositive ? '+' : ''}
+        {formatCents(data.surplus)}
       </p>
       {data.isCurrentMonth && (
         <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Today</p>
@@ -74,7 +81,12 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
   );
 }
 
-export function TrendSparkline({ data, onMonthClick, showNowLine = false, selectedMonth }: TrendSparklineProps) {
+export function TrendSparkline({
+  data,
+  onMonthClick,
+  showNowLine = false,
+  selectedMonth,
+}: TrendSparklineProps) {
   if (data.length === 0) return null;
 
   // Find the current month index for the "Now" line
@@ -85,11 +97,14 @@ export function TrendSparkline({ data, onMonthClick, showNowLine = false, select
   // Find the selected month index (if different from current)
   const selectedMonthIndex = useMemo(() => {
     if (!selectedMonth) return -1;
-    return data.findIndex((d) => d.monthIndex === selectedMonth.monthIndex && d.year === selectedMonth.year);
+    return data.findIndex(
+      (d) => d.monthIndex === selectedMonth.monthIndex && d.year === selectedMonth.year,
+    );
   }, [data, selectedMonth]);
 
   // Determine which month to highlight and label
-  const isViewingCurrentMonth = selectedMonthIndex === currentMonthIndex || selectedMonthIndex === -1;
+  const isViewingCurrentMonth =
+    selectedMonthIndex === currentMonthIndex || selectedMonthIndex === -1;
   const highlightIndex = selectedMonthIndex >= 0 ? selectedMonthIndex : currentMonthIndex;
   const highlightedMonth = highlightIndex >= 0 ? data[highlightIndex] : null;
 
@@ -101,10 +116,7 @@ export function TrendSparkline({ data, onMonthClick, showNowLine = false, select
   return (
     <div className="w-full">
       <ResponsiveContainer width="100%" height={64}>
-        <ComposedChart
-          data={chartData}
-          margin={{ top: 8, right: 8, bottom: 8, left: 8 }}
-        >
+        <ComposedChart data={chartData} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
           {/* Future months shaded area - purple for projections */}
           {showNowLine && currentMonthIndex >= 0 && currentMonthIndex < data.length - 1 && (
             <ReferenceArea
@@ -117,19 +129,11 @@ export function TrendSparkline({ data, onMonthClick, showNowLine = false, select
           <ReferenceLine y={0} stroke="#e5e7eb" strokeDasharray="3 3" />
           {/* "Now" vertical line (always at current month) - gray for neutral current position */}
           {showNowLine && currentMonthIndex >= 0 && (
-            <ReferenceLine
-              x={currentMonthIndex}
-              stroke="#6b7280"
-              strokeWidth={2}
-            />
+            <ReferenceLine x={currentMonthIndex} stroke="#6b7280" strokeWidth={2} />
           )}
           {/* Selected month vertical line (if different from current) */}
           {selectedMonthIndex >= 0 && selectedMonthIndex !== currentMonthIndex && (
-            <ReferenceLine
-              x={selectedMonthIndex}
-              stroke="#6b7280"
-              strokeWidth={2}
-            />
+            <ReferenceLine x={selectedMonthIndex} stroke="#6b7280" strokeWidth={2} />
           )}
           <Line
             type="monotone"
@@ -137,7 +141,8 @@ export function TrendSparkline({ data, onMonthClick, showNowLine = false, select
             stroke="#9ca3af"
             strokeWidth={1.5}
             dot={(props) => {
-              const isSelected = selectedMonthIndex >= 0 &&
+              const isSelected =
+                selectedMonthIndex >= 0 &&
                 props.payload?.monthIndex === selectedMonth?.monthIndex &&
                 props.payload?.year === selectedMonth?.year;
               return (
@@ -158,18 +163,27 @@ export function TrendSparkline({ data, onMonthClick, showNowLine = false, select
       </ResponsiveContainer>
       {/* Labels row */}
       <div className="flex items-center justify-between px-2 text-[10px] text-muted-foreground">
-        <span>{data[0]?.shortLabel} {data[0]?.year !== data[data.length - 1]?.year ? data[0]?.year : ''}</span>
+        <span>
+          {data[0]?.shortLabel} {data[0]?.year !== data[data.length - 1]?.year ? data[0]?.year : ''}
+        </span>
         {showNowLine && highlightedMonth && (
-          <span className={cn(
-            'flex items-center gap-1 rounded-full px-1.5 py-0.5',
-            isViewingCurrentMonth
-              ? 'bg-gray-500/15 font-medium text-gray-600 dark:text-gray-400'
-              : 'bg-muted text-muted-foreground',
-          )}>
-            {isViewingCurrentMonth ? 'Today' : `${highlightedMonth.shortLabel} ${highlightedMonth.year}`}
+          <span
+            className={cn(
+              'flex items-center gap-1 rounded-full px-1.5 py-0.5',
+              isViewingCurrentMonth
+                ? 'bg-gray-500/15 font-medium text-gray-600 dark:text-gray-400'
+                : 'bg-muted text-muted-foreground',
+            )}
+          >
+            {isViewingCurrentMonth
+              ? 'Today'
+              : `${highlightedMonth.shortLabel} ${highlightedMonth.year}`}
           </span>
         )}
-        <span>{data[data.length - 1]?.shortLabel} {data[0]?.year !== data[data.length - 1]?.year ? data[data.length - 1]?.year : ''}</span>
+        <span>
+          {data[data.length - 1]?.shortLabel}{' '}
+          {data[0]?.year !== data[data.length - 1]?.year ? data[data.length - 1]?.year : ''}
+        </span>
       </div>
     </div>
   );

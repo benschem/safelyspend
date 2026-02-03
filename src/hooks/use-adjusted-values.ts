@@ -7,7 +7,11 @@ import type { BudgetRule, ForecastRule, ExpandedForecast } from '@/lib/types';
 /**
  * Returns budget rules with what-if adjustments applied
  */
-export function useAdjustedBudgets(scenarioId: string | null, startDate?: string, endDate?: string) {
+export function useAdjustedBudgets(
+  scenarioId: string | null,
+  startDate?: string,
+  endDate?: string,
+) {
   const { budgetRules, expandedBudgets, isLoading, ...rest } = useBudgetRules(
     scenarioId,
     startDate,
@@ -169,7 +173,10 @@ export function useAdjustedScenarioData(
   // Calculate totals
   const totals = useMemo(() => {
     const totalIncome = forecasts.incomeForecasts.reduce((sum, f) => sum + f.amountCents, 0);
-    const totalFixedExpenses = forecasts.expenseForecasts.reduce((sum, f) => sum + f.amountCents, 0);
+    const totalFixedExpenses = forecasts.expenseForecasts.reduce(
+      (sum, f) => sum + f.amountCents,
+      0,
+    );
     const totalBudgeted = Object.values(budgets.expandedBudgets).reduce((sum, v) => sum + v, 0);
     const totalSavings = forecasts.savingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
     const surplus = totalIncome - totalFixedExpenses - totalBudgeted - totalSavings;
@@ -181,7 +188,12 @@ export function useAdjustedScenarioData(
       savings: totalSavings,
       surplus,
     };
-  }, [forecasts.incomeForecasts, forecasts.expenseForecasts, forecasts.savingsForecasts, budgets.expandedBudgets]);
+  }, [
+    forecasts.incomeForecasts,
+    forecasts.expenseForecasts,
+    forecasts.savingsForecasts,
+    budgets.expandedBudgets,
+  ]);
 
   return {
     budgets,

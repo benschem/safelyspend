@@ -36,15 +36,9 @@ export function useCategories() {
     await db.categories.delete(id);
   }, []);
 
-  const activeCategories = useMemo(
-    () => categories.filter((c) => !c.isArchived),
-    [categories],
-  );
+  const activeCategories = useMemo(() => categories.filter((c) => !c.isArchived), [categories]);
 
-  const archivedCategories = useMemo(
-    () => categories.filter((c) => c.isArchived),
-    [categories],
-  );
+  const archivedCategories = useMemo(() => categories.filter((c) => c.isArchived), [categories]);
 
   // Get existing category by name or create a new one
   const getOrCreate = useCallback(

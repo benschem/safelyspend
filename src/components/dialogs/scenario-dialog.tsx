@@ -25,12 +25,24 @@ interface ScenarioDialogProps {
   scenario?: Scenario | null;
   scenarios: Scenario[];
   addScenario: (data: CreateEntity<Scenario>) => Promise<Scenario>;
-  updateScenario: (id: string, updates: Partial<Omit<Scenario, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
+  updateScenario: (
+    id: string,
+    updates: Partial<Omit<Scenario, 'id' | 'userId' | 'createdAt'>>,
+  ) => Promise<void>;
   duplicateForecastsToScenario: (fromScenarioId: string, toScenarioId: string) => Promise<void>;
   duplicateBudgetsToScenario: (fromScenarioId: string, toScenarioId: string) => Promise<void>;
 }
 
-export function ScenarioDialog({ open, onOpenChange, scenario, scenarios, addScenario, updateScenario, duplicateForecastsToScenario, duplicateBudgetsToScenario }: ScenarioDialogProps) {
+export function ScenarioDialog({
+  open,
+  onOpenChange,
+  scenario,
+  scenarios,
+  addScenario,
+  updateScenario,
+  duplicateForecastsToScenario,
+  duplicateBudgetsToScenario,
+}: ScenarioDialogProps) {
   const isEditing = !!scenario;
 
   // Form state
@@ -86,7 +98,9 @@ export function ScenarioDialog({ open, onOpenChange, scenario, scenarios, addSce
       }
       onOpenChange(false);
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Failed to save scenario. Please try again.');
+      setFormError(
+        error instanceof Error ? error.message : 'Failed to save scenario. Please try again.',
+      );
     }
   };
 
@@ -96,7 +110,9 @@ export function ScenarioDialog({ open, onOpenChange, scenario, scenarios, addSce
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit' : 'Add'} Scenario</DialogTitle>
           <DialogDescription>
-            {isEditing ? 'Update the scenario details.' : 'Create a new budget scenario for "what-if" planning.'}
+            {isEditing
+              ? 'Update the scenario details.'
+              : 'Create a new budget scenario for "what-if" planning.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -108,7 +124,9 @@ export function ScenarioDialog({ open, onOpenChange, scenario, scenarios, addSce
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="scenario-name" className="select-none">Scenario Name</Label>
+            <Label htmlFor="scenario-name" className="select-none">
+              Scenario Name
+            </Label>
             <Input
               id="scenario-name"
               placeholder="e.g., Base Budget, Optimistic"
@@ -160,9 +178,7 @@ export function ScenarioDialog({ open, onOpenChange, scenario, scenarios, addSce
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>
-              {isEditing ? 'Save' : 'Create'} Scenario
-            </Button>
+            <Button onClick={handleSave}>{isEditing ? 'Save' : 'Create'} Scenario</Button>
           </div>
         </div>
       </DialogContent>

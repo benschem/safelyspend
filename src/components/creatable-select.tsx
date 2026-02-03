@@ -49,9 +49,7 @@ export function CreatableSelect({
   );
 
   // Check if search matches any existing option exactly (case-insensitive)
-  const exactMatch = options.some(
-    (opt) => opt.label.toLowerCase() === search.toLowerCase(),
-  );
+  const exactMatch = options.some((opt) => opt.label.toLowerCase() === search.toLowerCase());
 
   // Show create option if there's search text and no exact match
   const showCreateOption = onCreateNew && search.trim() && !exactMatch;
@@ -94,15 +92,11 @@ export function CreatableSelect({
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
-          setHighlightedIndex((prev) =>
-            prev < selectableItems.length - 1 ? prev + 1 : 0,
-          );
+          setHighlightedIndex((prev) => (prev < selectableItems.length - 1 ? prev + 1 : 0));
           break;
         case 'ArrowUp':
           e.preventDefault();
-          setHighlightedIndex((prev) =>
-            prev > 0 ? prev - 1 : selectableItems.length - 1,
-          );
+          setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : selectableItems.length - 1));
           break;
         case 'Enter':
           e.preventDefault();
@@ -233,9 +227,7 @@ export function CreatableSelect({
             })}
             {filteredOptions.length === 0 && !showCreateOption && (
               <div className="px-3 py-2 text-sm text-muted-foreground">
-                {options.length === 0 && onCreateNew
-                  ? 'Type to create one...'
-                  : 'No options found'}
+                {options.length === 0 && onCreateNew ? 'Type to create one...' : 'No options found'}
               </div>
             )}
             {showCreateOption && (

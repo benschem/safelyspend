@@ -68,10 +68,12 @@ function CustomTooltip({
 
   // For future days, show projection info
   if (data.isFuture) {
-    const projectedTotal = totalBudget * (data.projectedPercent ?? 0) / 100;
+    const projectedTotal = (totalBudget * (data.projectedPercent ?? 0)) / 100;
     return (
       <div className="rounded-lg border bg-background p-3 shadow-md">
-        <p className="mb-2 font-semibold">{data.label} <span className="font-normal text-muted-foreground">(projected)</span></p>
+        <p className="mb-2 font-semibold">
+          {data.label} <span className="font-normal text-muted-foreground">(projected)</span>
+        </p>
         <div className="space-y-1 text-sm">
           <div className="flex items-center justify-between gap-6">
             <div className="flex items-center gap-2">
@@ -88,7 +90,9 @@ function CustomTooltip({
               <div className="h-2.5 w-2.5 rounded-full bg-green-600" />
               <span>Budgeted Spending</span>
             </div>
-            <span className="font-mono text-muted-foreground">{formatCents(data.expectedCumulative)}</span>
+            <span className="font-mono text-muted-foreground">
+              {formatCents(data.expectedCumulative)}
+            </span>
           </div>
         </div>
         <div className="mt-2 border-t pt-2 text-xs text-muted-foreground">
@@ -99,17 +103,19 @@ function CustomTooltip({
   }
 
   const actualPercent = data.actualPercent ?? 0;
-  const paceStatus = actualPercent > data.expectedPercent + 10
-    ? 'Overspending'
-    : actualPercent < data.expectedPercent - 10
-      ? 'Under pace'
-      : 'On track';
+  const paceStatus =
+    actualPercent > data.expectedPercent + 10
+      ? 'Overspending'
+      : actualPercent < data.expectedPercent - 10
+        ? 'Under pace'
+        : 'On track';
 
-  const paceColor = actualPercent > data.expectedPercent + 10
-    ? 'text-amber-600'
-    : actualPercent < data.expectedPercent - 10
-      ? 'text-green-600'
-      : 'text-green-600';
+  const paceColor =
+    actualPercent > data.expectedPercent + 10
+      ? 'text-amber-600'
+      : actualPercent < data.expectedPercent - 10
+        ? 'text-green-600'
+        : 'text-green-600';
 
   return (
     <div className="rounded-lg border bg-background p-3 shadow-md">
@@ -130,7 +136,9 @@ function CustomTooltip({
             <div className="h-2.5 w-2.5 rounded-full bg-green-600" />
             <span>Budgeted Spending</span>
           </div>
-          <span className="font-mono text-muted-foreground">{formatCents(data.expectedCumulative)}</span>
+          <span className="font-mono text-muted-foreground">
+            {formatCents(data.expectedCumulative)}
+          </span>
         </div>
         {data.dailySpend > 0 && (
           <div className="flex items-center justify-between gap-6 text-muted-foreground">
@@ -147,14 +155,28 @@ function CustomTooltip({
           </span>
         </div>
         <div className="text-xs text-muted-foreground">
-          {formatCents(totalBudget - (data.actualCumulative ?? 0))} remaining of {formatCents(totalBudget)}
+          {formatCents(totalBudget - (data.actualCumulative ?? 0))} remaining of{' '}
+          {formatCents(totalBudget)}
         </div>
       </div>
     </div>
   );
 }
 
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTH_NAMES = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 
 export function BurnRateChart({
   dailySpending,
@@ -169,9 +191,8 @@ export function BurnRateChart({
   void _periodLabel; // Kept for API compatibility
 
   // Calculate safe limit percentage (budget + surplus as % of budget)
-  const surplusPercent = surplusAmount && surplusAmount > 0 && totalBudget > 0
-    ? (surplusAmount / totalBudget) * 100
-    : 0;
+  const surplusPercent =
+    surplusAmount && surplusAmount > 0 && totalBudget > 0 ? (surplusAmount / totalBudget) * 100 : 0;
   const safeLimitPercent = 100 + surplusPercent;
   const chartData = useMemo(() => {
     const start = new Date(periodStart);
@@ -239,9 +260,8 @@ export function BurnRateChart({
       }
 
       // Calculate monthly burn rate for projection
-      const lastActualPercent = currentMonthIndex > 0 && totalBudget > 0
-        ? (cumulativeSpend / totalBudget) * 100
-        : 0;
+      const lastActualPercent =
+        currentMonthIndex > 0 && totalBudget > 0 ? (cumulativeSpend / totalBudget) * 100 : 0;
       const monthlyBurnRate = currentMonthIndex > 0 ? lastActualPercent / currentMonthIndex : 0;
 
       // Add future months with projection
@@ -308,9 +328,8 @@ export function BurnRateChart({
     }
 
     // Calculate daily burn rate based on current pace
-    const lastActualPercent = currentDay > 0 && totalBudget > 0
-      ? (cumulativeSpend / totalBudget) * 100
-      : 0;
+    const lastActualPercent =
+      currentDay > 0 && totalBudget > 0 ? (cumulativeSpend / totalBudget) * 100 : 0;
     const dailyBurnRate = currentDay > 0 ? lastActualPercent / currentDay : 0;
 
     // Second pass: add future days with projection
@@ -346,13 +365,17 @@ export function BurnRateChart({
   const lastActualDataPoint = chartData.data.find((d) => !d.isFuture && d.day === currentDay);
   const burnRate = lastActualDataPoint
     ? lastActualDataPoint.expectedPercent > 0
-      ? Math.round(((lastActualDataPoint.actualPercent ?? 0) / lastActualDataPoint.expectedPercent) * 100)
+      ? Math.round(
+          ((lastActualDataPoint.actualPercent ?? 0) / lastActualDataPoint.expectedPercent) * 100,
+        )
       : 0
     : 0;
 
   if (totalBudget === 0) {
     return (
-      <div className={`flex items-center justify-center text-sm text-muted-foreground ${compact ? 'h-24' : 'h-64'}`}>
+      <div
+        className={`flex items-center justify-center text-sm text-muted-foreground ${compact ? 'h-24' : 'h-64'}`}
+      >
         No budget set{compact ? '' : '. Add budget rules to track spending pace'}.
       </div>
     );
@@ -360,7 +383,9 @@ export function BurnRateChart({
 
   if (chartData.data.length === 0) {
     return (
-      <div className={`flex items-center justify-center text-sm text-muted-foreground ${compact ? 'h-24' : 'h-64'}`}>
+      <div
+        className={`flex items-center justify-center text-sm text-muted-foreground ${compact ? 'h-24' : 'h-64'}`}
+      >
         No spending data yet.
       </div>
     );
@@ -434,19 +459,17 @@ export function BurnRateChart({
     <div className="w-full">
       <ResponsiveContainer width="100%" height={300}>
         <ComposedChart data={chartData.data} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-          <XAxis
-            dataKey="label"
-            tick={{ fontSize: 12 }}
-            axisLine={false}
-            tickLine={false}
-          />
+          <XAxis dataKey="label" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
           <YAxis
             tickFormatter={(value) => `${Math.round(value)}%`}
             tick={{ fontSize: 12 }}
             axisLine={false}
             tickLine={false}
             width={45}
-            domain={[0, (dataMax: number) => Math.max(safeLimitPercent, 100, Math.ceil(dataMax / 10) * 10)]}
+            domain={[
+              0,
+              (dataMax: number) => Math.max(safeLimitPercent, 100, Math.ceil(dataMax / 10) * 10),
+            ]}
           />
           <Tooltip content={<CustomTooltip totalBudget={totalBudget} />} />
 
@@ -517,7 +540,10 @@ export function BurnRateChart({
         </div>
         {currentDay < chartData.totalDays && (
           <div className="flex items-center gap-2 text-sm">
-            <div className="h-0.5 w-4 border-t-2 border-dashed" style={{ borderColor: CHART_COLORS.expense, opacity: 0.5 }} />
+            <div
+              className="h-0.5 w-4 border-t-2 border-dashed"
+              style={{ borderColor: CHART_COLORS.expense, opacity: 0.5 }}
+            />
             <span className="text-muted-foreground">Projected Spending</span>
           </div>
         )}

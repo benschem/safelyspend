@@ -21,7 +21,16 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown, Search } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Search,
+} from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface DataTableProps<TData, TValue> {
@@ -65,7 +74,7 @@ export function DataTable<TData, TValue>({
 
   // Reset to page 1 when filters change
   useEffect(() => {
-    setPagination(prev => ({ ...prev, pageIndex: 0 }));
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, [globalFilter, columnFilters]);
 
   const table = useReactTable({
@@ -104,11 +113,7 @@ export function DataTable<TData, TValue>({
               />
             </div>
           )}
-          {filterSlot && (
-            <div className="flex flex-wrap items-center gap-3">
-              {filterSlot}
-            </div>
-          )}
+          {filterSlot && <div className="flex flex-wrap items-center gap-3">{filterSlot}</div>}
         </div>
       )}
       <div className="rounded-md border overflow-x-auto">
@@ -122,10 +127,7 @@ export function DataTable<TData, TValue>({
                     <TableHead key={header.id} className={meta?.className}>
                       {header.isPlaceholder
                         ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
+                        : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
                   );
                 })}
@@ -146,10 +148,7 @@ export function DataTable<TData, TValue>({
               ))
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && 'selected'}
-                >
+                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
                   {row.getVisibleCells().map((cell) => {
                     const meta = cell.column.columnDef.meta as { className?: string } | undefined;
                     return (

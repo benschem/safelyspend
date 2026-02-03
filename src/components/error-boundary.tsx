@@ -47,7 +47,6 @@ export function ErrorBoundary() {
             </Link>
           </Button>
         </div>
-
       </div>
 
       {isDev && errorStack && (

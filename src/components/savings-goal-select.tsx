@@ -8,11 +8,7 @@ interface SavingsGoalSelectProps {
   disabled?: boolean;
 }
 
-export function SavingsGoalSelect({
-  value,
-  onChange,
-  disabled = false,
-}: SavingsGoalSelectProps) {
+export function SavingsGoalSelect({ value, onChange, disabled = false }: SavingsGoalSelectProps) {
   const { savingsGoals, addSavingsGoal } = useSavingsGoals();
 
   const options = useMemo(

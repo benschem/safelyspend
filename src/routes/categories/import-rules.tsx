@@ -160,7 +160,8 @@ export function CategoryImportRulesPage() {
       {rules.length === 0 ? (
         <div className="space-y-4">
           <Alert variant="info">
-            Rules are applied automatically when you import transactions. The first matching rule wins.
+            Rules are applied automatically when you import transactions. The first matching rule
+            wins.
           </Alert>
           <div className="empty-state">
             <p className="empty-state-text">No import rules yet.</p>
@@ -200,7 +201,9 @@ export function CategoryImportRulesPage() {
                       {' "'}
                       <span className="font-mono">{rule.matchValue}</span>
                       {'" → '}
-                      <span className="font-medium text-foreground">{getCategoryName(rule.categoryId)}</span>
+                      <span className="font-medium text-foreground">
+                        {getCategoryName(rule.categoryId)}
+                      </span>
                     </p>
                   </div>
 
@@ -216,7 +219,12 @@ export function CategoryImportRulesPage() {
                     </div>
 
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEditRule(rule)} aria-label="Edit rule">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEditRule(rule)}
+                        aria-label="Edit rule"
+                      >
                         <Pencil className="h-4 w-4" />
                       </Button>
 
@@ -259,7 +267,9 @@ export function CategoryImportRulesPage() {
             )}
 
             <div className="space-y-2">
-              <label htmlFor="rule-name" className="text-sm font-medium">Rule Name</label>
+              <label htmlFor="rule-name" className="text-sm font-medium">
+                Rule Name
+              </label>
               <Input
                 id="rule-name"
                 placeholder="e.g., Rent payments"
@@ -270,8 +280,13 @@ export function CategoryImportRulesPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <span id="match-type-label" className="text-sm font-medium">Match Type</span>
-                <Select value={matchType} onValueChange={(v) => setMatchType(v as CategoryRuleMatchType)}>
+                <span id="match-type-label" className="text-sm font-medium">
+                  Match Type
+                </span>
+                <Select
+                  value={matchType}
+                  onValueChange={(v) => setMatchType(v as CategoryRuleMatchType)}
+                >
                   <SelectTrigger aria-labelledby="match-type-label">
                     <SelectValue />
                   </SelectTrigger>
@@ -284,7 +299,9 @@ export function CategoryImportRulesPage() {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="match-value" className="text-sm font-medium">Match Value</label>
+                <label htmlFor="match-value" className="text-sm font-medium">
+                  Match Value
+                </label>
                 <Input
                   id="match-value"
                   placeholder="e.g., WOOLWORTHS"
@@ -295,9 +312,18 @@ export function CategoryImportRulesPage() {
             </div>
 
             <div className="space-y-2">
-              <span id="category-label" className="text-sm font-medium">Assign Category</span>
-              <Select value={categoryId} onValueChange={setCategoryId} disabled={activeCategories.length === 0}>
-                <SelectTrigger aria-labelledby="category-label" disabled={activeCategories.length === 0}>
+              <span id="category-label" className="text-sm font-medium">
+                Assign Category
+              </span>
+              <Select
+                value={categoryId}
+                onValueChange={setCategoryId}
+                disabled={activeCategories.length === 0}
+              >
+                <SelectTrigger
+                  aria-labelledby="category-label"
+                  disabled={activeCategories.length === 0}
+                >
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -320,10 +346,14 @@ export function CategoryImportRulesPage() {
             </div>
 
             <div className="space-y-2">
-              <span id="tx-type-label" className="text-sm font-medium">Transaction Type (optional)</span>
+              <span id="tx-type-label" className="text-sm font-medium">
+                Transaction Type (optional)
+              </span>
               <Select
                 value={transactionType || 'any'}
-                onValueChange={(v) => setTransactionType(v === 'any' ? '' : (v as 'income' | 'expense'))}
+                onValueChange={(v) =>
+                  setTransactionType(v === 'any' ? '' : (v as 'income' | 'expense'))
+                }
               >
                 <SelectTrigger aria-labelledby="tx-type-label">
                   <SelectValue placeholder="Any type" />
@@ -340,9 +370,7 @@ export function CategoryImportRulesPage() {
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSaveRule}>
-                {editingRuleId ? 'Save' : 'Add'} Rule
-              </Button>
+              <Button onClick={handleSaveRule}>{editingRuleId ? 'Save' : 'Add'} Rule</Button>
             </div>
           </div>
         </DialogContent>

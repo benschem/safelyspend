@@ -16,12 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Archive, ArchiveRestore, Trash2 } from 'lucide-react';
 import { parseCentsFromInput, formatCents } from '@/lib/utils';
 import type { Cadence, Category, CreateEntity, BudgetRule } from '@/lib/types';
@@ -42,7 +37,10 @@ interface CategoryBudgetDialogProps {
   hasIncome?: boolean; // Whether there is any income set
   // Callbacks
   addCategory: (data: CreateEntity<Category>) => Promise<Category>;
-  updateCategory?: (id: string, updates: Partial<Omit<Category, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
+  updateCategory?: (
+    id: string,
+    updates: Partial<Omit<Category, 'id' | 'userId' | 'createdAt'>>,
+  ) => Promise<void>;
   deleteCategory?: (id: string) => Promise<void>;
   setBudgetForCategory: (
     categoryId: string,
@@ -51,7 +49,7 @@ interface CategoryBudgetDialogProps {
     dayOfWeek?: number,
     dayOfMonth?: number,
     monthOfQuarter?: number,
-    monthOfYear?: number
+    monthOfYear?: number,
   ) => Promise<void>;
   deleteBudgetRule?: (id: string) => Promise<void>;
 }
@@ -68,8 +66,18 @@ const DAYS_OF_WEEK = [
 ];
 const MONTH_OF_QUARTER_LABELS = ['1st month', '2nd month', '3rd month'];
 const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 export function CategoryBudgetDialog({
@@ -201,7 +209,11 @@ export function CategoryBudgetDialog({
       }
       onOpenChange(false);
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : `Failed to ${isEditing ? 'update' : 'create'} category. Please try again.`);
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : `Failed to ${isEditing ? 'update' : 'create'} category. Please try again.`,
+      );
     }
   };
 
@@ -252,7 +264,9 @@ export function CategoryBudgetDialog({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="category-name" className="select-none">Category Name</Label>
+            <Label htmlFor="category-name" className="select-none">
+              Category Name
+            </Label>
             <Input
               id="category-name"
               placeholder="e.g., Groceries, Transport"
@@ -271,7 +285,9 @@ export function CategoryBudgetDialog({
             <div className="space-y-2">
               <Label htmlFor="budget-amount" className="select-none">
                 Budget Limit ($)
-                {!isEditing && <span className="ml-1 font-normal text-muted-foreground">(opt.)</span>}
+                {!isEditing && (
+                  <span className="ml-1 font-normal text-muted-foreground">(opt.)</span>
+                )}
               </Label>
               <Input
                 ref={limitInputRef}
@@ -316,28 +332,30 @@ export function CategoryBudgetDialog({
           </div>
 
           {/* Budget impact indicator */}
-          {hasIncome && unallocatedAmount !== undefined && (() => {
-            const enteredAmount = parseCentsFromInput(amount);
-            const existingAmount = existingRule?.amountCents ?? 0;
-            const netChange = enteredAmount - existingAmount;
-            const newUnallocated = unallocatedAmount - netChange;
+          {hasIncome &&
+            unallocatedAmount !== undefined &&
+            (() => {
+              const enteredAmount = parseCentsFromInput(amount);
+              const existingAmount = existingRule?.amountCents ?? 0;
+              const netChange = enteredAmount - existingAmount;
+              const newUnallocated = unallocatedAmount - netChange;
 
-            if (enteredAmount === 0) return null;
+              if (enteredAmount === 0) return null;
 
-            if (newUnallocated >= 0) {
-              return (
-                <p className="text-xs text-green-600">
-                  Room in budget: {formatCents(newUnallocated)} remaining
-                </p>
-              );
-            } else {
-              return (
-                <p className="text-xs text-amber-600">
-                  Overcommitting by {formatCents(Math.abs(newUnallocated))}
-                </p>
-              );
-            }
-          })()}
+              if (newUnallocated >= 0) {
+                return (
+                  <p className="text-xs text-green-600">
+                    Room in budget: {formatCents(newUnallocated)} remaining
+                  </p>
+                );
+              } else {
+                return (
+                  <p className="text-xs text-amber-600">
+                    Overcommitting by {formatCents(Math.abs(newUnallocated))}
+                  </p>
+                );
+              }
+            })()}
 
           {isYearlyCadence && (
             <div className="grid grid-cols-2 gap-4">
@@ -452,11 +470,7 @@ export function CategoryBudgetDialog({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleArchiveToggle}
-                      >
+                      <Button variant="ghost" size="icon" onClick={handleArchiveToggle}>
                         {category.isArchived ? (
                           <ArchiveRestore className="h-4 w-4" />
                         ) : (
@@ -496,9 +510,7 @@ export function CategoryBudgetDialog({
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSave}>
-                {isEditing ? 'Save Changes' : 'Add Category'}
-              </Button>
+              <Button onClick={handleSave}>{isEditing ? 'Save Changes' : 'Add Category'}</Button>
             </div>
           </div>
         </div>

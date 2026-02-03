@@ -70,11 +70,7 @@ export interface GoalMonthlySavings {
 /**
  * Calculate budget amount for a single month based on cadence
  */
-function getBudgetForMonth(
-  amountCents: number,
-  cadence: Cadence,
-  month: string,
-): number {
+function getBudgetForMonth(amountCents: number, cadence: Cadence, month: string): number {
   const [year, m] = month.split('-').map(Number);
   const monthStart = `${month}-01`;
   const lastDay = new Date(year!, m!, 0).getDate();
@@ -100,20 +96,39 @@ function getBudgetForMonth(
   }
 }
 
-export function useReportsData(
-  scenarioId: string | null,
-  startDate: string,
-  endDate: string,
-) {
-  const { incomeTransactions, expenseTransactions, savingsTransactions, isLoading: transactionsLoading } =
-    useTransactions(startDate, endDate);
-  const { expandedBudgets, budgetRules, isLoading: budgetLoading } = useAdjustedBudgets(scenarioId, startDate, endDate);
+export function useReportsData(scenarioId: string | null, startDate: string, endDate: string) {
+  const {
+    incomeTransactions,
+    expenseTransactions,
+    savingsTransactions,
+    isLoading: transactionsLoading,
+  } = useTransactions(startDate, endDate);
+  const {
+    expandedBudgets,
+    budgetRules,
+    isLoading: budgetLoading,
+  } = useAdjustedBudgets(scenarioId, startDate, endDate);
   const { savingsGoals, isLoading: savingsLoading } = useSavingsGoals();
-  const { anchors: savingsAnchors, getActiveAnchor, isLoading: anchorsLoading } = useSavingsAnchors();
+  const {
+    anchors: savingsAnchors,
+    getActiveAnchor,
+    isLoading: anchorsLoading,
+  } = useSavingsAnchors();
   const { categories, activeCategories, isLoading: categoriesLoading } = useCategories();
-  const { incomeForecasts, expenseForecasts, savingsForecasts, isLoading: forecastsLoading } = useAdjustedForecasts(scenarioId, startDate, endDate);
+  const {
+    incomeForecasts,
+    expenseForecasts,
+    savingsForecasts,
+    isLoading: forecastsLoading,
+  } = useAdjustedForecasts(scenarioId, startDate, endDate);
 
-  const isLoading = transactionsLoading || budgetLoading || savingsLoading || anchorsLoading || categoriesLoading || forecastsLoading;
+  const isLoading =
+    transactionsLoading ||
+    budgetLoading ||
+    savingsLoading ||
+    anchorsLoading ||
+    categoriesLoading ||
+    forecastsLoading;
 
   // Separate savings forecasts into contributions and interest
   // Interest is shown as "actual" (earned money) not forecast in charts
@@ -185,8 +200,10 @@ export function useReportsData(
         }
       }
 
-      const totalActual = Object.values(categories).reduce((sum, v) => sum + v.actual, 0) + uncategorizedActual;
-      const totalForecast = Object.values(categories).reduce((sum, v) => sum + v.forecast, 0) + uncategorizedForecast;
+      const totalActual =
+        Object.values(categories).reduce((sum, v) => sum + v.actual, 0) + uncategorizedActual;
+      const totalForecast =
+        Object.values(categories).reduce((sum, v) => sum + v.forecast, 0) + uncategorizedForecast;
 
       result.push({
         month,
@@ -365,7 +382,17 @@ export function useReportsData(
     }
 
     return result;
-  }, [startDate, endDate, incomeTransactions, expenseTransactions, savingsTransactions, incomeForecasts, expenseForecasts, savingsContributions, interestForecasts]);
+  }, [
+    startDate,
+    endDate,
+    incomeTransactions,
+    expenseTransactions,
+    savingsTransactions,
+    incomeForecasts,
+    expenseForecasts,
+    savingsContributions,
+    interestForecasts,
+  ]);
 
   // Savings goal progress (uses all-time savings, not just date range)
   const { allTransactions } = useTransactions();
@@ -383,7 +410,9 @@ export function useReportsData(
         const transactionsAfterAnchor = allSavings.filter(
           (t) => t.savingsGoalId === goal.id && t.date > activeAnchor.date,
         );
-        savedAmount = activeAnchor.balanceCents + transactionsAfterAnchor.reduce((sum, t) => sum + t.amountCents, 0);
+        savedAmount =
+          activeAnchor.balanceCents +
+          transactionsAfterAnchor.reduce((sum, t) => sum + t.amountCents, 0);
       } else {
         // No anchor - sum all transactions
         savedAmount = allSavings
@@ -478,7 +507,9 @@ export function useReportsData(
         const transactionsAfterAnchor = allSavings.filter(
           (t) => t.savingsGoalId === goal.id && t.date > activeAnchor.date,
         );
-        currentBalance = activeAnchor.balanceCents + transactionsAfterAnchor.reduce((sum, t) => sum + t.amountCents, 0);
+        currentBalance =
+          activeAnchor.balanceCents +
+          transactionsAfterAnchor.reduce((sum, t) => sum + t.amountCents, 0);
       } else {
         // No anchor - sum all transactions
         currentBalance = allSavings
@@ -541,7 +572,17 @@ export function useReportsData(
         monthlySavings: monthlySavingsData,
       };
     });
-  }, [startDate, endDate, savingsGoals, savingsTransactions, savingsContributions, interestForecasts, allTransactions, getActiveAnchor, savingsAnchors]);
+  }, [
+    startDate,
+    endDate,
+    savingsGoals,
+    savingsTransactions,
+    savingsContributions,
+    interestForecasts,
+    allTransactions,
+    getActiveAnchor,
+    savingsAnchors,
+  ]);
 
   // Get unique categories used in monthly spending for legend
   const usedCategories = useMemo(() => {

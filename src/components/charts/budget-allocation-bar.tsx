@@ -31,9 +31,7 @@ export function BudgetAllocationBar({
   // Handle overspent case (spending + savings > income)
   const isOverallocated = spending + savings > income;
   const totalAllocated = spending + savings;
-  const overallocationPct = isOverallocated
-    ? Math.round((totalAllocated / income) * 100)
-    : 100;
+  const overallocationPct = isOverallocated ? Math.round((totalAllocated / income) * 100) : 100;
 
   // For overspent, we need to scale the segments to fit
   const scaledSpendingPct = isOverallocated
@@ -82,7 +80,8 @@ export function BudgetAllocationBar({
       {/* Overallocation warning */}
       {isOverallocated && (
         <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-          Budget exceeds income by {formatCents(totalAllocated - income)} ({overallocationPct - 100}%)
+          Budget exceeds income by {formatCents(totalAllocated - income)} ({overallocationPct - 100}
+          %)
         </p>
       )}
 

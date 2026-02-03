@@ -33,10 +33,7 @@ function calculateExpectedCompletion(
   if (currentBalance >= targetAmount) return { month: 'reached', monthsAway: 0 };
 
   // Calculate average monthly contribution from the data
-  const totalContributions = monthlySavings.reduce(
-    (sum, m) => sum + m.actual + m.forecast,
-    0,
-  );
+  const totalContributions = monthlySavings.reduce((sum, m) => sum + m.actual + m.forecast, 0);
   const monthCount = monthlySavings.length || 1;
   const avgMonthlyContribution = totalContributions / monthCount;
 
@@ -75,14 +72,14 @@ export function SavingsGoalProgressCard({
   monthlySavings,
   isEmergencyFund,
 }: SavingsGoalProgressCardProps) {
-  const percentComplete = targetAmount > 0
-    ? Math.min(100, (currentBalance / targetAmount) * 100)
-    : 0;
+  const percentComplete =
+    targetAmount > 0 ? Math.min(100, (currentBalance / targetAmount) * 100) : 0;
 
   const isGoalReached = currentBalance >= targetAmount && targetAmount > 0;
 
   const expectedCompletion = useMemo(
-    () => calculateExpectedCompletion(currentBalance, targetAmount, monthlySavings, annualInterestRate),
+    () =>
+      calculateExpectedCompletion(currentBalance, targetAmount, monthlySavings, annualInterestRate),
     [currentBalance, targetAmount, monthlySavings, annualInterestRate],
   );
 
@@ -152,7 +149,7 @@ export function SavingsGoalProgressCard({
       <div className="flex items-center justify-between gap-3">
         <h4 className="flex items-center gap-2 truncate text-sm text-muted-foreground">
           {isEmergencyFund ? (
-            <Ambulance className="h-4 w-4 shrink-0 text-blue-500" />
+            <Ambulance className="h-4 w-4 shrink-0 fill-blue-500 text-blue-500" />
           ) : (
             <PiggyBank className="h-4 w-4 shrink-0" />
           )}
@@ -179,9 +176,7 @@ export function SavingsGoalProgressCard({
             </div>
           </div>
         ) : (
-          <span className="font-mono text-2xl font-bold">
-            {formatCents(currentBalance)}
-          </span>
+          <span className="font-mono text-2xl font-bold">{formatCents(currentBalance)}</span>
         )}
         {targetAmount > 0 && (
           <p className="mt-0.5 text-sm text-muted-foreground">
@@ -236,11 +231,7 @@ export function SavingsGoalProgressCard({
       )}
 
       {/* No target set message */}
-      {targetAmount <= 0 && (
-        <p className="mt-2 text-sm text-muted-foreground">
-          No target set
-        </p>
-      )}
+      {targetAmount <= 0 && <p className="mt-2 text-sm text-muted-foreground">No target set</p>}
 
       {/* No progress message */}
       {!isGoalReached && targetAmount > 0 && !expectedCompletion && currentBalance === 0 && (

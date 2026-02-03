@@ -70,7 +70,8 @@ function CustomTooltip({
   const data = payload[0]?.payload;
   if (!data) return null;
 
-  const hasForecast = data.incomeForecast > 0 || data.expenseForecast > 0 || data.savingsForecast > 0;
+  const hasForecast =
+    data.incomeForecast > 0 || data.expenseForecast > 0 || data.savingsForecast > 0;
 
   return (
     <div className="rounded-lg border bg-background p-3 shadow-md">
@@ -109,7 +110,8 @@ function CustomTooltip({
           </div>
           {hasForecast && data.expenseForecast > 0 && (
             <div className="ml-4 text-xs text-muted-foreground">
-              {formatCents(data.expenseActual)} actual + {formatCents(data.expenseForecast)} expected
+              {formatCents(data.expenseActual)} actual + {formatCents(data.expenseForecast)}{' '}
+              expected
             </div>
           )}
         </div>
@@ -128,7 +130,8 @@ function CustomTooltip({
           </div>
           {hasForecast && data.savingsForecast > 0 && (
             <div className="ml-4 text-xs text-muted-foreground">
-              {formatCents(data.savingsActual)} actual + {formatCents(data.savingsForecast)} expected
+              {formatCents(data.savingsActual)} actual + {formatCents(data.savingsForecast)}{' '}
+              expected
             </div>
           )}
         </div>
@@ -159,7 +162,9 @@ function CustomTooltip({
             </div>
           )}
           {data.balance !== null && (
-            <div className={`flex justify-between text-sm ${data.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <div
+              className={`flex justify-between text-sm ${data.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}
+            >
               <span>Cash</span>
               <span className="font-mono font-semibold">{formatCents(data.balance)}</span>
             </div>
@@ -170,7 +175,13 @@ function CustomTooltip({
   );
 }
 
-export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMonth, savingsStartingBalance = 0, savingsBalanceStartMonth }: CashFlowChartProps) {
+export function CashFlowChart({
+  monthlyNetFlow,
+  startingBalance,
+  balanceStartMonth,
+  savingsStartingBalance = 0,
+  savingsBalanceStartMonth,
+}: CashFlowChartProps) {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const hasCurrentMonth = monthlyNetFlow.some((m) => m.month === currentMonth);
   const hasFutureData = monthlyNetFlow.some((m) => m.month > currentMonth);
@@ -246,12 +257,22 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
         balance: runningBalance,
       };
     });
-  }, [monthlyNetFlow, startingBalance, balanceStartMonth, savingsStartingBalance, savingsBalanceStartMonth]);
+  }, [
+    monthlyNetFlow,
+    startingBalance,
+    balanceStartMonth,
+    savingsStartingBalance,
+    savingsBalanceStartMonth,
+  ]);
 
   const hasBalance = startingBalance !== null && startingBalance !== undefined;
 
   const hasData = monthlyNetFlow.some(
-    (m) => m.income.actual > 0 || m.expenses.actual > 0 || m.income.forecast > 0 || m.expenses.forecast > 0,
+    (m) =>
+      m.income.actual > 0 ||
+      m.expenses.actual > 0 ||
+      m.income.forecast > 0 ||
+      m.expenses.forecast > 0,
   );
 
   // Check if all legend items are hidden
@@ -277,101 +298,101 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
           All data hidden. Click a legend item to show it.
         </div>
       ) : (
-      <ResponsiveContainer width="100%" height={350}>
-        <ComposedChart data={chartData} margin={{ top: 20, right: 55, bottom: 20, left: 20 }}>
-          <XAxis
-            dataKey="month"
-            tickFormatter={(value) => formatMonth(value)}
-            tick={{ fontSize: 12 }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            tickFormatter={(value) => formatCentsShort(value)}
-            tick={{ fontSize: 12 }}
-            axisLine={false}
-            tickLine={false}
-            width={60}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <ReferenceLine y={0} stroke="#e5e7eb" />
+        <ResponsiveContainer width="100%" height={350}>
+          <ComposedChart data={chartData} margin={{ top: 20, right: 55, bottom: 20, left: 20 }}>
+            <XAxis
+              dataKey="month"
+              tickFormatter={(value) => formatMonth(value)}
+              tick={{ fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              tickFormatter={(value) => formatCentsShort(value)}
+              tick={{ fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+              width={60}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <ReferenceLine y={0} stroke="#e5e7eb" />
 
-          {/* "Now" reference line - only show if current month is in range */}
-          {hasCurrentMonth && (
-            <ReferenceLine
-              x={currentMonth}
-              stroke="#6b7280"
-              strokeWidth={2}
-              label={{
-                value: 'Now',
-                position: 'top',
-                fontSize: 11,
-                fill: '#6b7280',
-              }}
-            />
-          )}
+            {/* "Now" reference line - only show if current month is in range */}
+            {hasCurrentMonth && (
+              <ReferenceLine
+                x={currentMonth}
+                stroke="#6b7280"
+                strokeWidth={2}
+                label={{
+                  value: 'Now',
+                  position: 'top',
+                  fontSize: 11,
+                  fill: '#6b7280',
+                }}
+              />
+            )}
 
-          {/* Cash area in background (green) */}
-          {hasBalance && !hiddenLegends.has('balance') && (
-            <Area
-              type="monotone"
-              dataKey="balance"
-              name="Cash"
-              fill={CHART_COLORS.income}
-              fillOpacity={0.12}
-              stroke={CHART_COLORS.income}
-              strokeWidth={1.5}
-              strokeOpacity={0.4}
-            />
-          )}
+            {/* Cash area in background (green) */}
+            {hasBalance && !hiddenLegends.has('balance') && (
+              <Area
+                type="monotone"
+                dataKey="balance"
+                name="Cash"
+                fill={CHART_COLORS.income}
+                fillOpacity={0.12}
+                stroke={CHART_COLORS.income}
+                strokeWidth={1.5}
+                strokeOpacity={0.4}
+              />
+            )}
 
-          {/* Cumulative savings area (blue) */}
-          {!hiddenLegends.has('totalSaved') && (
-            <Area
-              type="monotone"
-              dataKey="cumulativeSavings"
-              name="Total Saved"
-              fill={CHART_COLORS.savings}
-              fillOpacity={0.15}
-              stroke="none"
-            />
-          )}
+            {/* Cumulative savings area (blue) */}
+            {!hiddenLegends.has('totalSaved') && (
+              <Area
+                type="monotone"
+                dataKey="cumulativeSavings"
+                name="Total Saved"
+                fill={CHART_COLORS.savings}
+                fillOpacity={0.15}
+                stroke="none"
+              />
+            )}
 
-          {!hiddenLegends.has('income') && (
-            <Line
-              type="monotone"
-              dataKey="incomeTotal"
-              name="Income"
-              stroke={CHART_COLORS.income}
-              strokeWidth={2.5}
-              dot={{ r: 4, strokeWidth: 0, fill: CHART_COLORS.income }}
-              activeDot={{ r: 6 }}
-            />
-          )}
-          {!hiddenLegends.has('expenses') && (
-            <Line
-              type="monotone"
-              dataKey="expensesTotal"
-              name="Expenses"
-              stroke={CHART_COLORS.expense}
-              strokeWidth={2.5}
-              dot={{ r: 4, strokeWidth: 0, fill: CHART_COLORS.expense }}
-              activeDot={{ r: 6 }}
-            />
-          )}
-          {!hiddenLegends.has('savings') && (
-            <Line
-              type="monotone"
-              dataKey="savingsTotal"
-              name="Savings"
-              stroke={CHART_COLORS.savings}
-              strokeWidth={2.5}
-              dot={{ r: 4, strokeWidth: 0, fill: CHART_COLORS.savings }}
-              activeDot={{ r: 6 }}
-            />
-          )}
-        </ComposedChart>
-      </ResponsiveContainer>
+            {!hiddenLegends.has('income') && (
+              <Line
+                type="monotone"
+                dataKey="incomeTotal"
+                name="Income"
+                stroke={CHART_COLORS.income}
+                strokeWidth={2.5}
+                dot={{ r: 4, strokeWidth: 0, fill: CHART_COLORS.income }}
+                activeDot={{ r: 6 }}
+              />
+            )}
+            {!hiddenLegends.has('expenses') && (
+              <Line
+                type="monotone"
+                dataKey="expensesTotal"
+                name="Expenses"
+                stroke={CHART_COLORS.expense}
+                strokeWidth={2.5}
+                dot={{ r: 4, strokeWidth: 0, fill: CHART_COLORS.expense }}
+                activeDot={{ r: 6 }}
+              />
+            )}
+            {!hiddenLegends.has('savings') && (
+              <Line
+                type="monotone"
+                dataKey="savingsTotal"
+                name="Savings"
+                stroke={CHART_COLORS.savings}
+                strokeWidth={2.5}
+                dot={{ r: 4, strokeWidth: 0, fill: CHART_COLORS.savings }}
+                activeDot={{ r: 6 }}
+              />
+            )}
+          </ComposedChart>
+        </ResponsiveContainer>
       )}
 
       {/* Legend */}
@@ -383,7 +404,10 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
             hiddenLegends.has('income') ? 'opacity-40' : ''
           }`}
         >
-          <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS.income }} />
+          <div
+            className="h-2.5 w-2.5 rounded-full"
+            style={{ backgroundColor: CHART_COLORS.income }}
+          />
           <span className={hiddenLegends.has('income') ? 'line-through' : ''}>Earned</span>
         </button>
         <button
@@ -393,7 +417,10 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
             hiddenLegends.has('expenses') ? 'opacity-40' : ''
           }`}
         >
-          <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS.expense }} />
+          <div
+            className="h-2.5 w-2.5 rounded-full"
+            style={{ backgroundColor: CHART_COLORS.expense }}
+          />
           <span className={hiddenLegends.has('expenses') ? 'line-through' : ''}>Spending</span>
         </button>
         <button
@@ -403,7 +430,10 @@ export function CashFlowChart({ monthlyNetFlow, startingBalance, balanceStartMon
             hiddenLegends.has('savings') ? 'opacity-40' : ''
           }`}
         >
-          <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS.savings }} />
+          <div
+            className="h-2.5 w-2.5 rounded-full"
+            style={{ backgroundColor: CHART_COLORS.savings }}
+          />
           <span className={hiddenLegends.has('savings') ? 'line-through' : ''}>Saved</span>
         </button>
         <button

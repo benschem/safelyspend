@@ -18,14 +18,20 @@ const DEFAULT_STATE: ViewState = {
  * Computes actual date range based on mode, amount, and unit
  */
 export function useViewState() {
-  const [rawViewState, setViewState] = useLocalStorage<ViewState>(STORAGE_KEYS.VIEW_STATE, DEFAULT_STATE);
+  const [rawViewState, setViewState] = useLocalStorage<ViewState>(
+    STORAGE_KEYS.VIEW_STATE,
+    DEFAULT_STATE,
+  );
 
   // Ensure amount and unit have valid defaults (handles old stored state)
-  const viewState = useMemo(() => ({
-    ...rawViewState,
-    amount: rawViewState.amount ?? DEFAULT_STATE.amount,
-    unit: rawViewState.unit ?? DEFAULT_STATE.unit,
-  }), [rawViewState]);
+  const viewState = useMemo(
+    () => ({
+      ...rawViewState,
+      amount: rawViewState.amount ?? DEFAULT_STATE.amount,
+      unit: rawViewState.unit ?? DEFAULT_STATE.unit,
+    }),
+    [rawViewState],
+  );
 
   // Compute the actual date range from the state
   const dateRange = useMemo(() => {
@@ -36,7 +42,13 @@ export function useViewState() {
       viewState.customStartDate,
       viewState.customEndDate,
     );
-  }, [viewState.mode, viewState.amount, viewState.unit, viewState.customStartDate, viewState.customEndDate]);
+  }, [
+    viewState.mode,
+    viewState.amount,
+    viewState.unit,
+    viewState.customStartDate,
+    viewState.customEndDate,
+  ]);
 
   const setMode = useCallback(
     (mode: TimelineMode) => {

@@ -5,11 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
-import {
-  formatDateRange,
-  getDateRangePreset,
-  type DateRangePreset,
-} from '@/lib/utils';
+import { formatDateRange, getDateRangePreset, type DateRangePreset } from '@/lib/utils';
 
 interface DateRangePickerProps {
   startDate: string;

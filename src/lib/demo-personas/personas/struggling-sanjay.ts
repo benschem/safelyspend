@@ -290,9 +290,7 @@ export const strugglingSanjay: PersonaConfig = {
         { category: 'Subscriptions', amountCents: 1300 }, // $13 - Spotify only
         { category: 'Health', amountCents: 2000 }, // $20
       ],
-      savingsOverrides: [
-        { goalName: 'Emergency Buffer', monthlyContributionCents: 0 },
-      ],
+      savingsOverrides: [{ goalName: 'Emergency Buffer', monthlyContributionCents: 0 }],
     },
   ],
 };

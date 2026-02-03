@@ -39,16 +39,13 @@ export function ErrorPreviewPage() {
             </Link>
           </Button>
         </div>
-
       </div>
 
       <div className="mt-8 w-full max-w-4xl text-left">
         <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Error details (dev only)
         </p>
-        <pre className="overflow-auto rounded-lg border bg-muted/50 p-4 text-xs">
-          {errorStack}
-        </pre>
+        <pre className="overflow-auto rounded-lg border bg-muted/50 p-4 text-xs">{errorStack}</pre>
       </div>
     </div>
   );

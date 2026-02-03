@@ -94,10 +94,7 @@ function CustomTooltip({
           return (
             <div key={item.name} className="text-sm">
               <div className="flex items-center gap-2">
-                <div
-                  className="h-2.5 w-2.5 rounded-full"
-                  style={{ backgroundColor: item.color }}
-                />
+                <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
                 <span className="font-medium">{item.name}</span>
               </div>
               <div className="ml-4 flex items-center gap-2 text-xs text-muted-foreground">
@@ -107,13 +104,12 @@ function CustomTooltip({
                     <span>/</span>
                     <span>{formatCents(item.budget)} budget</span>
                     <span className={`font-medium ${isOver ? 'text-red-600' : 'text-green-600'}`}>
-                      ({isOver ? '+' : ''}{formatCents(item.variance * -1)} {isOver ? 'over' : 'under'})
+                      ({isOver ? '+' : ''}
+                      {formatCents(item.variance * -1)} {isOver ? 'over' : 'under'})
                     </span>
                   </>
                 )}
-                {showBudget && item.budget === 0 && (
-                  <span className="italic">(no budget)</span>
-                )}
+                {showBudget && item.budget === 0 && <span className="italic">(no budget)</span>}
               </div>
             </div>
           );
@@ -130,7 +126,9 @@ function CustomTooltip({
               <span>Total Budget</span>
               <span className="font-mono">{formatCents(totalBudget)}</span>
             </div>
-            <div className={`flex justify-between font-semibold ${totalVariance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <div
+              className={`flex justify-between font-semibold ${totalVariance >= 0 ? 'text-green-600' : 'text-red-600'}`}
+            >
               <span>{totalVariance >= 0 ? 'Under Budget' : 'Over Budget'}</span>
               <span className="font-mono">{formatCents(Math.abs(totalVariance))}</span>
             </div>
@@ -168,7 +166,10 @@ export function BudgetComparisonChart({
 
   // Calculate period totals for each category
   const categoryStats = useMemo(() => {
-    const stats: Record<string, { actual: number; budget: number; variance: number; hasBudget: boolean }> = {};
+    const stats: Record<
+      string,
+      { actual: number; budget: number; variance: number; hasBudget: boolean }
+    > = {};
     for (const cat of budgetCategories) {
       const actual = monthlyBudgetComparison.reduce((sum, m) => {
         return sum + (m.categories[cat.id]?.actual ?? 0);
@@ -201,7 +202,8 @@ export function BudgetComparisonChart({
   };
 
   // Check if all categories are hidden (must check actual IDs, not just count)
-  const allHidden = sortedCategories.length > 0 && sortedCategories.every((c) => hiddenCategories.has(c.id));
+  const allHidden =
+    sortedCategories.length > 0 && sortedCategories.every((c) => hiddenCategories.has(c.id));
 
   if (budgetCategories.length === 0) {
     return (
@@ -218,84 +220,91 @@ export function BudgetComparisonChart({
           All categories hidden. Click a category to show it.
         </div>
       ) : (
-      <ResponsiveContainer width="100%" height={350}>
-        <LineChart data={chartData} margin={{ top: 20, right: 55, bottom: 20, left: 20 }}>
-          <XAxis
-            dataKey="month"
-            tickFormatter={(value) => formatMonth(value)}
-            tick={{ fontSize: 12 }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            tickFormatter={(value) => formatCentsShort(value)}
-            tick={{ fontSize: 12 }}
-            axisLine={false}
-            tickLine={false}
-            width={60}
-          />
-          <Tooltip
-            content={<CustomTooltip budgetCategories={budgetCategories} colorMap={colorMap} showBudget={showBudget} hiddenCategories={hiddenCategories} />}
-          />
-          <ReferenceLine y={0} stroke="#e5e7eb" />
-
-          {/* "Now" reference line - only show if current month is in range */}
-          {hasCurrentMonth && (
-            <ReferenceLine
-              x={currentMonth}
-              stroke="#6b7280"
-              strokeWidth={2}
-              label={{
-                value: 'Now',
-                position: 'top',
-                fontSize: 11,
-                fill: '#6b7280',
-              }}
+        <ResponsiveContainer width="100%" height={350}>
+          <LineChart data={chartData} margin={{ top: 20, right: 55, bottom: 20, left: 20 }}>
+            <XAxis
+              dataKey="month"
+              tickFormatter={(value) => formatMonth(value)}
+              tick={{ fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
             />
-          )}
+            <YAxis
+              tickFormatter={(value) => formatCentsShort(value)}
+              tick={{ fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+              width={60}
+            />
+            <Tooltip
+              content={
+                <CustomTooltip
+                  budgetCategories={budgetCategories}
+                  colorMap={colorMap}
+                  showBudget={showBudget}
+                  hiddenCategories={hiddenCategories}
+                />
+              }
+            />
+            <ReferenceLine y={0} stroke="#e5e7eb" />
 
-          {sortedCategories.flatMap((cat) => {
-            const isHidden = hiddenCategories.has(cat.id);
-            const color = colorMap[cat.id] ?? '#9ca3af';
-            const hasBudget = categoryStats[cat.id]?.hasBudget ?? false;
-            const lines = [];
+            {/* "Now" reference line - only show if current month is in range */}
+            {hasCurrentMonth && (
+              <ReferenceLine
+                x={currentMonth}
+                stroke="#6b7280"
+                strokeWidth={2}
+                label={{
+                  value: 'Now',
+                  position: 'top',
+                  fontSize: 11,
+                  fill: '#6b7280',
+                }}
+              />
+            )}
 
-            // Budget line (dashed) - only show if toggle is on AND category has a budget
-            if (showBudget && hasBudget) {
+            {sortedCategories.flatMap((cat) => {
+              const isHidden = hiddenCategories.has(cat.id);
+              const color = colorMap[cat.id] ?? '#9ca3af';
+              const hasBudget = categoryStats[cat.id]?.hasBudget ?? false;
+              const lines = [];
+
+              // Budget line (dashed) - only show if toggle is on AND category has a budget
+              if (showBudget && hasBudget) {
+                lines.push(
+                  <Line
+                    key={`${cat.id}_budget`}
+                    type="monotone"
+                    dataKey={`${cat.id}_budget`}
+                    name={`${cat.name} Budget`}
+                    stroke={color}
+                    strokeWidth={isHidden ? 0 : 2}
+                    strokeDasharray="6 4"
+                    dot={false}
+                    hide={isHidden}
+                  />,
+                );
+              }
+
+              // Actual line (solid)
               lines.push(
                 <Line
-                  key={`${cat.id}_budget`}
+                  key={`${cat.id}_actual`}
                   type="monotone"
-                  dataKey={`${cat.id}_budget`}
-                  name={`${cat.name} Budget`}
+                  dataKey={`${cat.id}_actual`}
+                  name={`${cat.name} Actual`}
                   stroke={color}
-                  strokeWidth={isHidden ? 0 : 2}
-                  strokeDasharray="6 4"
-                  dot={false}
+                  strokeWidth={isHidden ? 0 : 2.5}
+                  dot={{ r: 4, strokeWidth: 0, fill: color }}
+                  activeDot={{ r: 6 }}
                   hide={isHidden}
                 />,
               );
-            }
 
-            // Actual line (solid)
-            lines.push(
-              <Line
-                key={`${cat.id}_actual`}
-                type="monotone"
-                dataKey={`${cat.id}_actual`}
-                name={`${cat.name} Actual`}
-                stroke={color}
-                strokeWidth={isHidden ? 0 : 2.5}
-                dot={{ r: 4, strokeWidth: 0, fill: color }}
-                activeDot={{ r: 6 }}
-                hide={isHidden}
-              />,
-            );
-
-            return lines;
-          })}
-        </LineChart>
-      </ResponsiveContainer>
+              return lines;
+            })}
+          </LineChart>
+        </ResponsiveContainer>
       )}
 
       {/* Controls row */}
@@ -350,7 +359,8 @@ export function BudgetComparisonChart({
               </span>
               {showBudget && hasBudget && stats && (
                 <span className={`text-xs ${isOver ? 'text-red-600' : 'text-green-600'}`}>
-                  {isOver ? '▲' : '▼'}{formatCents(Math.abs(stats.variance))}
+                  {isOver ? '▲' : '▼'}
+                  {formatCents(Math.abs(stats.variance))}
                 </span>
               )}
               {showBudget && !hasBudget && (

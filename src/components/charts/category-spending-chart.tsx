@@ -55,9 +55,7 @@ function CustomTooltip({
   const monthData = monthlyData.find((m) => m.month === label);
 
   // Sort by value descending
-  const sorted = [...payload]
-    .filter((p) => p.value > 0)
-    .sort((a, b) => b.value - a.value);
+  const sorted = [...payload].filter((p) => p.value > 0).sort((a, b) => b.value - a.value);
 
   if (sorted.length === 0) return null;
 
@@ -69,14 +67,19 @@ function CustomTooltip({
     <div className="rounded-lg border bg-background p-3 shadow-md">
       <p className="mb-2 font-semibold">
         {label ? formatMonth(label) : ''}
-        {isFuture && <span className="ml-2 text-xs font-normal text-muted-foreground">(forecast)</span>}
-        {isCurrent && <span className="ml-2 text-xs font-normal text-muted-foreground">(current)</span>}
+        {isFuture && (
+          <span className="ml-2 text-xs font-normal text-muted-foreground">(forecast)</span>
+        )}
+        {isCurrent && (
+          <span className="ml-2 text-xs font-normal text-muted-foreground">(current)</span>
+        )}
       </p>
       <div className="space-y-1">
         {sorted.map((item) => {
-          const catData = item.dataKey === 'uncategorized'
-            ? monthData?.uncategorized
-            : monthData?.categories[item.dataKey];
+          const catData =
+            item.dataKey === 'uncategorized'
+              ? monthData?.uncategorized
+              : monthData?.categories[item.dataKey];
           const hasBreakdown = catData && catData.actual > 0 && catData.forecast > 0;
 
           return (
@@ -199,79 +202,79 @@ export function CategorySpendingChart({
           All categories hidden. Click a category to show it.
         </div>
       ) : (
-      <ResponsiveContainer width="100%" height={350}>
-        <LineChart data={chartData} margin={{ top: 20, right: 55, bottom: 20, left: 20 }}>
-          <XAxis
-            dataKey="month"
-            tickFormatter={(value) => formatMonth(value)}
-            tick={{ fontSize: 12 }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            tickFormatter={(value) => formatCentsShort(value)}
-            tick={{ fontSize: 12 }}
-            axisLine={false}
-            tickLine={false}
-            width={60}
-          />
-          <Tooltip
-            content={
-              <CustomTooltip
-                colorMap={colorMap}
-                currentMonth={currentMonth}
-                monthlyData={monthlySpending}
-              />
-            }
-          />
-          <ReferenceLine y={0} stroke="#e5e7eb" />
-
-          {/* "Now" reference line - only show if current month is in range */}
-          {hasCurrentMonth && (
-            <ReferenceLine
-              x={currentMonth}
-              stroke="#6b7280"
-              strokeWidth={2}
-              label={{
-                value: 'Now',
-                position: 'top',
-                fontSize: 11,
-                fill: '#6b7280',
-              }}
+        <ResponsiveContainer width="100%" height={350}>
+          <LineChart data={chartData} margin={{ top: 20, right: 55, bottom: 20, left: 20 }}>
+            <XAxis
+              dataKey="month"
+              tickFormatter={(value) => formatMonth(value)}
+              tick={{ fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
             />
-          )}
+            <YAxis
+              tickFormatter={(value) => formatCentsShort(value)}
+              tick={{ fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+              width={60}
+            />
+            <Tooltip
+              content={
+                <CustomTooltip
+                  colorMap={colorMap}
+                  currentMonth={currentMonth}
+                  monthlyData={monthlySpending}
+                />
+              }
+            />
+            <ReferenceLine y={0} stroke="#e5e7eb" />
 
-          {sortedCategories.map((cat) => {
-            const catColor = colorMap[cat.id] ?? '#9ca3af';
-            return (
+            {/* "Now" reference line - only show if current month is in range */}
+            {hasCurrentMonth && (
+              <ReferenceLine
+                x={currentMonth}
+                stroke="#6b7280"
+                strokeWidth={2}
+                label={{
+                  value: 'Now',
+                  position: 'top',
+                  fontSize: 11,
+                  fill: '#6b7280',
+                }}
+              />
+            )}
+
+            {sortedCategories.map((cat) => {
+              const catColor = colorMap[cat.id] ?? '#9ca3af';
+              return (
+                <Line
+                  key={cat.id}
+                  type="monotone"
+                  dataKey={cat.id}
+                  name={cat.name}
+                  stroke={catColor}
+                  strokeWidth={hiddenCategories.has(cat.id) ? 0 : 2.5}
+                  dot={{ r: 4, strokeWidth: 0, fill: catColor }}
+                  activeDot={{ r: 6 }}
+                  hide={hiddenCategories.has(cat.id)}
+                />
+              );
+            })}
+
+            {hasUncategorized && (
               <Line
-                key={cat.id}
                 type="monotone"
-                dataKey={cat.id}
-                name={cat.name}
-                stroke={catColor}
-                strokeWidth={hiddenCategories.has(cat.id) ? 0 : 2.5}
-                dot={{ r: 4, strokeWidth: 0, fill: catColor }}
+                dataKey="uncategorized"
+                name="Uncategorised"
+                stroke={CHART_COLORS.uncategorized}
+                strokeWidth={hiddenCategories.has('uncategorized') ? 0 : 2.5}
+                dot={{ r: 4, strokeWidth: 0, fill: CHART_COLORS.uncategorized }}
                 activeDot={{ r: 6 }}
-                hide={hiddenCategories.has(cat.id)}
+                hide={hiddenCategories.has('uncategorized')}
               />
-            );
-          })}
-
-          {hasUncategorized && (
-            <Line
-              type="monotone"
-              dataKey="uncategorized"
-              name="Uncategorised"
-              stroke={CHART_COLORS.uncategorized}
-              strokeWidth={hiddenCategories.has('uncategorized') ? 0 : 2.5}
-              dot={{ r: 4, strokeWidth: 0, fill: CHART_COLORS.uncategorized }}
-              activeDot={{ r: 6 }}
-              hide={hiddenCategories.has('uncategorized')}
-            />
-          )}
-        </LineChart>
-      </ResponsiveContainer>
+            )}
+          </LineChart>
+        </ResponsiveContainer>
       )}
 
       {/* Legend Controls */}
@@ -307,14 +310,9 @@ export function CategorySpendingChart({
                 isHidden ? 'opacity-40' : ''
               }`}
             >
-              <div
-                className="h-3 w-3 rounded-full"
-                style={{ backgroundColor: colorMap[cat.id] }}
-              />
+              <div className="h-3 w-3 rounded-full" style={{ backgroundColor: colorMap[cat.id] }} />
               <span className={isHidden ? 'line-through' : ''}>{cat.name}</span>
-              <span className="font-mono text-xs text-muted-foreground">
-                {formatCents(total)}
-              </span>
+              <span className="font-mono text-xs text-muted-foreground">{formatCents(total)}</span>
             </button>
           );
         })}

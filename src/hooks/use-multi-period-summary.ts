@@ -4,20 +4,20 @@ import { useAdjustedBudgets, useAdjustedForecasts } from './use-adjusted-values'
 import { getMonthsBetween, toMonthlyCents, type CadenceType } from '@/lib/utils';
 
 export interface MonthSummary {
-  month: string;           // YYYY-MM
-  monthIndex: number;      // 0-11
+  month: string; // YYYY-MM
+  monthIndex: number; // 0-11
   year: number;
-  label: string;           // "January"
-  shortLabel: string;      // "Jan"
-  surplus: number;         // income - expenses - savings (positive = surplus, negative = shortfall)
+  label: string; // "January"
+  shortLabel: string; // "Jan"
+  surplus: number; // income - expenses - savings (positive = surplus, negative = shortfall)
   isCurrentMonth: boolean;
   isFuture: boolean;
   isPast: boolean;
   income: number;
   expenses: number;
   savings: number;
-  totalBudget: number;     // fixed + variable budget for the month
-  budgetDiff: number;      // budget - actual expenses (positive = under budget)
+  totalBudget: number; // fixed + variable budget for the month
+  budgetDiff: number; // budget - actual expenses (positive = under budget)
 }
 
 interface UseMultiPeriodSummaryOptions {
@@ -38,13 +38,33 @@ interface UseMultiPeriodSummaryResult {
 }
 
 const MONTH_LABELS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 const SHORT_LABELS = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 /**
@@ -77,7 +97,11 @@ export function useMultiPeriodSummary({
 
   const { allTransactions, isLoading: transactionsLoading } = useTransactions();
   const { budgetRules, isLoading: budgetLoading } = useAdjustedBudgets(scenarioId);
-  const { expandedForecasts, isLoading: forecastsLoading } = useAdjustedForecasts(scenarioId, startDate, endDate);
+  const { expandedForecasts, isLoading: forecastsLoading } = useAdjustedForecasts(
+    scenarioId,
+    startDate,
+    endDate,
+  );
 
   const isLoading = transactionsLoading || budgetLoading || forecastsLoading;
 

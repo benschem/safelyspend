@@ -20,7 +20,10 @@ interface SavingsGoalDialogProps {
   onOpenChange: (open: boolean) => void;
   goal?: SavingsGoal | null;
   addSavingsGoal: (data: CreateEntity<SavingsGoal>) => Promise<SavingsGoal>;
-  updateSavingsGoal: (id: string, updates: Partial<Omit<SavingsGoal, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
+  updateSavingsGoal: (
+    id: string,
+    updates: Partial<Omit<SavingsGoal, 'id' | 'userId' | 'createdAt'>>,
+  ) => Promise<void>;
   deleteSavingsGoal?: (id: string) => void;
   addTransaction: (data: CreateEntity<Transaction>) => Promise<Transaction>;
   addSavingsAnchor?: (data: CreateEntity<SavingsAnchor>) => Promise<SavingsAnchor>;
@@ -30,7 +33,17 @@ interface SavingsGoalDialogProps {
   earliestAnchorDate?: string | null;
 }
 
-export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal, addTransaction, addSavingsAnchor, transactionCount = 0 }: SavingsGoalDialogProps) {
+export function SavingsGoalDialog({
+  open,
+  onOpenChange,
+  goal,
+  addSavingsGoal,
+  updateSavingsGoal,
+  deleteSavingsGoal,
+  addTransaction,
+  addSavingsAnchor,
+  transactionCount = 0,
+}: SavingsGoalDialogProps) {
   const isEditing = !!goal;
 
   // Form state
@@ -143,7 +156,9 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
       }
       onOpenChange(false);
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Failed to save goal. Please try again.');
+      setFormError(
+        error instanceof Error ? error.message : 'Failed to save goal. Please try again.',
+      );
     }
   };
 
@@ -153,7 +168,9 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit' : 'Add'} Savings Goal</DialogTitle>
           <DialogDescription>
-            {isEditing ? 'Update the savings goal details.' : 'Create a new savings target to track your progress.'}
+            {isEditing
+              ? 'Update the savings goal details.'
+              : 'Create a new savings target to track your progress.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -165,7 +182,9 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="goal-name" className="select-none">Goal Name</Label>
+            <Label htmlFor="goal-name" className="select-none">
+              Goal Name
+            </Label>
             <Input
               id="goal-name"
               placeholder="e.g., Emergency Fund, Holiday"
@@ -176,7 +195,9 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="goal-target" className="select-none">Target Amount ($)</Label>
+              <Label htmlFor="goal-target" className="select-none">
+                Target Amount ($)
+              </Label>
               <Input
                 id="goal-target"
                 type="number"
@@ -213,7 +234,8 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
               <div className="mb-2 flex items-start gap-2">
                 <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                  Is this money you&apos;ve <strong>already saved</strong>, or are you <strong>transferring it now</strong> from your bank account?
+                  Is this money you&apos;ve <strong>already saved</strong>, or are you{' '}
+                  <strong>transferring it now</strong> from your bank account?
                 </p>
               </div>
               <RadioGroup
@@ -236,7 +258,10 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
               </RadioGroup>
               {balanceType === 'already-saved' && (
                 <div className="mt-3 space-y-2">
-                  <Label htmlFor="balance-date" className="text-sm font-normal text-blue-800 dark:text-blue-200">
+                  <Label
+                    htmlFor="balance-date"
+                    className="text-sm font-normal text-blue-800 dark:text-blue-200"
+                  >
                     As of date
                   </Label>
                   <Input
@@ -311,7 +336,11 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
                 className="gap-1.5"
               >
                 <Trash2 className="h-4 w-4" />
-                {isDeleting ? (transactionCount > 0 ? `Delete with ${transactionCount} txn?` : 'Confirm delete') : 'Delete'}
+                {isDeleting
+                  ? transactionCount > 0
+                    ? `Delete with ${transactionCount} txn?`
+                    : 'Confirm delete'
+                  : 'Delete'}
               </Button>
             ) : (
               <div />
@@ -320,9 +349,7 @@ export function SavingsGoalDialog({ open, onOpenChange, goal, addSavingsGoal, up
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSave}>
-                {isEditing ? 'Save' : 'Create'} Goal
-              </Button>
+              <Button onClick={handleSave}>{isEditing ? 'Save' : 'Create'} Goal</Button>
             </div>
           </div>
         </div>

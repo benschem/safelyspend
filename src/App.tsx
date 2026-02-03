@@ -20,8 +20,15 @@ import { ChangelogPage } from '@/routes/changelog';
 // Dev-only: style guide and error preview not bundled in production
 const devOnlyRoutes = import.meta.env.DEV
   ? [
-      { path: 'style-guide', lazy: () => import('@/routes/style-guide').then(m => ({ Component: m.StyleGuidePage })) },
-      { path: 'error', lazy: () => import('@/routes/error-preview').then(m => ({ Component: m.ErrorPreviewPage })) },
+      {
+        path: 'style-guide',
+        lazy: () => import('@/routes/style-guide').then((m) => ({ Component: m.StyleGuidePage })),
+      },
+      {
+        path: 'error',
+        lazy: () =>
+          import('@/routes/error-preview').then((m) => ({ Component: m.ErrorPreviewPage })),
+      },
     ]
   : [];
 
@@ -50,7 +57,10 @@ const router = createBrowserRouter([
       { path: 'money', element: <Navigate to="/cash-flow" replace /> },
       { path: 'transactions', element: <Navigate to="/cash-flow" replace /> },
       { path: 'forecasts', element: <Navigate to="/budget?tab=fixed-expenses" replace /> },
-      { path: 'forecasts/recurring', element: <Navigate to="/budget?tab=fixed-expenses" replace /> },
+      {
+        path: 'forecasts/recurring',
+        element: <Navigate to="/budget?tab=fixed-expenses" replace />,
+      },
       { path: 'recurring', element: <Navigate to="/budget?tab=fixed-expenses" replace /> },
       { path: 'check-in', element: <Navigate to="/snapshot" replace /> },
       { path: 'spending', element: <Navigate to="/snapshot" replace /> },
@@ -74,7 +84,6 @@ const router = createBrowserRouter([
 
       // Scenarios (plan)
       { path: 'scenarios', element: <ScenariosIndexPage /> },
-
 
       // Settings
       { path: 'settings', element: <SettingsPage /> },

@@ -17,7 +17,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Target, Plus, RefreshCw } from 'lucide-react';
-import { cn, formatCents, toMonthlyCents, CADENCE_SHORT_LABELS, type CadenceType } from '@/lib/utils';
+import {
+  cn,
+  formatCents,
+  toMonthlyCents,
+  CADENCE_SHORT_LABELS,
+  type CadenceType,
+} from '@/lib/utils';
 import type { Transaction, BudgetRule, Cadence } from '@/lib/types';
 
 type UpdateMode = 'add' | 'replace';
@@ -107,7 +113,9 @@ export function AddToBudgetDialog({
           {/* Amount and cadence */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="budget-amount" className="select-none">Amount ($)</Label>
+              <Label htmlFor="budget-amount" className="select-none">
+                Amount ($)
+              </Label>
               <Input
                 id="budget-amount"
                 type="number"
@@ -152,7 +160,8 @@ export function AddToBudgetDialog({
                     <div>
                       <div className="text-sm font-medium">Add to existing</div>
                       <div className="text-xs text-muted-foreground">
-                        {formatCents(existingMonthly)}/mo + {formatCents(amountMonthly)}/mo = {formatCents(newTotalMonthly)}/mo
+                        {formatCents(existingMonthly)}/mo + {formatCents(amountMonthly)}/mo ={' '}
+                        {formatCents(newTotalMonthly)}/mo
                       </div>
                     </div>
                   </div>
@@ -185,9 +194,13 @@ export function AddToBudgetDialog({
               <div className="flex justify-between">
                 <span className="text-muted-foreground">New budget:</span>
                 <span className="font-mono">
-                  {formatCents(amountCents)}{CADENCE_SHORT_LABELS[cadence]}
+                  {formatCents(amountCents)}
+                  {CADENCE_SHORT_LABELS[cadence]}
                   {cadence !== 'monthly' && (
-                    <span className="text-muted-foreground"> ({formatCents(amountMonthly)}/mo)</span>
+                    <span className="text-muted-foreground">
+                      {' '}
+                      ({formatCents(amountMonthly)}/mo)
+                    </span>
                   )}
                 </span>
               </div>

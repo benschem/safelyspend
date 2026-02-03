@@ -28,10 +28,20 @@ interface TransactionDialogProps {
   transaction?: Transaction | null;
   initialType?: TransactionType;
   addTransaction: (data: CreateEntity<Transaction>) => Promise<Transaction>;
-  updateTransaction: (id: string, updates: Partial<Omit<Transaction, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
+  updateTransaction: (
+    id: string,
+    updates: Partial<Omit<Transaction, 'id' | 'userId' | 'createdAt'>>,
+  ) => Promise<void>;
 }
 
-export function TransactionDialog({ open, onOpenChange, transaction, initialType = 'expense', addTransaction, updateTransaction }: TransactionDialogProps) {
+export function TransactionDialog({
+  open,
+  onOpenChange,
+  transaction,
+  initialType = 'expense',
+  addTransaction,
+  updateTransaction,
+}: TransactionDialogProps) {
   const isEditing = !!transaction;
   const todayDate = today();
 
@@ -125,7 +135,9 @@ export function TransactionDialog({ open, onOpenChange, transaction, initialType
       }
       onOpenChange(false);
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Failed to save transaction. Please try again.');
+      setFormError(
+        error instanceof Error ? error.message : 'Failed to save transaction. Please try again.',
+      );
     }
   };
 
@@ -137,7 +149,9 @@ export function TransactionDialog({ open, onOpenChange, transaction, initialType
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit' : 'Add'} Past Transaction</DialogTitle>
           <DialogDescription>
-            {isEditing ? 'Update the transaction details.' : 'Record a past income, expense, or savings transfer.'}
+            {isEditing
+              ? 'Update the transaction details.'
+              : 'Record a past income, expense, or savings transfer.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -149,7 +163,9 @@ export function TransactionDialog({ open, onOpenChange, transaction, initialType
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="tx-description" className="select-none">Description</Label>
+            <Label htmlFor="tx-description" className="select-none">
+              Description
+            </Label>
             <Input
               id="tx-description"
               placeholder="e.g., Woolworths, Salary"
@@ -176,7 +192,9 @@ export function TransactionDialog({ open, onOpenChange, transaction, initialType
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="tx-date" className="select-none">Date</Label>
+              <Label htmlFor="tx-date" className="select-none">
+                Date
+              </Label>
               <Input
                 id="tx-date"
                 type="date"
@@ -187,7 +205,9 @@ export function TransactionDialog({ open, onOpenChange, transaction, initialType
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="tx-amount" className="select-none">Amount ($)</Label>
+              <Label htmlFor="tx-amount" className="select-none">
+                Amount ($)
+              </Label>
               <Input
                 id="tx-amount"
                 type="number"
@@ -235,23 +255,18 @@ export function TransactionDialog({ open, onOpenChange, transaction, initialType
 
               <div className="space-y-2">
                 <Label className="select-none">Savings Goal</Label>
-                <SavingsGoalSelect
-                  value={savingsGoalId}
-                  onChange={setSavingsGoalId}
-                />
+                <SavingsGoalSelect value={savingsGoalId} onChange={setSavingsGoalId} />
               </div>
             </div>
           ) : (
             <div className="space-y-2">
               <Label className="select-none">
                 Category
-                {type === 'income' && <span className="ml-1 font-normal text-muted-foreground">(optional)</span>}
+                {type === 'income' && (
+                  <span className="ml-1 font-normal text-muted-foreground">(optional)</span>
+                )}
               </Label>
-              <CategorySelect
-                value={categoryId}
-                onChange={setCategoryId}
-                allowNone
-              />
+              <CategorySelect value={categoryId} onChange={setCategoryId} allowNone />
             </div>
           )}
 
@@ -273,9 +288,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, initialType
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>
-              {isEditing ? 'Save' : 'Add'} Transaction
-            </Button>
+            <Button onClick={handleSave}>{isEditing ? 'Save' : 'Add'} Transaction</Button>
           </div>
         </div>
       </DialogContent>

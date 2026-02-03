@@ -36,7 +36,8 @@ export function DeleteForecastDialog({
             Delete Recurring Transaction
           </DialogTitle>
           <DialogDescription>
-            &quot;{forecast.description}&quot; is a recurring transaction. What would you like to delete?
+            &quot;{forecast.description}&quot; is a recurring transaction. What would you like to
+            delete?
           </DialogDescription>
         </DialogHeader>
 
@@ -51,7 +52,8 @@ export function DeleteForecastDialog({
               <div>
                 <div className="font-medium">Delete this occurrence</div>
                 <div className="text-sm text-muted-foreground">
-                  Only remove the {formatDate(forecast.date)} occurrence. Future occurrences will remain.
+                  Only remove the {formatDate(forecast.date)} occurrence. Future occurrences will
+                  remain.
                 </div>
               </div>
             </div>
@@ -67,7 +69,8 @@ export function DeleteForecastDialog({
               <div>
                 <div className="font-medium text-destructive">Delete all occurrences</div>
                 <div className="text-sm text-muted-foreground">
-                  Remove the recurring expectation entirely. All past and future occurrences will be deleted.
+                  Remove the recurring expectation entirely. All past and future occurrences will be
+                  deleted.
                 </div>
               </div>
             </div>

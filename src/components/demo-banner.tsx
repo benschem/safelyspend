@@ -19,7 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { clearAllData, getAvailablePersonas, getDemoPersonaId, switchPersona } from '@/lib/demo-data';
+import {
+  clearAllData,
+  getAvailablePersonas,
+  getDemoPersonaId,
+  switchPersona,
+} from '@/lib/demo-data';
 import { debug } from '@/lib/debug';
 
 export function DemoBanner() {
@@ -95,7 +100,7 @@ export function DemoBanner() {
           <Select value={currentPersonaId} onValueChange={handlePersonaChange} disabled={isLoading}>
             <SelectTrigger className="h-7 w-auto gap-1 border-yellow-600/50 bg-transparent text-sm hover:bg-yellow-200 dark:border-yellow-500/50 dark:hover:bg-yellow-900 sm:gap-2">
               <SelectValue>
-                {isLoading ? 'Loading...' : currentPersona?.name ?? 'Select'}
+                {isLoading ? 'Loading...' : (currentPersona?.name ?? 'Select')}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -123,9 +128,7 @@ export function DemoBanner() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleReset}>
-              Delete demo data
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleReset}>Delete demo data</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

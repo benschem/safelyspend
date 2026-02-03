@@ -22,15 +22,15 @@ import { formatCents } from '@/lib/utils';
 // Global wealth percentiles (approximate, Credit Suisse Global Wealth Report)
 // Values in AUD cents - most people with any savings rank highly globally
 const GLOBAL_WEALTH_PERCENTILES = [
-  { percentile: 0, value: -10000000 },   // -$100k (negative net worth)
-  { percentile: 30, value: 0 },          // $0 - having no debt puts you ahead of 30%
-  { percentile: 50, value: 600000 },     // $6k - median global wealth
-  { percentile: 60, value: 1500000 },    // $15k
-  { percentile: 70, value: 4000000 },    // $40k
-  { percentile: 80, value: 7500000 },    // $75k
-  { percentile: 88, value: 15000000 },   // $150k
-  { percentile: 95, value: 50000000 },   // $500k
-  { percentile: 99, value: 150000000 },  // $1.5M
+  { percentile: 0, value: -10000000 }, // -$100k (negative net worth)
+  { percentile: 30, value: 0 }, // $0 - having no debt puts you ahead of 30%
+  { percentile: 50, value: 600000 }, // $6k - median global wealth
+  { percentile: 60, value: 1500000 }, // $15k
+  { percentile: 70, value: 4000000 }, // $40k
+  { percentile: 80, value: 7500000 }, // $75k
+  { percentile: 88, value: 15000000 }, // $150k
+  { percentile: 95, value: 50000000 }, // $500k
+  { percentile: 99, value: 150000000 }, // $1.5M
   { percentile: 100, value: 1000000000 }, // $10M+
 ];
 
@@ -62,16 +62,22 @@ export function NetWealthPage() {
   const navigate = useNavigate();
 
   // Helper to set up insights navigation with 3-year view
-  const goToSavingsInsights = useCallback((viewType: string) => {
-    localStorage.setItem('budget:savingsChartView', viewType);
-    localStorage.setItem('budget:viewState', JSON.stringify({
-      mode: 'around-present',
-      amount: 3,
-      unit: 'years',
-      lastPresetMode: 'around-present',
-    }));
-    navigate('/insights?tab=savings');
-  }, [navigate]);
+  const goToSavingsInsights = useCallback(
+    (viewType: string) => {
+      localStorage.setItem('budget:savingsChartView', viewType);
+      localStorage.setItem(
+        'budget:viewState',
+        JSON.stringify({
+          mode: 'around-present',
+          amount: 3,
+          unit: 'years',
+          lastPresetMode: 'around-present',
+        }),
+      );
+      navigate('/insights?tab=savings');
+    },
+    [navigate],
+  );
 
   // Fixed date ranges - no user selection
   const today = new Date().toISOString().slice(0, 10);
@@ -192,8 +198,11 @@ export function NetWealthPage() {
           <HandCoins className="h-4 w-4" />
           Net Wealth
         </p>
-        <p className={`mt-2 text-5xl font-bold tracking-tight ${netWealth >= 0 ? '' : 'text-red-500'}`}>
-          {netWealth >= 0 ? '' : '-'}{formatCents(Math.abs(netWealth))}
+        <p
+          className={`mt-2 text-5xl font-bold tracking-tight ${netWealth >= 0 ? '' : 'text-red-500'}`}
+        >
+          {netWealth >= 0 ? '' : '-'}
+          {formatCents(Math.abs(netWealth))}
         </p>
         <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
         <p className="text-sm text-muted-foreground">
@@ -258,9 +267,7 @@ export function NetWealthPage() {
               <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
             </div>
             <p className="mt-4 text-sm text-muted-foreground">Emergency Fund</p>
-            <p className="mt-1 text-xl font-semibold">
-              {formatCents(emergencyFundBalance ?? 0)}
-            </p>
+            <p className="mt-1 text-xl font-semibold">{formatCents(emergencyFundBalance ?? 0)}</p>
             <div className="mt-3 mb-2 h-px bg-border" />
             <p className="text-sm text-muted-foreground">For life&apos;s surprises</p>
           </button>

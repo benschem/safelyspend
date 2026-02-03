@@ -17,19 +17,28 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { Plus, Pencil, Trash2, Download, AlertTriangle, RotateCcw, BanknoteArrowUp, BanknoteArrowDown, PiggyBank, ArrowLeftRight, Settings2, ChevronRight, ChevronDown, ChevronUp, Target, ArrowLeft, Banknote } from 'lucide-react';
+  Plus,
+  Pencil,
+  Trash2,
+  Download,
+  AlertTriangle,
+  RotateCcw,
+  BanknoteArrowUp,
+  BanknoteArrowDown,
+  PiggyBank,
+  ArrowLeftRight,
+  Settings2,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  Target,
+  ArrowLeft,
+  Banknote,
+} from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
@@ -41,7 +50,14 @@ import { DateRangeFilter } from '@/components/date-range-filter';
 import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { UpImportDialog } from '@/components/up-import-dialog';
 import { AddToBudgetDialog } from '@/components/dialogs/add-to-budget-dialog';
-import { formatCents, formatDate, today as getToday, toMonthlyCents, cn, type CadenceType } from '@/lib/utils';
+import {
+  formatCents,
+  formatDate,
+  today as getToday,
+  toMonthlyCents,
+  cn,
+  type CadenceType,
+} from '@/lib/utils';
 import type { Transaction, Cadence } from '@/lib/types';
 
 interface OutletContext {
@@ -62,7 +78,8 @@ export function CashFlowPage() {
   const { isLoading: scenariosLoading } = useScenarios();
 
   // Check if user came from budget page
-  const fromBudget = searchParams.get('from') === 'budget' || searchParams.get('from') === 'categories';
+  const fromBudget =
+    searchParams.get('from') === 'budget' || searchParams.get('from') === 'categories';
 
   // Section collapse state (persisted, default closed)
   const [pastSectionOpen, setPastSectionOpen] = useLocalStorage('money:pastSectionOpen', false);
@@ -73,7 +90,9 @@ export function CashFlowPage() {
   // Past section date filter state
   const [pastFilterStartDate, setPastFilterStartDate] = useState(getPastDefaultStartDate);
   const [pastFilterEndDate, setPastFilterEndDate] = useState(getPastDefaultEndDate);
-  const hasPastDateFilter = pastFilterStartDate !== getPastDefaultStartDate() || pastFilterEndDate !== getPastDefaultEndDate();
+  const hasPastDateFilter =
+    pastFilterStartDate !== getPastDefaultStartDate() ||
+    pastFilterEndDate !== getPastDefaultEndDate();
 
   // Shared filter states
   const [filterType, setFilterType] = useState<FilterType>('all');
@@ -85,7 +104,14 @@ export function CashFlowPage() {
   // Data hooks - Past transactions
   const pastQueryStartDate = pastFilterStartDate || undefined;
   const pastQueryEndDate = pastFilterEndDate || undefined;
-  const { transactions, allTransactions, isLoading: transactionsLoading, addTransaction, updateTransaction, deleteTransaction } = useTransactions(pastQueryStartDate, pastQueryEndDate);
+  const {
+    transactions,
+    allTransactions,
+    isLoading: transactionsLoading,
+    addTransaction,
+    updateTransaction,
+    deleteTransaction,
+  } = useTransactions(pastQueryStartDate, pastQueryEndDate);
   const { categories, activeCategories, isLoading: categoriesLoading } = useCategories();
   const { rules: categoryRules } = useCategoryRules();
   const { getRuleForCategory, setBudgetForCategory } = useBudgetRules(activeScenarioId);
@@ -146,14 +172,17 @@ export function CashFlowPage() {
     }
   }, []);
 
-  const handleDeleteTransaction = useCallback((id: string) => {
-    if (deletingTransactionId === id) {
-      deleteTransaction(id);
-      setDeletingTransactionId(null);
-    } else {
-      setDeletingTransactionId(id);
-    }
-  }, [deletingTransactionId, deleteTransaction]);
+  const handleDeleteTransaction = useCallback(
+    (id: string) => {
+      if (deletingTransactionId === id) {
+        deleteTransaction(id);
+        setDeletingTransactionId(null);
+      } else {
+        setDeletingTransactionId(id);
+      }
+    },
+    [deletingTransactionId, deleteTransaction],
+  );
 
   const openBudgetDialog = useCallback((transaction: Transaction) => {
     setBudgetTransaction(transaction);
@@ -170,21 +199,31 @@ export function CashFlowPage() {
     return getRuleForCategory(budgetTransaction.categoryId);
   }, [budgetTransaction, getRuleForCategory]);
 
-  const handleCreateRecurringBudget = useCallback(async (amountCents: number, cadence: Cadence, updateMode: 'add' | 'replace') => {
-    if (!budgetTransaction?.categoryId) return;
+  const handleCreateRecurringBudget = useCallback(
+    async (amountCents: number, cadence: Cadence, updateMode: 'add' | 'replace') => {
+      if (!budgetTransaction?.categoryId) return;
 
-    const existingBudget = getRuleForCategory(budgetTransaction.categoryId);
-    const newMonthly = toMonthlyCents(amountCents, cadence);
+      const existingBudget = getRuleForCategory(budgetTransaction.categoryId);
+      const newMonthly = toMonthlyCents(amountCents, cadence);
 
-    if (updateMode === 'add' && existingBudget) {
-      const existingMonthly = toMonthlyCents(existingBudget.amountCents, existingBudget.cadence as CadenceType);
-      await setBudgetForCategory(budgetTransaction.categoryId, existingMonthly + newMonthly, 'monthly');
-    } else {
-      await setBudgetForCategory(budgetTransaction.categoryId, newMonthly, 'monthly');
-    }
+      if (updateMode === 'add' && existingBudget) {
+        const existingMonthly = toMonthlyCents(
+          existingBudget.amountCents,
+          existingBudget.cadence as CadenceType,
+        );
+        await setBudgetForCategory(
+          budgetTransaction.categoryId,
+          existingMonthly + newMonthly,
+          'monthly',
+        );
+      } else {
+        await setBudgetForCategory(budgetTransaction.categoryId, newMonthly, 'monthly');
+      }
 
-    setBudgetTransaction(null);
-  }, [budgetTransaction, getRuleForCategory, setBudgetForCategory]);
+      setBudgetTransaction(null);
+    },
+    [budgetTransaction, getRuleForCategory, setBudgetForCategory],
+  );
 
   // Filtered data
   const filteredTransactions = useMemo(
@@ -192,7 +231,12 @@ export function CashFlowPage() {
       transactions.filter((t) => {
         if (filterType !== 'all' && t.type !== filterType) return false;
         if (filterCategory === 'uncategorized' && t.categoryId !== null) return false;
-        if (filterCategory !== 'all' && filterCategory !== 'uncategorized' && t.categoryId !== filterCategory) return false;
+        if (
+          filterCategory !== 'all' &&
+          filterCategory !== 'uncategorized' &&
+          t.categoryId !== filterCategory
+        )
+          return false;
         return true;
       }),
     [transactions, filterType, filterCategory],
@@ -242,7 +286,8 @@ export function CashFlowPage() {
         periods = Math.max(
           1,
           (lastDate.getFullYear() - firstDate.getFullYear()) * 12 +
-            (lastDate.getMonth() - firstDate.getMonth()) + 1,
+            (lastDate.getMonth() - firstDate.getMonth()) +
+            1,
         );
         break;
       case 'quarterly':
@@ -411,10 +456,7 @@ export function CashFlowPage() {
             return <span className="text-muted-foreground">—</span>;
           }
           return (
-            <Link
-              to={`/categories/${categoryId}`}
-              className="hover:underline"
-            >
+            <Link to={`/categories/${categoryId}`} className="hover:underline">
               {categoryName}
             </Link>
           );
@@ -457,7 +499,8 @@ export function CashFlowPage() {
 
           const isPositive = type === 'income' || type === 'adjustment';
           const colorClass = isPositive ? 'text-green-600' : 'text-red-600';
-          const tooltipText = type === 'income' ? 'Earned' : type === 'adjustment' ? 'Adjustment' : 'Spent';
+          const tooltipText =
+            type === 'income' ? 'Earned' : type === 'adjustment' ? 'Adjustment' : 'Spent';
           return (
             <TooltipProvider>
               <Tooltip>
@@ -469,9 +512,7 @@ export function CashFlowPage() {
                     </span>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent>
-                  {tooltipText}
-                </TooltipContent>
+                <TooltipContent>{tooltipText}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           );
@@ -482,7 +523,8 @@ export function CashFlowPage() {
         cell: ({ row }) => {
           const transaction = row.original;
           const isDeleting = deletingTransactionId === transaction.id;
-          const canAddToBudget = transaction.type === 'expense' && transaction.categoryId && activeScenarioId;
+          const canAddToBudget =
+            transaction.type === 'expense' && transaction.categoryId && activeScenarioId;
 
           return (
             <TooltipProvider>
@@ -535,7 +577,14 @@ export function CashFlowPage() {
         },
       },
     ],
-    [deletingTransactionId, openEditTransactionDialog, handleDeleteTransaction, getCategoryName, openBudgetDialog, activeScenarioId],
+    [
+      deletingTransactionId,
+      openEditTransactionDialog,
+      handleDeleteTransaction,
+      getCategoryName,
+      openBudgetDialog,
+      activeScenarioId,
+    ],
   );
 
   if (isLoading) {
@@ -585,7 +634,8 @@ export function CashFlowPage() {
           </Select>
           {transactionDateRange && (
             <p className="text-sm text-muted-foreground">
-              Based on {transactionDateRange.count.toLocaleString()} transactions from {transactionDateRange.from} to {transactionDateRange.to}
+              Based on {transactionDateRange.count.toLocaleString()} transactions from{' '}
+              {transactionDateRange.from} to {transactionDateRange.to}
             </p>
           )}
         </div>
@@ -595,18 +645,23 @@ export function CashFlowPage() {
             {/* Net Status Hero */}
             <div className="mb-6 min-h-28 text-center sm:min-h-32">
               <div className="min-h-8" />
-              <p className={cn(
-                'flex items-center justify-center gap-2 text-sm font-medium uppercase tracking-wide',
-                periodAverages.net >= 0 ? 'text-green-500' : 'text-red-500',
-              )}>
+              <p
+                className={cn(
+                  'flex items-center justify-center gap-2 text-sm font-medium uppercase tracking-wide',
+                  periodAverages.net >= 0 ? 'text-green-500' : 'text-red-500',
+                )}
+              >
                 <ArrowLeftRight className="h-4 w-4" />
                 {periodAverages.net >= 0 ? 'Net Gain' : 'Net Loss'}
               </p>
-              <p className={cn(
-                'mt-2 text-5xl font-bold tracking-tight',
-                periodAverages.net >= 0 ? 'text-green-500' : 'text-red-500',
-              )}>
-                {periodAverages.net >= 0 ? '+' : '-'}{formatCents(Math.abs(periodAverages.net))}
+              <p
+                className={cn(
+                  'mt-2 text-5xl font-bold tracking-tight',
+                  periodAverages.net >= 0 ? 'text-green-500' : 'text-red-500',
+                )}
+              >
+                {periodAverages.net >= 0 ? '+' : '-'}
+                {formatCents(Math.abs(periodAverages.net))}
               </p>
               <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
               <p className="text-sm text-muted-foreground">
@@ -648,7 +703,10 @@ export function CashFlowPage() {
         ) : (
           <p className="text-sm text-muted-foreground">
             No transactions yet.{' '}
-            <button onClick={openAddTransactionDialog} className="cursor-pointer text-primary hover:underline">
+            <button
+              onClick={openAddTransactionDialog}
+              className="cursor-pointer text-primary hover:underline"
+            >
               Add your first transaction
             </button>{' '}
             to see averages.
@@ -661,7 +719,11 @@ export function CashFlowPage() {
         <div className="overflow-hidden rounded-lg border">
           <div className="flex items-center justify-between bg-card p-4">
             <CollapsibleTrigger className="flex flex-1 cursor-pointer items-center gap-2">
-              {pastSectionOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              {pastSectionOpen ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
               <RotateCcw className="h-4 w-4 text-amber-500" />
               <span className="font-medium">Past Transactions</span>
               {transactions.length > 0 ? (
@@ -710,7 +772,10 @@ export function CashFlowPage() {
               {!hasAnyTransactions ? (
                 <p className="py-8 text-center text-sm text-muted-foreground">
                   No transactions yet.{' '}
-                  <button onClick={openAddTransactionDialog} className="cursor-pointer text-primary hover:underline">
+                  <button
+                    onClick={openAddTransactionDialog}
+                    className="cursor-pointer text-primary hover:underline"
+                  >
                     Add your first transaction
                   </button>
                 </p>
@@ -734,8 +799,13 @@ export function CashFlowPage() {
                         hasFilter={hasPastDateFilter}
                         maxEndDate={getToday()}
                       />
-                      <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
-                        <SelectTrigger className={`w-36 ${filterType === 'all' ? 'text-muted-foreground' : ''}`}>
+                      <Select
+                        value={filterType}
+                        onValueChange={(v) => setFilterType(v as FilterType)}
+                      >
+                        <SelectTrigger
+                          className={`w-36 ${filterType === 'all' ? 'text-muted-foreground' : ''}`}
+                        >
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -747,7 +817,9 @@ export function CashFlowPage() {
                         </SelectContent>
                       </Select>
                       <Select value={filterCategory} onValueChange={setFilterCategory}>
-                        <SelectTrigger className={`w-44 ${filterCategory === 'all' ? 'text-muted-foreground' : ''}`}>
+                        <SelectTrigger
+                          className={`w-44 ${filterCategory === 'all' ? 'text-muted-foreground' : ''}`}
+                        >
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -763,7 +835,12 @@ export function CashFlowPage() {
                         </SelectContent>
                       </Select>
                       {hasPastDateFilter && (
-                        <Button variant="ghost" size="sm" onClick={resetPastFilters} title="Reset to defaults">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={resetPastFilters}
+                          title="Reset to defaults"
+                        >
                           <RotateCcw className="h-4 w-4" />
                         </Button>
                       )}
@@ -815,9 +892,7 @@ export function CashFlowPage() {
             <Button variant="outline" onClick={() => setImportWarningOpen(false)} asChild>
               <Link to="/categories/import-rules">Set Up Rules</Link>
             </Button>
-            <Button onClick={handleSkipWarning}>
-              Continue Without Rules
-            </Button>
+            <Button onClick={handleSkipWarning}>Continue Without Rules</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -42,13 +42,10 @@ function countOccurrences(cadence: Cadence, startDate: string, endDate: string):
 /**
  * Expand a budget rule over a date range to get the total budget amount
  */
-function expandBudgetRule(
-  rule: BudgetRule,
-  rangeStart: string,
-  rangeEnd: string,
-): number {
+function expandBudgetRule(rule: BudgetRule, rangeStart: string, rangeEnd: string): number {
   // Determine effective start/end for the rule
-  const effectiveStart = rule.startDate && rule.startDate > rangeStart ? rule.startDate : rangeStart;
+  const effectiveStart =
+    rule.startDate && rule.startDate > rangeStart ? rule.startDate : rangeStart;
   const effectiveEnd = rule.endDate && rule.endDate < rangeEnd ? rule.endDate : rangeEnd;
 
   if (effectiveStart > effectiveEnd) return 0;

@@ -5,7 +5,18 @@ import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { Palette, Plus, Pencil, Trash2, Download, Settings, ArrowRight, Landmark, PiggyBank, CreditCard } from 'lucide-react';
+import {
+  Palette,
+  Plus,
+  Pencil,
+  Trash2,
+  Download,
+  Settings,
+  ArrowRight,
+  Landmark,
+  PiggyBank,
+  CreditCard,
+} from 'lucide-react';
 
 export function StyleGuidePage() {
   return (
@@ -35,12 +46,16 @@ export function StyleGuidePage() {
               <div className="panel-body space-y-6">
                 <div>
                   <h1>Heading 1 - Page Titles</h1>
-                  <p className="mt-1 text-sm text-muted-foreground">text-2xl font-semibold tracking-tight</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    text-2xl font-semibold tracking-tight
+                  </p>
                 </div>
                 <Separator />
                 <div>
                   <h2>Heading 2 - Section Titles</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">text-lg font-semibold tracking-tight</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    text-lg font-semibold tracking-tight
+                  </p>
                 </div>
                 <Separator />
                 <div>
@@ -55,7 +70,9 @@ export function StyleGuidePage() {
                 <Separator />
                 <div>
                   <p className="page-title">Page Title Class</p>
-                  <p className="mt-1 text-sm text-muted-foreground">text-3xl font-bold - for hero headings</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    text-3xl font-bold - for hero headings
+                  </p>
                 </div>
               </div>
             </div>
@@ -128,7 +145,8 @@ export function StyleGuidePage() {
               <div className="panel-body">
                 <h3>Basic Panel</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  A simple panel with content. Uses --surface-raised, --border-subtle, and --shadow-color.
+                  A simple panel with content. Uses --surface-raised, --border-subtle, and
+                  --shadow-color.
                 </p>
               </div>
             </div>
@@ -305,9 +323,7 @@ export function StyleGuidePage() {
         <section className="section">
           <div className="section-header">
             <h2>Toolbar</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Horizontal bar for actions.
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Horizontal bar for actions.</p>
           </div>
           <div className="section-content">
             <div className="panel">
@@ -337,9 +353,7 @@ export function StyleGuidePage() {
         <section className="section">
           <div className="section-header">
             <h2>Buttons</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              All button variants and sizes.
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">All button variants and sizes.</p>
           </div>
           <div className="section-content">
             <div className="panel">
@@ -391,9 +405,7 @@ export function StyleGuidePage() {
         <section className="section">
           <div className="section-header">
             <h2>Badges</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Status indicators and labels.
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Status indicators and labels.</p>
           </div>
           <div className="section-content">
             <div className="panel">
@@ -417,9 +429,7 @@ export function StyleGuidePage() {
         <section className="section">
           <div className="section-header">
             <h2>Alerts</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Contextual feedback messages.
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Contextual feedback messages.</p>
           </div>
           <div className="section-content space-y-3">
             <Alert variant="info">This is an informational message.</Alert>
@@ -435,23 +445,27 @@ export function StyleGuidePage() {
         <section className="section">
           <div className="section-header">
             <h2>Form Controls</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Input fields and controls.
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Input fields and controls.</p>
           </div>
           <div className="section-content">
             <div className="panel">
               <div className="panel-body space-y-4">
                 <div className="space-y-2">
-                  <label htmlFor="example-text" className="text-sm font-medium">Text Input</label>
+                  <label htmlFor="example-text" className="text-sm font-medium">
+                    Text Input
+                  </label>
                   <Input id="example-text" placeholder="Enter text..." />
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="example-date" className="text-sm font-medium">Date Input</label>
+                  <label htmlFor="example-date" className="text-sm font-medium">
+                    Date Input
+                  </label>
                   <Input id="example-date" type="date" />
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="example-number" className="text-sm font-medium">Number Input</label>
+                  <label htmlFor="example-number" className="text-sm font-medium">
+                    Number Input
+                  </label>
                   <Input id="example-number" type="number" placeholder="0.00" />
                 </div>
                 <div className="flex items-center justify-between">
@@ -472,9 +486,7 @@ export function StyleGuidePage() {
         <section className="section">
           <div className="section-header">
             <h2>Spacing</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Consistent spacing scale.
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Consistent spacing scale.</p>
           </div>
           <div className="section-content">
             <div className="panel">

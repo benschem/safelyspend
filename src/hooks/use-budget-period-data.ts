@@ -144,10 +144,16 @@ function calculatePeriodCashFlow(
   if (!isCurrentPeriod) {
     dayOfPeriod = daysInPeriod;
   } else if (viewMode === 'year') {
-    dayOfPeriod = Math.ceil((effectiveDateObj.getTime() - new Date(selectedYear, 0, 1).getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    dayOfPeriod =
+      Math.ceil(
+        (effectiveDateObj.getTime() - new Date(selectedYear, 0, 1).getTime()) /
+          (1000 * 60 * 60 * 24),
+      ) + 1;
   } else if (viewMode === 'quarter') {
     // Days from quarter start to today
-    dayOfPeriod = Math.ceil((effectiveDateObj.getTime() - periodStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    dayOfPeriod =
+      Math.ceil((effectiveDateObj.getTime() - periodStartDate.getTime()) / (1000 * 60 * 60 * 24)) +
+      1;
   } else {
     dayOfPeriod = effectiveDateObj.getDate();
   }
@@ -210,17 +216,23 @@ function calculatePeriodCashFlow(
   const forecastedIncome = isFuturePeriod
     ? periodForecasts.filter((f) => f.type === 'income').reduce((sum, f) => sum + f.amountCents, 0)
     : isCurrentPeriod
-      ? periodForecasts.filter((f) => f.type === 'income' && f.date > effectiveDate).reduce((sum, f) => sum + f.amountCents, 0)
+      ? periodForecasts
+          .filter((f) => f.type === 'income' && f.date > effectiveDate)
+          .reduce((sum, f) => sum + f.amountCents, 0)
       : 0;
   const forecastedExpenses = isFuturePeriod
     ? periodForecasts.filter((f) => f.type === 'expense').reduce((sum, f) => sum + f.amountCents, 0)
     : isCurrentPeriod
-      ? periodForecasts.filter((f) => f.type === 'expense' && f.date > effectiveDate).reduce((sum, f) => sum + f.amountCents, 0)
+      ? periodForecasts
+          .filter((f) => f.type === 'expense' && f.date > effectiveDate)
+          .reduce((sum, f) => sum + f.amountCents, 0)
       : 0;
   const forecastedSavings = isFuturePeriod
     ? periodForecasts.filter((f) => f.type === 'savings').reduce((sum, f) => sum + f.amountCents, 0)
     : isCurrentPeriod
-      ? periodForecasts.filter((f) => f.type === 'savings' && f.date > effectiveDate).reduce((sum, f) => sum + f.amountCents, 0)
+      ? periodForecasts
+          .filter((f) => f.type === 'savings' && f.date > effectiveDate)
+          .reduce((sum, f) => sum + f.amountCents, 0)
       : 0;
 
   const projectedNet = actualNet + forecastedIncome - forecastedExpenses - forecastedSavings;
@@ -277,9 +289,15 @@ function calculateSummary(
   if (!isCurrentPeriod) {
     dayOfPeriod = daysInPeriod;
   } else if (viewMode === 'year') {
-    dayOfPeriod = Math.ceil((effectiveDateObj.getTime() - new Date(selectedYear, 0, 1).getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    dayOfPeriod =
+      Math.ceil(
+        (effectiveDateObj.getTime() - new Date(selectedYear, 0, 1).getTime()) /
+          (1000 * 60 * 60 * 24),
+      ) + 1;
   } else if (viewMode === 'quarter') {
-    dayOfPeriod = Math.ceil((effectiveDateObj.getTime() - periodStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    dayOfPeriod =
+      Math.ceil((effectiveDateObj.getTime() - periodStartDate.getTime()) / (1000 * 60 * 60 * 24)) +
+      1;
   } else {
     dayOfPeriod = effectiveDateObj.getDate();
   }
@@ -296,7 +314,13 @@ function calculateSummary(
     const periodBudget = toMonthlyAmount(rule.amountCents, rule.cadence) * periodMultiplier;
 
     const spent = allTransactions
-      .filter((t) => t.type === 'expense' && t.categoryId === rule.categoryId && t.date >= periodStart && t.date <= effectiveDate)
+      .filter(
+        (t) =>
+          t.type === 'expense' &&
+          t.categoryId === rule.categoryId &&
+          t.date >= periodStart &&
+          t.date <= effectiveDate,
+      )
       .reduce((sum, t) => sum + t.amountCents, 0);
 
     const spentPercent = periodBudget > 0 ? spent / periodBudget : 0;
@@ -343,7 +367,10 @@ function calculatePeriodSpending(
   const periodMultiplier = viewMode === 'year' ? 12 : viewMode === 'quarter' ? 3 : 1;
   const budgetByCategory = new Map<string, number>();
   for (const rule of budgetRules) {
-    budgetByCategory.set(rule.categoryId, Math.round(toMonthlyAmount(rule.amountCents, rule.cadence) * periodMultiplier));
+    budgetByCategory.set(
+      rule.categoryId,
+      Math.round(toMonthlyAmount(rule.amountCents, rule.cadence) * periodMultiplier),
+    );
   }
 
   const byCategory: Record<string, number> = {};
@@ -370,7 +397,12 @@ function calculatePeriodSpending(
     .sort((a, b) => b.amount - a.amount);
 
   if (uncategorized > 0) {
-    categorySpending.push({ id: 'uncategorized', name: 'Uncategorised', amount: uncategorized, budget: 0 });
+    categorySpending.push({
+      id: 'uncategorized',
+      name: 'Uncategorised',
+      amount: uncategorized,
+      budget: 0,
+    });
   }
 
   return { categorySpending, total };
@@ -480,33 +512,40 @@ export function useBudgetPeriodData({
   const quarterEndMonth = quarterStartMonth + 2;
   const lastDayOfQuarter = new Date(selectedYear, quarterEndMonth + 1, 0).getDate();
 
-  const periodStart = viewMode === 'year'
-    ? `${selectedYear}-01-01`
-    : viewMode === 'quarter'
-      ? `${selectedYear}-${String(quarterStartMonth + 1).padStart(2, '0')}-01`
-      : `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-01`;
+  const periodStart =
+    viewMode === 'year'
+      ? `${selectedYear}-01-01`
+      : viewMode === 'quarter'
+        ? `${selectedYear}-${String(quarterStartMonth + 1).padStart(2, '0')}-01`
+        : `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-01`;
   const lastDayOfMonth = new Date(selectedYear, selectedMonthIndex + 1, 0).getDate();
-  const periodEnd = viewMode === 'year'
-    ? `${selectedYear}-12-31`
-    : viewMode === 'quarter'
-      ? `${selectedYear}-${String(quarterEndMonth + 1).padStart(2, '0')}-${String(lastDayOfQuarter).padStart(2, '0')}`
-      : `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-${String(lastDayOfMonth).padStart(2, '0')}`;
+  const periodEnd =
+    viewMode === 'year'
+      ? `${selectedYear}-12-31`
+      : viewMode === 'quarter'
+        ? `${selectedYear}-${String(quarterEndMonth + 1).padStart(2, '0')}-${String(lastDayOfQuarter).padStart(2, '0')}`
+        : `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-${String(lastDayOfMonth).padStart(2, '0')}`;
 
   const isCurrentPeriod = today >= periodStart && today <= periodEnd;
   const isFuturePeriod = periodStart > today;
   const isPastPeriod = periodEnd < today;
-  const effectiveDate = isCurrentPeriod ? today : (isFuturePeriod ? periodStart : periodEnd);
+  const effectiveDate = isCurrentPeriod ? today : isFuturePeriod ? periodStart : periodEnd;
 
   const shortMonthName = selectedMonth.toLocaleDateString('en-AU', { month: 'long' });
   const quarterNames = ['Q1', 'Q2', 'Q3', 'Q4'];
-  const periodLabel = viewMode === 'year'
-    ? String(selectedYear)
-    : viewMode === 'quarter'
-      ? `${quarterNames[Math.floor(selectedMonthIndex / 3)]} ${selectedYear}`
-      : `${shortMonthName} ${selectedYear}`;
+  const periodLabel =
+    viewMode === 'year'
+      ? String(selectedYear)
+      : viewMode === 'quarter'
+        ? `${quarterNames[Math.floor(selectedMonthIndex / 3)]} ${selectedYear}`
+        : `${shortMonthName} ${selectedYear}`;
 
   // Get forecasts for the period (with What-If adjustments applied)
-  const { expandedForecasts: periodForecasts, savingsForecasts, isLoading: forecastsLoading } = useAdjustedForecasts(scenarioId, periodStart, periodEnd);
+  const {
+    expandedForecasts: periodForecasts,
+    savingsForecasts,
+    isLoading: forecastsLoading,
+  } = useAdjustedForecasts(scenarioId, periodStart, periodEnd);
 
   const isLoading = transactionsLoading || budgetLoading || categoriesLoading || forecastsLoading;
 
@@ -517,23 +556,71 @@ export function useBudgetPeriodData({
 
   // Calculate all derived data
   const periodCashFlow = useMemo(
-    () => calculatePeriodCashFlow(
-      viewMode, selectedYear, selectedMonthIndex, periodStart, effectiveDate,
-      isCurrentPeriod, isFuturePeriod, budgetRules, periodForecasts, savingsForecasts, allTransactions,
-    ),
-    [viewMode, selectedYear, selectedMonthIndex, periodStart, effectiveDate, isCurrentPeriod, isFuturePeriod, budgetRules, periodForecasts, savingsForecasts, allTransactions],
+    () =>
+      calculatePeriodCashFlow(
+        viewMode,
+        selectedYear,
+        selectedMonthIndex,
+        periodStart,
+        effectiveDate,
+        isCurrentPeriod,
+        isFuturePeriod,
+        budgetRules,
+        periodForecasts,
+        savingsForecasts,
+        allTransactions,
+      ),
+    [
+      viewMode,
+      selectedYear,
+      selectedMonthIndex,
+      periodStart,
+      effectiveDate,
+      isCurrentPeriod,
+      isFuturePeriod,
+      budgetRules,
+      periodForecasts,
+      savingsForecasts,
+      allTransactions,
+    ],
   );
 
   const summary = useMemo(
-    () => calculateSummary(
-      viewMode, selectedYear, selectedMonthIndex, periodStart, effectiveDate,
-      isCurrentPeriod, budgetRules, periodForecasts, allTransactions,
-    ),
-    [viewMode, selectedYear, selectedMonthIndex, periodStart, effectiveDate, isCurrentPeriod, budgetRules, periodForecasts, allTransactions],
+    () =>
+      calculateSummary(
+        viewMode,
+        selectedYear,
+        selectedMonthIndex,
+        periodStart,
+        effectiveDate,
+        isCurrentPeriod,
+        budgetRules,
+        periodForecasts,
+        allTransactions,
+      ),
+    [
+      viewMode,
+      selectedYear,
+      selectedMonthIndex,
+      periodStart,
+      effectiveDate,
+      isCurrentPeriod,
+      budgetRules,
+      periodForecasts,
+      allTransactions,
+    ],
   );
 
   const periodSpending = useMemo(
-    () => calculatePeriodSpending(viewMode, periodStart, effectiveDate, budgetRules, activeCategories, allTransactions),
+    () =>
+      calculatePeriodSpending(
+        viewMode,
+        periodStart,
+        effectiveDate,
+        budgetRules,
+        activeCategories,
+        allTransactions,
+      ),
     [viewMode, periodStart, effectiveDate, budgetRules, activeCategories, allTransactions],
   );
 
@@ -543,7 +630,15 @@ export function useBudgetPeriodData({
   );
 
   const burnRateData = useMemo(
-    () => calculateBurnRateData(viewMode, periodStart, periodEnd, periodLabel, budgetRules, allTransactions),
+    () =>
+      calculateBurnRateData(
+        viewMode,
+        periodStart,
+        periodEnd,
+        periodLabel,
+        budgetRules,
+        allTransactions,
+      ),
     [viewMode, periodStart, periodEnd, periodLabel, budgetRules, allTransactions],
   );
 

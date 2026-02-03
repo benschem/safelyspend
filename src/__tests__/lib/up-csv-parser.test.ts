@@ -31,9 +31,7 @@ describe('parseUpCsv', () => {
     if (rows.length === 0) return '';
     const headers = Object.keys(rows[0]!);
     const headerLine = headers.join(',');
-    const dataLines = rows.map((row) =>
-      headers.map((h) => `"${row[h] ?? ''}"`).join(','),
-    );
+    const dataLines = rows.map((row) => headers.map((h) => `"${row[h] ?? ''}"`).join(','));
     return [headerLine, ...dataLines].join('\n');
   };
 
@@ -64,9 +62,7 @@ describe('parseUpCsv', () => {
   });
 
   it('skips Transfer transactions', async () => {
-    const csv = rowToCsv([
-      makeRow({ 'Transaction Type': 'Transfer' }),
-    ]);
+    const csv = rowToCsv([makeRow({ 'Transaction Type': 'Transfer' })]);
     const result = await parseUpCsv(csv);
 
     expect(result.transactions).toHaveLength(0);
@@ -75,9 +71,7 @@ describe('parseUpCsv', () => {
   });
 
   it('skips Round Up transactions', async () => {
-    const csv = rowToCsv([
-      makeRow({ 'Transaction Type': 'Round Up' }),
-    ]);
+    const csv = rowToCsv([makeRow({ 'Transaction Type': 'Round Up' })]);
     const result = await parseUpCsv(csv);
 
     expect(result.transactions).toHaveLength(0);

@@ -4,7 +4,7 @@ import {
   HandCoins,
   Target,
   PiggyBank,
-  Layers,
+  Sparkles,
   Settings,
   ChartSpline,
   Menu,
@@ -12,13 +12,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useEffect, useState } from 'react';
 
 interface NavItemProps {
@@ -85,8 +79,8 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         <NavItem to="/budget" icon={<Target className="h-4 w-4" />} onClick={onNavigate}>
           Budget
         </NavItem>
-        <NavItem to="/scenarios" icon={<Layers className="h-4 w-4" />} onClick={onNavigate}>
-          Scenarios
+        <NavItem to="/scenarios" icon={<Sparkles className="h-4 w-4" />} onClick={onNavigate}>
+          What If
         </NavItem>
       </NavSection>
 

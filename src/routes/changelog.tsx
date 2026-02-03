@@ -13,9 +13,7 @@ export function ChangelogPage() {
           </div>
           What&apos;s New
         </h1>
-        <p className="page-description">
-          See what&apos;s changed in each version of the app.
-        </p>
+        <p className="page-description">See what&apos;s changed in each version of the app.</p>
       </div>
 
       <div className="mb-6">
@@ -31,9 +29,7 @@ export function ChangelogPage() {
         {changelog.map((entry, index) => (
           <div key={entry.version} className="panel p-5">
             <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-lg font-semibold">
-                Version {entry.version}
-              </h2>
+              <h2 className="text-lg font-semibold">Version {entry.version}</h2>
               {index === 0 && (
                 <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
                   Current

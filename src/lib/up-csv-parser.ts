@@ -30,25 +30,13 @@ export interface ParsedTransaction {
 }
 
 // Transaction types that indicate income
-const INCOME_TYPES = new Set([
-  'Salary',
-  'Direct Credit',
-  'Interest',
-  'Deposit',
-]);
+const INCOME_TYPES = new Set(['Salary', 'Direct Credit', 'Interest', 'Deposit']);
 
 // Transaction types to skip (internal transfers, round-ups)
-const SKIP_TYPES = new Set([
-  'Transfer',
-  'Round Up',
-  'Cover',
-]);
+const SKIP_TYPES = new Set(['Transfer', 'Round Up', 'Cover']);
 
 // Payees to skip (internal accounts)
-const SKIP_PAYEES = new Set([
-  '2Up',
-  '2UP',
-]);
+const SKIP_PAYEES = new Set(['2Up', '2UP']);
 
 /**
  * Sanitize string to prevent CSV formula injection.
@@ -138,9 +126,7 @@ export function parseUpCsv(csvContent: string): Promise<ParseResult> {
       transformHeader: (header) => header.trim(),
       complete: (parseResult) => {
         if (parseResult.errors.length > 0) {
-          result.errors = parseResult.errors.map(
-            (e) => `Row ${e.row}: ${e.message}`,
-          );
+          result.errors = parseResult.errors.map((e) => `Row ${e.row}: ${e.message}`);
         }
 
         for (const row of parseResult.data) {
@@ -190,8 +176,9 @@ export function parseUpCsv(csvContent: string): Promise<ParseResult> {
 
           // Determine if income or expense
           // Check transaction type first, then fall back to checking if amount was positive
-          const isIncome = INCOME_TYPES.has(transactionType) ||
-            (parseFloat(row['Total (AUD)'].replace(/[$,]/g, '')) > 0);
+          const isIncome =
+            INCOME_TYPES.has(transactionType) ||
+            parseFloat(row['Total (AUD)'].replace(/[$,]/g, '')) > 0;
 
           const transaction: ParsedTransaction = {
             date,

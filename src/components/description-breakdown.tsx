@@ -57,14 +57,10 @@ export function DescriptionBreakdown({ transactions, totalSpent }: DescriptionBr
   }, [transactions, totalSpent]);
 
   if (transactions.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">No transactions in this period.</p>
-    );
+    return <p className="text-sm text-muted-foreground">No transactions in this period.</p>;
   }
 
-  const allItems = breakdown.other
-    ? [...breakdown.items, breakdown.other]
-    : breakdown.items;
+  const allItems = breakdown.other ? [...breakdown.items, breakdown.other] : breakdown.items;
 
   return (
     <div className="space-y-3">
@@ -83,19 +79,12 @@ function BreakdownRow({ item }: { item: DescriptionGroup }) {
           {item.description}
         </span>
         <div className="ml-4 flex items-center gap-2">
-          <span className="font-mono text-muted-foreground">
-            {formatCents(item.total)}
-          </span>
-          <span className="w-10 text-right text-muted-foreground">
-            {item.percentage}%
-          </span>
+          <span className="font-mono text-muted-foreground">{formatCents(item.total)}</span>
+          <span className="w-10 text-right text-muted-foreground">{item.percentage}%</span>
         </div>
       </div>
       <div className="h-1.5 rounded-full bg-muted">
-        <div
-          className="h-1.5 rounded-full bg-red-500"
-          style={{ width: `${item.percentage}%` }}
-        />
+        <div className="h-1.5 rounded-full bg-red-500" style={{ width: `${item.percentage}%` }} />
       </div>
     </div>
   );

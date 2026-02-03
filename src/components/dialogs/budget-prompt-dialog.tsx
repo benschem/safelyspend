@@ -8,7 +8,13 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Target, Plus, RefreshCw, Check } from 'lucide-react';
-import { cn, formatCents, toMonthlyCents, CADENCE_SHORT_LABELS, type CadenceType } from '@/lib/utils';
+import {
+  cn,
+  formatCents,
+  toMonthlyCents,
+  CADENCE_SHORT_LABELS,
+  type CadenceType,
+} from '@/lib/utils';
 import type { BudgetRule } from '@/lib/types';
 
 interface BudgetPromptDialogProps {
@@ -82,9 +88,13 @@ export function BudgetPromptDialog({
             <div className="flex justify-between">
               <span className="text-muted-foreground">New expense:</span>
               <span className="font-mono">
-                {formatCents(forecastAmountCents)}{CADENCE_SHORT_LABELS[forecastCadence]}
+                {formatCents(forecastAmountCents)}
+                {CADENCE_SHORT_LABELS[forecastCadence]}
                 {forecastCadence !== 'monthly' && (
-                  <span className="text-muted-foreground"> ({formatCents(forecastMonthly)}/mo)</span>
+                  <span className="text-muted-foreground">
+                    {' '}
+                    ({formatCents(forecastMonthly)}/mo)
+                  </span>
                 )}
               </span>
             </div>
@@ -93,9 +103,13 @@ export function BudgetPromptDialog({
                 <div className="mt-2 flex justify-between">
                   <span className="text-muted-foreground">Current budget:</span>
                   <span className="font-mono">
-                    {formatCents(existingBudget.amountCents)}{CADENCE_SHORT_LABELS[existingBudget.cadence as CadenceType]}
+                    {formatCents(existingBudget.amountCents)}
+                    {CADENCE_SHORT_LABELS[existingBudget.cadence as CadenceType]}
                     {existingBudget.cadence !== 'monthly' && (
-                      <span className="text-muted-foreground"> ({formatCents(existingMonthly)}/mo)</span>
+                      <span className="text-muted-foreground">
+                        {' '}
+                        ({formatCents(existingMonthly)}/mo)
+                      </span>
                     )}
                   </span>
                 </div>

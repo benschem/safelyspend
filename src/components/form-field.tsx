@@ -20,13 +20,7 @@ interface FormFieldProps {
   optional?: boolean;
 }
 
-export function FormField({
-  field,
-  label,
-  children,
-  description,
-  optional,
-}: FormFieldProps) {
+export function FormField({ field, label, children, description, optional }: FormFieldProps) {
   const errors = field.state.meta.errors;
   // Filter to get actual error messages
   const errorMessages = errors
