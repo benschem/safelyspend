@@ -1,10 +1,9 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import type { ColumnDef } from '@tanstack/react-table';
+import { Link } from 'react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Button } from '@/components/ui/button';
-import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Plus, Pencil, Trash2, Star, Layers, Play } from 'lucide-react';
+import { Plus, Pencil, Trash2, Star, Sparkles, Play } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { Alert } from '@/components/ui/alert';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -14,13 +13,16 @@ import { db } from '@/lib/db';
 import { ScenarioDialog } from '@/components/dialogs/scenario-dialog';
 import type { Scenario } from '@/lib/types';
 
-interface ScenarioRow extends Scenario {
-  budgetRuleCount: number;
-  forecastRuleCount: number;
-}
-
 export function ScenariosIndexPage() {
-  const { scenarios, activeScenarioId, isLoading: scenariosLoading, setActiveScenarioId, addScenario, updateScenario, deleteScenario } = useScenarios();
+  const {
+    scenarios,
+    activeScenarioId,
+    isLoading: scenariosLoading,
+    setActiveScenarioId,
+    addScenario,
+    updateScenario,
+    deleteScenario,
+  } = useScenarios();
   const { duplicateToScenario: duplicateForecastsToScenario } = useForecasts(null);
   const { duplicateToScenario: duplicateBudgetsToScenario } = useBudgetRules(null);
 
@@ -35,33 +37,31 @@ export function ScenariosIndexPage() {
   const allBudgetRules = useMemo(() => rawBudgetRules ?? [], [rawBudgetRules]);
   const allForecastRules = useMemo(() => rawForecastRules ?? [], [rawForecastRules]);
 
-  // Combined loading state from all data hooks
-  const isLoading = scenariosLoading || rawBudgetRules === undefined || rawForecastRules === undefined;
+  // Combined loading state
+  const isLoading =
+    scenariosLoading || rawBudgetRules === undefined || rawForecastRules === undefined;
 
-  // Build scenario rows with counts
-  const scenarioRows: ScenarioRow[] = useMemo(() => {
-    const budgetCountByScenario = new Map<string, number>();
-    const forecastCountByScenario = new Map<string, number>();
+  // Find default (Current Plan) and other scenarios
+  const defaultScenario = useMemo(() => scenarios.find((s) => s.isDefault) ?? null, [scenarios]);
+  const otherScenarios = useMemo(() => scenarios.filter((s) => !s.isDefault), [scenarios]);
 
+  // Build counts map
+  const countsByScenario = useMemo(() => {
+    const counts: Record<string, { budgets: number; forecasts: number }> = {};
+    for (const s of scenarios) {
+      counts[s.id] = { budgets: 0, forecasts: 0 };
+    }
     for (const rule of allBudgetRules) {
-      budgetCountByScenario.set(
-        rule.scenarioId,
-        (budgetCountByScenario.get(rule.scenarioId) ?? 0) + 1,
-      );
+      if (counts[rule.scenarioId]) {
+        counts[rule.scenarioId]!.budgets++;
+      }
     }
-
     for (const rule of allForecastRules) {
-      forecastCountByScenario.set(
-        rule.scenarioId,
-        (forecastCountByScenario.get(rule.scenarioId) ?? 0) + 1,
-      );
+      if (counts[rule.scenarioId]) {
+        counts[rule.scenarioId]!.forecasts++;
+      }
     }
-
-    return scenarios.map((scenario) => ({
-      ...scenario,
-      budgetRuleCount: budgetCountByScenario.get(scenario.id) ?? 0,
-      forecastRuleCount: forecastCountByScenario.get(scenario.id) ?? 0,
-    }));
+    return counts;
   }, [scenarios, allBudgetRules, allForecastRules]);
 
   const openAddDialog = useCallback(() => {
@@ -93,13 +93,6 @@ export function ScenariosIndexPage() {
     [deletingId, deleteScenario],
   );
 
-  const handleSetDefault = useCallback(
-    (id: string) => {
-      updateScenario(id, { isDefault: true });
-    },
-    [updateScenario],
-  );
-
   // Close delete confirmation on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -111,130 +104,21 @@ export function ScenariosIndexPage() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [deletingId]);
 
-  const columns: ColumnDef<ScenarioRow>[] = useMemo(
-    () => [
-      {
-        accessorKey: 'name',
-        header: ({ column }) => <SortableHeader column={column}>Name</SortableHeader>,
-        cell: ({ row }) => {
-          const scenario = row.original;
-          return (
-            <button
-              type="button"
-              onClick={() => openEditDialog(scenario)}
-              className="cursor-pointer text-left font-medium hover:underline"
-            >
-              {scenario.name}
-            </button>
-          );
-        },
-      },
-      {
-        accessorKey: 'description',
-        header: 'Description',
-        cell: ({ row }) => (
-          <span className="text-muted-foreground">
-            {row.getValue('description') || '-'}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'budgetRuleCount',
-        header: ({ column }) => (
-          <SortableHeader column={column} className="justify-center">
-            Budgeted Expenses
-          </SortableHeader>
-        ),
-        cell: ({ row }) => (
-          <div className="text-center tabular-nums">{row.getValue('budgetRuleCount')}</div>
-        ),
-      },
-      {
-        accessorKey: 'forecastRuleCount',
-        header: ({ column }) => (
-          <SortableHeader column={column} className="justify-center">
-            Expected Expenses
-          </SortableHeader>
-        ),
-        cell: ({ row }) => (
-          <div className="text-center tabular-nums">{row.getValue('forecastRuleCount')}</div>
-        ),
-      },
-      {
-        id: 'actions',
-        cell: ({ row }) => {
-          const scenario = row.original;
-          const isDeleting = deletingId === scenario.id;
-          const isActive = scenario.id === activeScenarioId;
-
-          return (
-            <div className="flex justify-end gap-1">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => !isActive && setActiveScenarioId(scenario.id)}
-                    className={`cursor-pointer rounded p-1.5 transition-colors ${isActive ? '' : 'hover:bg-muted'}`}
-                    aria-label={isActive ? 'Active scenario' : 'Activate scenario'}
-                  >
-                    <Play className={`h-4 w-4 ${isActive ? 'text-blue-500' : 'text-muted-foreground'}`} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{isActive ? 'Active' : 'Activate'}</TooltipContent>
-              </Tooltip>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => !scenario.isDefault && handleSetDefault(scenario.id)}
-                aria-label={scenario.isDefault ? 'Default scenario' : 'Set as default'}
-                className={scenario.isDefault ? 'cursor-default' : ''}
-              >
-                <Star className={`h-4 w-4 ${scenario.isDefault ? 'text-amber-500' : ''}`} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => openEditDialog(scenario)}
-                aria-label="Edit scenario"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={isDeleting ? 'destructive' : 'ghost'}
-                size="sm"
-                onClick={() => handleDelete(scenario.id)}
-                onBlur={() => setTimeout(() => setDeletingId(null), 200)}
-                disabled={scenario.isDefault}
-                aria-label={
-                  scenario.isDefault
-                    ? 'Cannot delete default scenario'
-                    : isDeleting
-                      ? 'Confirm delete'
-                      : 'Delete scenario'
-                }
-              >
-                {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
-              </Button>
-            </div>
-          );
-        },
-      },
-    ],
-    [deletingId, openEditDialog, handleDelete, handleSetDefault, activeScenarioId, setActiveScenarioId],
-  );
+  // Check if viewing current plan
+  const isViewingCurrentPlan = defaultScenario?.id === activeScenarioId;
 
   return (
     <div className="page-shell">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="page-title">
-            <div className="page-title-icon bg-slate-500/10">
-              <Layers className="h-5 w-5 text-slate-500" />
+            <div className="page-title-icon bg-violet-500/10">
+              <Sparkles className="h-5 w-5 text-violet-500" />
             </div>
-            Scenarios
+            What If
           </h1>
           <p className="page-description">
-            Create and manage budget scenarios for &quot;what-if&quot; planning.
+            Explore different budget scenarios to see how changes affect your finances.
           </p>
         </div>
         <Button onClick={openAddDialog}>
@@ -243,28 +127,210 @@ export function ScenariosIndexPage() {
         </Button>
       </div>
 
-      <Alert variant="info">
-        Switching scenarios changes your budget and forecasts. Your past transactions and categories stay the same.
+      <Alert variant="info" className="mb-6">
+        Each scenario has its own budget and savings plan. Use the sliders on the{' '}
+        <Link to="/budget" className="underline hover:text-blue-900 dark:hover:text-blue-100">
+          Budget page
+        </Link>{' '}
+        to explore &quot;what if&quot; questions, then save your adjustments as a new scenario.
       </Alert>
 
       {isLoading ? (
         <PageLoading />
-      ) : scenarios.length === 0 ? (
-        <div className="mt-6 empty-state">
-          <p className="empty-state-text">No scenarios yet.</p>
-          <Button className="empty-state-action" onClick={openAddDialog}>
-            Create your first scenario
-          </Button>
-        </div>
       ) : (
-        <div className="mt-6">
-          <DataTable
-            columns={columns}
-            data={scenarioRows}
-            searchKey="name"
-            searchPlaceholder="Search scenarios..."
-            showPagination={false}
-          />
+        <div className="space-y-6">
+          {/* Current Plan Section */}
+          {defaultScenario && (
+            <div>
+              <h3 className="mb-3 text-sm font-medium text-muted-foreground">Current Plan</h3>
+              <div
+                className={`rounded-xl border-2 border-dashed p-5 transition-colors ${
+                  isViewingCurrentPlan
+                    ? 'border-amber-500/50 bg-amber-500/5'
+                    : 'border-muted-foreground/30 bg-card'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
+                      <h2 className="text-lg font-semibold">{defaultScenario.name}</h2>
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {defaultScenario.description || 'Your baseline budget - the plan you live by.'}
+                    </p>
+                    <div className="mt-2 text-sm text-muted-foreground">
+                      <Link to="/budget" className="hover:text-foreground hover:underline">
+                        {countsByScenario[defaultScenario.id]?.forecasts ?? 0} forecasts
+                      </Link>
+                      <span className="mx-2">·</span>
+                      <Link to="/budget" className="hover:text-foreground hover:underline">
+                        {countsByScenario[defaultScenario.id]?.budgets ?? 0} budgets
+                      </Link>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setActiveScenarioId(defaultScenario.id)}
+                          disabled={isViewingCurrentPlan}
+                        >
+                          <Play
+                            className={`h-4 w-4 ${isViewingCurrentPlan ? 'fill-amber-500 text-amber-500' : ''}`}
+                          />
+                          <span className="ml-1 hidden sm:inline">
+                            {isViewingCurrentPlan ? 'Viewing' : 'View'}
+                          </span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {isViewingCurrentPlan ? 'Currently viewing' : 'Switch to Current Plan'}
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditDialog(defaultScenario)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Edit Current Plan</TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Other Scenarios */}
+          {otherScenarios.length > 0 && (
+            <div>
+              <h3 className="mb-3 text-sm font-medium text-muted-foreground">What-If Scenarios</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {otherScenarios.map((scenario) => {
+                  const isActive = scenario.id === activeScenarioId;
+                  const isDeleting = deletingId === scenario.id;
+                  const counts = countsByScenario[scenario.id];
+
+                  return (
+                    <div
+                      key={scenario.id}
+                      className={`rounded-lg border-2 border-dashed p-4 transition-colors ${
+                        isActive
+                          ? 'border-violet-500/50 bg-violet-500/10'
+                          : 'border-transparent bg-card'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openEditDialog(scenario)}
+                              className="cursor-pointer text-left font-medium hover:underline"
+                            >
+                              {scenario.name}
+                            </button>
+                          </div>
+                          {scenario.description && (
+                            <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                              {scenario.description}
+                            </p>
+                          )}
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            <Link to="/budget" className="hover:text-foreground hover:underline">
+                              {counts?.forecasts ?? 0} forecasts
+                            </Link>
+                            <span className="mx-2">·</span>
+                            <Link to="/budget" className="hover:text-foreground hover:underline">
+                              {counts?.budgets ?? 0} budgets
+                            </Link>
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  setActiveScenarioId(isActive ? defaultScenario!.id : scenario.id)
+                                }
+                              >
+                                <Play
+                                  className={`h-4 w-4 ${isActive ? 'fill-violet-500 text-violet-500' : ''}`}
+                                />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {isActive ? 'Back to Current Plan' : 'Explore this scenario'}
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => updateScenario(scenario.id, { isDefault: true })}
+                              >
+                                <Star className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Make Current Plan</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEditDialog(scenario)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Edit scenario</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant={isDeleting ? 'destructive' : 'ghost'}
+                                size="sm"
+                                onClick={() => handleDelete(scenario.id)}
+                                onBlur={() => setTimeout(() => setDeletingId(null), 200)}
+                              >
+                                {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {isDeleting ? 'Click to confirm' : 'Delete scenario'}
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {otherScenarios.length === 0 && (
+            <div className="rounded-lg border border-dashed p-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                No what-if scenarios yet. Create one to explore budget alternatives.
+              </p>
+              <Button variant="outline" className="mt-3" onClick={openAddDialog}>
+                <Plus className="h-4 w-4" />
+                Create Scenario
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
