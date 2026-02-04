@@ -181,7 +181,6 @@ export function CreatableSelect({
             id="select-listbox"
             role="listbox"
             className="max-h-60 overflow-y-auto py-1"
-            onWheel={(e) => e.stopPropagation()}
           >
             {allowNone && (
               <button
