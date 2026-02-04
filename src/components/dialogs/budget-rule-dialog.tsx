@@ -218,7 +218,7 @@ export function BudgetRuleDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                       <SelectItem key={d} value={String(d)}>
                         {d}
                       </SelectItem>
@@ -255,13 +255,18 @@ export function BudgetRuleDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                     <SelectItem key={d} value={String(d)}>
                       {d}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {parseInt(day, 10) > 28 && (
+                <p className="text-xs text-muted-foreground">
+                  For shorter months, uses last day of month
+                </p>
+              )}
             </div>
           )}
 
