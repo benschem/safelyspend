@@ -21,6 +21,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.24.0',
+    date: '2026-02-04',
+    changes: [
+      'Schedule future interest rate changes on savings goals',
+      'Interest forecasts, completion estimates, and annual interest reflect scheduled rate changes',
+      'Savings goal dialog shows target amount and deadline side-by-side',
+      'Simplified contribution and withdrawal forms with amount-first layout',
+    ],
+  },
+  {
     version: '0.23.0',
     date: '2026-02-04',
     changes: [
