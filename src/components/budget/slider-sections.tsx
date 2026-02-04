@@ -5,21 +5,67 @@ import {
   ChevronDown,
   ChevronRight,
   Plus,
+  Pencil,
+  Trash2,
   BanknoteArrowUp,
   BanknoteArrowDown,
   PiggyBank,
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatCents, type CadenceType } from '@/lib/utils';
 import { BudgetSlider, getSliderRange, getIncomeSliderRange } from './budget-slider';
 import { useWhatIf } from '@/contexts/what-if-context';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
 import type { ForecastRule, BudgetRule, Category, SavingsGoal } from '@/lib/types';
 
+function SliderActions({
+  onEdit,
+  onDelete,
+}: {
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <span className="flex gap-0.5">
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onEdit}
+              className="cursor-pointer rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Edit</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onDelete}
+              className="cursor-pointer rounded p-1 text-muted-foreground hover:bg-muted hover:text-red-500"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Delete</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </span>
+  );
+}
+
 interface IncomeSectionProps {
   incomeRules: ForecastRule[];
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onAddClick: () => void;
+  onEditRule: (rule: ForecastRule) => void;
+  onDeleteRule: (ruleId: string) => void;
   periodLabel: string;
   periodTotal: number;
   /** Monthly delta from default scenario (current - default) */
@@ -31,6 +77,8 @@ export function IncomeSliderSection({
   isOpen,
   onOpenChange,
   onAddClick,
+  onEditRule,
+  onDeleteRule,
   periodLabel,
   periodTotal,
   monthlyDelta,
@@ -101,6 +149,12 @@ export function IncomeSliderSection({
                     variant="income"
                     differsFromDefault={differsFromDefault}
                     defaultValue={defaultValue}
+                    actions={
+                      <SliderActions
+                        onEdit={() => onEditRule(rule)}
+                        onDelete={() => onDeleteRule(rule.id)}
+                      />
+                    }
                   />
                 );
               })
@@ -118,6 +172,8 @@ interface FixedExpenseSectionProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onAddClick: () => void;
+  onEditRule: (rule: ForecastRule) => void;
+  onDeleteRule: (ruleId: string) => void;
   periodLabel: string;
   periodTotal: number;
   /** Monthly delta from default scenario (current - default) */
@@ -130,6 +186,8 @@ export function FixedExpenseSliderSection({
   isOpen,
   onOpenChange,
   onAddClick,
+  onEditRule,
+  onDeleteRule,
   periodLabel,
   periodTotal,
   monthlyDelta,
@@ -205,6 +263,12 @@ export function FixedExpenseSliderSection({
                     variant="expense"
                     differsFromDefault={differsFromDefault}
                     defaultValue={defaultValue}
+                    actions={
+                      <SliderActions
+                        onEdit={() => onEditRule(rule)}
+                        onDelete={() => onDeleteRule(rule.id)}
+                      />
+                    }
                   />
                 );
               })
@@ -222,6 +286,8 @@ interface BudgetedSpendingSectionProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onAddClick: () => void;
+  onEditBudget: (rule: BudgetRule) => void;
+  onDeleteBudget: (ruleId: string) => void;
   periodLabel: string;
   periodTotal: number;
   /** Monthly delta from default scenario (current - default) */
@@ -234,6 +300,8 @@ export function BudgetedSpendingSliderSection({
   isOpen,
   onOpenChange,
   onAddClick,
+  onEditBudget,
+  onDeleteBudget,
   periodLabel,
   periodTotal,
   monthlyDelta,
@@ -322,6 +390,12 @@ export function BudgetedSpendingSliderSection({
                     variant="expense"
                     differsFromDefault={differsFromDefault}
                     defaultValue={defaultValue}
+                    actions={
+                      <SliderActions
+                        onEdit={() => onEditBudget(rule)}
+                        onDelete={() => onDeleteBudget(rule.id)}
+                      />
+                    }
                   />
                 );
               })
@@ -339,6 +413,8 @@ interface SavingsSectionProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onAddClick: () => void;
+  onEditRule: (rule: ForecastRule) => void;
+  onDeleteRule: (ruleId: string) => void;
   periodLabel: string;
   periodTotal: number;
   /** Monthly delta from default scenario (current - default) */
@@ -351,6 +427,8 @@ export function SavingsSliderSection({
   isOpen,
   onOpenChange,
   onAddClick,
+  onEditRule,
+  onDeleteRule,
   periodLabel,
   periodTotal,
   monthlyDelta,
@@ -425,6 +503,12 @@ export function SavingsSliderSection({
                     variant="savings"
                     differsFromDefault={differsFromDefault}
                     defaultValue={defaultValue}
+                    actions={
+                      <SliderActions
+                        onEdit={() => onEditRule(rule)}
+                        onDelete={() => onDeleteRule(rule.id)}
+                      />
+                    }
                   />
                 );
               })

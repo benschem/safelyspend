@@ -43,6 +43,8 @@ interface BudgetSliderProps {
   differsFromDefault?: boolean;
   /** Current Plan's value (for showing delta from current plan when viewing non-default scenario) */
   defaultValue?: number | undefined;
+  /** Optional action buttons rendered in the label row */
+  actions?: ReactNode;
 }
 
 const variantStyles: Record<SliderVariant, { track: string; thumb: string; text: string }> = {
@@ -77,6 +79,7 @@ export function BudgetSlider({
   debounceMs = 100,
   differsFromDefault = false,
   defaultValue,
+  actions,
 }: BudgetSliderProps) {
   // Internal state for immediate UI feedback
   const [localValue, setLocalValue] = useState(value);
@@ -245,6 +248,7 @@ export function BudgetSlider({
         <div className="flex items-center gap-2">
           {icon && <span className="text-muted-foreground">{icon}</span>}
           <span className="font-medium">{label}</span>
+          {actions}
         </div>
         <div className="flex items-center gap-2">
           <Popover open={customInputOpen} onOpenChange={setCustomInputOpen}>
