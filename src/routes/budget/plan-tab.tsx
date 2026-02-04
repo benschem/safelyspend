@@ -1,13 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   PiggyBank,
   CreditCard,
   Scale,
@@ -73,11 +66,14 @@ interface CategoryRow {
   canDelete: boolean;
 }
 
+export type BudgetPeriodValue = BudgetPeriod;
+
 interface PlanTabProps {
   activeScenarioId: string;
+  breakdownPeriod: BudgetPeriod;
 }
 
-export function PlanTab({ activeScenarioId }: PlanTabProps) {
+export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
   const { activeScenario } = useScenarios();
   const { isWhatIfMode } = useWhatIf();
   const { getTotalDelta, isViewingDefault } = useScenarioDiff();
@@ -132,8 +128,7 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
   const isLoading =
     categoriesLoading || budgetLoading || forecastsLoading || savingsLoading || transactionsLoading;
 
-  // Period state for breakdown chart
-  const [breakdownPeriod, setBreakdownPeriod] = useState<BudgetPeriod>('monthly');
+
 
   // Dialog state
   const [addCategoryDialogOpen, setAddCategoryDialogOpen] = useState(false);
@@ -563,25 +558,6 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
 
   return (
     <div>
-      {/* Period selector */}
-      <div className="mb-6">
-        <Select
-          value={breakdownPeriod}
-          onValueChange={(v) => setBreakdownPeriod(v as BudgetPeriod)}
-        >
-          <SelectTrigger className="w-36">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="weekly">Per week</SelectItem>
-            <SelectItem value="fortnightly">Per fortnight</SelectItem>
-            <SelectItem value="monthly">Per month</SelectItem>
-            <SelectItem value="quarterly">Per quarter</SelectItem>
-            <SelectItem value="yearly">Per year</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       {/* Budget Status Hero */}
       {(totals.income > 0 || isOvercommitted) && (
         <div className="mb-4 min-h-28 text-center sm:min-h-32">

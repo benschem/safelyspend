@@ -634,38 +634,38 @@ export function TransactionsPage() {
 
   return (
     <div className="page-shell space-y-6">
-      <div className="page-header">
-        <h1 className="page-title">
-          <div className="page-title-icon bg-slate-500/10">
-            <History className="h-5 w-5 text-slate-500" />
-          </div>
-          Transactions
-        </h1>
-        <p className="page-description">Review your transaction history</p>
+      <div className="page-header flex items-start justify-between gap-4">
+        <div>
+          <h1 className="page-title">
+            <div className="page-title-icon bg-slate-500/10">
+              <History className="h-5 w-5 text-slate-500" />
+            </div>
+            Transactions
+          </h1>
+          <p className="page-description">Review your transaction history</p>
+        </div>
+        {hasAnyTransactions && transactionDateRange && (
+          <Select
+            value={averageCadence}
+            onValueChange={(v) => setAverageCadence(v as AverageCadence)}
+          >
+            <SelectTrigger className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="weekly">Weekly average</SelectItem>
+              <SelectItem value="fortnightly">Fortnightly average</SelectItem>
+              <SelectItem value="monthly">Monthly average</SelectItem>
+              <SelectItem value="quarterly">Quarterly average</SelectItem>
+              <SelectItem value="yearly">Yearly average</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Track Record Summary */}
       {hasAnyTransactions && transactionDateRange && (
         <>
-          {/* Cadence selector - top left */}
-          <div>
-            <Select
-              value={averageCadence}
-              onValueChange={(v) => setAverageCadence(v as AverageCadence)}
-            >
-              <SelectTrigger className="w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="weekly">Weekly average</SelectItem>
-                <SelectItem value="fortnightly">Fortnightly average</SelectItem>
-                <SelectItem value="monthly">Monthly average</SelectItem>
-                <SelectItem value="quarterly">Quarterly average</SelectItem>
-                <SelectItem value="yearly">Yearly average</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Hero - Average Net */}
           <div className="mb-4 min-h-28 text-center sm:min-h-32">
             <div className="flex min-h-8 items-center justify-center">

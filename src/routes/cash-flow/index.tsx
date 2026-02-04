@@ -97,21 +97,7 @@ export function CashFlowPage() {
     );
   }
 
-  return (
-    <div className="page-shell space-y-6">
-      <div className="page-header">
-        <h1 className="page-title">
-          <div className="page-title-icon bg-sky-500/10">
-            <Banknote className="h-5 w-5 text-sky-500" />
-          </div>
-          Cash Flow
-        </h1>
-        <p className="page-description">Track your spending against your plan</p>
-      </div>
-
-      <CashFlowContent activeScenarioId={activeScenarioId} />
-    </div>
-  );
+  return <CashFlowContent activeScenarioId={activeScenarioId} />;
 }
 
 interface CashFlowContentProps {
@@ -509,96 +495,106 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
     selectedMonth.getMonth() === now.getMonth();
 
   return (
-    <div className="space-y-6">
-      {/* Period Navigation - top left */}
-      <div className="flex items-center gap-2">
-        <Popover
-          open={calendarOpen}
-          onOpenChange={(open) => {
-            setCalendarOpen(open);
-            if (open) setPickerYear(selectedYear);
-          }}
-        >
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className="inline-flex h-9 w-44 cursor-pointer items-center justify-between rounded-md border border-input bg-background px-3 text-sm shadow-sm hover:bg-muted/50"
-            >
-              <span>{periodLabel}</span>
-              <ChevronDown className="h-4 w-4 opacity-50" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-64 p-3" align="start">
-            {/* Year navigation */}
-            <div className="mb-3 flex items-center justify-between">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setPickerYear((y) => y - 1)}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm font-semibold">{pickerYear}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setPickerYear((y) => y + 1)}
-                disabled={pickerYear >= now.getFullYear()}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+    <div className="page-shell space-y-6">
+      <div className="page-header flex items-start justify-between gap-4">
+        <div>
+          <h1 className="page-title">
+            <div className="page-title-icon bg-sky-500/10">
+              <Banknote className="h-5 w-5 text-sky-500" />
             </div>
-            {/* Month grid */}
-            <div className="grid grid-cols-3 gap-1">
-              {MONTHS.map((month, index) => {
-                const isSelected =
-                  pickerYear === selectedYear && index === selectedMonthIndex;
-                const isCurrent =
-                  pickerYear === now.getFullYear() && index === now.getMonth();
-                const isFutureMonth =
-                  pickerYear > now.getFullYear() ||
-                  (pickerYear === now.getFullYear() && index > now.getMonth());
-                return (
-                  <Button
-                    key={month}
-                    variant={isSelected ? 'default' : 'ghost'}
-                    size="sm"
-                    disabled={isFutureMonth}
-                    className={cn(
-                      'h-8 text-xs',
-                      isCurrent && !isSelected && 'border border-primary',
-                    )}
-                    onClick={() => {
-                      setSelectedMonth(new Date(pickerYear, index, 1));
-                      setCalendarOpen(false);
-                    }}
-                  >
-                    {month.slice(0, 3)}
-                  </Button>
-                );
-              })}
-            </div>
-          </PopoverContent>
-        </Popover>
-        <Button variant="ghost" size="icon" onClick={goToPrevious} className="h-9 w-9">
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={goToNext}
-          className="h-9 w-9"
-          disabled={isAtCurrentMonth}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-        {!isCurrentPeriod && (
-          <Button variant="ghost" size="sm" onClick={goToCurrent} className="text-xs">
-            Today →
+            Cash Flow
+          </h1>
+          <p className="page-description">Track your spending against your plan</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Popover
+            open={calendarOpen}
+            onOpenChange={(open) => {
+              setCalendarOpen(open);
+              if (open) setPickerYear(selectedYear);
+            }}
+          >
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex h-9 w-44 cursor-pointer items-center justify-between rounded-md border border-input bg-background px-3 text-sm shadow-sm hover:bg-muted/50"
+              >
+                <span>{periodLabel}</span>
+                <ChevronDown className="h-4 w-4 opacity-50" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-3" align="end">
+              {/* Year navigation */}
+              <div className="mb-3 flex items-center justify-between">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setPickerYear((y) => y - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-semibold">{pickerYear}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setPickerYear((y) => y + 1)}
+                  disabled={pickerYear >= now.getFullYear()}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              {/* Month grid */}
+              <div className="grid grid-cols-3 gap-1">
+                {MONTHS.map((month, index) => {
+                  const isSelected =
+                    pickerYear === selectedYear && index === selectedMonthIndex;
+                  const isCurrent =
+                    pickerYear === now.getFullYear() && index === now.getMonth();
+                  const isFutureMonth =
+                    pickerYear > now.getFullYear() ||
+                    (pickerYear === now.getFullYear() && index > now.getMonth());
+                  return (
+                    <Button
+                      key={month}
+                      variant={isSelected ? 'default' : 'ghost'}
+                      size="sm"
+                      disabled={isFutureMonth}
+                      className={cn(
+                        'h-8 text-xs',
+                        isCurrent && !isSelected && 'border border-primary',
+                      )}
+                      onClick={() => {
+                        setSelectedMonth(new Date(pickerYear, index, 1));
+                        setCalendarOpen(false);
+                      }}
+                    >
+                      {month.slice(0, 3)}
+                    </Button>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
+          <Button variant="ghost" size="icon" onClick={goToPrevious} className="h-9 w-9">
+            <ChevronLeft className="h-4 w-4" />
           </Button>
-        )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={goToNext}
+            className="h-9 w-9"
+            disabled={isAtCurrentMonth}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          {!isCurrentPeriod && (
+            <Button variant="ghost" size="sm" onClick={goToCurrent} className="text-xs">
+              Today →
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Hero Header */}
