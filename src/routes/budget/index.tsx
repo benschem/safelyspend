@@ -1,28 +1,25 @@
 import { useState, useEffect } from 'react';
 import { Link, useOutletContext, useSearchParams } from 'react-router';
-import { Activity, Target, History } from 'lucide-react';
+import { Activity, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { cn } from '@/lib/utils';
 import { OverviewTab } from './overview-tab';
 import { PlanTab } from './plan-tab';
-import { HistoryTab } from './history-tab';
 
-const VALID_TABS = ['overview', 'plan', 'history'] as const;
+const VALID_TABS = ['overview', 'plan'] as const;
 type TabValue = (typeof VALID_TABS)[number];
 const STORAGE_KEY = 'budget:activeTab';
 
 const TAB_CONFIG = [
   { value: 'overview' as const, label: 'Pulse', icon: Activity, color: 'text-sky-500' },
   { value: 'plan' as const, label: 'Plan', icon: Target, color: 'text-violet-500' },
-  { value: 'history' as const, label: 'History', icon: History, color: 'text-slate-500' },
 ];
 
 const TAB_SUBTITLES: Record<TabValue, string> = {
   overview: 'Track your spending against your plan',
   plan: 'Plan your spending and savings',
-  history: 'Review your transaction history',
 };
 
 interface OutletContext {
@@ -127,7 +124,6 @@ export function BudgetPage() {
       {/* Tab Content */}
       {activeTab === 'overview' && <OverviewTab activeScenarioId={activeScenarioId} />}
       {activeTab === 'plan' && <PlanTab activeScenarioId={activeScenarioId} />}
-      {activeTab === 'history' && <HistoryTab activeScenarioId={activeScenarioId} />}
     </div>
   );
 }

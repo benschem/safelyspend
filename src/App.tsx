@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { Toaster } from '@/components/ui/sonner';
 import { RootLayout } from '@/components/layout/root-layout';
 import { FirstRunWizard } from '@/components/first-run-wizard';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -7,6 +8,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 // Route components
 import { NetWealthPage } from '@/routes/net-wealth';
 import { BudgetPage } from '@/routes/budget';
+import { TransactionsPage } from '@/routes/transactions/index';
 import { TransactionNewPage } from '@/routes/transactions/new';
 import { CategoryDetailPage } from '@/routes/categories/detail';
 import { CategoryImportRulesPage } from '@/routes/categories/import-rules';
@@ -42,8 +44,11 @@ const router = createBrowserRouter([
       // Redirect root to budget
       { index: true, element: <Navigate to="/budget" replace /> },
 
-      // Budget (tabbed: overview, plan, history)
+      // Budget (tabbed: overview, plan)
       { path: 'budget', element: <BudgetPage /> },
+
+      // Transactions (standalone page)
+      { path: 'transactions', element: <TransactionsPage /> },
 
       // Snapshot redirects to budget (merged into Budget overview tab)
       { path: 'snapshot', element: <Navigate to="/budget" replace /> },
@@ -51,13 +56,10 @@ const router = createBrowserRouter([
       // Net Wealth (balances overview)
       { path: 'net-wealth', element: <NetWealthPage /> },
 
-      // Cash Flow redirects to Budget (pages merged)
-      { path: 'cash-flow', element: <Navigate to="/budget" replace /> },
-
       // Legacy redirects
+      { path: 'cash-flow', element: <Navigate to="/transactions" replace /> },
+      { path: 'money', element: <Navigate to="/transactions" replace /> },
       { path: 'net-worth', element: <Navigate to="/net-wealth" replace /> },
-      { path: 'money', element: <Navigate to="/cash-flow" replace /> },
-      { path: 'transactions', element: <Navigate to="/cash-flow" replace /> },
       { path: 'forecasts', element: <Navigate to="/budget?tab=plan" replace /> },
       {
         path: 'forecasts/recurring',
@@ -98,6 +100,7 @@ export default function App() {
   return (
     <TooltipProvider>
       <RouterProvider router={router} />
+      <Toaster />
     </TooltipProvider>
   );
 }

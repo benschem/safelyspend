@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { useState, useMemo, useCallback } from 'react';
+import { toast } from 'sonner';
+import { Link, useSearchParams, useOutletContext } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import {
@@ -58,6 +59,10 @@ import { DateRangeFilter } from '@/components/date-range-filter';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { Cadence, Transaction } from '@/lib/types';
 
+interface OutletContext {
+  activeScenarioId: string | null;
+}
+
 type FilterType = 'all' | 'income' | 'expense' | 'savings' | 'adjustment';
 type CategoryFilter = 'all' | 'uncategorized' | string;
 type AverageCadence = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly';
@@ -74,12 +79,9 @@ const FREQUENCY_PER_LABELS: Record<AverageCadence, string> = {
   yearly: 'per year',
 };
 
-interface HistoryTabProps {
-  activeScenarioId: string;
-}
-
-export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
+export function TransactionsPage() {
   const [searchParams] = useSearchParams();
+  const { activeScenarioId } = useOutletContext<OutletContext>();
   const { categories, activeCategories } = useCategories();
   const { getRuleForCategory, setBudgetForCategory } = useBudgetRules(activeScenarioId);
   const { rules: categoryRules, addRule, getNextPriority } = useCategoryRules();
@@ -101,6 +103,7 @@ export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
     addTransaction,
     updateTransaction,
     deleteTransaction,
+    restoreTransaction,
     countByCategoryMismatch,
     bulkUpdateCategory,
   } = useTransactions(pastQueryStartDate, pastQueryEndDate);
@@ -116,7 +119,6 @@ export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
   const [upImportOpen, setUpImportOpen] = useState(false);
   const [csvImportOpen, setCsvImportOpen] = useState(false);
   const [importPopoverOpen, setImportPopoverOpen] = useState(false);
-  const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
   const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
   const [budgetTransaction, setBudgetTransaction] = useState<Transaction | null>(null);
   const [bulkCategoryInfo, setBulkCategoryInfo] = useState<{
@@ -293,15 +295,21 @@ export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
   }, []);
 
   const handleDeleteTransaction = useCallback(
-    (id: string) => {
-      if (deletingTransactionId === id) {
-        deleteTransaction(id);
-        setDeletingTransactionId(null);
-      } else {
-        setDeletingTransactionId(id);
-      }
+    async (id: string) => {
+      const tx = allTransactions.find((t) => t.id === id);
+      if (!tx) return;
+      await deleteTransaction(id);
+      toast('Transaction deleted', {
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            restoreTransaction(tx);
+          },
+        },
+        duration: 5000,
+      });
     },
-    [deletingTransactionId, deleteTransaction],
+    [allTransactions, deleteTransaction, restoreTransaction],
   );
 
   const openBudgetDialog = useCallback((transaction: Transaction) => {
@@ -389,17 +397,6 @@ export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
     },
     [bulkCategoryInfo, bulkUpdateCategory, addRule, getNextPriority],
   );
-
-  // Close delete confirmation on Escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (deletingTransactionId) setDeletingTransactionId(null);
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [deletingTransactionId]);
 
   // Transaction columns for DataTable
   const transactionColumns: ColumnDef<Transaction>[] = useMemo(
@@ -569,7 +566,6 @@ export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
         id: 'actions',
         cell: ({ row }) => {
           const transaction = row.original;
-          const isDeleting = deletingTransactionId === transaction.id;
           const canAddToBudget =
             transaction.type === 'expense' && transaction.categoryId && activeScenarioId;
 
@@ -607,16 +603,15 @@ export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
-                      variant={isDeleting ? 'destructive' : 'ghost'}
+                      variant="ghost"
                       size="sm"
                       onClick={() => handleDeleteTransaction(transaction.id)}
-                      onBlur={() => setTimeout(() => setDeletingTransactionId(null), 200)}
-                      aria-label={isDeleting ? 'Confirm delete' : 'Delete'}
+                      aria-label="Delete"
                     >
-                      {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>{isDeleting ? 'Click to confirm' : 'Delete'}</TooltipContent>
+                  <TooltipContent>Delete</TooltipContent>
                 </Tooltip>
               </div>
             </TooltipProvider>
@@ -625,7 +620,6 @@ export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
       },
     ],
     [
-      deletingTransactionId,
       openEditTransactionDialog,
       handleDeleteTransaction,
       getCategoryName,
@@ -639,7 +633,17 @@ export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="page-shell space-y-6">
+      <div className="page-header">
+        <h1 className="page-title">
+          <div className="page-title-icon bg-slate-500/10">
+            <History className="h-5 w-5 text-slate-500" />
+          </div>
+          Transactions
+        </h1>
+        <p className="page-description">Review your transaction history</p>
+      </div>
+
       {/* Track Record Summary */}
       {hasAnyTransactions && transactionDateRange && (
         <>
@@ -771,7 +775,7 @@ export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="sm" asChild>
-                    <Link to="/categories/import-rules?from=budget">
+                    <Link to="/categories/import-rules?from=transactions">
                       <Settings2 className="h-4 w-4" />
                     </Link>
                   </Button>
@@ -903,6 +907,7 @@ export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
         addTransaction={addTransaction}
         updateTransaction={updateTransaction}
         onCategoryChanged={handleCategoryChanged}
+        existingTransactions={allTransactions}
       />
 
       <UpImportDialog open={upImportOpen} onOpenChange={setUpImportOpen} />
