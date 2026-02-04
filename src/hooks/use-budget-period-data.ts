@@ -14,6 +14,11 @@ interface PeriodCashFlow {
   savings: { expected: number; actual: number };
   expenses: { expected: number; actual: number; dueToDate: number };
   net: { projected: number; forecasted: number };
+  projection: {
+    variableActual: number;
+    projectedVariable: number;
+    projectedTotal: number;
+  };
 }
 
 interface BudgetSummary {
@@ -58,6 +63,9 @@ interface BurnRateData {
   periodStart: string;
   periodEnd: string;
   periodLabel: string;
+  fixedExpenseSchedule: { date: string; amount: number }[];
+  variableBudget: number;
+  fixedExpensesTotal: number;
 }
 
 interface UseBudgetPeriodDataOptions {
@@ -243,6 +251,14 @@ function calculatePeriodCashFlow(
   const projectedNet = actualNet + forecastedIncome - forecastedExpenses - forecastedSavings;
   const forecastedNet = forecastedIncome - forecastedExpenses - forecastedSavings;
 
+  // Smart projection: separate fixed vs variable spending
+  const periodProgress = dayOfPeriod / daysInPeriod;
+  const variableActual = Math.max(0, actualExpenses - expensesDueToDate);
+  const projectedVariable = periodProgress > 0
+    ? Math.round(variableActual / periodProgress)
+    : Math.round(totalBudget);
+  const projectedTotal = Math.round(expectedExpenses) + projectedVariable;
+
   return {
     dayOfPeriod,
     daysInPeriod,
@@ -252,6 +268,11 @@ function calculatePeriodCashFlow(
     savings: { expected: Math.round(expectedSavings), actual: actualSavings },
     expenses: { expected: Math.round(expectedExpenses), actual: actualExpenses, dueToDate: Math.round(expensesDueToDate) },
     net: { projected: projectedNet, forecasted: forecastedNet },
+    projection: {
+      variableActual,
+      projectedVariable,
+      projectedTotal,
+    },
   };
 }
 
@@ -468,6 +489,7 @@ function calculateBurnRateData(
   periodEnd: string,
   periodLabel: string,
   budgetRules: BudgetRule[],
+  periodForecasts: ExpandedForecast[],
   allTransactions: Transaction[],
 ): BurnRateData {
   const expenses = allTransactions.filter(
@@ -480,17 +502,23 @@ function calculateBurnRateData(
   }));
 
   const periodMultiplier = viewMode === 'year' ? 12 : viewMode === 'quarter' ? 3 : 1;
-  const totalBudget = budgetRules.reduce(
+  const variableBudget = budgetRules.reduce(
     (sum, r) => sum + toMonthlyAmount(r.amountCents, r.cadence) * periodMultiplier,
     0,
   );
+  const expenseForecasts = periodForecasts.filter((f) => f.type === 'expense');
+  const fixedExpenseSchedule = expenseForecasts.map((f) => ({ date: f.date, amount: f.amountCents }));
+  const fixedExpensesTotal = expenseForecasts.reduce((sum, f) => sum + f.amountCents, 0);
 
   return {
     dailySpending,
-    totalBudget: Math.round(totalBudget),
+    totalBudget: Math.round(variableBudget + fixedExpensesTotal),
     periodStart,
     periodEnd,
     periodLabel,
+    fixedExpenseSchedule,
+    variableBudget: Math.round(variableBudget),
+    fixedExpensesTotal: Math.round(fixedExpensesTotal),
   };
 }
 
@@ -642,9 +670,10 @@ export function useBudgetPeriodData({
         periodEnd,
         periodLabel,
         budgetRules,
+        periodForecasts,
         allTransactions,
       ),
-    [viewMode, periodStart, periodEnd, periodLabel, budgetRules, allTransactions],
+    [viewMode, periodStart, periodEnd, periodLabel, budgetRules, periodForecasts, allTransactions],
   );
 
   return {

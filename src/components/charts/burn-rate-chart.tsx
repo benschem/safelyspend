@@ -8,6 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
+  ReferenceArea,
 } from 'recharts';
 import { formatCents } from '@/lib/utils';
 import { CHART_COLORS } from '@/lib/chart-colors';
@@ -28,6 +29,12 @@ interface BurnRateChartProps {
   viewMode?: 'year' | 'quarter' | 'month';
   /** Positive surplus amount (in cents) - shows safe limit line above budget */
   surplusAmount?: number | undefined;
+  /** Fixed expense schedule from forecast rules — enables smart projection */
+  fixedExpenseSchedule?: { date: string; amount: number }[];
+  /** Variable budget total (budget rules only) */
+  variableBudget?: number;
+  /** Total fixed expenses for the period */
+  fixedExpensesTotal?: number;
 }
 
 interface ChartDataPoint {
@@ -187,8 +194,12 @@ export function BurnRateChart({
   compact = false,
   viewMode = 'month',
   surplusAmount,
+  fixedExpenseSchedule,
+  variableBudget,
+  fixedExpensesTotal,
 }: BurnRateChartProps) {
   void _periodLabel; // Kept for API compatibility
+  const hasSmartProjection = fixedExpenseSchedule != null && variableBudget != null && fixedExpensesTotal != null;
 
   // Calculate safe limit percentage (budget + surplus as % of budget)
   const surplusPercent =
@@ -295,6 +306,32 @@ export function BurnRateChart({
     let cumulativeSpend = 0;
     let currentDay = 0;
 
+    // Pre-compute cumulative fixed expenses by day for smart projection
+    const fixedByDate: Record<string, number> = {};
+    if (hasSmartProjection) {
+      for (const item of fixedExpenseSchedule!) {
+        fixedByDate[item.date] = (fixedByDate[item.date] ?? 0) + item.amount;
+      }
+    }
+
+    // Helper: cumulative fixed expenses up to and including a date string
+    const cumulativeFixedByDay = (dateStr: string): number => {
+      if (!hasSmartProjection) return 0;
+      let sum = 0;
+      for (const item of fixedExpenseSchedule!) {
+        if (item.date <= dateStr) sum += item.amount;
+      }
+      return sum;
+    };
+
+    // Helper: expected cumulative at a given day (smart or linear)
+    const expectedAtDay = (day: number, dateStr: string): number => {
+      if (hasSmartProjection) {
+        return cumulativeFixedByDay(dateStr) + (day / totalDays) * variableBudget!;
+      }
+      return (day / totalDays) * totalBudget;
+    };
+
     // First pass: calculate actual spending up to today
     for (let i = 0; i < totalDays; i++) {
       const currentDate = new Date(start);
@@ -308,9 +345,9 @@ export function BurnRateChart({
         cumulativeSpend += dailySpend;
         currentDay = day;
 
-        const expectedCumulative = (day / totalDays) * totalBudget;
+        const expectedCumulative = expectedAtDay(day, dateStr);
         const actualPercent = totalBudget > 0 ? (cumulativeSpend / totalBudget) * 100 : 0;
-        const expectedPercent = (day / totalDays) * 100;
+        const expectedPercent = totalBudget > 0 ? (expectedCumulative / totalBudget) * 100 : 0;
 
         data.push({
           day,
@@ -327,7 +364,20 @@ export function BurnRateChart({
       }
     }
 
-    // Calculate daily burn rate based on current pace
+    // Calculate projection for future days
+    let variableDailyRate: number;
+    if (hasSmartProjection && currentDay > 0) {
+      // Smart: only project variable spending linearly
+      const fixedDueToDate = cumulativeFixedByDay(
+        data[data.length - 1]?.date ?? periodStart,
+      );
+      const variableSpent = Math.max(0, cumulativeSpend - fixedDueToDate);
+      variableDailyRate = variableSpent / currentDay;
+    } else {
+      variableDailyRate = 0;
+    }
+
+    // Fallback: naive linear burn rate
     const lastActualPercent =
       currentDay > 0 && totalBudget > 0 ? (cumulativeSpend / totalBudget) * 100 : 0;
     const dailyBurnRate = currentDay > 0 ? lastActualPercent / currentDay : 0;
@@ -339,10 +389,18 @@ export function BurnRateChart({
       const dateStr = currentDate.toISOString().slice(0, 10);
       const day = i + 1;
 
-      const expectedCumulative = (day / totalDays) * totalBudget;
-      const expectedPercent = (day / totalDays) * 100;
-      // Project based on current burn rate
-      const projectedPercent = dailyBurnRate * day;
+      const expectedCumulative = expectedAtDay(day, dateStr);
+      const expectedPercent = totalBudget > 0 ? (expectedCumulative / totalBudget) * 100 : 0;
+
+      let projectedPercent: number;
+      if (hasSmartProjection) {
+        // Smart: future fixed expenses on schedule + variable at current pace
+        const futureCumulativeFixed = cumulativeFixedByDay(dateStr);
+        const projectedCumulative = futureCumulativeFixed + variableDailyRate * day;
+        projectedPercent = totalBudget > 0 ? (projectedCumulative / totalBudget) * 100 : 0;
+      } else {
+        projectedPercent = dailyBurnRate * day;
+      }
 
       data.push({
         day,
@@ -359,7 +417,7 @@ export function BurnRateChart({
     }
 
     return { data, totalDays, currentDay };
-  }, [dailySpending, totalBudget, periodStart, periodEnd, viewMode]);
+  }, [dailySpending, totalBudget, periodStart, periodEnd, viewMode, hasSmartProjection, fixedExpenseSchedule, variableBudget]);
 
   const currentDay = chartData.currentDay;
   const lastActualDataPoint = chartData.data.find((d) => !d.isFuture && d.day === currentDay);
@@ -397,59 +455,103 @@ export function BurnRateChart({
     const paceColor = burnRate > 100 ? '#d97706' : '#16a34a';
 
     return (
-      <div className="w-full">
-        <ResponsiveContainer width="100%" height={80}>
-          <ComposedChart data={chartData.data} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-            {/* 100% budget line - amber for "caution/limit" threshold */}
-            <ReferenceLine y={100} stroke="#f59e0b" strokeDasharray="2 2" />
+      <div className="flex h-full w-full flex-col rounded-lg bg-muted/40 px-4 pt-3 pb-2">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Spending Pace
+        </p>
+        <div className="min-h-0 flex-1">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={chartData.data} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+              <Tooltip content={<CustomTooltip totalBudget={totalBudget} />} />
+              <XAxis hide dataKey="day" type="number" domain={['dataMin', 'dataMax']} />
 
-            {/* Area under actual spending */}
-            <Area
-              type="monotone"
-              dataKey="actualPercent"
-              fill={paceColor}
-              fillOpacity={0.15}
-              stroke="none"
-              connectNulls={false}
-            />
+              {/* "Now" line */}
+              {currentDay > 0 && currentDay < chartData.totalDays && (
+                <ReferenceLine
+                  x={currentDay}
+                  stroke="#6b7280"
+                  strokeWidth={1.5}
+                  label={{
+                    value: 'Now',
+                    position: 'top',
+                    fontSize: 9,
+                    fill: '#6b7280',
+                  }}
+                />
+              )}
 
-            {/* Expected pace line (diagonal) */}
-            <Line
-              type="linear"
-              dataKey="expectedPercent"
-              stroke="#16a34a"
-              strokeWidth={1.5}
-              strokeDasharray="3 3"
-              dot={false}
-            />
+              {(() => {
+                const dangerStart = surplusPercent > 0 ? safeLimitPercent : 100;
+                const dataMax = Math.max(
+                  ...chartData.data.map((d) => Math.max(d.actualPercent ?? 0, d.projectedPercent ?? 0, d.expectedPercent)),
+                );
+                const isInTheRed = dataMax > dangerStart;
+                const chartMax = isInTheRed ? dataMax + 10 : dangerStart;
+                return (
+                  <>
+                    <YAxis hide domain={[0, chartMax]} />
+                    {/* Budget zone (0 to 100%) */}
+                    <ReferenceArea y1={0} y2={100} fill="#f59e0b" fillOpacity={0.2} stroke="none" />
+                    {/* Surplus buffer zone (100% to safe limit) */}
+                    {surplusPercent > 0 && (
+                      <ReferenceArea y1={100} y2={safeLimitPercent} fill="#22c55e" fillOpacity={0.2} stroke="none" />
+                    )}
+                    {/* Danger zone - only when projection exceeds safe limit */}
+                    {isInTheRed && (
+                      <ReferenceArea y1={dangerStart} y2={chartMax} fill="#ef4444" fillOpacity={0.2} stroke="none" />
+                    )}
+                  </>
+                );
+              })()}
 
-            {/* Projected spending line (future) */}
-            <Line
-              type="linear"
-              dataKey="projectedPercent"
-              stroke={paceColor}
-              strokeWidth={1.5}
-              strokeDasharray="4 4"
-              strokeOpacity={0.6}
-              dot={false}
-            />
+              {/* Area under actual spending */}
+              <Area
+                type="monotone"
+                dataKey="actualPercent"
+                fill={paceColor}
+                fillOpacity={0.12}
+                stroke="none"
+                connectNulls={false}
+              />
 
-            {/* Actual spending line */}
-            <Line
-              type="monotone"
-              dataKey="actualPercent"
-              stroke={paceColor}
-              strokeWidth={2}
-              dot={false}
-              connectNulls={false}
-            />
-          </ComposedChart>
-        </ResponsiveContainer>
+              {/* Expected pace line (diagonal) */}
+              <Line
+                type="linear"
+                dataKey="expectedPercent"
+                stroke="#16a34a"
+                strokeWidth={1.5}
+                strokeDasharray="3 3"
+                dot={false}
+              />
+
+              {/* Projected spending line (future) */}
+              <Line
+                type="linear"
+                dataKey="projectedPercent"
+                stroke={paceColor}
+                strokeWidth={1.5}
+                strokeDasharray="4 4"
+                strokeOpacity={0.6}
+                dot={false}
+              />
+
+              {/* Actual spending line */}
+              <Line
+                type="monotone"
+                dataKey="actualPercent"
+                stroke={paceColor}
+                strokeWidth={2}
+                dot={false}
+                connectNulls={false}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
         {/* Simple axis labels */}
-        <div className="flex items-end justify-between px-1 text-[9px] text-muted-foreground">
+        <div className="flex items-end justify-between px-1 pt-1 text-[9px] text-muted-foreground/70">
           <span className="leading-none">0</span>
           <span className="flex-1 text-center leading-none">Time →</span>
-          <span className="leading-none">Budget</span>
+          <span className="leading-none">Spending</span>
         </div>
       </div>
     );
