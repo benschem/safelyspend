@@ -177,6 +177,11 @@ export function useBudgetRules(scenarioId: string | null, startDate?: string, en
     await db.budgetRules.delete(id);
   }, []);
 
+  const restoreBudgetRule = useCallback(async (rule: BudgetRule) => {
+    await db.budgetRules.put(rule);
+    return rule;
+  }, []);
+
   // Duplicate rules from one scenario to another
   const duplicateToScenario = useCallback(
     async (fromScenarioId: string, toScenarioId: string) => {
@@ -206,6 +211,7 @@ export function useBudgetRules(scenarioId: string | null, startDate?: string, en
     addBudgetRule,
     updateBudgetRule,
     deleteBudgetRule,
+    restoreBudgetRule,
     duplicateToScenario,
   };
 }

@@ -431,6 +431,11 @@ export function useForecasts(scenarioId: string | null, startDate?: string, endD
     await db.forecastRules.delete(id);
   }, []);
 
+  const restoreRule = useCallback(async (rule: ForecastRule) => {
+    await db.forecastRules.put(rule);
+    return rule;
+  }, []);
+
   // Exclude a single occurrence of a recurring rule by adding the date to excludedDates
   const excludeOccurrence = useCallback(
     async (ruleId: string, date: string) => {
@@ -476,6 +481,7 @@ export function useForecasts(scenarioId: string | null, startDate?: string, endD
     addRule,
     updateRule,
     deleteRule,
+    restoreRule,
     excludeOccurrence,
     // Utilities
     duplicateToScenario,

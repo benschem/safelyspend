@@ -36,6 +36,11 @@ export function useCategories() {
     await db.categories.delete(id);
   }, []);
 
+  const restoreCategory = useCallback(async (category: Category) => {
+    await db.categories.put(category);
+    return category;
+  }, []);
+
   const activeCategories = useMemo(() => categories.filter((c) => !c.isArchived), [categories]);
 
   const archivedCategories = useMemo(() => categories.filter((c) => c.isArchived), [categories]);
@@ -120,6 +125,7 @@ export function useCategories() {
     addCategory,
     updateCategory,
     deleteCategory,
+    restoreCategory,
     getOrCreate,
     bulkGetOrCreate,
   };

@@ -83,6 +83,11 @@ export function useTransactions(startDate?: string, endDate?: string) {
     await db.transactions.delete(id);
   }, []);
 
+  const restoreTransaction = useCallback(async (transaction: Transaction) => {
+    await db.transactions.put(transaction);
+    return transaction;
+  }, []);
+
   // Get set of fingerprints for existing transactions (for duplicate detection during import)
   const getExistingFingerprints = useCallback(async (): Promise<Set<string>> => {
     const fingerprints = new Set<string>();
@@ -165,6 +170,7 @@ export function useTransactions(startDate?: string, endDate?: string) {
     addTransaction,
     updateTransaction,
     deleteTransaction,
+    restoreTransaction,
     getExistingFingerprints,
     bulkImport,
     countByCategoryMismatch,
