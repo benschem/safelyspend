@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.21.0',
+    date: '2026-02-04',
+    changes: [
+      'Adding a recurring expense now automatically creates or increases the budget for that category',
+      'Edit and delete buttons on all plan items (income, fixed expenses, budgets, and savings)',
+    ],
+  },
+  {
     version: '0.20.0',
     date: '2026-02-04',
     changes: [
