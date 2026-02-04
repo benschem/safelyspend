@@ -21,6 +21,18 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.18.0',
+    date: '2026-02-04',
+    changes: [
+      'Import transactions from any bank using generic CSV import',
+      'Map CSV columns to date, description, and amount fields',
+      'Preview and categorise transactions before importing',
+      'Skip individual transactions or assign categories inline during import',
+      'Choose between single amount column or separate debit/credit columns',
+      'Auto-detects common column names and date formats',
+    ],
+  },
+  {
     version: '0.17.0',
     date: '2026-02-04',
     changes: [

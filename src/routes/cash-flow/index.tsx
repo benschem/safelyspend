@@ -49,6 +49,7 @@ import { useLocalStorage } from '@/hooks/use-local-storage';
 import { DateRangeFilter } from '@/components/date-range-filter';
 import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { UpImportDialog } from '@/components/up-import-dialog';
+import { CsvImportDialog } from '@/components/csv-import-dialog';
 import { AddToBudgetDialog } from '@/components/dialogs/add-to-budget-dialog';
 import {
   formatCents,
@@ -58,6 +59,7 @@ import {
   cn,
   type CadenceType,
 } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { Transaction, Cadence } from '@/lib/types';
 
 interface OutletContext {
@@ -126,7 +128,10 @@ export function CashFlowPage() {
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [importWarningOpen, setImportWarningOpen] = useState(false);
+  const [pendingImportSource, setPendingImportSource] = useState<'up' | 'csv'>('up');
   const [upImportOpen, setUpImportOpen] = useState(false);
+  const [csvImportOpen, setCsvImportOpen] = useState(false);
+  const [importPopoverOpen, setImportPopoverOpen] = useState(false);
   const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
   const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
   const [budgetTransaction, setBudgetTransaction] = useState<Transaction | null>(null);
@@ -137,9 +142,12 @@ export function CashFlowPage() {
   );
 
   // Past section handlers
-  const handleImportClick = useCallback(() => {
+  const handleImportClick = useCallback((source: 'up' | 'csv') => {
     if (categoryRules.length === 0) {
+      setPendingImportSource(source);
       setImportWarningOpen(true);
+    } else if (source === 'csv') {
+      setCsvImportOpen(true);
     } else {
       setUpImportOpen(true);
     }
@@ -147,8 +155,12 @@ export function CashFlowPage() {
 
   const handleSkipWarning = useCallback(() => {
     setImportWarningOpen(false);
-    setUpImportOpen(true);
-  }, []);
+    if (pendingImportSource === 'csv') {
+      setCsvImportOpen(true);
+    } else {
+      setUpImportOpen(true);
+    }
+  }, [pendingImportSource]);
 
   const resetPastFilters = useCallback(() => {
     setPastFilterStartDate(getPastDefaultStartDate());
@@ -757,10 +769,36 @@ export function CashFlowPage() {
                   <TooltipContent>Import Rules</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <Button variant="secondary" size="sm" onClick={handleImportClick}>
-                <Download className="h-4 w-4" />
-                <span className="hidden sm:inline">Import</span>
-              </Button>
+              <Popover open={importPopoverOpen} onOpenChange={setImportPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="secondary" size="sm">
+                    <Download className="h-4 w-4" />
+                    <span className="hidden sm:inline">Import</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-1" align="end">
+                  <button
+                    type="button"
+                    className="w-full cursor-pointer rounded-sm px-3 py-2 text-left text-sm hover:bg-muted"
+                    onClick={() => {
+                      setImportPopoverOpen(false);
+                      handleImportClick('csv');
+                    }}
+                  >
+                    Import from CSV
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full cursor-pointer rounded-sm px-3 py-2 text-left text-sm hover:bg-muted"
+                    onClick={() => {
+                      setImportPopoverOpen(false);
+                      handleImportClick('up');
+                    }}
+                  >
+                    Import from Up Bank
+                  </button>
+                </PopoverContent>
+              </Popover>
               <Button size="sm" onClick={openAddTransactionDialog}>
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Add</span>
@@ -863,6 +901,7 @@ export function CashFlowPage() {
       />
 
       <UpImportDialog open={upImportOpen} onOpenChange={setUpImportOpen} />
+      <CsvImportDialog open={csvImportOpen} onOpenChange={setCsvImportOpen} />
 
       <AddToBudgetDialog
         open={budgetDialogOpen}
