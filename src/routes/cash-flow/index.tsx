@@ -12,7 +12,7 @@ import {
   ChevronRight,
   ChevronDown,
   History,
-
+  Wallet,
   Pin,
   Tag,
   Sparkles,
@@ -27,6 +27,7 @@ import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useTransactions } from '@/hooks/use-transactions';
 
 import { useBudgetPeriodData } from '@/hooks/use-budget-period-data';
+import { useCashSurplus } from '@/hooks/use-cash-surplus';
 import { ScenarioDelta } from '@/components/ui/scenario-delta';
 import { useWhatIf } from '@/contexts/what-if-context';
 import { BurnRateChart } from '@/components/charts/burn-rate-chart';
@@ -105,7 +106,7 @@ interface CashFlowContentProps {
 
 function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
   const { activeScenario } = useScenarios();
-  const { getTotalDelta, isViewingDefault, defaultBudgetByCategoryMonthly } = useScenarioDiff();
+  const { getTotalDelta, isViewingDefault, defaultBudgetByCategoryMonthly, defaultTotals } = useScenarioDiff();
   const { isWhatIfMode } = useWhatIf();
   const { budgetRules } = useBudgetRules(activeScenarioId);
   const { categories } = useCategories();
@@ -232,6 +233,41 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
     return periodEnd;
   }, [isCurrentPeriod, periodEnd]);
 
+  // Compute remaining flows for cash surplus projection
+  // Uses the same periodCashFlow data as Monthly Net so both metrics move with scenario changes
+  const remainingFlows = useMemo(() => {
+    if (isPastPeriod) return { remainingIncome: 0, remainingExpenses: 0 };
+
+    const hasPlan =
+      periodCashFlow.income.expected > 0 ||
+      periodCashFlow.budgeted.expected > 0 ||
+      periodCashFlow.expenses.expected > 0;
+
+    if (isCurrentPeriod) {
+      // No plan: can't project forward, cash surplus = current balance
+      if (!hasPlan) return { remainingIncome: 0, remainingExpenses: 0 };
+      // Remaining income = expected total - already received (clamped: over-actual is already in balance)
+      const remainingIncome = Math.max(0, periodCashFlow.income.expected - periodCashFlow.income.actual);
+      // Remaining outflows = projected expenses + remaining savings (clamped to 0)
+      const remainingExpenses = Math.max(0, periodCashFlow.projection.projectedTotal - periodCashFlow.expenses.actual);
+      const remainingSavings = Math.max(0, periodCashFlow.savings.expected - periodCashFlow.savings.actual);
+      return { remainingIncome, remainingExpenses: remainingExpenses + remainingSavings };
+    }
+
+    // Future: full period expected amounts
+    return {
+      remainingIncome: periodCashFlow.income.expected,
+      remainingExpenses: periodCashFlow.expenses.expected + periodCashFlow.budgeted.expected + periodCashFlow.savings.expected,
+    };
+  }, [isPastPeriod, isCurrentPeriod, periodCashFlow]);
+
+  const cashSurplusData = useCashSurplus({
+    periodEnd,
+    isPastPeriod,
+    remainingIncome: remainingFlows.remainingIncome,
+    remainingExpenses: remainingFlows.remainingExpenses,
+  });
+
   // Build category progress data
   const categoryProgress = useMemo(() => {
     const mapItem = (
@@ -338,7 +374,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
       periodCashFlow.income.expected > 0 ||
       periodCashFlow.budgeted.expected > 0 ||
       periodCashFlow.expenses.expected > 0;
-    // Match Budget page: income - fixed expenses - variable budget - savings
+    // Monthly net: income - expenses - savings
     const planned =
       periodCashFlow.income.expected -
       periodCashFlow.expenses.expected - // fixed expenses (ForecastRules)
@@ -503,12 +539,17 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
     }
   }, [isFuturePeriod, isPastPeriod, periodCashFlow, hasSurplusBuffer, surplus]);
 
-  // Headline status label for hero
-  const heroStatusLabel = useMemo(() => {
-    if (!headline.hasPlan && !isPastPeriod) return 'NO PLAN SET';
-    if (headline.amount === 0 && headline.isPositive && headline.hasPlan) return 'BUDGET BALANCED';
-    return 'NET';
-  }, [headline, isPastPeriod]);
+  // Scenario deltas computed inline (avoids changing shared use-scenario-diff.ts)
+  const monthlyNetDelta = useMemo(() => {
+    if (!showDeltas) return 0;
+    const current = periodCashFlow.income.expected - periodCashFlow.expenses.expected - periodCashFlow.budgeted.expected - periodCashFlow.savings.expected;
+    const defaultNet = defaultTotals.income - defaultTotals.fixedExpenses - defaultTotals.budgetedExpenses - defaultTotals.savings;
+    return current - defaultNet;
+  }, [showDeltas, periodCashFlow, defaultTotals]);
+
+  // Cash surplus delta = monthly net delta (balance is the same across scenarios,
+  // so any difference in surplus comes from the same income/expense changes)
+  const cashSurplusDelta = monthlyNetDelta;
 
   if (isLoading) {
     return null;
@@ -623,123 +664,146 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
         </div>
       </div>
 
-      {/* Hero + Spending Pace Combined Card */}
+      {/* Hero: Cash Surplus + Monthly Net + Burn Rate */}
       <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
-        <p className="text-sm font-medium text-muted-foreground">{periodLabel}</p>
-        <div className="mt-3 flex flex-col gap-5 lg:flex-row lg:items-stretch lg:gap-4">
-          {/* Left: hero content */}
-          <div className="min-w-0 space-y-2 text-center lg:flex-[1] lg:text-left">
-            {/* Pill + NET label */}
-            <div className="flex items-center justify-center gap-2 lg:justify-start">
-              {isCurrentPeriod && (
-                <span className="flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-0.5 text-xs font-medium text-violet-600 dark:text-violet-400">
-                  <Sparkles className="h-3 w-3" />
-                  Projected
-                </span>
-              )}
-              {isPastPeriod && (
-                <span className="flex items-center gap-1 rounded-full bg-slate-500/10 px-2 py-0.5 text-xs text-slate-600 dark:text-slate-400">
-                  <History className="h-3 w-3" />
-                  Historical
-                </span>
-              )}
-              <p
-                className={cn(
-                  'flex items-center gap-1.5 text-sm font-medium uppercase tracking-wide',
-                  heroStatusLabel === 'NO PLAN SET'
-                    ? 'text-muted-foreground'
-                    : headline.isPositive
-                      ? 'text-green-500'
-                      : 'text-amber-500',
-                )}
-              >
-                <Banknote className="h-4 w-4" />
-                {heroStatusLabel}
+        {/* Period label + status pill */}
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-muted-foreground">{periodLabel}</p>
+          {isCurrentPeriod && (
+            <span className="flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-0.5 text-xs font-medium text-violet-600 dark:text-violet-400">
+              <Sparkles className="h-3 w-3" />
+              Projected
+            </span>
+          )}
+          {isPastPeriod && (
+            <span className="flex items-center gap-1 rounded-full bg-slate-500/10 px-2 py-0.5 text-xs text-slate-600 dark:text-slate-400">
+              <History className="h-3 w-3" />
+              Historical
+            </span>
+          )}
+        </div>
+
+        <div className="mt-3 flex flex-col gap-5 lg:flex-row lg:items-stretch lg:gap-0">
+          {/* Two co-equal metrics */}
+          <div className="flex min-w-0 flex-col gap-4 sm:flex-row lg:flex-[3]">
+            {/* Cash Surplus */}
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <Wallet className="h-3.5 w-3.5" />
+                Cash Surplus
               </p>
+              {cashSurplusData.hasAnchor && cashSurplusData.cashSurplus !== null ? (
+                <>
+                  <p
+                    className={cn(
+                      'text-2xl font-bold tracking-tight lg:text-3xl',
+                      cashSurplusData.cashSurplus >= 0 ? 'text-green-500' : 'text-amber-500',
+                    )}
+                  >
+                    {formatCents(cashSurplusData.cashSurplus)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {isPastPeriod ? 'Balance at end of period' : headline.hasPlan ? 'Projected end of month' : 'Current balance'}
+                  </p>
+                  {isPastPeriod ? (
+                    <p className="text-xs text-muted-foreground">
+                      Started at {formatCents(cashSurplusData.cashSurplus - headline.amount)}
+                    </p>
+                  ) : headline.hasPlan && cashSurplusData.currentBalance !== null ? (
+                    <p className="text-xs text-muted-foreground">
+                      Currently {formatCents(cashSurplusData.currentBalance)}
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold tracking-tight text-muted-foreground lg:text-3xl">—</p>
+                  <p className="text-xs text-muted-foreground">
+                    Set initial cash balance in{' '}
+                    <Link to="/settings" className="underline">Settings</Link>
+                  </p>
+                </>
+              )}
+              <ScenarioDelta delta={cashSurplusDelta} show={showDeltas} />
             </div>
-            {isPastPeriod ? (
-              <>
-                {/* Past: dollar amount is hero, status text is supporting */}
-                <p
-                  className={cn(
-                    'text-3xl font-bold tracking-tight lg:text-4xl',
-                    headline.isPositive
-                      ? 'text-green-500'
-                      : 'text-amber-500',
+
+            {/* Divider */}
+            <div className="h-px bg-border sm:hidden" />
+            <div className="hidden sm:block sm:w-px sm:self-stretch sm:bg-border" />
+
+            {/* Monthly Net */}
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <Banknote className="h-3.5 w-3.5" />
+                Monthly Net
+              </p>
+              {!headline.hasPlan && !isPastPeriod ? (
+                <>
+                  <p className="text-2xl font-bold tracking-tight text-muted-foreground lg:text-3xl">—</p>
+                  <p className="text-xs text-muted-foreground">No plan set</p>
+                </>
+              ) : isPastPeriod ? (
+                <>
+                  <p
+                    className={cn(
+                      'text-2xl font-bold tracking-tight lg:text-3xl',
+                      headline.isPositive ? 'text-green-500' : 'text-amber-500',
+                    )}
+                  >
+                    {headline.isPositive && headline.amount > 0 ? '+' : ''}
+                    {formatCents(headline.amount)}
+                  </p>
+                  {budgetStatus && (
+                    <p
+                      className={cn(
+                        'text-xs',
+                        budgetStatus.isPositive
+                          ? 'text-green-600/70 dark:text-green-400/70'
+                          : 'text-amber-600/70 dark:text-amber-400/70',
+                      )}
+                    >
+                      {budgetStatus.label}
+                    </p>
                   )}
-                >
-                  {headline.isPositive && headline.amount > 0 ? '+' : ''}
-                  {formatCents(headline.amount)}
-                </p>
-                {budgetStatus && (
+                </>
+              ) : (
+                <>
+                  {/* Current/future: status text is hero, dollar amount is supporting */}
+                  {budgetStatus && headline.hasPlan ? (
+                    <p
+                      className={cn(
+                        'text-base font-bold lg:text-lg',
+                        budgetStatus.isPositive ? 'text-green-500' : 'text-amber-500',
+                      )}
+                    >
+                      {budgetStatus.label}
+                      {budgetStatus.sublabel && <> {budgetStatus.sublabel}</>}
+                    </p>
+                  ) : headline.amount === 0 && headline.isPositive && headline.hasPlan ? (
+                    <p className="text-base font-bold text-green-500 lg:text-lg">
+                      Every dollar accounted for
+                    </p>
+                  ) : null}
                   <p
                     className={cn(
                       'text-lg font-semibold',
-                      budgetStatus.isPositive
+                      headline.isPositive
                         ? 'text-green-600/70 dark:text-green-400/70'
                         : 'text-amber-600/70 dark:text-amber-400/70',
                     )}
                   >
-                    {budgetStatus.label}
+                    {headline.isPositive && headline.amount > 0 ? '+' : ''}
+                    {formatCents(headline.amount)}
                   </p>
-                )}
-              </>
-            ) : (
-              <>
-                {/* Current/future: status text is hero, dollar amount is supporting */}
-                {budgetStatus && heroStatusLabel !== 'NO PLAN SET' ? (
-                  <p
-                    className={cn(
-                      'text-3xl font-bold tracking-tight lg:text-4xl',
-                      budgetStatus.isPositive
-                        ? 'text-green-500'
-                        : 'text-amber-500',
-                    )}
-                  >
-                    {budgetStatus.label}
-                    {budgetStatus.sublabel && (
-                      <> {budgetStatus.sublabel}</>
-                    )}
-                  </p>
-                ) : heroStatusLabel === 'BUDGET BALANCED' ? (
-                  <p className="text-3xl font-bold tracking-tight text-green-500 lg:text-4xl">
-                    Every dollar accounted for
-                  </p>
-                ) : (
-                  <p className="text-3xl font-bold tracking-tight text-muted-foreground lg:text-4xl">
-                    No plan set
-                  </p>
-                )}
-                <p
-                  className={cn(
-                    'text-lg font-semibold',
-                    heroStatusLabel === 'NO PLAN SET'
-                      ? 'text-muted-foreground'
-                      : headline.isPositive
-                        ? 'text-green-600/70 dark:text-green-400/70'
-                        : 'text-amber-600/70 dark:text-amber-400/70',
-                  )}
-                >
-                  {headline.isPositive && headline.amount > 0 ? '+' : ''}
-                  {formatCents(headline.amount)}
-                </p>
-              </>
-            )}
-            <ScenarioDelta
-              delta={getTotalDelta(
-                'surplus',
-                periodCashFlow.income.expected -
-                  periodCashFlow.expenses.expected -
-                  periodCashFlow.budgeted.expected -
-                  periodCashFlow.savings.expected,
+                </>
               )}
-              show={showDeltas}
-            />
+              <ScenarioDelta delta={monthlyNetDelta} show={showDeltas} />
+            </div>
           </div>
 
-          {/* Right: compact burn rate chart (current period only) */}
+          {/* Burn rate chart (current period only) */}
           {isCurrentPeriod && budgetStatus?.hasBudget && burnRateData.totalBudget > 0 && (
-            <div className="w-full min-w-0 lg:flex-[2]">
+            <div className="w-full min-w-0 lg:ml-4 lg:flex-[2]">
               <BurnRateChart
                 compact
                 dailySpending={burnRateData.dailySpending}
