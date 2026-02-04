@@ -22,16 +22,16 @@ export function ScenarioDelta({
   className = '',
   show = true,
 }: ScenarioDeltaProps) {
-  const sign = delta > 0 ? '+' : '';
-  const formattedAmount = `${sign}${formatCents(delta)}`;
+  const absDelta = formatCents(Math.abs(delta));
+  const direction = delta > 0 ? 'more' : 'less';
   const isVisible = show && delta !== 0;
 
   return (
     <p
       className={`text-xs ${isVisible ? 'text-violet-600 dark:text-violet-400' : 'invisible'} ${className}`}
     >
-      {formattedAmount}
-      {periodLabel} than current plan
+      {absDelta}
+      {periodLabel} {direction} than current plan
     </p>
   );
 }
