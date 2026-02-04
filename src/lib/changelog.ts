@@ -21,6 +21,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.17.0',
+    date: '2026-02-04',
+    changes: [
+      'Simplified the Budget Overview to always show the month view',
+      'Redesigned Overview with a larger surplus display and cleaner card layout',
+      'Fixed date calculations that could show incorrect values near midnight',
+      'Improved accuracy of budget charts for fortnightly, quarterly, and yearly budgets',
+      'Updated historical data colors for better visual clarity',
+    ],
+  },
+  {
     version: '0.16.0',
     date: '2026-02-04',
     changes: [
