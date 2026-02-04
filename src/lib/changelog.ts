@@ -21,6 +21,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.16.0',
+    date: '2026-02-04',
+    changes: [
+      'Budget and Snapshot merged into a single Budget page with three tabs',
+      'Overview tab shows your monthly spending tracker (formerly Snapshot)',
+      'Plan tab lets you set up income, expenses, budgets, and savings',
+      'History tab shows your transaction history with filters and averages',
+      'Simplified navigation: Budget, Insights, and What If in one section',
+    ],
+  },
+  {
     version: '0.15.7',
     date: '2026-02-04',
     changes: [

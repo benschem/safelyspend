@@ -1,16 +1,14 @@
 import { useState, useMemo } from 'react';
 import { useLocalStorage } from '@/hooks/use-local-storage';
-import { Link, useOutletContext } from 'react-router';
+import { useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
-  CalendarFold,
   PiggyBank,
   Banknote,
   BanknoteArrowUp,
   BanknoteArrowDown,
-  Receipt,
   ChevronLeft,
   ChevronRight,
   History,
@@ -18,11 +16,9 @@ import {
   Plus,
   CheckCircle2,
   Pin,
-  Target,
   CircleDot,
   CircleGauge,
 } from 'lucide-react';
-import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
 import { useTransactions } from '@/hooks/use-transactions';
@@ -61,16 +57,17 @@ interface OutletContext {
   endDate: string;
 }
 
-export function SnapshotPage() {
-  const { activeScenarioId, startDate, endDate } = useOutletContext<OutletContext>();
+interface OverviewTabProps {
+  activeScenarioId: string;
+}
+
+export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
+  const { startDate, endDate } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
   const { getTotalDelta, isViewingDefault, defaultBudgetByCategoryMonthly } = useScenarioDiff();
   const { isWhatIfMode } = useWhatIf();
   const { addTransaction, updateTransaction } = useTransactions(startDate, endDate);
   const { budgetRules } = useBudgetRules(activeScenarioId);
-  // Show deltas when viewing non-default scenario OR when there are What-If adjustments
-  const showDeltas = !isViewingDefault || isWhatIfMode;
-
   // Selected period state - defaults to current month
   const [selectedMonth, setSelectedMonth] = useState(() => new Date());
   // Read default view preference from settings
@@ -145,6 +142,10 @@ export function SnapshotPage() {
     selectedMonth,
     viewMode,
   });
+
+  // Show deltas when viewing non-default scenario OR when there are What-If adjustments
+  // but never for past periods — comparing historical actuals to plan deltas is confusing
+  const showDeltas = (!isViewingDefault || isWhatIfMode) && !isPastPeriod;
 
   // Navigation handlers
   const goToPrevious = () => {
@@ -324,7 +325,6 @@ export function SnapshotPage() {
     }
 
     // Current period - use same calculation as Budget page for consistency
-    // planned = income - fixed expenses - variable budget - savings
     if (!hasPlan) {
       const actualSoFar =
         periodCashFlow.income.actual -
@@ -426,156 +426,18 @@ export function SnapshotPage() {
     }
   }, [isFuturePeriod, isPastPeriod, periodCashFlow, hasSurplusBuffer]);
 
-  // Show loading spinner while data is being fetched
   if (isLoading) {
-    return (
-      <div className="page-shell">
-        <PageLoading />
-      </div>
-    );
-  }
-
-  if (!activeScenarioId || !activeScenario) {
-    return (
-      <div className="page-shell space-y-6">
-        {/* Page Header */}
-        <div className="page-header">
-          <h1 className="page-title">
-            <div className="page-title-icon bg-slate-500/10">
-              <CalendarFold className="h-5 w-5 text-slate-500" />
-            </div>
-            Snapshot
-          </h1>
-          <p className="page-description">Track your spending against your plan</p>
-        </div>
-
-        {/* Hero Header - Period Selector */}
-        <div className="min-h-28 text-center sm:min-h-32">
-          {/* Today link - above period when not current */}
-          <div className="flex min-h-8 items-center justify-center">
-            {!isCurrentPeriod && (
-              <Button variant="ghost" size="sm" onClick={goToCurrent} className="text-xs">
-                ← Today
-              </Button>
-            )}
-          </div>
-          <div className="flex items-center justify-center gap-2">
-            <Button variant="ghost" size="icon" onClick={goToPrevious} className="h-10 w-10">
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-            <Popover
-              open={calendarOpen}
-              onOpenChange={(open) => {
-                setCalendarOpen(open);
-                if (open) setPickerYear(selectedYear);
-              }}
-            >
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-52 text-3xl font-bold tracking-tight hover:bg-transparent hover:text-foreground/80 sm:w-56"
-                >
-                  {periodLabel}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-3" align="center">
-                <div className="mb-3 flex items-center justify-between">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => setPickerYear((y) => y - 1)}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={
-                      viewMode === 'year' && pickerYear === selectedYear ? 'default' : 'ghost'
-                    }
-                    size="sm"
-                    className="text-sm font-semibold"
-                    onClick={() => selectYear(pickerYear)}
-                  >
-                    {pickerYear}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => setPickerYear((y) => y + 1)}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="grid grid-cols-3 gap-1">
-                  {MONTHS.map((month, index) => {
-                    const isSelected =
-                      viewMode === 'month' &&
-                      pickerYear === selectedYear &&
-                      index === selectedMonthIndex;
-                    const isCurrent =
-                      pickerYear === new Date().getFullYear() && index === new Date().getMonth();
-                    return (
-                      <Button
-                        key={month}
-                        variant={isSelected ? 'default' : 'ghost'}
-                        size="sm"
-                        className={cn(
-                          'h-8 text-xs',
-                          isCurrent && !isSelected && 'border border-primary',
-                        )}
-                        onClick={() => {
-                          setSelectedMonth(new Date(pickerYear, index, 1));
-                          setViewMode('month');
-                          setCalendarOpen(false);
-                        }}
-                      >
-                        {month.slice(0, 3)}
-                      </Button>
-                    );
-                  })}
-                </div>
-              </PopoverContent>
-            </Popover>
-            <Button variant="ghost" size="icon" onClick={goToNext} className="h-10 w-10">
-              <ChevronRight className="h-5 w-5" />
-            </Button>
-          </div>
-          {/* Status line placeholder for consistent height */}
-          <div className="mt-2 min-h-9" />
-        </div>
-
-        <div className="empty-state">
-          <p className="empty-state-text">
-            Select a scenario from the banner to track your budget.
-          </p>
-          <Button asChild className="empty-state-action">
-            <Link to="/scenarios">Manage Scenarios</Link>
-          </Button>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="page-shell space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="page-title">
-            <div className="page-title-icon bg-slate-500/10">
-              <CalendarFold className="h-5 w-5 text-slate-500" />
-            </div>
-            Snapshot
-          </h1>
-          <p className="page-description">Track your spending against your plan</p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Button className="h-10" onClick={() => setTransactionDialogOpen(true)}>
-            <Plus className="h-4 w-4" />
-            Add Expense
-          </Button>
-        </div>
+    <div className="space-y-6">
+      {/* Add Expense button */}
+      <div className="flex justify-end">
+        <Button className="h-10" onClick={() => setTransactionDialogOpen(true)}>
+          <Plus className="h-4 w-4" />
+          Add Expense
+        </Button>
       </div>
 
       {/* Hero Header - Period Selector */}
@@ -981,7 +843,13 @@ export function SnapshotPage() {
                 {isFuturePeriod ? 'projected' : isPastPeriod ? 'actual' : 'expected by end'}
               </p>
               <ScenarioDelta
-                delta={getTotalDelta('surplus', periodCashFlow.income.expected - periodCashFlow.expenses.expected - periodCashFlow.budgeted.expected - periodCashFlow.savings.expected)}
+                delta={getTotalDelta(
+                  'surplus',
+                  periodCashFlow.income.expected -
+                    periodCashFlow.expenses.expected -
+                    periodCashFlow.budgeted.expected -
+                    periodCashFlow.savings.expected,
+                )}
                 periodLabel=""
                 show={showDeltas}
               />
@@ -1030,7 +898,9 @@ export function SnapshotPage() {
               {isFuturePeriod ? (
                 <>
                   <p className="mt-2 text-2xl font-bold">
-                    {formatCents(periodCashFlow.expenses.expected + periodCashFlow.budgeted.expected)}
+                    {formatCents(
+                      periodCashFlow.expenses.expected + periodCashFlow.budgeted.expected,
+                    )}
                   </p>
                   <p className="text-xs text-muted-foreground">budgeted</p>
                 </>
@@ -1040,12 +910,19 @@ export function SnapshotPage() {
                     {formatCents(periodCashFlow.expenses.actual)}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    of {formatCents(periodCashFlow.expenses.expected + periodCashFlow.budgeted.expected)} budgeted
+                    of{' '}
+                    {formatCents(
+                      periodCashFlow.expenses.expected + periodCashFlow.budgeted.expected,
+                    )}{' '}
+                    budgeted
                   </p>
                 </>
               )}
               <ScenarioDelta
-                delta={getTotalDelta('fixed', periodCashFlow.expenses.expected) + getTotalDelta('budget', periodCashFlow.budgeted.expected)}
+                delta={
+                  getTotalDelta('fixed', periodCashFlow.expenses.expected) +
+                  getTotalDelta('budget', periodCashFlow.budgeted.expected)
+                }
                 periodLabel=""
                 show={showDeltas}
               />
@@ -1086,10 +963,9 @@ export function SnapshotPage() {
 
           {/* Spending Pace with burn rate chart - full width */}
           {budgetStatus && (
-            <div className={cn(
-              'rounded-xl border bg-card p-5',
-              showDeltas && 'border-violet-500/30',
-            )}>
+            <div
+              className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}
+            >
               <div className="mb-3 flex items-center gap-2">
                 <CircleGauge className="h-5 w-5 text-muted-foreground" />
                 <h3 className="text-lg font-semibold">Spending Pace</h3>
@@ -1148,10 +1024,9 @@ export function SnapshotPage() {
           )}
 
           {/* Spending by Category */}
-          <div className={cn(
-            'rounded-xl border bg-card p-6',
-            showDeltas && 'border-violet-500/30',
-          )}>
+          <div
+            className={cn('rounded-xl border bg-card p-6', showDeltas && 'border-violet-500/30')}
+          >
             <div className="mb-4 flex items-center gap-2">
               <BanknoteArrowDown className="h-5 w-5 text-muted-foreground" />
               <h3 className="text-lg font-semibold">Spending</h3>
@@ -1250,7 +1125,8 @@ export function SnapshotPage() {
                                   <span
                                     className={`ml-1 inline-block min-w-[3.5rem] ${showDelta ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
                                   >
-                                    ({delta > 0 ? '+' : ''}{formatCents(delta)})
+                                    ({delta > 0 ? '+' : ''}
+                                    {formatCents(delta)})
                                   </span>
                                 );
                               })()}
@@ -1284,22 +1160,6 @@ export function SnapshotPage() {
           </div>
         </>
       )}
-
-      {/* Quick Actions */}
-      <div className="flex flex-wrap justify-center gap-3">
-        <Button variant="outline" asChild>
-          <Link to="/budget#track-record">
-            <Receipt className="h-4 w-4" />
-            View Transactions
-          </Link>
-        </Button>
-        <Button variant="outline" asChild>
-          <Link to="/budget">
-            <Target className="h-4 w-4" />
-            Manage Budget
-          </Link>
-        </Button>
-      </div>
 
       <TransactionDialog
         open={transactionDialogOpen}

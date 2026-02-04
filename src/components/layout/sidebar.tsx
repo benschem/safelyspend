@@ -1,14 +1,5 @@
 import { NavLink, useLocation } from 'react-router';
-import {
-  CalendarFold,
-  HandCoins,
-  Target,
-  PiggyBank,
-  Sparkles,
-  Settings,
-  ChartSpline,
-  Menu,
-} from 'lucide-react';
+import { HandCoins, Target, PiggyBank, Sparkles, Settings, ChartSpline, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -65,19 +56,11 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       <NavSection>
-        <NavItem to="/snapshot" icon={<CalendarFold className="h-4 w-4" />} onClick={onNavigate}>
-          Snapshot
+        <NavItem to="/budget" icon={<Target className="h-4 w-4" />} onClick={onNavigate}>
+          Budget
         </NavItem>
         <NavItem to="/insights" icon={<ChartSpline className="h-4 w-4" />} onClick={onNavigate}>
           Insights
-        </NavItem>
-      </NavSection>
-
-      <Separator className="my-2" />
-
-      <NavSection title="Plan">
-        <NavItem to="/budget" icon={<Target className="h-4 w-4" />} onClick={onNavigate}>
-          Budget
         </NavItem>
         <NavItem to="/scenarios" icon={<Sparkles className="h-4 w-4" />} onClick={onNavigate}>
           What If

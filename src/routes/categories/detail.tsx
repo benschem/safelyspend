@@ -290,7 +290,7 @@ export function CategoryDetailPage() {
                 )}
               </>
             ) : (
-              <Link to="/budget" className="text-primary hover:underline">
+              <Link to="/budget?tab=plan" className="text-primary hover:underline">
                 No budget set – Set one →
               </Link>
             )}

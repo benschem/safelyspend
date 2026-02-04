@@ -691,9 +691,9 @@ export function SettingsPage() {
               <Separator />
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3>Default Snapshot View</h3>
+                  <h3>Default Overview View</h3>
                   <p className="text-sm text-muted-foreground">
-                    Choose which view to show when opening Snapshot.
+                    Choose which view to show on the Overview tab.
                   </p>
                 </div>
                 <Select

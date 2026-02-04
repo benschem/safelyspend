@@ -129,7 +129,10 @@ export function ScenariosIndexPage() {
 
       <Alert variant="info" className="mb-6">
         Each scenario has its own budget and savings plan. Use the sliders on the{' '}
-        <Link to="/budget" className="underline hover:text-blue-900 dark:hover:text-blue-100">
+        <Link
+          to="/budget?tab=plan"
+          className="underline hover:text-blue-900 dark:hover:text-blue-100"
+        >
           Budget page
         </Link>{' '}
         to explore &quot;what if&quot; questions, then save your adjustments as a new scenario.
@@ -157,14 +160,15 @@ export function ScenariosIndexPage() {
                       <h2 className="text-lg font-semibold">{defaultScenario.name}</h2>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {defaultScenario.description || 'Your baseline budget - the plan you live by.'}
+                      {defaultScenario.description ||
+                        'Your baseline budget - the plan you live by.'}
                     </p>
                     <div className="mt-2 text-sm text-muted-foreground">
-                      <Link to="/budget" className="hover:text-foreground hover:underline">
+                      <Link to="/budget?tab=plan" className="hover:text-foreground hover:underline">
                         {countsByScenario[defaultScenario.id]?.forecasts ?? 0} forecasts
                       </Link>
                       <span className="mx-2">·</span>
-                      <Link to="/budget" className="hover:text-foreground hover:underline">
+                      <Link to="/budget?tab=plan" className="hover:text-foreground hover:underline">
                         {countsByScenario[defaultScenario.id]?.budgets ?? 0} budgets
                       </Link>
                     </div>
@@ -244,11 +248,17 @@ export function ScenariosIndexPage() {
                             </p>
                           )}
                           <div className="mt-1 text-xs text-muted-foreground">
-                            <Link to="/budget" className="hover:text-foreground hover:underline">
+                            <Link
+                              to="/budget?tab=plan"
+                              className="hover:text-foreground hover:underline"
+                            >
                               {counts?.forecasts ?? 0} forecasts
                             </Link>
                             <span className="mx-2">·</span>
-                            <Link to="/budget" className="hover:text-foreground hover:underline">
+                            <Link
+                              to="/budget?tab=plan"
+                              className="hover:text-foreground hover:underline"
+                            >
                               {counts?.budgets ?? 0} budgets
                             </Link>
                           </div>

@@ -7,7 +7,6 @@ import { ErrorBoundary } from '@/components/error-boundary';
 // Route components
 import { NetWealthPage } from '@/routes/net-wealth';
 import { BudgetPage } from '@/routes/budget';
-import { SnapshotPage } from '@/routes/snapshot';
 import { TransactionNewPage } from '@/routes/transactions/new';
 import { CategoryDetailPage } from '@/routes/categories/detail';
 import { CategoryImportRulesPage } from '@/routes/categories/import-rules';
@@ -40,11 +39,14 @@ const router = createBrowserRouter([
     element: <RootLayout />,
     errorElement: <ErrorBoundary />,
     children: [
-      // Redirect root to snapshot
-      { index: true, element: <Navigate to="/snapshot" replace /> },
+      // Redirect root to budget
+      { index: true, element: <Navigate to="/budget" replace /> },
 
-      // Snapshot (monthly/quarterly/yearly view)
-      { path: 'snapshot', element: <SnapshotPage /> },
+      // Budget (tabbed: overview, plan, history)
+      { path: 'budget', element: <BudgetPage /> },
+
+      // Snapshot redirects to budget (merged into Budget overview tab)
+      { path: 'snapshot', element: <Navigate to="/budget" replace /> },
 
       // Net Wealth (balances overview)
       { path: 'net-wealth', element: <NetWealthPage /> },
@@ -56,17 +58,14 @@ const router = createBrowserRouter([
       { path: 'net-worth', element: <Navigate to="/net-wealth" replace /> },
       { path: 'money', element: <Navigate to="/cash-flow" replace /> },
       { path: 'transactions', element: <Navigate to="/cash-flow" replace /> },
-      { path: 'forecasts', element: <Navigate to="/budget?tab=fixed-expenses" replace /> },
+      { path: 'forecasts', element: <Navigate to="/budget?tab=plan" replace /> },
       {
         path: 'forecasts/recurring',
-        element: <Navigate to="/budget?tab=fixed-expenses" replace />,
+        element: <Navigate to="/budget?tab=plan" replace />,
       },
-      { path: 'recurring', element: <Navigate to="/budget?tab=fixed-expenses" replace /> },
-      { path: 'check-in', element: <Navigate to="/snapshot" replace /> },
-      { path: 'spending', element: <Navigate to="/snapshot" replace /> },
-
-      // Budget - spending limits (plan)
-      { path: 'budget', element: <BudgetPage /> },
+      { path: 'recurring', element: <Navigate to="/budget?tab=plan" replace /> },
+      { path: 'check-in', element: <Navigate to="/budget" replace /> },
+      { path: 'spending', element: <Navigate to="/budget" replace /> },
 
       // Transactions new page (still needed for direct navigation)
       { path: 'transactions/new', element: <TransactionNewPage /> },
