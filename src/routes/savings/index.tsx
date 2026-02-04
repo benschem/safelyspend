@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
-import { Plus, PiggyBank, TrendingUp, Target, BadgePercent } from 'lucide-react';
+import { Plus, Minus, PiggyBank, Goal, BadgePercent } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useTransactions } from '@/hooks/use-transactions';
@@ -10,13 +10,26 @@ import { useReportsData } from '@/hooks/use-reports-data';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useSavingsAnchors } from '@/hooks/use-savings-anchors';
 
-// Wide date range to capture all savings data
+// Wide date range for all-time transaction queries (cheap DB query)
 const ALL_DATA_START = '2020-01-01';
 const ALL_DATA_END = '2099-12-31';
+
+// Narrow window for reports: 12 months back + 24 months forward (~36 months)
+function getReportsRange(): { start: string; end: string } {
+  const now = new Date();
+  const startDate = new Date(now.getFullYear(), now.getMonth() - 12, 1);
+  const endDate = new Date(now.getFullYear(), now.getMonth() + 24 + 1, 0); // last day of month 24 months out
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return { start: fmt(startDate), end: fmt(endDate) };
+}
+
+const REPORTS_RANGE = getReportsRange();
+
 import { SavingsGoalDialog } from '@/components/dialogs/savings-goal-dialog';
-import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
+import { SavingsTransactionDialog } from '@/components/dialogs/savings-transaction-dialog';
 import { SavingsGoalProgressCard } from '@/components/charts';
-import { formatCents, today as getToday } from '@/lib/utils';
+import { formatCents, formatMonth, today as getToday } from '@/lib/utils';
 import type { SavingsGoal } from '@/lib/types';
 
 interface OutletContext {
@@ -37,13 +50,12 @@ export function SavingsIndexPage() {
     savingsTransactions,
     isLoading: transactionsLoading,
     addTransaction,
-    updateTransaction,
   } = useTransactions(ALL_DATA_START, ALL_DATA_END);
   const {
     savingsByGoal,
     savingsContributions,
     isLoading: reportsLoading,
-  } = useReportsData(activeScenarioId, ALL_DATA_START, ALL_DATA_END);
+  } = useReportsData(activeScenarioId, REPORTS_RANGE.start, REPORTS_RANGE.end);
   const { anchors } = useBalanceAnchors();
   const { addAnchor: addSavingsAnchor } = useSavingsAnchors();
 
@@ -61,6 +73,7 @@ export function SavingsIndexPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
   const [contributionDialogOpen, setContributionDialogOpen] = useState(false);
+  const [withdrawalDialogOpen, setWithdrawalDialogOpen] = useState(false);
 
   // Handle ?goal= query param to open a specific goal
   const goalParam = searchParams.get('goal');
@@ -139,6 +152,29 @@ export function SavingsIndexPage() {
       return sum + Math.round(g.currentBalance * (g.annualInterestRate / 100));
     }, 0);
 
+    // Find the nearest expected completion date across unreached goals
+    let nextGoalDate: string | null = null;
+    for (const g of savingsByGoal) {
+      if (g.targetAmount <= 0 || g.currentBalance >= g.targetAmount) continue;
+      const totalContrib = g.monthlySavings.reduce((s, m) => s + m.actual + m.forecast, 0);
+      const count = g.monthlySavings.length || 1;
+      const avgMonthly = totalContrib / count;
+      const monthlyRate = g.annualInterestRate ? g.annualInterestRate / 100 / 12 : 0;
+      if (avgMonthly <= 0 && monthlyRate <= 0) continue;
+      let bal = g.currentBalance;
+      let months = 0;
+      while (bal < g.targetAmount && months < 600) {
+        bal += avgMonthly;
+        bal += bal * monthlyRate;
+        months++;
+      }
+      if (months >= 600) continue;
+      const nowDate = new Date(today);
+      const d = new Date(nowDate.getFullYear(), nowDate.getMonth() + months, 1);
+      const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      if (!nextGoalDate || month < nextGoalDate) nextGoalDate = month;
+    }
+
     return {
       totalSaved,
       totalTarget,
@@ -147,6 +183,7 @@ export function SavingsIndexPage() {
       actualMonthlyRate,
       plannedMonthlyRate,
       annualInterest,
+      nextGoalDate,
     };
   }, [savingsByGoal, savingsTransactions, savingsContributions]);
 
@@ -200,10 +237,18 @@ export function SavingsIndexPage() {
           <Button
             variant="outline"
             className="h-10"
+            onClick={() => setWithdrawalDialogOpen(true)}
+          >
+            <Minus className="h-4 w-4" />
+            Withdraw
+          </Button>
+          <Button
+            variant="outline"
+            className="h-10"
             onClick={() => setContributionDialogOpen(true)}
           >
             <Plus className="h-4 w-4" />
-            Add Contribution
+            Contribute
           </Button>
           <Button className="h-10" onClick={openAddDialog}>
             <Plus className="h-4 w-4" />
@@ -228,27 +273,31 @@ export function SavingsIndexPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Summary Stats */}
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <div className="rounded-lg border bg-card p-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <TrendingUp className="h-4 w-4" />
-                Total Saved
-              </div>
-              <div className="mt-1 font-mono text-2xl font-semibold">
-                {formatCents(summaryStats.totalSaved)}
-              </div>
-              {summaryStats.totalTarget > 0 && (
-                <div className="mt-0.5 text-sm text-muted-foreground">
-                  of <span className="font-mono">{formatCents(summaryStats.totalTarget)}</span>{' '}
-                  target
-                </div>
-              )}
-            </div>
+          {/* Hero Section */}
+          <div className="mb-6 min-h-28 text-center sm:min-h-32">
+            <div className="min-h-8" />
+            <p className="flex items-center justify-center gap-2 text-sm font-medium uppercase tracking-wide text-muted-foreground">
+              <PiggyBank className="h-4 w-4" />
+              Total Saved
+            </p>
+            <p className="mt-2 text-5xl font-bold tracking-tight">
+              {formatCents(summaryStats.totalSaved)}
+            </p>
+            {summaryStats.totalTarget > 0 && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                of {formatCents(summaryStats.totalTarget)} target
+              </p>
+            )}
+            <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
+          </div>
 
-            <div className="rounded-lg border bg-card p-4">
+          {/* Stat Cards */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border bg-card p-5">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Target className="h-4 w-4" />
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-teal-500/10">
+                  <Goal className="h-3.5 w-3.5 text-teal-500" />
+                </div>
                 Goals Reached
               </div>
               <div className="mt-1 text-2xl font-semibold">
@@ -264,28 +313,34 @@ export function SavingsIndexPage() {
                   <span className="text-base font-normal text-muted-foreground">No goals set</span>
                 )}
               </div>
+              {summaryStats.nextGoalDate && (
+                <div className="mt-0.5 text-sm text-muted-foreground">
+                  Next goal expected {formatMonth(summaryStats.nextGoalDate)}
+                </div>
+              )}
             </div>
 
-            <div className="rounded-lg border bg-card p-4">
+            <div className="rounded-xl border bg-card p-5">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <PiggyBank className="h-4 w-4" />
-                Savings Rate
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/10">
+                  <PiggyBank className="h-3.5 w-3.5 text-blue-500" />
+                </div>
+                Average Savings per Month
               </div>
-              <div className="mt-1">
-                <span className="font-mono text-2xl font-semibold">
-                  {formatCents(summaryStats.actualMonthlyRate)}
-                </span>
-                <span className="ml-1 text-sm text-muted-foreground">/mo avg</span>
+              <div className="mt-1 font-mono text-2xl font-semibold">
+                {formatCents(Math.abs(summaryStats.actualMonthlyRate))}
               </div>
               <div className="mt-0.5 text-sm text-muted-foreground">
-                <span className="font-mono">{formatCents(summaryStats.plannedMonthlyRate)}</span>/mo
-                planned (next 12mo)
+                <span className="font-mono">{formatCents(Math.abs(summaryStats.plannedMonthlyRate))}</span>{' '}
+                planned
               </div>
             </div>
 
-            <div className="rounded-lg border bg-card p-4">
+            <div className="rounded-xl border bg-card p-5">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <BadgePercent className="h-4 w-4" />
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500/10">
+                  <BadgePercent className="h-3.5 w-3.5 text-amber-500" />
+                </div>
                 Annual Interest
               </div>
               <div className="mt-1 font-mono text-2xl font-semibold">
@@ -294,8 +349,6 @@ export function SavingsIndexPage() {
               <div className="mt-0.5 text-sm text-muted-foreground">per year</div>
             </div>
           </div>
-
-          <hr className="border-border" />
 
           {/* Progress Cards */}
           <div className="grid gap-4 md:grid-cols-2">
@@ -338,12 +391,18 @@ export function SavingsIndexPage() {
         earliestAnchorDate={earliestAnchorDate}
       />
 
-      <TransactionDialog
+      <SavingsTransactionDialog
         open={contributionDialogOpen}
         onOpenChange={setContributionDialogOpen}
-        initialType="savings"
+        mode="contribution"
         addTransaction={addTransaction}
-        updateTransaction={updateTransaction}
+      />
+
+      <SavingsTransactionDialog
+        open={withdrawalDialogOpen}
+        onOpenChange={setWithdrawalDialogOpen}
+        mode="withdrawal"
+        addTransaction={addTransaction}
       />
     </div>
   );

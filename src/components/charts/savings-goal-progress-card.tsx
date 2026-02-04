@@ -1,5 +1,12 @@
 import { useMemo } from 'react';
-import { Target, Calendar, BadgePercent, CheckCircle2, PiggyBank, Ambulance } from 'lucide-react';
+import {
+  CalendarCheck,
+  CalendarClock,
+  BadgePercent,
+  CheckCircle2,
+  PiggyBank,
+  Ambulance,
+} from 'lucide-react';
 import { formatCents, formatMonth } from '@/lib/utils';
 
 interface MonthlySavings {
@@ -83,6 +90,21 @@ export function SavingsGoalProgressCard({
     [currentBalance, targetAmount, monthlySavings, annualInterestRate],
   );
 
+  // Find the month the goal was reached by walking backwards through contributions
+  const reachedMonth = useMemo((): string | null => {
+    if (!isGoalReached) return null;
+    let balance = currentBalance;
+    for (let i = monthlySavings.length - 1; i >= 0; i--) {
+      const balanceBefore = balance - monthlySavings[i]!.actual;
+      if (balanceBefore < targetAmount) {
+        return monthlySavings[i]!.month;
+      }
+      balance = balanceBefore;
+    }
+    // Reached before the data range
+    return monthlySavings.length > 0 ? monthlySavings[0]!.month : null;
+  }, [isGoalReached, currentBalance, targetAmount, monthlySavings]);
+
   // Calculate timeframe relative to deadline
   const timeframeInfo = useMemo((): {
     label: string;
@@ -149,7 +171,7 @@ export function SavingsGoalProgressCard({
       <div className="flex items-center justify-between gap-3">
         <h4 className="flex items-center gap-2 truncate text-sm text-muted-foreground">
           {isEmergencyFund ? (
-            <Ambulance className="h-4 w-4 shrink-0 fill-blue-500 text-blue-500" />
+            <Ambulance className="h-4 w-4 shrink-0 text-blue-500" />
           ) : (
             <PiggyBank className="h-4 w-4 shrink-0" />
           )}
@@ -165,19 +187,11 @@ export function SavingsGoalProgressCard({
 
       {/* Hero: Current balance */}
       <div className="mt-2">
-        {isGoalReached ? (
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-2xl font-bold text-green-600 dark:text-green-400">
-              {formatCents(currentBalance)}
-            </span>
-            <div className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-              <CheckCircle2 className="h-3 w-3" />
-              Reached
-            </div>
-          </div>
-        ) : (
-          <span className="font-mono text-2xl font-bold">{formatCents(currentBalance)}</span>
-        )}
+        <span
+          className={`font-mono text-2xl font-bold ${isGoalReached ? 'text-green-600 dark:text-green-400' : ''}`}
+        >
+          {formatCents(currentBalance)}
+        </span>
         {targetAmount > 0 && (
           <p className="mt-0.5 text-sm text-muted-foreground">
             saved of <span className="font-mono">{formatCents(targetAmount)}</span> goal
@@ -186,46 +200,71 @@ export function SavingsGoalProgressCard({
       </div>
 
       {/* Progress bar + percentage */}
-      {targetAmount > 0 && !isGoalReached && (
+      {targetAmount > 0 && (
         <div className="mt-3 flex items-center gap-3">
           <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full rounded-full bg-blue-500 transition-all"
+              className={`h-full rounded-full transition-all ${isGoalReached ? 'bg-green-500' : 'bg-blue-500'}`}
               style={{ width: `${percentComplete}%` }}
             />
           </div>
-          <span className="text-sm font-medium tabular-nums">{percentComplete.toFixed(0)}%</span>
+          {isGoalReached ? (
+            <span className="flex items-center gap-1 text-sm font-medium text-green-600 dark:text-green-400">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Reached
+            </span>
+          ) : (
+            <span className="text-sm font-medium tabular-nums">{percentComplete.toFixed(0)}%</span>
+          )}
         </div>
       )}
 
-      {/* Stats row */}
-      {!isGoalReached && (expectedCompletion || timeframeInfo) && targetAmount > 0 && (
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-          {expectedCompletion && (
+      {/* Stats row: deadline (LHS) + expected/reached date (RHS) */}
+      {targetAmount > 0 && (
+        <div className="mt-3 flex items-center justify-between gap-x-4 text-sm">
+          {deadline ? (
             <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Target className="h-3.5 w-3.5" />
-              <span>
-                <span className="font-medium text-foreground">
-                  {formatMonth(expectedCompletion.month)}
-                </span>
+              <CalendarClock className="h-3.5 w-3.5" />
+              <span className="font-medium text-foreground">
+                {formatMonth(deadline.slice(0, 7))}
               </span>
             </div>
+          ) : (
+            <div />
           )}
-          {timeframeInfo && (
-            <div
-              className={`flex items-center gap-1.5 font-medium ${
-                timeframeInfo.status === 'early' || timeframeInfo.status === 'on-time'
-                  ? 'text-green-600 dark:text-green-400'
-                  : timeframeInfo.status === 'slightly-late'
-                    ? 'text-amber-600 dark:text-amber-400'
-                    : timeframeInfo.status === 'unknown'
-                      ? 'text-muted-foreground'
-                      : 'text-red-600 dark:text-red-400'
-              }`}
-            >
-              <Calendar className="h-3.5 w-3.5" />
-              <span>{timeframeInfo.label}</span>
+          {isGoalReached && reachedMonth ? (
+            <div className="flex items-center gap-1.5">
+              <CalendarCheck className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="font-medium text-foreground">{formatMonth(reachedMonth)}</span>
             </div>
+          ) : expectedCompletion && !isGoalReached ? (
+            timeframeInfo?.status === 'unknown' ? (
+              <span className="text-sm font-medium text-muted-foreground">
+                {timeframeInfo.label}
+              </span>
+            ) : (
+              <div className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400">
+                <CalendarCheck className="h-3.5 w-3.5" />
+                <span className="font-medium">
+                  {formatMonth(expectedCompletion.month)}
+                </span>
+                {timeframeInfo && (
+                  <span
+                    className={`text-xs font-medium ${
+                      timeframeInfo.status === 'early' || timeframeInfo.status === 'on-time'
+                        ? 'text-green-600 dark:text-green-400'
+                        : timeframeInfo.status === 'slightly-late'
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-red-600 dark:text-red-400'
+                    }`}
+                  >
+                    {timeframeInfo.label}
+                  </span>
+                )}
+              </div>
+            )
+          ) : (
+            <div />
           )}
         </div>
       )}

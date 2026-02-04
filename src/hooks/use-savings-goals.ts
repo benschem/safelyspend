@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import type { SavingsGoal, CreateEntity } from '@/lib/types';
-import { generateId, now } from '@/lib/utils';
+import { generateId, now, today } from '@/lib/utils';
 
 const USER_ID = 'local';
 
@@ -63,13 +63,73 @@ export function useSavingsGoals() {
         }
       }
 
-      await db.savingsGoals.update(id, { ...updates, updatedAt: now() });
+      await db.savingsGoals.where('id').equals(id).modify((goal) => {
+        Object.assign(goal, { ...updates, updatedAt: now() });
+        // Dexie's update() ignores undefined, so explicitly delete cleared optional fields
+        if (updates.deadline === undefined && 'deadline' in updates) delete goal.deadline;
+        if (updates.annualInterestRate === undefined && 'annualInterestRate' in updates)
+          delete goal.annualInterestRate;
+      });
     },
     [],
   );
 
   const deleteSavingsGoal = useCallback(async (id: string) => {
-    // Delete associated savings anchors first
+    const goal = await db.savingsGoals.get(id);
+
+    // Calculate current balance: anchor + transactions after anchor, or sum all
+    const todayStr = today();
+    const allGoalTransactions = await db.transactions
+      .filter((t) => t.type === 'savings' && t.savingsGoalId === id)
+      .toArray();
+
+    const anchors = await db.savingsAnchors
+      .where('savingsGoalId')
+      .equals(id)
+      .toArray();
+    const activeAnchor = anchors
+      .filter((a) => a.date <= todayStr)
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
+
+    let currentBalance: number;
+    if (activeAnchor) {
+      const transactionsAfterAnchor = allGoalTransactions.filter(
+        (t) => t.date > activeAnchor.date,
+      );
+      currentBalance =
+        activeAnchor.balanceCents +
+        transactionsAfterAnchor.reduce((sum, t) => sum + t.amountCents, 0);
+    } else {
+      currentBalance = allGoalTransactions.reduce((sum, t) => sum + t.amountCents, 0);
+    }
+
+    // If there's a positive balance, create a withdrawal to return funds to cash
+    if (currentBalance > 0) {
+      const timestamp = now();
+      await db.transactions.add({
+        id: generateId(),
+        userId: USER_ID,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        type: 'savings',
+        date: todayStr,
+        amountCents: -currentBalance,
+        description: `Closed "${goal?.name ?? 'savings goal'}"`,
+        categoryId: null,
+        savingsGoalId: id,
+      });
+    }
+
+    // Append goal name to orphaned transactions so history remains meaningful
+    const goalName = goal?.name ?? 'savings goal';
+    await db.transactions
+      .filter((t) => t.type === 'savings' && t.savingsGoalId === id)
+      .modify((t) => {
+        t.description = `${t.description} (${goalName})`;
+        t.savingsGoalId = null;
+      });
+
+    // Delete associated savings anchors
     await db.savingsAnchors.where('savingsGoalId').equals(id).delete();
     // Then delete the goal
     await db.savingsGoals.delete(id);

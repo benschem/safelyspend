@@ -12,6 +12,16 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { today, parseCentsFromInput } from '@/lib/utils';
 import type { SavingsGoal, SavingsAnchor, CreateEntity, Transaction } from '@/lib/types';
 
@@ -84,16 +94,12 @@ export function SavingsGoalDialog({
     }
   }, [open, goal]);
 
-  const handleDelete = useCallback(() => {
+  const handleDeleteConfirm = useCallback(() => {
     if (!goal || !deleteSavingsGoal) return;
-
-    if (isDeleting) {
-      deleteSavingsGoal(goal.id);
-      onOpenChange(false);
-    } else {
-      setIsDeleting(true);
-    }
-  }, [goal, deleteSavingsGoal, isDeleting, onOpenChange]);
+    deleteSavingsGoal(goal.id);
+    setIsDeleting(false);
+    onOpenChange(false);
+  }, [goal, deleteSavingsGoal, onOpenChange]);
 
   const handleSave = async () => {
     setFormError(null);
@@ -117,8 +123,8 @@ export function SavingsGoalDialog({
           name: name.trim(),
           targetAmountCents,
           isEmergencyFund,
-          ...(deadline ? { deadline } : {}),
-          ...(parsedInterestRate ? { annualInterestRate: parsedInterestRate } : {}),
+          deadline: deadline || undefined,
+          annualInterestRate: parsedInterestRate || undefined,
         };
         await updateSavingsGoal(goal.id, updates);
       } else {
@@ -163,6 +169,7 @@ export function SavingsGoalDialog({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
@@ -338,17 +345,12 @@ export function SavingsGoalDialog({
             {isEditing && deleteSavingsGoal ? (
               <Button
                 type="button"
-                variant={isDeleting ? 'destructive' : 'ghost'}
-                onClick={handleDelete}
-                onBlur={() => setTimeout(() => setIsDeleting(false), 200)}
+                variant="ghost"
+                onClick={() => setIsDeleting(true)}
                 className="gap-1.5"
               >
                 <Trash2 className="h-4 w-4" />
-                {isDeleting
-                  ? transactionCount > 0
-                    ? `Delete with ${transactionCount} txn?`
-                    : 'Confirm delete'
-                  : 'Delete'}
+                Delete
               </Button>
             ) : (
               <div />
@@ -363,5 +365,35 @@ export function SavingsGoalDialog({
         </form>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
+      <AlertDialogContent className="max-w-sm">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete &ldquo;{goal?.name}&rdquo;?</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2">
+              <p>This will permanently delete this savings goal.</p>
+              {transactionCount > 0 && (
+                <p>
+                  Your {transactionCount} past transaction{transactionCount === 1 ? '' : 's'} will
+                  be kept in your history.
+                </p>
+              )}
+              <p>Any remaining balance will be returned to your cash.</p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDeleteConfirm}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Delete Goal
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
