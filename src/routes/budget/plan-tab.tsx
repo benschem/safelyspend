@@ -16,7 +16,7 @@ import {
   ChartPie,
   Sparkles,
 } from 'lucide-react';
-import { cn, formatCents } from '@/lib/utils';
+import { cn, formatCents, toMonthlyCents, type CadenceType } from '@/lib/utils';
 import { CHART_COLORS } from '@/lib/chart-colors';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useLocalStorage } from '@/hooks/use-local-storage';
@@ -26,6 +26,15 @@ import { useAdjustedBudgets, useAdjustedForecasts } from '@/hooks/use-adjusted-v
 import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { CategoryBudgetDialog } from '@/components/dialogs/category-budget-dialog';
 import { ForecastRuleDialog } from '@/components/dialogs/forecast-rule-dialog';
 import { SpendingBreakdownChart } from '@/components/charts/spending-breakdown-chart';
@@ -104,6 +113,7 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
     isLoading: forecastsLoading,
     addRule,
     updateRule,
+    deleteRule,
   } = useForecasts(activeScenarioId, forecastDateRange.startDate, forecastDateRange.endDate);
 
   const {
@@ -133,6 +143,43 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
   const [editingRule, setEditingRule] = useState<ForecastRule | null>(null);
   const [ruleDialogType, setRuleDialogType] = useState<'income' | 'expense' | 'savings' | null>(
     null,
+  );
+
+  // Budget auto-update confirmation
+  const [budgetConfirmation, setBudgetConfirmation] = useState<{
+    categoryName: string;
+    message: string;
+  } | null>(null);
+
+  const handleExpenseRuleCreated = useCallback(
+    async (rule: ForecastRule) => {
+      if (rule.type !== 'expense' || !rule.categoryId) return;
+
+      const category = categories.find((c) => c.id === rule.categoryId);
+      const categoryName = category?.name ?? 'Unknown';
+      const ruleMonthly = toMonthlyCents(rule.amountCents, rule.cadence as CadenceType);
+      const existing = getRuleForCategory(rule.categoryId);
+
+      if (existing) {
+        const existingMonthly = toMonthlyCents(
+          existing.amountCents,
+          existing.cadence as CadenceType,
+        );
+        const newTotal = existingMonthly + ruleMonthly;
+        await setBudgetForCategory(rule.categoryId, newTotal, 'monthly');
+        setBudgetConfirmation({
+          categoryName,
+          message: `Budget for ${categoryName} increased from ${formatCents(existingMonthly)} per month to ${formatCents(newTotal)} per month to include this expense.`,
+        });
+      } else {
+        await setBudgetForCategory(rule.categoryId, ruleMonthly, 'monthly');
+        setBudgetConfirmation({
+          categoryName,
+          message: `A ${formatCents(ruleMonthly)} per month budget has been created for ${categoryName} to cover this expense.`,
+        });
+      }
+    },
+    [categories, getRuleForCategory, setBudgetForCategory],
   );
 
   // Collapsible sections state (persisted)
@@ -416,8 +463,6 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
     setFocusLimit(shouldFocusLimit);
     setEditCategoryDialogOpen(true);
   }, []);
-  void openEditCategoryDialog;
-
   const handleEditDialogClose = useCallback((open: boolean) => {
     setEditCategoryDialogOpen(open);
     if (!open) {
@@ -437,7 +482,16 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
     setRuleDialogType(rule.type);
     setRuleDialogOpen(true);
   }, []);
-  void openEditRuleDialog;
+
+  const handleEditBudgetRule = useCallback(
+    (rule: BudgetRule) => {
+      const row = categoryRows.find((r) => r.budgetRule?.id === rule.id);
+      if (row) {
+        openEditCategoryDialog(row, true);
+      }
+    },
+    [categoryRows, openEditCategoryDialog],
+  );
 
   const handleRuleDialogClose = useCallback((open: boolean) => {
     setRuleDialogOpen(open);
@@ -721,6 +775,8 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
         isOpen={incomeOpen}
         onOpenChange={setIncomeOpen}
         onAddClick={() => openAddRuleDialog('income')}
+        onEditRule={openEditRuleDialog}
+        onDeleteRule={deleteRule}
         periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
         periodTotal={totals.income}
         monthlyDelta={showDeltas ? getTotalDelta('income', totals.monthlyIncome) : undefined}
@@ -733,6 +789,8 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
         isOpen={fixedExpensesOpen}
         onOpenChange={setFixedExpensesOpen}
         onAddClick={() => openAddRuleDialog('expense')}
+        onEditRule={openEditRuleDialog}
+        onDeleteRule={deleteRule}
         periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
         periodTotal={totals.fixed}
         monthlyDelta={showDeltas ? getTotalDelta('fixed', totals.monthlyFixed) : undefined}
@@ -745,6 +803,8 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
         isOpen={budgetedExpensesOpen}
         onOpenChange={setBudgetedExpensesOpen}
         onAddClick={() => setAddCategoryDialogOpen(true)}
+        onEditBudget={handleEditBudgetRule}
+        onDeleteBudget={deleteBudgetRule}
         periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
         periodTotal={totals.variable}
         monthlyDelta={showDeltas ? getTotalDelta('budget', totals.monthlyVariable) : undefined}
@@ -757,6 +817,8 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
         isOpen={savingsOpen}
         onOpenChange={setSavingsOpen}
         onAddClick={() => openAddRuleDialog('savings')}
+        onEditRule={openEditRuleDialog}
+        onDeleteRule={deleteRule}
         periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
         periodTotal={totals.savings}
         monthlyDelta={showDeltas ? getTotalDelta('savings', totals.monthlySavings) : undefined}
@@ -801,8 +863,25 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
         rule={editingRule}
         addRule={addRule}
         updateRule={updateRule}
+        onRuleCreated={handleExpenseRuleCreated}
         restrictType={ruleDialogType}
       />
+
+      {/* Budget auto-update confirmation */}
+      <AlertDialog
+        open={!!budgetConfirmation}
+        onOpenChange={(open) => !open && setBudgetConfirmation(null)}
+      >
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Budget Updated</AlertDialogTitle>
+            <AlertDialogDescription>{budgetConfirmation?.message}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setBudgetConfirmation(null)}>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
