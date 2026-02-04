@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -846,7 +847,11 @@ export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
               // Fixed-only categories show checkmark + "Paid"
               if (item.isFixedOnly) {
                 return (
-                  <div key={item.id} className="space-y-2">
+                  <Link
+                    key={item.id}
+                    to={`/categories/${item.id}`}
+                    className="block space-y-2 rounded-lg px-2 py-1.5 -mx-2 transition-colors hover:bg-muted/50"
+                  >
                     <div className="flex flex-wrap items-center justify-between gap-1 text-sm">
                       <div className="flex items-center gap-2">
                         <Tag className="h-4 w-4 text-muted-foreground" />
@@ -866,7 +871,7 @@ export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
                         style={{ width: '100%' }}
                       />
                     </div>
-                  </div>
+                  </Link>
                 );
               }
 
@@ -877,7 +882,11 @@ export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
               const isWarning = percentage >= 80 && percentage < 100;
 
               return (
-                <div key={item.id} className="space-y-2">
+                <Link
+                  key={item.id}
+                  to={`/categories/${item.id}`}
+                  className="block space-y-2 rounded-lg px-2 py-1.5 -mx-2 transition-colors hover:bg-muted/50"
+                >
                   <div className="flex flex-wrap items-center justify-between gap-1 text-sm">
                     <div className="flex items-center gap-2">
                       <Tag className="h-4 w-4 text-muted-foreground" />
@@ -948,7 +957,7 @@ export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
                       <div className="absolute right-0 h-2 w-1 rounded-r-full bg-red-700" />
                     )}
                   </div>
-                </div>
+                </Link>
               );
             })}
 
