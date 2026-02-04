@@ -1,9 +1,8 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useOutletContext, useSearchParams } from 'react-router';
-import { ChartSpline, Banknote, BanknoteArrowDown, PiggyBank } from 'lucide-react';
+import { ChartSpline, Banknote, BanknoteArrowDown, PiggyBank, ChevronDown, CalendarDays } from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -435,24 +434,43 @@ export function InsightsPage() {
         <p className="page-description">Understand your financial patterns</p>
       </div>
 
-      {/* Hero Header - Date Range Selector */}
-      <div className="mb-4 min-h-28 text-center sm:min-h-32">
-        {/* Hint text - click to change */}
-        <p className="flex min-h-8 items-center justify-center text-xs text-muted-foreground">
-          Click to change
-        </p>
+      {/* Tabs */}
+      <div className="inline-flex h-9 items-center rounded-lg bg-muted p-1 text-muted-foreground">
+        {[
+          { value: 'cashflow', label: 'Cash Flow', icon: Banknote, color: 'text-emerald-500' },
+          { value: 'spending', label: 'Spending', icon: BanknoteArrowDown, color: 'text-red-500' },
+          { value: 'savings', label: 'Savings', icon: PiggyBank, color: 'text-blue-500' },
+        ].map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => handleTabChange(tab.value)}
+            className={cn(
+              'inline-flex cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all',
+              activeTab === tab.value
+                ? 'bg-background text-foreground shadow-sm'
+                : 'hover:text-foreground',
+            )}
+          >
+            <tab.icon className={cn('h-4 w-4', activeTab === tab.value && tab.color)} />
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-        {/* Natural language description - clickable to open picker */}
+      {/* Date Range Selector */}
+      <div>
         <Popover open={pickerOpen} onOpenChange={handlePickerOpenChange}>
           <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              className="cursor-pointer text-2xl font-bold tracking-tight hover:bg-transparent hover:text-foreground/80 sm:text-3xl"
+            <button
+              type="button"
+              className="inline-flex h-9 w-52 cursor-pointer items-center justify-between rounded-md border border-input bg-background px-3 text-sm shadow-sm hover:bg-muted/50"
             >
-              {modeDescription}
-            </Button>
+              <span>{modeDescription}</span>
+              <ChevronDown className="h-4 w-4 opacity-50" />
+            </button>
           </PopoverTrigger>
-          <PopoverContent className="w-fit min-w-72" align="center">
+          <PopoverContent className="w-fit min-w-72" align="start">
             <div className="space-y-4">
               {/* Preset controls */}
               <div className={cn('flex items-center gap-2', isCustomActive && 'opacity-50')}>
@@ -556,38 +574,6 @@ export function InsightsPage() {
             </div>
           </PopoverContent>
         </Popover>
-
-        {/* Actual date range */}
-        <p className="mt-2 text-sm text-muted-foreground">
-          {formatCompactDate(startDate, true)} — {formatCompactDate(endDate, true)}
-        </p>
-      </div>
-
-      {/* Tabs */}
-      <div className={cn(
-        'inline-flex h-9 items-center rounded-lg bg-muted p-1 text-muted-foreground',
-        showDeltas && 'ring-2 ring-violet-500/30',
-      )}>
-        {[
-          { value: 'cashflow', label: 'Cash Flow', icon: Banknote, color: 'text-emerald-500' },
-          { value: 'spending', label: 'Spending', icon: BanknoteArrowDown, color: 'text-red-500' },
-          { value: 'savings', label: 'Savings', icon: PiggyBank, color: 'text-blue-500' },
-        ].map((tab) => (
-          <button
-            key={tab.value}
-            type="button"
-            onClick={() => handleTabChange(tab.value)}
-            className={cn(
-              'inline-flex cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all',
-              activeTab === tab.value
-                ? 'bg-background text-foreground shadow-sm'
-                : 'hover:text-foreground',
-            )}
-          >
-            <tab.icon className={cn('h-4 w-4', activeTab === tab.value && tab.color)} />
-            {tab.label}
-          </button>
-        ))}
       </div>
 
       {/* Content sections */}
@@ -598,7 +584,11 @@ export function InsightsPage() {
           'rounded-xl border bg-card p-5',
           showDeltas && 'border-violet-500/30',
         )}>
-          <div className="mb-4 flex min-h-9 items-center">
+          <div className="mb-4">
+            <h2 className="flex items-center gap-1.5 text-lg font-semibold">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              {formatCompactDate(startDate, true)} — {formatCompactDate(endDate, true)}
+            </h2>
             <p className="text-sm text-muted-foreground">
               {isPastOnly
                 ? 'How your spending compared to your budget'
@@ -646,7 +636,11 @@ export function InsightsPage() {
             'rounded-xl border bg-card p-5',
             showDeltas && 'border-violet-500/30',
           )}>
-            <div className="mb-4 flex min-h-9 items-center">
+            <div className="mb-4">
+              <h2 className="flex items-center gap-1.5 text-lg font-semibold">
+                <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                {formatCompactDate(startDate, true)} — {formatCompactDate(endDate, true)}
+              </h2>
               <p className="text-sm text-muted-foreground">
                 {isPastOnly
                   ? 'Your cash and monthly income vs expenses'
@@ -686,7 +680,12 @@ export function InsightsPage() {
             'rounded-xl border bg-card p-5',
             showDeltas && 'border-violet-500/30',
           )}>
-            <div className="mb-4 flex min-h-9 items-center justify-between gap-4">
+            <div className="mb-4">
+              <h2 className="flex items-center gap-1.5 text-lg font-semibold">
+                <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                {formatCompactDate(startDate, true)} — {formatCompactDate(endDate, true)}
+              </h2>
+              <div className="flex min-h-9 items-center justify-between gap-4">
               <p className="text-sm text-muted-foreground">
                 {isPastOnly
                   ? 'Cumulative savings contributions'
@@ -708,6 +707,7 @@ export function InsightsPage() {
                   </SelectContent>
                 </Select>
               )}
+              </div>
             </div>
             <p
               className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
