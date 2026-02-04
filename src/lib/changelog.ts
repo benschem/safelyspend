@@ -21,6 +21,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.28.0',
+    date: '2026-02-05',
+    changes: [
+      'Cash Flow page now shows a summary card with large, scannable end-of-month projections',
+      'Summary and breakdown cards sit side by side on larger screens',
+      'Current month shows your cash balance right now separately from projections',
+      'Pace comparison highlights when you are spending faster or slower than planned',
+      'Current month breakdown shows Planned and Current columns for easy comparison',
+    ],
+  },
+  {
     version: '0.27.0',
     date: '2026-02-05',
     changes: [
