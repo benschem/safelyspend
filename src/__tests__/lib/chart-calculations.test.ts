@@ -4,7 +4,6 @@ import {
   getMonthsBetween,
   toMonthlyCents,
   fromMonthlyCents,
-  type CadenceType,
 } from '@/lib/utils';
 
 // =============================================================================
@@ -97,8 +96,6 @@ describe('getMonthsBetween', () => {
 // =============================================================================
 
 describe('toMonthlyCents', () => {
-  const cadences: CadenceType[] = ['weekly', 'fortnightly', 'monthly', 'quarterly', 'yearly'];
-
   describe('weekly', () => {
     it('converts weekly to monthly (52 weeks / 12 months)', () => {
       // $100/week → $100 * 52 / 12 = $433.33 → rounded to $433
