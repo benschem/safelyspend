@@ -557,6 +557,16 @@ export function BurnRateChart({
     );
   }
 
+  // Pre-compute danger zone for full chart
+  const dangerStart = surplusPercent > 0 ? safeLimitPercent : 100;
+  const dataMax = Math.max(
+    ...chartData.data.map((d) => Math.max(d.actualPercent ?? 0, d.projectedPercent ?? 0, d.expectedPercent)),
+  );
+  const isInTheRed = dataMax > dangerStart;
+  const chartMax = isInTheRed
+    ? Math.ceil((dataMax + 10) / 10) * 10
+    : Math.max(safeLimitPercent, 100);
+
   return (
     <div className="w-full">
       <ResponsiveContainer width="100%" height={300}>
@@ -568,17 +578,25 @@ export function BurnRateChart({
             axisLine={false}
             tickLine={false}
             width={45}
-            domain={[
-              0,
-              (dataMax: number) => Math.max(safeLimitPercent, 100, Math.ceil(dataMax / 10) * 10),
-            ]}
+            domain={[0, chartMax]}
           />
           <Tooltip content={<CustomTooltip totalBudget={totalBudget} />} />
 
-          {/* 100% budget line - amber for "caution/limit" threshold */}
+          {/* Budget zone (0 to 100%) */}
+          <ReferenceArea y1={0} y2={100} fill="#f59e0b" fillOpacity={0.08} stroke="none" />
+          {/* Surplus buffer zone (100% to safe limit) */}
+          {surplusPercent > 0 && (
+            <ReferenceArea y1={100} y2={safeLimitPercent} fill="#22c55e" fillOpacity={0.08} stroke="none" />
+          )}
+          {/* Danger zone — projection exceeds cash surplus */}
+          {isInTheRed && (
+            <ReferenceArea y1={dangerStart} y2={chartMax} fill="#ef4444" fillOpacity={0.08} stroke="none" />
+          )}
+
+          {/* 100% budget line */}
           <ReferenceLine y={100} stroke="#f59e0b" strokeDasharray="3 3" />
 
-          {/* Safe limit line (budget + surplus) - only show if there's positive surplus */}
+          {/* Safe limit line (budget + surplus) */}
           {surplusPercent > 0 && (
             <ReferenceLine y={safeLimitPercent} stroke="#22c55e" strokeDasharray="6 3" />
           )}

@@ -21,6 +21,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.27.0',
+    date: '2026-02-05',
+    changes: [
+      'Cash Flow page redesigned with a ledger view showing your month as a stacked equation',
+      'Compare Budget Plan vs Current Pace side-by-side to see the impact of your spending',
+      'Past months show Planned vs Actual columns for easy retrospective',
+      'Mobile view switches between columns with tabs',
+      'Burn rate chart now appears as its own section below the ledger',
+    ],
+  },
+  {
     version: '0.26.0',
     date: '2026-02-05',
     changes: [

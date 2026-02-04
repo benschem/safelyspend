@@ -6,16 +6,15 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import {
   PiggyBank,
   Banknote,
-  BanknoteArrowUp,
   BanknoteArrowDown,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
   History,
-  Wallet,
   Pin,
   Tag,
   Sparkles,
+  Gauge,
 } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
@@ -28,7 +27,6 @@ import { useTransactions } from '@/hooks/use-transactions';
 
 import { useBudgetPeriodData } from '@/hooks/use-budget-period-data';
 import { useCashSurplus } from '@/hooks/use-cash-surplus';
-import { ScenarioDelta } from '@/components/ui/scenario-delta';
 import { useWhatIf } from '@/contexts/what-if-context';
 import { BurnRateChart } from '@/components/charts/burn-rate-chart';
 import { CHART_COLORS } from '@/lib/chart-colors';
@@ -106,7 +104,7 @@ interface CashFlowContentProps {
 
 function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
   const { activeScenario } = useScenarios();
-  const { getTotalDelta, isViewingDefault, defaultBudgetByCategoryMonthly, defaultTotals } = useScenarioDiff();
+  const { isViewingDefault, defaultBudgetByCategoryMonthly, defaultTotals } = useScenarioDiff();
   const { isWhatIfMode } = useWhatIf();
   const { budgetRules } = useBudgetRules(activeScenarioId);
   const { categories } = useCategories();
@@ -137,11 +135,6 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
   // Get expense rules for fixed category detection
   const expenseRules = useMemo(
     () => forecastRules.filter((r) => r.type === 'expense'),
-    [forecastRules],
-  );
-
-  const incomeSourceCount = useMemo(
-    () => forecastRules.filter((r) => r.type === 'income').length,
     [forecastRules],
   );
 
@@ -368,74 +361,6 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
       .sort((a, b) => b.expected - a.expected);
   }, [savingsRules, allTransactions, savingsGoals, periodStart, effectiveDate]);
 
-  // Calculate headline metric
-  const headline = useMemo(() => {
-    const hasPlan =
-      periodCashFlow.income.expected > 0 ||
-      periodCashFlow.budgeted.expected > 0 ||
-      periodCashFlow.expenses.expected > 0;
-    // Monthly net: income - expenses - savings
-    const planned =
-      periodCashFlow.income.expected -
-      periodCashFlow.expenses.expected - // fixed expenses (ForecastRules)
-      periodCashFlow.budgeted.expected - // variable budget (BudgetRules)
-      periodCashFlow.savings.expected;
-
-    if (isPastPeriod) {
-      const leftover =
-        periodCashFlow.income.actual -
-        periodCashFlow.expenses.actual -
-        periodCashFlow.savings.actual;
-      return {
-        amount: leftover,
-        label: leftover > 0 ? 'Actual surplus' : leftover < 0 ? 'Actual shortfall' : 'Broke even',
-        isPositive: leftover >= 0,
-        hasPlan,
-      };
-    }
-
-    if (isFuturePeriod) {
-      if (!hasPlan) {
-        return { amount: 0, label: 'No forecast set', isPositive: true, hasPlan: false };
-      }
-      return {
-        amount: planned,
-        label:
-          planned > 0 ? 'Expected surplus' : planned < 0 ? 'Expected shortfall' : 'Budget balanced',
-        isPositive: planned >= 0,
-        hasPlan,
-      };
-    }
-
-    // Current period - project based on actual spending pace
-    if (!hasPlan) {
-      const actualSoFar =
-        periodCashFlow.income.actual -
-        periodCashFlow.expenses.actual -
-        periodCashFlow.savings.actual;
-      return {
-        amount: actualSoFar,
-        label: 'No plan set',
-        isPositive: actualSoFar >= 0,
-        hasPlan: false,
-      };
-    }
-
-    // Smart projection: fixed expenses on schedule + variable spending extrapolated
-    const projected =
-      periodCashFlow.income.expected -
-      periodCashFlow.projection.projectedTotal -
-      periodCashFlow.savings.expected;
-
-    return {
-      amount: projected,
-      label:
-        projected > 0 ? 'Projected surplus' : projected < 0 ? 'Projected shortfall' : 'Budget balanced',
-      isPositive: projected >= 0,
-      hasPlan,
-    };
-  }, [isPastPeriod, isFuturePeriod, periodCashFlow]);
-
   // Calculate surplus for safe limit line
   const surplus = useMemo(() => {
     return (
@@ -538,18 +463,6 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
       };
     }
   }, [isFuturePeriod, isPastPeriod, periodCashFlow, hasSurplusBuffer, surplus]);
-
-  // Scenario deltas computed inline (avoids changing shared use-scenario-diff.ts)
-  const monthlyNetDelta = useMemo(() => {
-    if (!showDeltas) return 0;
-    const current = periodCashFlow.income.expected - periodCashFlow.expenses.expected - periodCashFlow.budgeted.expected - periodCashFlow.savings.expected;
-    const defaultNet = defaultTotals.income - defaultTotals.fixedExpenses - defaultTotals.budgetedExpenses - defaultTotals.savings;
-    return current - defaultNet;
-  }, [showDeltas, periodCashFlow, defaultTotals]);
-
-  // Cash surplus delta = monthly net delta (balance is the same across scenarios,
-  // so any difference in surplus comes from the same income/expense changes)
-  const cashSurplusDelta = monthlyNetDelta;
 
   if (isLoading) {
     return null;
@@ -664,313 +577,45 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
         </div>
       </div>
 
-      {/* Hero: Cash Surplus + Monthly Net + Burn Rate */}
-      <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
-        {/* Period label + status pill */}
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-muted-foreground">{periodLabel}</p>
-          {isCurrentPeriod && (
-            <span className="flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-0.5 text-xs font-medium text-violet-600 dark:text-violet-400">
-              <Sparkles className="h-3 w-3" />
-              Projected
-            </span>
-          )}
-          {isPastPeriod && (
-            <span className="flex items-center gap-1 rounded-full bg-slate-500/10 px-2 py-0.5 text-xs text-slate-600 dark:text-slate-400">
-              <History className="h-3 w-3" />
-              Historical
-            </span>
-          )}
-        </div>
+      {/* Cash Flow Ledger */}
+      <CashFlowLedger
+        periodLabel={periodLabel}
+        isCurrentPeriod={isCurrentPeriod}
+        isPastPeriod={isPastPeriod}
+        periodCashFlow={periodCashFlow}
+        cashSurplusData={cashSurplusData}
+        showDeltas={showDeltas}
+        defaultTotals={defaultTotals}
+      />
 
-        <div className="mt-3 flex flex-col gap-5 lg:flex-row lg:items-stretch lg:gap-0">
-          {/* Two co-equal metrics */}
-          <div className="flex min-w-0 flex-col gap-4 sm:flex-row lg:flex-[3]">
-            {/* Cash Surplus */}
-            <div className="min-w-0 flex-1 space-y-1">
-              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <Wallet className="h-3.5 w-3.5" />
-                Cash Surplus
-              </p>
-              {cashSurplusData.hasAnchor && cashSurplusData.cashSurplus !== null ? (
-                <>
-                  <p
-                    className={cn(
-                      'text-2xl font-bold tracking-tight lg:text-3xl',
-                      cashSurplusData.cashSurplus >= 0 ? 'text-green-500' : 'text-amber-500',
-                    )}
-                  >
-                    {formatCents(cashSurplusData.cashSurplus)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {isPastPeriod ? 'Balance at end of period' : headline.hasPlan ? 'Projected end of month' : 'Current balance'}
-                  </p>
-                  {isPastPeriod ? (
-                    <p className="text-xs text-muted-foreground">
-                      Started at {formatCents(cashSurplusData.cashSurplus - headline.amount)}
-                    </p>
-                  ) : headline.hasPlan && cashSurplusData.currentBalance !== null ? (
-                    <p className="text-xs text-muted-foreground">
-                      Currently {formatCents(cashSurplusData.currentBalance)}
-                    </p>
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  <p className="text-2xl font-bold tracking-tight text-muted-foreground lg:text-3xl">—</p>
-                  <p className="text-xs text-muted-foreground">
-                    Set initial cash balance in{' '}
-                    <Link to="/settings" className="underline">Settings</Link>
-                  </p>
-                </>
-              )}
-              <ScenarioDelta delta={cashSurplusDelta} show={showDeltas} />
-            </div>
-
-            {/* Divider */}
-            <div className="h-px bg-border sm:hidden" />
-            <div className="hidden sm:block sm:w-px sm:self-stretch sm:bg-border" />
-
-            {/* Monthly Net */}
-            <div className="min-w-0 flex-1 space-y-1">
-              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <Banknote className="h-3.5 w-3.5" />
-                Monthly Net
-              </p>
-              {!headline.hasPlan && !isPastPeriod ? (
-                <>
-                  <p className="text-2xl font-bold tracking-tight text-muted-foreground lg:text-3xl">—</p>
-                  <p className="text-xs text-muted-foreground">No plan set</p>
-                </>
-              ) : isPastPeriod ? (
-                <>
-                  <p
-                    className={cn(
-                      'text-2xl font-bold tracking-tight lg:text-3xl',
-                      headline.isPositive ? 'text-green-500' : 'text-amber-500',
-                    )}
-                  >
-                    {headline.isPositive && headline.amount > 0 ? '+' : ''}
-                    {formatCents(headline.amount)}
-                  </p>
-                  {budgetStatus && (
-                    <p
-                      className={cn(
-                        'text-xs',
-                        budgetStatus.isPositive
-                          ? 'text-green-600/70 dark:text-green-400/70'
-                          : 'text-amber-600/70 dark:text-amber-400/70',
-                      )}
-                    >
-                      {budgetStatus.label}
-                    </p>
-                  )}
-                </>
-              ) : (
-                <>
-                  {/* Current/future: status text is hero, dollar amount is supporting */}
-                  {budgetStatus && headline.hasPlan ? (
-                    <p
-                      className={cn(
-                        'text-base font-bold lg:text-lg',
-                        budgetStatus.isPositive ? 'text-green-500' : 'text-amber-500',
-                      )}
-                    >
-                      {budgetStatus.label}
-                      {budgetStatus.sublabel && <> {budgetStatus.sublabel}</>}
-                    </p>
-                  ) : headline.amount === 0 && headline.isPositive && headline.hasPlan ? (
-                    <p className="text-base font-bold text-green-500 lg:text-lg">
-                      Every dollar accounted for
-                    </p>
-                  ) : null}
-                  <p
-                    className={cn(
-                      'text-lg font-semibold',
-                      headline.isPositive
-                        ? 'text-green-600/70 dark:text-green-400/70'
-                        : 'text-amber-600/70 dark:text-amber-400/70',
-                    )}
-                  >
-                    {headline.isPositive && headline.amount > 0 ? '+' : ''}
-                    {formatCents(headline.amount)}
-                  </p>
-                </>
-              )}
-              <ScenarioDelta delta={monthlyNetDelta} show={showDeltas} />
-            </div>
+      {/* Burn rate chart (current period only) */}
+      {isCurrentPeriod && budgetStatus?.hasBudget && burnRateData.totalBudget > 0 && (
+        <div className={cn('rounded-xl border bg-card p-6', showDeltas && 'border-violet-500/30')}>
+          <div className="mb-4 flex items-center gap-2">
+            <Gauge className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Spending Pace</h3>
           </div>
-
-          {/* Burn rate chart (current period only) */}
-          {isCurrentPeriod && budgetStatus?.hasBudget && burnRateData.totalBudget > 0 && (
-            <div className="w-full min-w-0 lg:ml-4 lg:flex-[2]">
-              <BurnRateChart
-                compact
-                dailySpending={burnRateData.dailySpending}
-                totalBudget={burnRateData.totalBudget}
-                periodStart={burnRateData.periodStart}
-                periodEnd={burnRateData.periodEnd}
-                periodLabel={burnRateData.periodLabel}
-                viewMode="month"
-                surplusAmount={hasSurplusBuffer ? surplus : undefined}
-                fixedExpenseSchedule={burnRateData.fixedExpenseSchedule}
-                variableBudget={burnRateData.variableBudget}
-                fixedExpensesTotal={burnRateData.fixedExpensesTotal}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 4 Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Income Card */}
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/10">
-              <BanknoteArrowUp className="h-4 w-4 text-green-500" />
-            </div>
-            <span className="text-sm text-muted-foreground">Income</span>
-          </div>
-          {isFuturePeriod ? (
-            <p className="mt-2 text-2xl font-bold">
-              {formatCents(periodCashFlow.income.expected)}
-            </p>
-          ) : (
-            <p className="mt-2 text-2xl font-bold">
-              {formatCents(periodCashFlow.income.actual)}
-              <span className="ml-1 text-base font-normal text-muted-foreground">
-                of {formatCents(periodCashFlow.income.expected)}
-              </span>
-            </p>
-          )}
-          {incomeSourceCount > 0 && (
-            <p className="text-xs text-muted-foreground">
-              {incomeSourceCount} source{incomeSourceCount !== 1 ? 's' : ''}
-            </p>
-          )}
-          <ScenarioDelta
-            delta={getTotalDelta('income', periodCashFlow.income.expected)}
-            periodLabel=""
-            show={showDeltas}
+          <p
+            className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
+          >
+            {isWhatIfMode && isViewingDefault
+              ? 'Based on your adjustments'
+              : `Based on "${activeScenario?.name ?? 'scenario'}"`}
+          </p>
+          <BurnRateChart
+            dailySpending={burnRateData.dailySpending}
+            totalBudget={burnRateData.totalBudget}
+            periodStart={burnRateData.periodStart}
+            periodEnd={burnRateData.periodEnd}
+            periodLabel={burnRateData.periodLabel}
+            viewMode="month"
+            surplusAmount={hasSurplusBuffer ? surplus : undefined}
+            fixedExpenseSchedule={burnRateData.fixedExpenseSchedule}
+            variableBudget={burnRateData.variableBudget}
+            fixedExpensesTotal={burnRateData.fixedExpensesTotal}
           />
         </div>
-
-        {/* Fixed Expenses Card */}
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10">
-              <BanknoteArrowDown className="h-4 w-4 text-red-500" />
-            </div>
-            <span className="text-sm text-muted-foreground">Fixed Expenses</span>
-          </div>
-          {isFuturePeriod ? (
-            <p className="mt-2 text-2xl font-bold">
-              {periodCashFlow.expenses.expected > 0
-                ? formatCents(periodCashFlow.expenses.expected)
-                : '—'}
-            </p>
-          ) : (
-            <p className="mt-2 text-2xl font-bold">
-              {periodCashFlow.expenses.expected > 0 ? (
-                <>
-                  {formatCents(periodCashFlow.expenses.dueToDate)}
-                  <span className="ml-1 text-base font-normal text-muted-foreground">
-                    of {formatCents(periodCashFlow.expenses.expected)}
-                  </span>
-                </>
-              ) : (
-                '—'
-              )}
-            </p>
-          )}
-          {periodCashFlow.income.expected > 0 && periodCashFlow.expenses.expected > 0 && (
-            <p className="text-xs text-muted-foreground">
-              {Math.round(
-                (periodCashFlow.expenses.expected / periodCashFlow.income.expected) * 100,
-              )}
-              % of income
-            </p>
-          )}
-          <ScenarioDelta
-            delta={getTotalDelta('fixed', periodCashFlow.expenses.expected)}
-            periodLabel=""
-            show={showDeltas}
-          />
-        </div>
-
-        {/* Budgeted Expenses Card */}
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10">
-              <BanknoteArrowDown className="h-4 w-4 text-red-500" />
-            </div>
-            <span className="text-sm text-muted-foreground">Budgeted Expenses</span>
-          </div>
-          {isFuturePeriod ? (
-            <p className="mt-2 text-2xl font-bold">
-              {periodCashFlow.budgeted.expected > 0
-                ? formatCents(periodCashFlow.budgeted.expected)
-                : '—'}
-            </p>
-          ) : (
-            <p className="mt-2 text-2xl font-bold">
-              {formatCents(periodCashFlow.expenses.actual)}
-              <span className="ml-1 text-base font-normal text-muted-foreground">
-                of {formatCents(periodCashFlow.budgeted.expected)}
-              </span>
-            </p>
-          )}
-          {periodCashFlow.income.expected > 0 && periodCashFlow.budgeted.expected > 0 && (
-            <p className="text-xs text-muted-foreground">
-              {Math.round(
-                (periodCashFlow.budgeted.expected / periodCashFlow.income.expected) * 100,
-              )}
-              % of income
-            </p>
-          )}
-          <ScenarioDelta
-            delta={getTotalDelta('budget', periodCashFlow.budgeted.expected)}
-            periodLabel=""
-            show={showDeltas}
-          />
-        </div>
-
-        {/* Savings Card */}
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10">
-              <PiggyBank className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <span className="text-sm text-muted-foreground">Savings</span>
-          </div>
-          {isFuturePeriod ? (
-            <p className="mt-2 text-2xl font-bold">
-              {formatCents(periodCashFlow.savings.expected)}
-            </p>
-          ) : (
-            <p className="mt-2 text-2xl font-bold">
-              {formatCents(periodCashFlow.savings.actual)}
-              <span className="ml-1 text-base font-normal text-muted-foreground">
-                of {formatCents(periodCashFlow.savings.expected)}
-              </span>
-            </p>
-          )}
-          {periodCashFlow.income.expected > 0 && periodCashFlow.savings.expected > 0 && (
-            <p className="text-xs text-muted-foreground">
-              {Math.round(
-                (periodCashFlow.savings.expected / periodCashFlow.income.expected) * 100,
-              )}
-              % of income
-            </p>
-          )}
-          <ScenarioDelta
-            delta={getTotalDelta('savings', periodCashFlow.savings.expected)}
-            periodLabel=""
-            show={showDeltas}
-          />
-        </div>
-      </div>
+      )}
 
       {/* Expenses & Savings Breakdown */}
       <div
@@ -1174,5 +819,362 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
       </div>
 
     </div>
+  );
+}
+
+// --- Cash Flow Ledger ---
+
+interface CashFlowLedgerProps {
+  periodLabel: string;
+  isCurrentPeriod: boolean;
+  isPastPeriod: boolean;
+  periodCashFlow: {
+    income: { expected: number; actual: number };
+    budgeted: { expected: number; actual: number };
+    savings: { expected: number; actual: number };
+    expenses: { expected: number; actual: number; dueToDate: number };
+    projection: { variableActual: number; projectedVariable: number; projectedTotal: number };
+  };
+  cashSurplusData: {
+    currentBalance: number | null;
+    cashSurplus: number | null;
+    hasAnchor: boolean;
+  };
+  showDeltas: boolean;
+  defaultTotals: {
+    income: number;
+    fixedExpenses: number;
+    budgetedExpenses: number;
+    savings: number;
+    surplus: number;
+  };
+}
+
+function CashFlowLedger({
+  periodLabel,
+  isCurrentPeriod,
+  isPastPeriod,
+  periodCashFlow,
+  cashSurplusData,
+  showDeltas,
+  defaultTotals,
+}: CashFlowLedgerProps) {
+  // Mobile: toggle between columns (past period only)
+  const [mobileColumn, setMobileColumn] = useState<'left' | 'right'>('left');
+
+  // Derive starting balance by undoing actuals from current balance
+  const startingBalance = useMemo(() => {
+    if (cashSurplusData.currentBalance === null) return null;
+    return (
+      cashSurplusData.currentBalance -
+      periodCashFlow.income.actual +
+      periodCashFlow.expenses.actual +
+      periodCashFlow.savings.actual
+    );
+  }, [cashSurplusData.currentBalance, periodCashFlow.income.actual, periodCashFlow.expenses.actual, periodCashFlow.savings.actual]);
+
+  const hasAnchor = cashSurplusData.hasAnchor && startingBalance !== null;
+
+  // Scenario deltas (per-row)
+  const incomeDelta = showDeltas ? periodCashFlow.income.expected - defaultTotals.income : 0;
+  const fixedDelta = showDeltas ? periodCashFlow.expenses.expected - defaultTotals.fixedExpenses : 0;
+  const variableDelta = showDeltas ? periodCashFlow.budgeted.expected - defaultTotals.budgetedExpenses : 0;
+  const savingsDelta = showDeltas ? periodCashFlow.savings.expected - defaultTotals.savings : 0;
+  const endDelta = showDeltas ? incomeDelta - fixedDelta - variableDelta - savingsDelta : 0;
+
+  const renderDelta = (delta: number) => {
+    if (!showDeltas || delta === 0) return null;
+    return (
+      <span className="ml-1.5 text-xs text-violet-600 dark:text-violet-400">
+        ({delta > 0 ? '+' : ''}{formatCents(delta)})
+      </span>
+    );
+  };
+
+  const fmtSigned = (amount: number, prefix: string) => `${prefix}${formatCents(Math.abs(amount))}`;
+
+  // --- Past period: two-column layout (Planned vs Actual) ---
+  if (isPastPeriod) {
+    const plannedEnd = hasAnchor
+      ? (startingBalance as number) + periodCashFlow.income.expected - periodCashFlow.expenses.expected - periodCashFlow.budgeted.expected - periodCashFlow.savings.expected
+      : null;
+    const actualEnd = cashSurplusData.cashSurplus;
+    const actualFixed = Math.max(0, periodCashFlow.expenses.actual - periodCashFlow.projection.variableActual);
+
+    return (
+      <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
+        <LedgerHeader periodLabel={periodLabel} isCurrentPeriod={false} isPastPeriod />
+
+        {/* Mobile tabs */}
+        <div className="mt-3 flex gap-1 sm:hidden">
+          <button
+            type="button"
+            onClick={() => setMobileColumn('left')}
+            className={cn(
+              'cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+              mobileColumn === 'left'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80',
+            )}
+          >
+            Planned
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileColumn('right')}
+            className={cn(
+              'cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+              mobileColumn === 'right'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80',
+            )}
+          >
+            Actual
+          </button>
+        </div>
+
+        <div className="mt-4">
+          {/* Column headers (desktop) */}
+          <div className="mb-2 hidden sm:grid sm:grid-cols-[1fr_auto_auto] sm:gap-x-4">
+            <div />
+            <div className="w-28 text-right text-xs font-medium text-muted-foreground">Planned</div>
+            <div className="w-28 text-right text-xs font-medium text-muted-foreground">Actual</div>
+          </div>
+
+          <TwoColRow label="Starting cash" left={hasAnchor ? formatCents(startingBalance as number) : '—'} right={hasAnchor ? formatCents(startingBalance as number) : '—'} mobileColumn={mobileColumn} />
+          <TwoColRow label="+ Income" left={fmtSigned(periodCashFlow.income.expected, '+')} right={fmtSigned(periodCashFlow.income.actual, '+')} mobileColumn={mobileColumn} className="text-green-600 dark:text-green-400" />
+          <TwoColRow label="− Fixed expenses" left={periodCashFlow.expenses.expected > 0 ? fmtSigned(periodCashFlow.expenses.expected, '−') : '—'} right={actualFixed > 0 ? fmtSigned(actualFixed, '−') : '—'} mobileColumn={mobileColumn} />
+          <TwoColRow label="− Variable spending" left={periodCashFlow.budgeted.expected > 0 ? fmtSigned(periodCashFlow.budgeted.expected, '−') : '—'} right={periodCashFlow.projection.variableActual > 0 ? fmtSigned(periodCashFlow.projection.variableActual, '−') : '—'} mobileColumn={mobileColumn} />
+          <TwoColRow label="− Savings" left={periodCashFlow.savings.expected > 0 ? fmtSigned(periodCashFlow.savings.expected, '−') : '—'} right={periodCashFlow.savings.actual > 0 ? fmtSigned(periodCashFlow.savings.actual, '−') : '—'} mobileColumn={mobileColumn} />
+
+          {/* Divider */}
+          <div className="my-1 hidden sm:grid sm:grid-cols-[1fr_auto_auto] sm:gap-x-4">
+            <div />
+            <div className="w-28 border-t border-border" />
+            <div className="w-28 border-t border-border" />
+          </div>
+          <div className="my-1 grid grid-cols-[1fr_auto] gap-x-4 sm:hidden">
+            <div />
+            <div className="w-28 border-t border-border" />
+          </div>
+
+          <TwoColRow
+            label="End of month"
+            left={plannedEnd !== null ? formatCents(plannedEnd) : '—'}
+            right={actualEnd !== null ? formatCents(actualEnd) : '—'}
+            leftColor={plannedEnd !== null ? (plannedEnd >= 0 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400') : undefined}
+            rightColor={actualEnd !== null ? (actualEnd >= 0 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400') : undefined}
+            mobileColumn={mobileColumn}
+            isBold
+          />
+
+          {!hasAnchor && (
+            <p className="mt-3 text-center text-xs text-muted-foreground">
+              Set initial cash balance in{' '}
+              <Link to="/settings" className="underline">Settings</Link>
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // --- Current / Future period: single-column equation ---
+  const income = periodCashFlow.income.expected;
+  const fixed = periodCashFlow.expenses.expected;
+  const variable = periodCashFlow.budgeted.expected;
+  const savings = periodCashFlow.savings.expected;
+  const plannedEnd = hasAnchor
+    ? (startingBalance as number) + income - fixed - variable - savings
+    : null;
+
+  // Current pace projection (current period only)
+  const projectedVariable = isCurrentPeriod ? periodCashFlow.projection.projectedVariable : null;
+  const paceEnd = isCurrentPeriod && hasAnchor
+    ? (startingBalance as number) + income - fixed - (projectedVariable ?? variable) - savings
+    : null;
+  const pacesDiffer = projectedVariable !== null && Math.abs(projectedVariable - variable) >= 100; // at least $1 difference
+
+  return (
+    <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
+      <LedgerHeader periodLabel={periodLabel} isCurrentPeriod={isCurrentPeriod} isPastPeriod={false} />
+
+      <div className="mt-4">
+        {/* Starting cash */}
+        <SingleRow label="Starting cash" value={hasAnchor ? formatCents(startingBalance as number) : '—'} />
+
+        {/* + Income */}
+        <SingleRow
+          label="+ Income"
+          value={fmtSigned(income, '+')}
+          delta={renderDelta(incomeDelta)}
+          annotation={isCurrentPeriod ? `${formatCents(periodCashFlow.income.actual)} received` : undefined}
+          className="text-green-600 dark:text-green-400"
+        />
+
+        {/* − Fixed expenses */}
+        <SingleRow
+          label="− Fixed expenses"
+          value={fixed > 0 ? fmtSigned(fixed, '−') : '—'}
+          delta={renderDelta(-fixedDelta)}
+          annotation={isCurrentPeriod ? `${formatCents(periodCashFlow.expenses.dueToDate)} due` : undefined}
+        />
+
+        {/* − Variable spending */}
+        <SingleRow
+          label="− Variable spending"
+          value={variable > 0 ? fmtSigned(variable, '−') : '—'}
+          delta={renderDelta(-variableDelta)}
+          annotation={isCurrentPeriod ? `${formatCents(periodCashFlow.projection.variableActual)} spent` : undefined}
+        />
+
+        {/* − Savings */}
+        <SingleRow
+          label="− Savings"
+          value={savings > 0 ? fmtSigned(savings, '−') : '—'}
+          delta={renderDelta(-savingsDelta)}
+          annotation={isCurrentPeriod ? `${formatCents(periodCashFlow.savings.actual)} saved` : undefined}
+        />
+
+        {/* Divider */}
+        <div className="my-1 grid grid-cols-[1fr_auto] gap-x-4">
+          <div />
+          <div className="w-28 border-t border-border" />
+        </div>
+
+        {/* End of month — plan */}
+        <SingleRow
+          label={pacesDiffer ? 'End of month (plan)' : 'End of month'}
+          value={plannedEnd !== null ? formatCents(plannedEnd) : '—'}
+          delta={renderDelta(endDelta)}
+          valueColor={plannedEnd !== null ? (plannedEnd >= 0 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400') : undefined}
+          isBold
+        />
+
+        {/* End of month — at current pace (only when meaningfully different) */}
+        {pacesDiffer && (
+          <SingleRow
+            label="End of month (at pace)"
+            value={paceEnd !== null ? formatCents(paceEnd) : '—'}
+            valueColor={paceEnd !== null ? (paceEnd >= 0 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400') : undefined}
+            isBold
+          />
+        )}
+
+        {/* "Currently $X" */}
+        {isCurrentPeriod && cashSurplusData.currentBalance !== null && hasAnchor && (
+          <div className="mt-1 grid grid-cols-[1fr_auto] gap-x-4">
+            <div />
+            <div className="w-28 text-right text-xs text-muted-foreground">
+              Currently {formatCents(cashSurplusData.currentBalance)}
+            </div>
+          </div>
+        )}
+
+        {/* No anchor: settings link */}
+        {!hasAnchor && (
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            Set initial cash balance in{' '}
+            <Link to="/settings" className="underline">Settings</Link>
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// --- Shared sub-components ---
+
+function LedgerHeader({ periodLabel, isCurrentPeriod, isPastPeriod }: { periodLabel: string; isCurrentPeriod: boolean; isPastPeriod: boolean }) {
+  return (
+    <div className="flex items-center gap-2">
+      <p className="text-sm font-medium text-muted-foreground">{periodLabel}</p>
+      {isCurrentPeriod && (
+        <span className="flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-0.5 text-xs font-medium text-violet-600 dark:text-violet-400">
+          <Sparkles className="h-3 w-3" />
+          Projected
+        </span>
+      )}
+      {isPastPeriod && (
+        <span className="flex items-center gap-1 rounded-full bg-slate-500/10 px-2 py-0.5 text-xs text-slate-600 dark:text-slate-400">
+          <History className="h-3 w-3" />
+          Historical
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Single-column ledger row (current + future periods) */
+function SingleRow({
+  label,
+  value,
+  delta,
+  annotation,
+  valueColor,
+  className,
+  isBold = false,
+}: {
+  label: string;
+  value: string;
+  delta?: React.ReactNode;
+  annotation?: string | undefined;
+  valueColor?: string | undefined;
+  className?: string;
+  isBold?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 py-0.5">
+      <span className={cn('text-sm text-muted-foreground', isBold && 'font-semibold text-foreground')}>
+        {label}
+        {delta}
+      </span>
+      <span className={cn('w-28 text-right font-mono text-sm tabular-nums', isBold && 'font-semibold', className, valueColor)}>
+        {value}
+      </span>
+      <span className="w-24 text-right text-xs text-muted-foreground self-center sm:w-28">
+        {annotation ?? ''}
+      </span>
+    </div>
+  );
+}
+
+/** Two-column ledger row (past period: Planned vs Actual) */
+function TwoColRow({
+  label,
+  left,
+  right,
+  leftColor,
+  rightColor,
+  className,
+  mobileColumn,
+  isBold = false,
+}: {
+  label: string;
+  left: string;
+  right: string;
+  leftColor?: string | undefined;
+  rightColor?: string | undefined;
+  className?: string;
+  mobileColumn: 'left' | 'right';
+  isBold?: boolean;
+}) {
+  const valCls = cn('w-28 text-right font-mono text-sm tabular-nums', isBold && 'font-semibold', className);
+  return (
+    <>
+      {/* Desktop */}
+      <div className="hidden sm:grid sm:grid-cols-[1fr_auto_auto] sm:gap-x-4 sm:py-0.5">
+        <span className={cn('text-sm text-muted-foreground', isBold && 'font-semibold text-foreground')}>{label}</span>
+        <span className={cn(valCls, leftColor)}>{left}</span>
+        <span className={cn(valCls, rightColor)}>{right}</span>
+      </div>
+      {/* Mobile */}
+      <div className="grid grid-cols-[1fr_auto] gap-x-4 py-0.5 sm:hidden">
+        <span className={cn('text-sm text-muted-foreground', isBold && 'font-semibold text-foreground')}>{label}</span>
+        <span className={cn(valCls, mobileColumn === 'left' ? leftColor : rightColor)}>
+          {mobileColumn === 'left' ? left : right}
+        </span>
+      </div>
+    </>
   );
 }
