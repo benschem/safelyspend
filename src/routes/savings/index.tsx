@@ -186,7 +186,7 @@ export function SavingsIndexPage() {
       let bal = g.currentBalance;
       let months = 0;
       const nowDate = new Date(today);
-      while (bal < g.targetAmount && months < 600) {
+      while (bal < g.targetAmount && months < 60) {
         const simDate = new Date(nowDate.getFullYear(), nowDate.getMonth() + months, 28);
         const simDateStr = `${simDate.getFullYear()}-${String(simDate.getMonth() + 1).padStart(2, '0')}-${String(simDate.getDate()).padStart(2, '0')}`;
         const effectiveRate = goalObj
@@ -197,7 +197,7 @@ export function SavingsIndexPage() {
         bal += bal * monthlyRate;
         months++;
       }
-      if (months >= 600) continue;
+      if (months >= 60) continue; // Skip if unreachable or >5 years out
       const d = new Date(nowDate.getFullYear(), nowDate.getMonth() + months, 1);
       const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       if (!nextGoalDate || month < nextGoalDate) nextGoalDate = month;

@@ -185,7 +185,7 @@ export function SavingsGoalDialog({
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit' : 'Add'} Savings Goal</DialogTitle>
           <DialogDescription>
@@ -237,24 +237,37 @@ export function SavingsGoalDialog({
               />
             </div>
 
-            {!isEditing && (
-              <div className="space-y-2">
-                <Label htmlFor="goal-starting" className="select-none">
-                  Current Balance
-                  <span className="ml-1 font-normal text-muted-foreground">(opt.)</span>
-                </Label>
-                <Input
-                  id="goal-starting"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={startingBalance}
-                  onChange={(e) => setStartingBalance(e.target.value)}
-                />
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="goal-deadline" className="select-none">
+                Deadline
+                <span className="ml-1 font-normal text-muted-foreground">(opt.)</span>
+              </Label>
+              <Input
+                id="goal-deadline"
+                type="date"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+              />
+            </div>
           </div>
+
+          {!isEditing && (
+            <div className="space-y-2">
+              <Label htmlFor="goal-starting" className="select-none">
+                Current Balance
+                <span className="ml-1 font-normal text-muted-foreground">(optional)</span>
+              </Label>
+              <Input
+                id="goal-starting"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={startingBalance}
+                onChange={(e) => setStartingBalance(e.target.value)}
+              />
+            </div>
+          )}
 
           {/* Balance type selector - only show when creating with a starting balance */}
           {!isEditing && parseCentsFromInput(startingBalance) > 0 && (
@@ -305,19 +318,6 @@ export function SavingsGoalDialog({
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="goal-deadline" className="select-none">
-              Deadline
-              <span className="ml-1 font-normal text-muted-foreground">(optional)</span>
-            </Label>
-            <Input
-              id="goal-deadline"
-              type="date"
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-            />
-          </div>
-
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div className="flex items-center gap-2">
               <Ambulance className="h-4 w-4 text-muted-foreground" />
@@ -347,7 +347,7 @@ export function SavingsGoalDialog({
                 placeholder="e.g., 4.5"
                 value={interestRate}
                 onChange={(e) => setInterestRate(e.target.value)}
-                className="pr-12"
+                className="pr-12 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
               <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                 % p.a.
@@ -379,7 +379,7 @@ export function SavingsGoalDialog({
               {scheduleOpen && (
                 <div className="space-y-2 rounded-lg border p-3">
                   {rateSchedule.length > 0 && (
-                    <div className="space-y-2">
+                    <div className="max-h-40 space-y-2 overflow-y-auto">
                       {rateSchedule.map((entry, index) => (
                         <div key={index} className="flex items-center gap-2">
                           <Input
@@ -398,16 +398,16 @@ export function SavingsGoalDialog({
                               step="0.01"
                               min="0"
                               max="100"
-                              value={entry.annualRate}
+                              value={entry.annualRate || ''}
                               onChange={(e) => {
                                 const updated = [...rateSchedule];
                                 updated[index] = {
                                   ...entry,
-                                  annualRate: parseFloat(e.target.value) || 0,
+                                  annualRate: e.target.value === '' ? 0 : parseFloat(e.target.value),
                                 };
                                 setRateSchedule(updated);
                               }}
-                              className="pr-12"
+                              className="pr-12 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                             />
                             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
                               % p.a.

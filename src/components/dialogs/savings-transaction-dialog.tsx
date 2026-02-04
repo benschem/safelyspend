@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -34,7 +33,6 @@ export function SavingsTransactionDialog({
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [savingsGoalId, setSavingsGoalId] = useState('');
-  const [notes, setNotes] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -43,7 +41,6 @@ export function SavingsTransactionDialog({
       setDescription('');
       setAmount('');
       setSavingsGoalId('');
-      setNotes('');
       setFormError(null);
     }
   }, [open, todayDate]);
@@ -76,21 +73,15 @@ export function SavingsTransactionDialog({
       amountCents = -amountCents;
     }
 
-    const data: Parameters<typeof addTransaction>[0] = {
-      type: 'savings',
-      date,
-      description: description.trim(),
-      amountCents,
-      categoryId: null,
-      savingsGoalId,
-    };
-
-    if (notes.trim()) {
-      data.notes = notes.trim();
-    }
-
     try {
-      await addTransaction(data);
+      await addTransaction({
+        type: 'savings',
+        date,
+        description: description.trim(),
+        amountCents,
+        categoryId: null,
+        savingsGoalId,
+      });
       onOpenChange(false);
     } catch (error) {
       setFormError(
@@ -126,33 +117,7 @@ export function SavingsTransactionDialog({
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="stx-description" className="select-none">
-              Description
-            </Label>
-            <Input
-              id="stx-description"
-              placeholder={isWithdrawal ? 'e.g., Emergency expense' : 'e.g., Weekly savings'}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              autoFocus
-            />
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="stx-date" className="select-none">
-                Date
-              </Label>
-              <Input
-                id="stx-date"
-                type="date"
-                max={todayDate}
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="stx-amount" className="select-none">
                 Amount ($)
@@ -165,6 +130,20 @@ export function SavingsTransactionDialog({
                 placeholder="0.00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="stx-date" className="select-none">
+                Date
+              </Label>
+              <Input
+                id="stx-date"
+                type="date"
+                max={todayDate}
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
               />
             </div>
           </div>
@@ -175,16 +154,14 @@ export function SavingsTransactionDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="stx-notes" className="select-none">
-              Notes
-              <span className="ml-1 font-normal text-muted-foreground">(optional)</span>
+            <Label htmlFor="stx-description" className="select-none">
+              Description
             </Label>
-            <Textarea
-              id="stx-notes"
-              placeholder="Additional details..."
-              rows={2}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+            <Input
+              id="stx-description"
+              placeholder={isWithdrawal ? 'e.g., Emergency expense' : 'e.g., Weekly savings'}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
             />
           </div>
 
