@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,9 +16,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Alert } from '@/components/ui/alert';
 import { CategorySelect } from '@/components/category-select';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
-import { parseCentsFromInput } from '@/lib/utils';
+import { parseCentsFromInput, formatCents, CADENCE_PER_LABELS } from '@/lib/utils';
+import { findSimilarForecastRules } from '@/lib/duplicate-detection';
 import type { ForecastRule, ForecastType, Cadence, CreateEntity } from '@/lib/types';
 
 /** Pre-fill data for creating a rule from a one-time event */
@@ -48,6 +50,7 @@ interface ForecastRuleDialogProps {
   prefill?: PrefillData | null;
   /** Restrict to a specific type (hides the type selector) */
   restrictType?: ForecastType | null;
+  existingRules?: ForecastRule[];
 }
 
 const MONTH_NAMES = [
@@ -86,6 +89,7 @@ export function ForecastRuleDialog({
   onRuleCreated,
   prefill,
   restrictType,
+  existingRules,
 }: ForecastRuleDialogProps) {
   const isEditing = !!rule;
 
@@ -144,6 +148,14 @@ export function ForecastRuleDialog({
       setFormError(null);
     }
   }, [open, rule, prefill, restrictType]);
+
+  // Duplicate detection (only on create)
+  const similarRules = useMemo(() => {
+    if (isEditing || !existingRules) return [];
+    const amountCents = parseCentsFromInput(amount);
+    if (!description.trim() || amountCents <= 0) return [];
+    return findSimilarForecastRules(description, amountCents, existingRules);
+  }, [isEditing, existingRules, description, amount]);
 
   const handleSave = async () => {
     setFormError(null);
@@ -253,6 +265,15 @@ export function ForecastRuleDialog({
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
               {formError}
             </div>
+          )}
+
+          {similarRules.length > 0 && (
+            <Alert variant="warning">
+              A similar recurring {similarRules[0]!.type} exists: &lsquo;
+              {similarRules[0]!.description}&rsquo; for{' '}
+              {formatCents(similarRules[0]!.amountCents)}{' '}
+              {CADENCE_PER_LABELS[similarRules[0]!.cadence]}
+            </Alert>
           )}
 
           {/* Type selector - hidden when type is restricted */}

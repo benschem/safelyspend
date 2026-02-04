@@ -8,7 +8,8 @@ import {
 } from '@/components/ui/dialog';
 import { Repeat, CalendarX, Trash2 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
-import type { ExpandedForecast } from '@/lib/types';
+import { toast } from 'sonner';
+import type { ExpandedForecast, ForecastRule } from '@/lib/types';
 
 interface DeleteForecastDialogProps {
   open: boolean;
@@ -16,6 +17,11 @@ interface DeleteForecastDialogProps {
   forecast: ExpandedForecast | null;
   onDeleteOccurrence: () => void;
   onDeleteAll: () => void;
+  /** For undo support on "delete all" */
+  deleteRule?: (id: string) => Promise<void>;
+  restoreRule?: (rule: ForecastRule) => Promise<ForecastRule>;
+  /** The full rule object (needed for undo) */
+  rule?: ForecastRule | null;
 }
 
 export function DeleteForecastDialog({
@@ -24,8 +30,30 @@ export function DeleteForecastDialog({
   forecast,
   onDeleteOccurrence,
   onDeleteAll,
+  deleteRule,
+  restoreRule,
+  rule,
 }: DeleteForecastDialogProps) {
   if (!forecast) return null;
+
+  const handleDeleteAll = async () => {
+    if (deleteRule && restoreRule && rule) {
+      const capturedRule = { ...rule };
+      await deleteRule(rule.id);
+      onOpenChange(false);
+      toast('Recurring forecast deleted', {
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            restoreRule(capturedRule);
+          },
+        },
+        duration: 5000,
+      });
+    } else {
+      onDeleteAll();
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -61,7 +89,7 @@ export function DeleteForecastDialog({
 
           <button
             type="button"
-            onClick={onDeleteAll}
+            onClick={handleDeleteAll}
             className="w-full cursor-pointer rounded-lg border border-destructive/50 p-4 text-left transition-colors hover:bg-destructive/10"
           >
             <div className="flex items-center gap-3">

@@ -425,6 +425,7 @@ export function SavingsIndexPage() {
         onOpenChange={setContributionDialogOpen}
         mode="contribution"
         addTransaction={addTransaction}
+        existingTransactions={savingsTransactions}
       />
 
       <SavingsTransactionDialog
@@ -432,6 +433,7 @@ export function SavingsIndexPage() {
         onOpenChange={setWithdrawalDialogOpen}
         mode="withdrawal"
         addTransaction={addTransaction}
+        existingTransactions={savingsTransactions}
       />
     </div>
   );

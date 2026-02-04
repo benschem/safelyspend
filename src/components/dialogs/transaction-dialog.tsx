@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,9 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Alert } from '@/components/ui/alert';
 import { CategorySelect } from '@/components/category-select';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
-import { cn, today, parseCentsFromInput } from '@/lib/utils';
+import { cn, today, parseCentsFromInput, formatCents, formatDate } from '@/lib/utils';
+import { findSimilarTransactions } from '@/lib/duplicate-detection';
 import type { Transaction, TransactionType, CreateEntity } from '@/lib/types';
 
 interface TransactionDialogProps {
@@ -37,6 +39,7 @@ interface TransactionDialogProps {
     description: string;
     newCategoryId: string;
   }) => void;
+  existingTransactions?: Transaction[];
 }
 
 export function TransactionDialog({
@@ -47,6 +50,7 @@ export function TransactionDialog({
   addTransaction,
   updateTransaction,
   onCategoryChanged,
+  existingTransactions,
 }: TransactionDialogProps) {
   const isEditing = !!transaction;
   const todayDate = today();
@@ -89,6 +93,14 @@ export function TransactionDialog({
       setFormError(null);
     }
   }, [open, transaction, todayDate, initialType]);
+
+  // Duplicate detection (only on create)
+  const similarTransactions = useMemo(() => {
+    if (isEditing || !existingTransactions) return [];
+    const amountCents = parseCentsFromInput(amount);
+    if (!description.trim() || amountCents <= 0 || !date) return [];
+    return findSimilarTransactions(description, amountCents, date, existingTransactions);
+  }, [isEditing, existingTransactions, description, amount, date]);
 
   const handleSave = async () => {
     setFormError(null);
@@ -187,6 +199,14 @@ export function TransactionDialog({
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
               {formError}
             </div>
+          )}
+
+          {similarTransactions.length > 0 && (
+            <Alert variant="warning">
+              A similar transaction exists: &lsquo;{similarTransactions[0]!.description}&rsquo; on{' '}
+              {formatDate(similarTransactions[0]!.date)} for{' '}
+              {formatCents(Math.abs(similarTransactions[0]!.amountCents))}
+            </Alert>
           )}
 
           <div className="space-y-2">

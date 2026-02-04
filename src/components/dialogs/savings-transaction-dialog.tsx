@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,8 +9,10 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { Alert } from '@/components/ui/alert';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
-import { today, parseCentsFromInput } from '@/lib/utils';
+import { today, parseCentsFromInput, formatCents, formatDate } from '@/lib/utils';
+import { findSimilarTransactions } from '@/lib/duplicate-detection';
 import type { Transaction, CreateEntity } from '@/lib/types';
 
 interface SavingsTransactionDialogProps {
@@ -18,6 +20,7 @@ interface SavingsTransactionDialogProps {
   onOpenChange: (open: boolean) => void;
   mode: 'contribution' | 'withdrawal';
   addTransaction: (data: CreateEntity<Transaction>) => Promise<Transaction>;
+  existingTransactions?: Transaction[];
 }
 
 export function SavingsTransactionDialog({
@@ -25,6 +28,7 @@ export function SavingsTransactionDialog({
   onOpenChange,
   mode,
   addTransaction,
+  existingTransactions,
 }: SavingsTransactionDialogProps) {
   const todayDate = today();
   const isWithdrawal = mode === 'withdrawal';
@@ -44,6 +48,14 @@ export function SavingsTransactionDialog({
       setFormError(null);
     }
   }, [open, todayDate]);
+
+  // Duplicate detection
+  const similarTransactions = useMemo(() => {
+    if (!existingTransactions) return [];
+    const amountCents = parseCentsFromInput(amount);
+    if (!description.trim() || amountCents <= 0 || !date) return [];
+    return findSimilarTransactions(description, amountCents, date, existingTransactions);
+  }, [existingTransactions, description, amount, date]);
 
   const handleSave = async () => {
     setFormError(null);
@@ -115,6 +127,15 @@ export function SavingsTransactionDialog({
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
               {formError}
             </div>
+          )}
+
+          {similarTransactions.length > 0 && (
+            <Alert variant="warning">
+              A similar savings transaction exists: &lsquo;
+              {similarTransactions[0]!.description}&rsquo; on{' '}
+              {formatDate(similarTransactions[0]!.date)} for{' '}
+              {formatCents(Math.abs(similarTransactions[0]!.amountCents))}
+            </Alert>
           )}
 
           <div className="grid grid-cols-2 gap-4">

@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { toast } from 'sonner';
 import {
   Select,
   SelectContent,
@@ -94,6 +95,7 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
     isLoading: budgetLoading,
     setBudgetForCategory,
     deleteBudgetRule,
+    restoreBudgetRule,
   } = useBudgetRules(activeScenarioId);
   const { budgetRules } = useAdjustedBudgets(activeScenarioId);
   const { savingsGoals, isLoading: savingsLoading } = useSavingsGoals();
@@ -114,6 +116,7 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
     addRule,
     updateRule,
     deleteRule,
+    restoreRule,
   } = useForecasts(activeScenarioId, forecastDateRange.startDate, forecastDateRange.endDate);
 
   const {
@@ -150,6 +153,44 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
     categoryName: string;
     message: string;
   } | null>(null);
+
+  // Undo-wrapped delete for forecast rules
+  const handleDeleteForecastRule = useCallback(
+    async (ruleId: string) => {
+      const rule = forecastRules.find((r) => r.id === ruleId);
+      if (!rule) return;
+      await deleteRule(ruleId);
+      toast('Recurring forecast deleted', {
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            restoreRule(rule);
+          },
+        },
+        duration: 5000,
+      });
+    },
+    [forecastRules, deleteRule, restoreRule],
+  );
+
+  // Undo-wrapped delete for budget rules
+  const handleDeleteBudgetRule = useCallback(
+    async (ruleId: string) => {
+      const rule = budgetRules.find((r) => r.id === ruleId);
+      if (!rule) return;
+      await deleteBudgetRule(ruleId);
+      toast('Budget removed', {
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            restoreBudgetRule(rule);
+          },
+        },
+        duration: 5000,
+      });
+    },
+    [budgetRules, deleteBudgetRule, restoreBudgetRule],
+  );
 
   const handleExpenseRuleCreated = useCallback(
     async (rule: ForecastRule) => {
@@ -776,7 +817,7 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
         onOpenChange={setIncomeOpen}
         onAddClick={() => openAddRuleDialog('income')}
         onEditRule={openEditRuleDialog}
-        onDeleteRule={deleteRule}
+        onDeleteRule={handleDeleteForecastRule}
         periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
         periodTotal={totals.income}
         monthlyDelta={showDeltas ? getTotalDelta('income', totals.monthlyIncome) : undefined}
@@ -790,7 +831,7 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
         onOpenChange={setFixedExpensesOpen}
         onAddClick={() => openAddRuleDialog('expense')}
         onEditRule={openEditRuleDialog}
-        onDeleteRule={deleteRule}
+        onDeleteRule={handleDeleteForecastRule}
         periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
         periodTotal={totals.fixed}
         monthlyDelta={showDeltas ? getTotalDelta('fixed', totals.monthlyFixed) : undefined}
@@ -804,7 +845,7 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
         onOpenChange={setBudgetedExpensesOpen}
         onAddClick={() => setAddCategoryDialogOpen(true)}
         onEditBudget={handleEditBudgetRule}
-        onDeleteBudget={deleteBudgetRule}
+        onDeleteBudget={handleDeleteBudgetRule}
         periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
         periodTotal={totals.variable}
         monthlyDelta={showDeltas ? getTotalDelta('budget', totals.monthlyVariable) : undefined}
@@ -818,7 +859,7 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
         onOpenChange={setSavingsOpen}
         onAddClick={() => openAddRuleDialog('savings')}
         onEditRule={openEditRuleDialog}
-        onDeleteRule={deleteRule}
+        onDeleteRule={handleDeleteForecastRule}
         periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
         periodTotal={totals.savings}
         monthlyDelta={showDeltas ? getTotalDelta('savings', totals.monthlySavings) : undefined}
@@ -865,6 +906,7 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
         updateRule={updateRule}
         onRuleCreated={handleExpenseRuleCreated}
         restrictType={ruleDialogType}
+        existingRules={forecastRules}
       />
 
       {/* Budget auto-update confirmation */}
