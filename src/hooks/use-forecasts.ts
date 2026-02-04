@@ -66,9 +66,18 @@ function expandRule(rule: ForecastRule, rangeStart: string, rangeEnd: string): E
 
     case 'fortnightly': {
       const targetDay = rule.dayOfWeek ?? 0;
-      const current = new Date(start);
+      // Anchor the fortnightly cadence to the rule's own startDate so that
+      // generated dates are consistent regardless of the query range.
+      // Without this, querying Jan-Dec vs Mar-Mar produces different
+      // fortnightly alignments within the same calendar month.
+      const anchor = rule.startDate ? parseLocalDate(rule.startDate) : new Date(2020, 0, 1);
+      const current = new Date(anchor);
       while (current.getDay() !== targetDay) {
         current.setDate(current.getDate() + 1);
+      }
+      // Skip forward to the effective start of the query range
+      while (current < start) {
+        current.setDate(current.getDate() + 14);
       }
       while (current <= end) {
         results.push({

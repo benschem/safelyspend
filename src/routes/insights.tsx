@@ -356,7 +356,7 @@ export function InsightsPage() {
   const categoryColorMap = useMemo(() => buildCategoryColorMap(allCategoryIds), [allCategoryIds]);
 
   // Determine if viewing past period
-  const today = new Date().toISOString().slice(0, 10);
+  const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
   const isPastOnly = endDate <= today;
 
   // Calculate starting balance for cash flow chart

@@ -118,7 +118,10 @@ export function CategorySpendingChart({
 }: CategorySpendingChartProps) {
   const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(new Set());
 
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const currentMonth = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  })();
 
   // Check if current month is in the data range
   const hasCurrentMonth = monthlySpending.some((m) => m.month === currentMonth);

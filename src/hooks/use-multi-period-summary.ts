@@ -97,7 +97,7 @@ export function useMultiPeriodSummary({
 
   const { allTransactions, isLoading: transactionsLoading } = useTransactions();
   const { budgetRules, isLoading: budgetLoading } = useAdjustedBudgets(scenarioId);
-  const { expandedForecasts, isLoading: forecastsLoading } = useAdjustedForecasts(
+  const { rules: forecastRules, isLoading: forecastsLoading } = useAdjustedForecasts(
     scenarioId,
     startDate,
     endDate,
@@ -105,13 +105,40 @@ export function useMultiPeriodSummary({
 
   const isLoading = transactionsLoading || budgetLoading || forecastsLoading;
 
+  // Compute planned monthly surplus from rules (independent of date range).
+  // This matches the hero's calculation: income - fixed expenses - variable budget - savings.
+  // Using toMonthlyCents on rules ensures the value is stable regardless of which
+  // 13-month window the sparkline is viewing.
+  const plannedSurplus = useMemo(() => {
+    const monthlyIncome = forecastRules
+      .filter((r) => r.type === 'income')
+      .reduce((sum, r) => sum + toMonthlyCents(r.amountCents, r.cadence as CadenceType), 0);
+    const monthlyFixedExpenses = forecastRules
+      .filter((r) => r.type === 'expense')
+      .reduce((sum, r) => sum + toMonthlyCents(r.amountCents, r.cadence as CadenceType), 0);
+    const monthlyVariableBudget = budgetRules.reduce(
+      (sum, r) => sum + toMonthlyCents(r.amountCents, r.cadence as CadenceType),
+      0,
+    );
+    const monthlySavings = forecastRules
+      .filter((r) => r.type === 'savings')
+      .reduce((sum, r) => sum + toMonthlyCents(r.amountCents, r.cadence as CadenceType), 0);
+    return monthlyIncome - monthlyFixedExpenses - monthlyVariableBudget - monthlySavings;
+  }, [forecastRules, budgetRules]);
+
   const months = useMemo((): MonthSummary[] => {
     const today = new Date();
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth();
-    const todayStr = today.toISOString().slice(0, 10);
+    const todayStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
     const monthKeys = getMonthsBetween(startDate, endDate);
+
+    // Pre-compute variable budget (same for every month)
+    const variableBudget = budgetRules.reduce(
+      (sum, rule) => sum + toMonthlyCents(rule.amountCents, rule.cadence as CadenceType),
+      0,
+    );
 
     return monthKeys.map((monthKey) => {
       const [y, m] = monthKey.split('-').map(Number);
@@ -144,41 +171,19 @@ export function useMultiPeriodSummary({
         .filter((t) => t.type === 'savings')
         .reduce((sum, t) => sum + t.amountCents, 0);
 
-      // Forecasted values (only for future dates)
-      const monthForecasts = expandedForecasts.filter(
-        (f) => f.date >= monthStart && f.date <= monthEnd && f.date > todayStr,
-      );
+      // Display values: actuals for past, plan for future
+      const income = isPast ? incomeActual : plannedSurplus + variableBudget + expensesActual; // approximate for display
+      const expenses = expensesActual;
+      const savings = savingsActual;
 
-      const incomeForecast = monthForecasts
-        .filter((f) => f.type === 'income')
-        .reduce((sum, f) => sum + f.amountCents, 0);
+      // Surplus calculation:
+      // Past months: use actuals (transactions capture all real spending)
+      // Current/future months: use rule-based planned surplus (matches hero)
+      const surplus = isPast
+        ? incomeActual - expensesActual - savingsActual
+        : plannedSurplus;
 
-      const expensesForecast = monthForecasts
-        .filter((f) => f.type === 'expense')
-        .reduce((sum, f) => sum + f.amountCents, 0);
-
-      const savingsForecast = monthForecasts
-        .filter((f) => f.type === 'savings')
-        .reduce((sum, f) => sum + f.amountCents, 0);
-
-      // Combined: actual + forecast for remaining period
-      const income = incomeActual + incomeForecast;
-      const expenses = expensesActual + expensesForecast;
-      const savings = savingsActual + savingsForecast;
-
-      // Calculate budget for this month (fixed expenses + variable budget)
-      const fixedExpenses = expandedForecasts
-        .filter((f) => f.type === 'expense' && f.date >= monthStart && f.date <= monthEnd)
-        .reduce((sum, f) => sum + f.amountCents, 0);
-
-      const variableBudget = budgetRules.reduce((sum, rule) => {
-        return sum + toMonthlyCents(rule.amountCents, rule.cadence as CadenceType);
-      }, 0);
-
-      const totalBudget = fixedExpenses + variableBudget;
-
-      // Surplus = income - expenses - savings
-      const surplus = income - expenses - savings;
+      const totalBudget = variableBudget; // simplified — fixed expenses handled via rules
 
       // Budget diff = budget - actual expenses (positive = under budget)
       const budgetDiff = totalBudget - expensesActual;
@@ -200,7 +205,7 @@ export function useMultiPeriodSummary({
         budgetDiff,
       };
     });
-  }, [allTransactions, expandedForecasts, budgetRules, startDate, endDate]);
+  }, [allTransactions, budgetRules, plannedSurplus, startDate, endDate]);
 
   const yearSummary = useMemo(() => {
     const totalSurplus = months.reduce((sum, m) => sum + m.surplus, 0);

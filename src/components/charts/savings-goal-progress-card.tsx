@@ -58,7 +58,7 @@ function calculateExpectedCompletion(
   // Calculate the actual month
   const now = new Date();
   const targetDate = new Date(now.getFullYear(), now.getMonth() + months, 1);
-  const targetMonth = targetDate.toISOString().slice(0, 7);
+  const targetMonth = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
 
   return { month: targetMonth, monthsAway: months };
 }

@@ -147,7 +147,10 @@ export function BudgetComparisonChart({
   const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(new Set());
   const [showBudget, setShowBudget] = useState(true);
 
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const currentMonth = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  })();
   const hasCurrentMonth = monthlyBudgetComparison.some((m) => m.month === currentMonth);
   const hasFutureData = monthlyBudgetComparison.some((m) => m.month > currentMonth);
 

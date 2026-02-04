@@ -125,7 +125,10 @@ export function SavingsOverTimeChart({
   startingBalance = 0,
   balanceStartMonth,
 }: SavingsOverTimeChartProps) {
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const currentMonth = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  })();
   const hasCurrentMonth = monthlySavings.some((m) => m.month === currentMonth);
 
   // Legend visibility state

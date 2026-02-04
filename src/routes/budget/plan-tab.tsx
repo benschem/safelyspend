@@ -88,10 +88,10 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
 
   const forecastDateRange = useMemo(() => {
     const today = new Date();
-    const startDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
-    const endDate = new Date(today.getFullYear() + 1, today.getMonth(), 0)
-      .toISOString()
-      .slice(0, 10);
+    const startDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endDay = new Date(today.getFullYear() + 1, today.getMonth(), 0);
+    const startDate = `${startDay.getFullYear()}-${String(startDay.getMonth() + 1).padStart(2, '0')}-${String(startDay.getDate()).padStart(2, '0')}`;
+    const endDate = `${endDay.getFullYear()}-${String(endDay.getMonth() + 1).padStart(2, '0')}-${String(endDay.getDate()).padStart(2, '0')}`;
     return { startDate, endDate };
   }, []);
 

@@ -182,7 +182,10 @@ export function CashFlowChart({
   savingsStartingBalance = 0,
   savingsBalanceStartMonth,
 }: CashFlowChartProps) {
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const currentMonth = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  })();
   const hasCurrentMonth = monthlyNetFlow.some((m) => m.month === currentMonth);
   const hasFutureData = monthlyNetFlow.some((m) => m.month > currentMonth);
 
