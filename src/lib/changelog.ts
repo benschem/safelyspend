@@ -21,6 +21,20 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.23.0',
+    date: '2026-02-04',
+    changes: [
+      'Redesigned savings page with a prominent total saved hero section',
+      'Savings page now loads much faster',
+      'Savings goal cards show target date and expected completion date with distinct icons',
+      'Reached goals display a green progress bar and the date they were reached',
+      'Separate buttons for contributing to and withdrawing from savings goals',
+      'Deleting a savings goal now returns remaining funds to your cash balance',
+      'Clear confirmation dialog when deleting a savings goal explains what will happen',
+      'Category spending rows on the budget page now link to detailed category breakdowns',
+    ],
+  },
+  {
     version: '0.22.0',
     date: '2026-02-04',
     changes: [
