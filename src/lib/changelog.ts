@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.22.0',
+    date: '2026-02-04',
+    changes: [
+      'Press Enter to submit any form dialog instead of clicking the button',
+      'Dialogs now focus the primary input automatically when opened',
+    ],
+  },
+  {
     version: '0.21.0',
     date: '2026-02-04',
     changes: [
