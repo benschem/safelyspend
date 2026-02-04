@@ -75,7 +75,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
         <p className="text-xs text-violet-600 dark:text-violet-400">Projected</p>
       )}
       {data.isPast && !data.isCurrentMonth && (
-        <p className="text-xs text-amber-600 dark:text-amber-400">Historical</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">Historical</p>
       )}
     </div>
   );
@@ -132,7 +132,7 @@ export function TrendSparkline({
               fillOpacity={0.08}
             />
           )}
-          <ReferenceLine y={0} stroke="#e5e7eb" strokeDasharray="3 3" />
+          <ReferenceLine y={0} stroke="#9ca3af" strokeDasharray="3 3" />
           {/* "Now" vertical line (always at current month) - gray for neutral current position */}
           {showNowLine && currentMonthIndex >= 0 && (
             <ReferenceLine x={currentMonthIndex} stroke="#6b7280" strokeWidth={2} />

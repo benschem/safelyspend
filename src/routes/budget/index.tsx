@@ -14,9 +14,9 @@ type TabValue = (typeof VALID_TABS)[number];
 const STORAGE_KEY = 'budget:activeTab';
 
 const TAB_CONFIG = [
-  { value: 'overview' as const, label: 'Overview', icon: CalendarFold, color: 'text-orange-500' },
+  { value: 'overview' as const, label: 'Overview', icon: CalendarFold, color: 'text-sky-500' },
   { value: 'plan' as const, label: 'Plan', icon: Target, color: 'text-violet-500' },
-  { value: 'history' as const, label: 'History', icon: RotateCcw, color: 'text-amber-500' },
+  { value: 'history' as const, label: 'History', icon: RotateCcw, color: 'text-slate-500' },
 ];
 
 const TAB_SUBTITLES: Record<TabValue, string> = {

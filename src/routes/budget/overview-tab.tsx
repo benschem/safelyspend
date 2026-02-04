@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { useLocalStorage } from '@/hooks/use-local-storage';
 import { useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -24,13 +23,10 @@ import { useScenarioDiff } from '@/hooks/use-scenario-diff';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
-import { useMultiPeriodSummary } from '@/hooks/use-multi-period-summary';
 import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { useBudgetPeriodData } from '@/hooks/use-budget-period-data';
 import { ScenarioDelta } from '@/components/ui/scenario-delta';
 import { useWhatIf } from '@/contexts/what-if-context';
-import { YearGrid } from '@/components/year-grid';
-import { TrendSparkline } from '@/components/charts/trend-sparkline';
 import { BurnRateChart } from '@/components/charts/burn-rate-chart';
 import { CHART_COLORS } from '@/lib/chart-colors';
 import { cn, formatCents, toMonthlyCents, type CadenceType } from '@/lib/utils';
@@ -70,48 +66,22 @@ export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
   const { budgetRules } = useBudgetRules(activeScenarioId);
   // Selected period state - defaults to current month
   const [selectedMonth, setSelectedMonth] = useState(() => new Date());
-  // Read default view preference from settings
-  const [defaultSnapshotView] = useLocalStorage<'month' | 'quarter' | 'year'>(
-    'budget:defaultSnapshotView',
-    'month',
-  );
-  const [viewMode, setViewMode] = useState<'month' | 'quarter' | 'year'>(defaultSnapshotView);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState(() => new Date().getFullYear());
 
   // Transaction dialog state
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
 
-  // Multi-period data for year grid (full calendar year)
-  const selectedYear = selectedMonth.getFullYear();
-  const { months: yearMonths } = useMultiPeriodSummary({
-    scenarioId: activeScenarioId,
-    year: selectedYear,
-  });
-
-  // Multi-period data for sparkline (12 months around selected month)
-  const { months: sparklineMonths } = useMultiPeriodSummary({
-    scenarioId: activeScenarioId,
-    year: selectedYear,
-    centerMonth: { monthIndex: selectedMonth.getMonth(), year: selectedMonth.getFullYear() },
-  });
-
-  // Get forecast date range for the selected period
+  // Get forecast date range for the selected month
   const forecastDateRange = useMemo(() => {
     const year = selectedMonth.getFullYear();
     const month = selectedMonth.getMonth();
-    if (viewMode === 'year') {
-      return {
-        startDate: `${year}-01-01`,
-        endDate: `${year}-12-31`,
-      };
-    }
     const lastDay = new Date(year, month + 1, 0).getDate();
     return {
       startDate: `${year}-${String(month + 1).padStart(2, '0')}-01`,
       endDate: `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
     };
-  }, [selectedMonth, viewMode]);
+  }, [selectedMonth]);
 
   const { rules: forecastRules } = useForecasts(
     activeScenarioId,
@@ -140,7 +110,7 @@ export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
   } = useBudgetPeriodData({
     scenarioId: activeScenarioId,
     selectedMonth,
-    viewMode,
+    viewMode: 'month',
   });
 
   // Show deltas when viewing non-default scenario OR when there are What-If adjustments
@@ -149,93 +119,53 @@ export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
 
   // Navigation handlers
   const goToPrevious = () => {
-    if (viewMode === 'year') {
-      setSelectedMonth((prev) => new Date(prev.getFullYear() - 1, prev.getMonth(), 1));
-    } else if (viewMode === 'quarter') {
-      setSelectedMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 3, 1));
-    } else {
-      setSelectedMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
-    }
+    setSelectedMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
   };
 
   const goToNext = () => {
-    if (viewMode === 'year') {
-      setSelectedMonth((prev) => new Date(prev.getFullYear() + 1, prev.getMonth(), 1));
-    } else if (viewMode === 'quarter') {
-      setSelectedMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 3, 1));
-    } else {
-      setSelectedMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
-    }
+    setSelectedMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
   };
 
   const goToCurrent = () => {
     setSelectedMonth(new Date());
-    setViewMode('month');
   };
 
-  const selectYear = (year: number) => {
-    setSelectedMonth(new Date(year, 0, 1));
-    setViewMode('year');
-    setCalendarOpen(false);
-  };
-
-  const selectQuarter = (year: number, quarter: number) => {
-    // Quarter 1 = months 0-2, Quarter 2 = months 3-5, etc.
-    setSelectedMonth(new Date(year, (quarter - 1) * 3, 1));
-    setViewMode('quarter');
-    setCalendarOpen(false);
-  };
-
+  const selectedYear = selectedMonth.getFullYear();
   const selectedMonthIndex = selectedMonth.getMonth();
-  const selectedQuarter = Math.floor(selectedMonthIndex / 3) + 1;
-
-  // Get months for current quarter view
-  const quarterMonths = useMemo(() => {
-    const quarterStart = (selectedQuarter - 1) * 3;
-    return yearMonths.filter(
-      (m) => m.monthIndex >= quarterStart && m.monthIndex < quarterStart + 3,
-    );
-  }, [yearMonths, selectedQuarter]);
-
-  // Compute display label (override for quarter mode)
-  const displayPeriodLabel =
-    viewMode === 'quarter' ? `Q${selectedQuarter} ${selectedYear}` : periodLabel;
 
   // Calculate fixed expenses per category for this period
   const fixedExpensesPerCategory = useMemo(() => {
     const result: Record<string, { amount: number; rules: ForecastRule[] }> = {};
-    const periodMultiplier = viewMode === 'year' ? 12 : 1;
 
     for (const rule of expenseRules) {
       if (rule.categoryId) {
         if (!result[rule.categoryId]) {
           result[rule.categoryId] = { amount: 0, rules: [] };
         }
-        // Convert to monthly then to period
+        // Convert to monthly
         const monthlyAmount = toMonthlyCents(rule.amountCents, rule.cadence as CadenceType);
         const catData = result[rule.categoryId];
         if (catData) {
-          catData.amount += monthlyAmount * periodMultiplier;
+          catData.amount += monthlyAmount;
           catData.rules.push(rule);
         }
       }
     }
 
     return result;
-  }, [expenseRules, viewMode]);
+  }, [expenseRules]);
 
   // Calculate variable budgets per category for this period
   const variableBudgetsPerCategory = useMemo(() => {
     const result: Record<string, number> = {};
-    const periodMultiplier = viewMode === 'year' ? 12 : 1;
 
     for (const rule of budgetRules) {
       const monthlyAmount = toMonthlyCents(rule.amountCents, rule.cadence as CadenceType);
-      result[rule.categoryId] = monthlyAmount * periodMultiplier;
+      result[rule.categoryId] = monthlyAmount;
     }
 
     return result;
-  }, [budgetRules, viewMode]);
+  }, [budgetRules]);
 
   // Build category progress data
   const categoryProgress = useMemo(() => {
@@ -426,6 +356,13 @@ export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
     }
   }, [isFuturePeriod, isPastPeriod, periodCashFlow, hasSurplusBuffer]);
 
+  // Headline status label for hero
+  const heroStatusLabel = useMemo(() => {
+    if (!headline.hasPlan && !isPastPeriod) return 'NO PLAN SET';
+    if (headline.amount === 0 && headline.isPositive && headline.hasPlan) return 'BUDGET BALANCED';
+    return headline.isPositive ? 'SURPLUS' : 'SHORTFALL';
+  }, [headline, isPastPeriod]);
+
   if (isLoading) {
     return null;
   }
@@ -440,7 +377,7 @@ export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
         </Button>
       </div>
 
-      {/* Hero Header - Period Selector */}
+      {/* Hero Header - Period Selector + Surplus/Shortfall */}
       <div className="mb-4 min-h-28 text-center sm:min-h-32">
         {/* Today link - above period when not current */}
         <div className="flex min-h-8 items-center justify-center">
@@ -467,11 +404,11 @@ export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
                 variant="ghost"
                 className="w-52 text-3xl font-bold tracking-tight hover:bg-transparent hover:text-foreground/80 sm:w-56"
               >
-                {displayPeriodLabel}
+                {periodLabel}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-64 p-3" align="center">
-              {/* Year selector - clickable to select whole year */}
+              {/* Year navigation */}
               <div className="mb-3 flex items-center justify-between">
                 <Button
                   variant="ghost"
@@ -481,14 +418,7 @@ export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant={viewMode === 'year' && pickerYear === selectedYear ? 'default' : 'ghost'}
-                  size="sm"
-                  className="text-sm font-semibold"
-                  onClick={() => selectYear(pickerYear)}
-                >
-                  {pickerYear}
-                </Button>
+                <span className="text-sm font-semibold">{pickerYear}</span>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -498,31 +428,11 @@ export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
-              {/* Quarter selector */}
-              <div className="mb-3 grid grid-cols-4 gap-1">
-                {[1, 2, 3, 4].map((q) => {
-                  const isSelected =
-                    viewMode === 'quarter' && pickerYear === selectedYear && q === selectedQuarter;
-                  return (
-                    <Button
-                      key={q}
-                      variant={isSelected ? 'default' : 'ghost'}
-                      size="sm"
-                      className="h-8 text-xs"
-                      onClick={() => selectQuarter(pickerYear, q)}
-                    >
-                      Q{q}
-                    </Button>
-                  );
-                })}
-              </div>
               {/* Month grid */}
               <div className="grid grid-cols-3 gap-1">
                 {MONTHS.map((month, index) => {
                   const isSelected =
-                    viewMode === 'month' &&
-                    pickerYear === selectedYear &&
-                    index === selectedMonthIndex;
+                    pickerYear === selectedYear && index === selectedMonthIndex;
                   const isCurrent =
                     pickerYear === new Date().getFullYear() && index === new Date().getMonth();
                   return (
@@ -536,7 +446,6 @@ export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
                       )}
                       onClick={() => {
                         setSelectedMonth(new Date(pickerYear, index, 1));
-                        setViewMode('month');
                         setCalendarOpen(false);
                       }}
                     >
@@ -554,7 +463,7 @@ export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
 
         {/* Status line - day counter or badge */}
         <div className="mt-2 flex min-h-9 items-center justify-center gap-2">
-          {isCurrentPeriod && viewMode === 'month' && (
+          {isCurrentPeriod && (
             <>
               <span className="flex items-center gap-1 rounded-full bg-gray-500/15 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400">
                 <CircleDot className="h-3 w-3" />
@@ -565,35 +474,13 @@ export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
               </span>
             </>
           )}
-          {isCurrentPeriod && viewMode === 'quarter' && (
-            <>
-              <span className="flex items-center gap-1 rounded-full bg-gray-500/15 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-                <CircleDot className="h-3 w-3" />
-                Today
-              </span>
-              <span className="text-sm text-muted-foreground">
-                Month {(selectedMonthIndex % 3) + 1} of 3
-              </span>
-            </>
-          )}
-          {isCurrentPeriod && viewMode === 'year' && (
-            <>
-              <span className="flex items-center gap-1 rounded-full bg-gray-500/15 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-                <CircleDot className="h-3 w-3" />
-                Today
-              </span>
-              <span className="text-sm text-muted-foreground">
-                Month {new Date().getMonth() + 1} of 12
-              </span>
-            </>
-          )}
-          {isPastPeriod && viewMode !== 'year' && viewMode !== 'quarter' && (
-            <span className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs text-amber-600 dark:text-amber-400">
+          {isPastPeriod && (
+            <span className="flex items-center gap-1 rounded-full bg-slate-500/10 px-2.5 py-1 text-xs text-slate-600 dark:text-slate-400">
               <History className="h-3 w-3" />
               Historical
             </span>
           )}
-          {isFuturePeriod && viewMode !== 'year' && viewMode !== 'quarter' && (
+          {isFuturePeriod && (
             <span className="flex items-center gap-1 rounded-full bg-violet-500/10 px-2.5 py-1 text-xs text-violet-600 dark:text-violet-400">
               <Sparkles className="h-3 w-3" />
               Projected
@@ -601,565 +488,388 @@ export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
           )}
         </div>
 
-        {/* Trend Sparkline (month view only) */}
-        {viewMode === 'month' && sparklineMonths.length > 0 && (
-          <div className="mx-auto mt-4 max-w-xs sm:max-w-md">
-            <TrendSparkline
-              data={sparklineMonths}
-              showNowLine
-              selectedMonth={{
-                monthIndex: selectedMonth.getMonth(),
-                year: selectedMonth.getFullYear(),
-              }}
-              onMonthClick={(monthIndex, year) => {
-                setSelectedMonth(new Date(year, monthIndex, 1));
-                setViewMode('month');
-              }}
-            />
-          </div>
-        )}
+        {/* Hero Surplus/Shortfall */}
+        <div className="mt-4">
+          <p
+            className={cn(
+              'flex items-center justify-center gap-2 text-sm font-medium uppercase tracking-wide',
+              heroStatusLabel === 'NO PLAN SET'
+                ? 'text-muted-foreground'
+                : headline.isPositive
+                  ? 'text-green-500'
+                  : 'text-amber-500',
+            )}
+          >
+            <Banknote className="h-4 w-4" />
+            {heroStatusLabel}
+          </p>
+          {heroStatusLabel === 'BUDGET BALANCED' ? (
+            <p className="mt-2 text-5xl font-bold tracking-tight text-green-500">
+              Every dollar accounted for
+            </p>
+          ) : (
+            <p
+              className={cn(
+                'mt-2 text-5xl font-bold tracking-tight',
+                heroStatusLabel === 'NO PLAN SET'
+                  ? ''
+                  : headline.isPositive
+                    ? 'text-green-500'
+                    : 'text-amber-500',
+              )}
+            >
+              {headline.isPositive && headline.amount > 0 ? '+' : ''}
+              {formatCents(headline.amount)}
+            </p>
+          )}
+          <ScenarioDelta
+            delta={getTotalDelta(
+              'surplus',
+              periodCashFlow.income.expected -
+                periodCashFlow.expenses.expected -
+                periodCashFlow.budgeted.expected -
+                periodCashFlow.savings.expected,
+            )}
+            className="mt-1"
+            show={showDeltas}
+          />
+          <p className="mt-1 text-sm text-muted-foreground">
+            {isFuturePeriod
+              ? 'expected by end of month'
+              : isPastPeriod
+                ? 'actual'
+                : 'projected'}
+          </p>
+        </div>
+
       </div>
 
-      {/* View-specific content */}
-      {viewMode === 'year' ? (
-        /* Year Grid View */
-        <div className="space-y-6">
-          <YearGrid
-            year={selectedYear}
-            months={yearMonths}
-            onMonthClick={(monthIndex) => {
-              setSelectedMonth(new Date(selectedYear, monthIndex, 1));
-              setViewMode('month');
-            }}
-          />
-
-          {/* Year Burn Rate Chart - only show for current period */}
-          {isCurrentPeriod && burnRateData.totalBudget > 0 && budgetStatus && (
-            <div className="rounded-xl border bg-card p-5">
-              <div className="mb-3 flex items-center gap-2">
-                <CircleGauge className="h-5 w-5 text-muted-foreground" />
-                <h3 className="text-lg font-semibold">Spending Pace</h3>
-              </div>
-              <p
-                className={cn(
-                  'mb-4 text-sm',
-                  budgetStatus.isPositive
-                    ? 'text-green-600 dark:text-green-400'
-                    : 'text-amber-600 dark:text-amber-400',
-                )}
-              >
-                {budgetStatus.label}
-              </p>
-              <BurnRateChart
-                dailySpending={burnRateData.dailySpending}
-                totalBudget={burnRateData.totalBudget}
-                periodStart={burnRateData.periodStart}
-                periodEnd={burnRateData.periodEnd}
-                periodLabel={burnRateData.periodLabel}
-                viewMode="year"
-                surplusAmount={hasSurplusBuffer ? surplus : undefined}
-              />
+      {/* 4 Summary Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Income Card */}
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/10">
+              <BanknoteArrowUp className="h-4 w-4 text-green-500" />
             </div>
+            <span className="text-sm text-muted-foreground">Income</span>
+          </div>
+          {isFuturePeriod ? (
+            <>
+              <p className="mt-2 text-2xl font-bold">
+                {formatCents(periodCashFlow.income.expected)}
+              </p>
+              <p className="text-xs text-muted-foreground">expected</p>
+            </>
+          ) : (
+            <>
+              <p className="mt-2 text-2xl font-bold">
+                {formatCents(periodCashFlow.income.actual)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                of {formatCents(periodCashFlow.income.expected)} expected
+              </p>
+            </>
           )}
+          <ScenarioDelta
+            delta={getTotalDelta('income', periodCashFlow.income.expected)}
+            periodLabel=""
+            show={showDeltas}
+          />
         </div>
-      ) : viewMode === 'quarter' ? (
-        /* Quarter View - 3 months side by side */
-        <div className="space-y-6">
-          {/* Quarter Summary */}
-          <div className="rounded-xl border bg-muted/30 p-4 text-center">
-            <p className="text-sm text-muted-foreground">Quarter total</p>
+
+        {/* Fixed Expenses Card */}
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10">
+              <BanknoteArrowDown className="h-4 w-4 text-red-500" />
+            </div>
+            <span className="text-sm text-muted-foreground">Fixed Expenses</span>
+          </div>
+          <p className="mt-2 text-2xl font-bold">
+            {periodCashFlow.expenses.expected > 0
+              ? formatCents(periodCashFlow.expenses.expected)
+              : '—'}
+          </p>
+          {periodCashFlow.income.expected > 0 && periodCashFlow.expenses.expected > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {Math.round(
+                (periodCashFlow.expenses.expected / periodCashFlow.income.expected) * 100,
+              )}
+              % of income
+            </p>
+          )}
+          <ScenarioDelta
+            delta={getTotalDelta('fixed', periodCashFlow.expenses.expected)}
+            periodLabel=""
+            show={showDeltas}
+          />
+        </div>
+
+        {/* Budgeted Expenses Card */}
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10">
+              <BanknoteArrowDown className="h-4 w-4 text-red-500" />
+            </div>
+            <span className="text-sm text-muted-foreground">Budgeted Expenses</span>
+          </div>
+          {isFuturePeriod ? (
+            <>
+              <p className="mt-2 text-2xl font-bold">
+                {periodCashFlow.budgeted.expected > 0
+                  ? formatCents(periodCashFlow.budgeted.expected)
+                  : '—'}
+              </p>
+              <p className="text-xs text-muted-foreground">budgeted</p>
+            </>
+          ) : (
+            <>
+              <p className="mt-2 text-2xl font-bold">
+                {formatCents(periodCashFlow.expenses.actual)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                of {formatCents(periodCashFlow.budgeted.expected)} budgeted
+              </p>
+            </>
+          )}
+          <ScenarioDelta
+            delta={getTotalDelta('budget', periodCashFlow.budgeted.expected)}
+            periodLabel=""
+            show={showDeltas}
+          />
+        </div>
+
+        {/* Savings Card */}
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10">
+              <PiggyBank className="h-4 w-4 text-blue-500" />
+            </div>
+            <span className="text-sm text-muted-foreground">Savings</span>
+          </div>
+          {isFuturePeriod ? (
+            <>
+              <p className="mt-2 text-2xl font-bold">
+                {formatCents(periodCashFlow.savings.expected)}
+              </p>
+              <p className="text-xs text-muted-foreground">planned</p>
+            </>
+          ) : (
+            <>
+              <p className="mt-2 text-2xl font-bold">
+                {formatCents(periodCashFlow.savings.actual)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                of {formatCents(periodCashFlow.savings.expected)} planned
+              </p>
+            </>
+          )}
+          <ScenarioDelta
+            delta={getTotalDelta('savings', periodCashFlow.savings.expected)}
+            periodLabel=""
+            show={showDeltas}
+          />
+        </div>
+      </div>
+
+      {/* Spending Pace with burn rate chart - full width */}
+      {budgetStatus && (
+        <div
+          className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}
+        >
+          <div className="mb-3 flex items-center gap-2">
+            <CircleGauge className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Spending Pace</h3>
+          </div>
+          <p
+            className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
+          >
+            {isWhatIfMode && isViewingDefault
+              ? 'Based on your adjustments'
+              : `Based on "${activeScenario?.name ?? 'scenario'}"`}
+          </p>
+          {budgetStatus.amount > 0 ? (
             <p
               className={cn(
                 'text-xl font-bold',
-                quarterMonths.reduce((sum, m) => sum + m.surplus, 0) >= 0
+                budgetStatus.isPositive
+                  ? budgetStatus.hasBudget
+                    ? 'text-green-600 dark:text-green-400'
+                    : ''
+                  : 'text-amber-600 dark:text-amber-400',
+              )}
+            >
+              {budgetStatus.isPositive ? '+' : ''}
+              {formatCents(budgetStatus.amount)}
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                {budgetStatus.label}
+              </span>
+            </p>
+          ) : (
+            <p
+              className={cn(
+                'text-sm',
+                budgetStatus.isPositive
                   ? 'text-green-600 dark:text-green-400'
                   : 'text-amber-600 dark:text-amber-400',
               )}
             >
-              {quarterMonths.reduce((sum, m) => sum + m.surplus, 0) >= 0 ? '+' : ''}
-              {formatCents(quarterMonths.reduce((sum, m) => sum + m.surplus, 0))}
+              {budgetStatus.label}
             </p>
-          </div>
-
-          {/* 3 Month Cards */}
-          <div className="grid gap-4 md:grid-cols-3">
-            {quarterMonths.map((month) => (
-              <button
-                key={month.month}
-                type="button"
-                onClick={() => {
-                  setSelectedMonth(new Date(month.year, month.monthIndex, 1));
-                  setViewMode('month');
-                }}
-                className={cn(
-                  'cursor-pointer rounded-xl border bg-card p-5 text-left transition-colors hover:bg-muted/50',
-                  month.isCurrentMonth && 'border-primary ring-1 ring-primary/20',
-                  month.isFuture && 'opacity-70',
-                )}
-              >
-                <div className="mb-3 flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">{month.label}</h3>
-                  {month.isCurrentMonth && (
-                    <span className="flex items-center gap-1 rounded-full bg-gray-500/15 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400">
-                      <CircleDot className="h-3 w-3" />
-                      Today
-                    </span>
-                  )}
-                  {month.isFuture && !month.isCurrentMonth && (
-                    <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-xs text-violet-600 dark:text-violet-400">
-                      Projected
-                    </span>
-                  )}
-                  {month.isPast && !month.isCurrentMonth && (
-                    <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-600 dark:text-amber-400">
-                      Historical
-                    </span>
-                  )}
-                </div>
-
-                {/* Surplus/Shortfall */}
-                <div
-                  className={cn(
-                    'rounded-lg p-3',
-                    month.surplus >= 0 ? 'bg-green-500/10' : 'bg-amber-500/10',
-                  )}
-                >
-                  <p className="text-xs text-muted-foreground">
-                    {month.surplus >= 0 ? 'Surplus' : 'Shortfall'}
-                  </p>
-                  <p
-                    className={cn(
-                      'text-xl font-bold',
-                      month.surplus >= 0
-                        ? 'text-green-600 dark:text-green-400'
-                        : 'text-amber-600 dark:text-amber-400',
-                    )}
-                  >
-                    {month.surplus >= 0 ? '+' : ''}
-                    {formatCents(month.surplus)}
-                  </p>
-                </div>
-
-                {/* Mini Stats */}
-                <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-                  <div>
-                    <p className="text-muted-foreground">Income</p>
-                    <p className="font-mono font-medium">{formatCents(month.income)}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Expenses</p>
-                    <p className="font-mono font-medium">{formatCents(month.expenses)}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Savings</p>
-                    <p className="font-mono font-medium">{formatCents(month.savings)}</p>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-
-          {/* Quarter Burn Rate Chart - only show for current period */}
-          {isCurrentPeriod && burnRateData.totalBudget > 0 && budgetStatus && (
-            <div className="rounded-xl border bg-card p-5">
-              <div className="mb-3 flex items-center gap-2">
-                <CircleGauge className="h-5 w-5 text-muted-foreground" />
-                <h3 className="text-lg font-semibold">Spending Pace</h3>
-              </div>
-              <p
-                className={cn(
-                  'mb-4 text-sm',
-                  budgetStatus.isPositive
-                    ? 'text-green-600 dark:text-green-400'
-                    : 'text-amber-600 dark:text-amber-400',
-                )}
-              >
-                {budgetStatus.label}
-              </p>
+          )}
+          {/* Burn rate chart - only show for current period */}
+          {isCurrentPeriod && budgetStatus.hasBudget && burnRateData.totalBudget > 0 && (
+            <div className="mt-4">
               <BurnRateChart
                 dailySpending={burnRateData.dailySpending}
                 totalBudget={burnRateData.totalBudget}
                 periodStart={burnRateData.periodStart}
                 periodEnd={burnRateData.periodEnd}
                 periodLabel={burnRateData.periodLabel}
-                viewMode="quarter"
+                viewMode="month"
                 surplusAmount={hasSurplusBuffer ? surplus : undefined}
               />
             </div>
           )}
         </div>
-      ) : (
-        /* Month View - detailed view */
-        <>
-          {/* Top Row: Surplus + Earned + Spent + Saved */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {/* Surplus/Shortfall */}
-            <div
-              className={cn(
-                'rounded-xl border p-4',
-                headline.isPositive
-                  ? headline.hasPlan
-                    ? 'border-green-500/50 bg-green-500/5'
-                    : 'bg-card'
-                  : 'border-amber-500/50 bg-amber-500/5',
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <div
-                  className={cn(
-                    'flex h-8 w-8 items-center justify-center rounded-full',
-                    headline.isPositive ? 'bg-green-500/10' : 'bg-amber-500/10',
-                  )}
-                >
-                  <Banknote
-                    className={cn(
-                      'h-4 w-4',
-                      headline.isPositive
-                        ? headline.hasPlan
-                          ? 'text-green-500'
-                          : 'text-slate-500'
-                        : 'text-amber-500',
-                    )}
-                  />
-                </div>
-                <span className="text-sm text-muted-foreground">
-                  {headline.isPositive ? 'Surplus' : 'Shortfall'}
-                </span>
-              </div>
-              <p
-                className={cn(
-                  'mt-2 text-2xl font-bold',
-                  headline.isPositive
-                    ? headline.hasPlan
-                      ? 'text-green-600 dark:text-green-400'
-                      : ''
-                    : 'text-amber-600 dark:text-amber-400',
-                )}
-              >
-                {headline.isPositive ? '+' : ''}
-                {formatCents(headline.amount)}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {isFuturePeriod ? 'projected' : isPastPeriod ? 'actual' : 'expected by end'}
-              </p>
-              <ScenarioDelta
-                delta={getTotalDelta(
-                  'surplus',
-                  periodCashFlow.income.expected -
-                    periodCashFlow.expenses.expected -
-                    periodCashFlow.budgeted.expected -
-                    periodCashFlow.savings.expected,
-                )}
-                periodLabel=""
-                show={showDeltas}
-              />
-            </div>
-
-            {/* Earned/Income */}
-            <div className="rounded-xl border bg-card p-4">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/10">
-                  <BanknoteArrowUp className="h-4 w-4 text-green-500" />
-                </div>
-                <span className="text-sm text-muted-foreground">Income</span>
-              </div>
-              {isFuturePeriod ? (
-                <>
-                  <p className="mt-2 text-2xl font-bold">
-                    {formatCents(periodCashFlow.income.expected)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">expected</p>
-                </>
-              ) : (
-                <>
-                  <p className="mt-2 text-2xl font-bold">
-                    {formatCents(periodCashFlow.income.actual)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    of {formatCents(periodCashFlow.income.expected)} expected
-                  </p>
-                </>
-              )}
-              <ScenarioDelta
-                delta={getTotalDelta('income', periodCashFlow.income.expected)}
-                periodLabel=""
-                show={showDeltas}
-              />
-            </div>
-
-            {/* Spent/Expenses */}
-            <div className="rounded-xl border bg-card p-4">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10">
-                  <BanknoteArrowDown className="h-4 w-4 text-red-500" />
-                </div>
-                <span className="text-sm text-muted-foreground">Spending</span>
-              </div>
-              {isFuturePeriod ? (
-                <>
-                  <p className="mt-2 text-2xl font-bold">
-                    {formatCents(
-                      periodCashFlow.expenses.expected + periodCashFlow.budgeted.expected,
-                    )}
-                  </p>
-                  <p className="text-xs text-muted-foreground">budgeted</p>
-                </>
-              ) : (
-                <>
-                  <p className="mt-2 text-2xl font-bold">
-                    {formatCents(periodCashFlow.expenses.actual)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    of{' '}
-                    {formatCents(
-                      periodCashFlow.expenses.expected + periodCashFlow.budgeted.expected,
-                    )}{' '}
-                    budgeted
-                  </p>
-                </>
-              )}
-              <ScenarioDelta
-                delta={
-                  getTotalDelta('fixed', periodCashFlow.expenses.expected) +
-                  getTotalDelta('budget', periodCashFlow.budgeted.expected)
-                }
-                periodLabel=""
-                show={showDeltas}
-              />
-            </div>
-
-            {/* Saved/Savings */}
-            <div className="rounded-xl border bg-card p-4">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10">
-                  <PiggyBank className="h-4 w-4 text-blue-500" />
-                </div>
-                <span className="text-sm text-muted-foreground">Savings</span>
-              </div>
-              {isFuturePeriod ? (
-                <>
-                  <p className="mt-2 text-2xl font-bold">
-                    {formatCents(periodCashFlow.savings.expected)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">planned</p>
-                </>
-              ) : (
-                <>
-                  <p className="mt-2 text-2xl font-bold">
-                    {formatCents(periodCashFlow.savings.actual)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    of {formatCents(periodCashFlow.savings.expected)} planned
-                  </p>
-                </>
-              )}
-              <ScenarioDelta
-                delta={getTotalDelta('savings', periodCashFlow.savings.expected)}
-                periodLabel=""
-                show={showDeltas}
-              />
-            </div>
-          </div>
-
-          {/* Spending Pace with burn rate chart - full width */}
-          {budgetStatus && (
-            <div
-              className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}
-            >
-              <div className="mb-3 flex items-center gap-2">
-                <CircleGauge className="h-5 w-5 text-muted-foreground" />
-                <h3 className="text-lg font-semibold">Spending Pace</h3>
-              </div>
-              <p
-                className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
-              >
-                {isWhatIfMode && isViewingDefault
-                  ? 'Based on your adjustments'
-                  : `Based on "${activeScenario?.name ?? 'scenario'}"`}
-              </p>
-              {budgetStatus.amount > 0 ? (
-                <p
-                  className={cn(
-                    'text-xl font-bold',
-                    budgetStatus.isPositive
-                      ? budgetStatus.hasBudget
-                        ? 'text-green-600 dark:text-green-400'
-                        : ''
-                      : 'text-amber-600 dark:text-amber-400',
-                  )}
-                >
-                  {budgetStatus.isPositive ? '+' : ''}
-                  {formatCents(budgetStatus.amount)}
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">
-                    {budgetStatus.label}
-                  </span>
-                </p>
-              ) : (
-                <p
-                  className={cn(
-                    'text-sm',
-                    budgetStatus.isPositive
-                      ? 'text-green-600 dark:text-green-400'
-                      : 'text-amber-600 dark:text-amber-400',
-                  )}
-                >
-                  {budgetStatus.label}
-                </p>
-              )}
-              {/* Burn rate chart - only show for current period */}
-              {isCurrentPeriod && budgetStatus.hasBudget && burnRateData.totalBudget > 0 && (
-                <div className="mt-4">
-                  <BurnRateChart
-                    dailySpending={burnRateData.dailySpending}
-                    totalBudget={burnRateData.totalBudget}
-                    periodStart={burnRateData.periodStart}
-                    periodEnd={burnRateData.periodEnd}
-                    periodLabel={burnRateData.periodLabel}
-                    viewMode="month"
-                    surplusAmount={hasSurplusBuffer ? surplus : undefined}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Spending by Category */}
-          <div
-            className={cn('rounded-xl border bg-card p-6', showDeltas && 'border-violet-500/30')}
-          >
-            <div className="mb-4 flex items-center gap-2">
-              <BanknoteArrowDown className="h-5 w-5 text-muted-foreground" />
-              <h3 className="text-lg font-semibold">Spending</h3>
-            </div>
-            <p
-              className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
-            >
-              {isWhatIfMode && isViewingDefault
-                ? 'Based on your adjustments'
-                : `Based on "${activeScenario?.name ?? 'scenario'}"`}
-            </p>
-
-            {categoryProgress.length === 0 ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">
-                {isFuturePeriod
-                  ? `No expenses expected for ${periodLabel}.`
-                  : `No expenses recorded ${isCurrentPeriod ? 'this month' : `in ${periodLabel}`}.`}
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {categoryProgress.map((item) => {
-                  // Fixed-only categories show checkmark + "Paid"
-                  if (item.isFixedOnly) {
-                    return (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between rounded-lg bg-muted/30 p-3"
-                      >
-                        <div className="flex items-center gap-3">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <CheckCircle2 className="h-5 w-5 text-green-500" />
-                              </TooltipTrigger>
-                              <TooltipContent>Fixed expense — no variable budget</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          <span className="font-medium">{item.name}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Pin className="h-3 w-3 text-amber-500" />
-                          <span className="text-muted-foreground">Fixed</span>
-                          <span className="font-mono">{formatCents(item.fixedAmount)}</span>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  // Variable categories show progress bar
-                  const hasBudget = item.budget > 0;
-                  const isOverBudget = hasBudget && item.spent > item.budget;
-                  const percentage = hasBudget ? Math.round((item.spent / item.budget) * 100) : 0;
-                  const isWarning = percentage >= 80 && percentage < 100;
-
-                  return (
-                    <div key={item.id} className="space-y-2">
-                      <div className="flex flex-wrap items-center justify-between gap-1 text-sm">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{item.name}</span>
-                          {item.fixedAmount > 0 && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger>
-                                  <span className="flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-600 dark:text-amber-400">
-                                    <Pin className="h-3 w-3" />
-                                    {formatCents(item.fixedAmount)} fixed
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  Includes {formatCents(item.fixedAmount)} in fixed expenses
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                        </div>
-                        <span
-                          className={cn(
-                            'font-mono',
-                            isOverBudget
-                              ? 'text-red-500'
-                              : isWarning
-                                ? 'text-amber-600 dark:text-amber-400'
-                                : 'text-muted-foreground',
-                          )}
-                        >
-                          {hasBudget ? (
-                            <>
-                              {formatCents(item.spent)} of budgeted {formatCents(item.budget)}
-                              {(() => {
-                                // In month view, compare monthly budgets directly
-                                const defaultBudget = defaultBudgetByCategoryMonthly[item.id] ?? 0;
-                                const currentBudget = variableBudgetsPerCategory[item.id] ?? 0;
-                                const delta = currentBudget - defaultBudget;
-                                const showDelta = showDeltas && delta !== 0;
-                                return (
-                                  <span
-                                    className={`ml-1 inline-block min-w-[3.5rem] ${showDelta ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
-                                  >
-                                    ({delta > 0 ? '+' : ''}
-                                    {formatCents(delta)})
-                                  </span>
-                                );
-                              })()}
-                              <span className="ml-1">({percentage}%)</span>
-                            </>
-                          ) : (
-                            formatCents(item.spent)
-                          )}
-                        </span>
-                      </div>
-                      <div className="relative h-2 rounded-full bg-muted">
-                        <div
-                          className={cn(
-                            'absolute h-2 rounded-full',
-                            isOverBudget ? 'bg-red-500' : isWarning ? 'bg-amber-500' : '',
-                          )}
-                          style={{
-                            width: `${Math.min(percentage, 100)}%`,
-                            backgroundColor: isOverBudget || isWarning ? undefined : item.color,
-                          }}
-                        />
-                        {isOverBudget && (
-                          <div className="absolute right-0 h-2 w-1 rounded-r-full bg-red-700" />
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </>
       )}
+
+      {/* Spending by Category */}
+      <div
+        className={cn('rounded-xl border bg-card p-6', showDeltas && 'border-violet-500/30')}
+      >
+        <div className="mb-4 flex items-center gap-2">
+          <BanknoteArrowDown className="h-5 w-5 text-muted-foreground" />
+          <h3 className="text-lg font-semibold">Spending</h3>
+        </div>
+        <p
+          className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
+        >
+          {isWhatIfMode && isViewingDefault
+            ? 'Based on your adjustments'
+            : `Based on "${activeScenario?.name ?? 'scenario'}"`}
+        </p>
+
+        {categoryProgress.length === 0 ? (
+          <p className="py-4 text-center text-sm text-muted-foreground">
+            {isFuturePeriod
+              ? `No expenses expected for ${periodLabel}.`
+              : `No expenses recorded ${isCurrentPeriod ? 'this month' : `in ${periodLabel}`}.`}
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {categoryProgress.map((item) => {
+              // Fixed-only categories show checkmark + "Paid"
+              if (item.isFixedOnly) {
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between rounded-lg bg-muted/30 p-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <CheckCircle2 className="h-5 w-5 text-green-500" />
+                          </TooltipTrigger>
+                          <TooltipContent>Fixed expense — no variable budget</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <span className="font-medium">{item.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Pin className="h-3 w-3 text-amber-500" />
+                      <span className="text-muted-foreground">Fixed</span>
+                      <span className="font-mono">{formatCents(item.fixedAmount)}</span>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Variable categories show progress bar
+              const hasBudget = item.budget > 0;
+              const isOverBudget = hasBudget && item.spent > item.budget;
+              const percentage = hasBudget ? Math.round((item.spent / item.budget) * 100) : 0;
+              const isWarning = percentage >= 80 && percentage < 100;
+
+              return (
+                <div key={item.id} className="space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-1 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{item.name}</span>
+                      {item.fixedAmount > 0 && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <span className="flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-600 dark:text-amber-400">
+                                <Pin className="h-3 w-3" />
+                                {formatCents(item.fixedAmount)} fixed
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Includes {formatCents(item.fixedAmount)} in fixed expenses
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
+                    <span
+                      className={cn(
+                        'font-mono',
+                        isOverBudget
+                          ? 'text-red-500'
+                          : isWarning
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-muted-foreground',
+                      )}
+                    >
+                      {hasBudget ? (
+                        <>
+                          {formatCents(item.spent)} of budgeted {formatCents(item.budget)}
+                          {(() => {
+                            // In month view, compare monthly budgets directly
+                            const defaultBudget = defaultBudgetByCategoryMonthly[item.id] ?? 0;
+                            const currentBudget = variableBudgetsPerCategory[item.id] ?? 0;
+                            const delta = currentBudget - defaultBudget;
+                            const showDelta = showDeltas && delta !== 0;
+                            return (
+                              <span
+                                className={`ml-1 inline-block min-w-[3.5rem] ${showDelta ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
+                              >
+                                ({delta > 0 ? '+' : ''}
+                                {formatCents(delta)})
+                              </span>
+                            );
+                          })()}
+                          <span className="ml-1">({percentage}%)</span>
+                        </>
+                      ) : (
+                        formatCents(item.spent)
+                      )}
+                    </span>
+                  </div>
+                  <div className="relative h-2 rounded-full bg-muted">
+                    <div
+                      className={cn(
+                        'absolute h-2 rounded-full',
+                        isOverBudget ? 'bg-red-500' : isWarning ? 'bg-amber-500' : '',
+                      )}
+                      style={{
+                        width: `${Math.min(percentage, 100)}%`,
+                        backgroundColor: isOverBudget || isWarning ? undefined : item.color,
+                      }}
+                    />
+                    {isOverBudget && (
+                      <div className="absolute right-0 h-2 w-1 rounded-r-full bg-red-700" />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       <TransactionDialog
         open={transactionDialogOpen}

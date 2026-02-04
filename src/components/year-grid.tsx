@@ -63,7 +63,7 @@ export function YearGrid({ year, months, onMonthClick }: YearGridProps) {
               <p className="mt-1 text-[10px] text-violet-600 dark:text-violet-400">Projected</p>
             )}
             {month.isPast && !month.isCurrentMonth && (
-              <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">Historical</p>
+              <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">Historical</p>
             )}
           </button>
         ))}

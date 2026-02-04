@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react';
-import { useLocalStorage } from '@/hooks/use-local-storage';
 import { useNavigate, Link } from 'react-router';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -103,11 +102,6 @@ export function SettingsPage() {
 
   // Debug mode state - initialize from current debug setting
   const [debugEnabled, setDebugEnabled] = useState(() => debug.isEnabled());
-
-  // Default snapshot view preference
-  const [defaultSnapshotView, setDefaultSnapshotView] = useLocalStorage<
-    'month' | 'quarter' | 'year'
-  >('budget:defaultSnapshotView', 'month');
 
   const handleDebugToggle = (enabled: boolean) => {
     debug.setEnabled(enabled);
@@ -687,30 +681,6 @@ export function SettingsPage() {
                   </p>
                 </div>
                 <ThemeToggle />
-              </div>
-              <Separator />
-              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h3>Default Overview View</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Choose which view to show on the Overview tab.
-                  </p>
-                </div>
-                <Select
-                  value={defaultSnapshotView}
-                  onValueChange={(value: 'month' | 'quarter' | 'year') =>
-                    setDefaultSnapshotView(value)
-                  }
-                >
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="month">Monthly</SelectItem>
-                    <SelectItem value="quarter">Quarterly</SelectItem>
-                    <SelectItem value="year">Yearly</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
           </div>

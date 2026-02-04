@@ -724,7 +724,7 @@ export function CashFlowPage() {
               ) : (
                 <ChevronRight className="h-4 w-4" />
               )}
-              <RotateCcw className="h-4 w-4 text-amber-500" />
+              <RotateCcw className="h-4 w-4 text-slate-500" />
               <span className="font-medium">Past Transactions</span>
               {transactions.length > 0 ? (
                 <span className="hidden text-sm text-muted-foreground sm:inline">
