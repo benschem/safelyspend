@@ -7,6 +7,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 
 // Route components
 import { NetWealthPage } from '@/routes/net-wealth';
+import { CashFlowPage } from '@/routes/cash-flow/index';
 import { BudgetPage } from '@/routes/budget';
 import { TransactionsPage } from '@/routes/transactions/index';
 import { TransactionNewPage } from '@/routes/transactions/new';
@@ -41,23 +42,25 @@ const router = createBrowserRouter([
     element: <RootLayout />,
     errorElement: <ErrorBoundary />,
     children: [
-      // Redirect root to budget
-      { index: true, element: <Navigate to="/budget" replace /> },
+      // Redirect root to cash flow
+      { index: true, element: <Navigate to="/cash-flow" replace /> },
 
-      // Budget (tabbed: overview, plan)
+      // Cash Flow (monthly overview)
+      { path: 'cash-flow', element: <CashFlowPage /> },
+
+      // Budget (plan tab only)
       { path: 'budget', element: <BudgetPage /> },
 
       // Transactions (standalone page)
       { path: 'transactions', element: <TransactionsPage /> },
 
-      // Snapshot redirects to budget (merged into Budget overview tab)
-      { path: 'snapshot', element: <Navigate to="/budget" replace /> },
-
       // Net Wealth (balances overview)
       { path: 'net-wealth', element: <NetWealthPage /> },
 
       // Legacy redirects
-      { path: 'cash-flow', element: <Navigate to="/transactions" replace /> },
+      { path: 'snapshot', element: <Navigate to="/cash-flow" replace /> },
+      { path: 'check-in', element: <Navigate to="/cash-flow" replace /> },
+      { path: 'spending', element: <Navigate to="/cash-flow" replace /> },
       { path: 'money', element: <Navigate to="/transactions" replace /> },
       { path: 'net-worth', element: <Navigate to="/net-wealth" replace /> },
       { path: 'forecasts', element: <Navigate to="/budget?tab=plan" replace /> },
@@ -66,8 +69,6 @@ const router = createBrowserRouter([
         element: <Navigate to="/budget?tab=plan" replace />,
       },
       { path: 'recurring', element: <Navigate to="/budget?tab=plan" replace /> },
-      { path: 'check-in', element: <Navigate to="/budget" replace /> },
-      { path: 'spending', element: <Navigate to="/budget" replace /> },
 
       // Transactions new page (still needed for direct navigation)
       { path: 'transactions/new', element: <TransactionNewPage /> },

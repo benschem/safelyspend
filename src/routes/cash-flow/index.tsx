@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router';
+import { Link, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -50,11 +50,75 @@ const MONTHS = [
   'December',
 ];
 
-interface OverviewTabProps {
+interface OutletContext {
+  activeScenarioId: string | null;
+}
+
+export function CashFlowPage() {
+  const { activeScenarioId } = useOutletContext<OutletContext>();
+  const { activeScenario, isLoading } = useScenarios();
+
+  if (isLoading) {
+    return (
+      <div className="page-shell">
+        <div className="page-header">
+          <h1 className="page-title">
+            <div className="page-title-icon bg-sky-500/10">
+              <Banknote className="h-5 w-5 text-sky-500" />
+            </div>
+            Cash Flow
+          </h1>
+          <p className="page-description">Track your spending against your plan</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!activeScenarioId || !activeScenario) {
+    return (
+      <div className="page-shell space-y-6">
+        <div className="page-header">
+          <h1 className="page-title">
+            <div className="page-title-icon bg-sky-500/10">
+              <Banknote className="h-5 w-5 text-sky-500" />
+            </div>
+            Cash Flow
+          </h1>
+          <p className="page-description">Track your spending against your plan</p>
+        </div>
+
+        <div className="empty-state">
+          <p className="empty-state-text">Select a scenario from the banner to view your cash flow.</p>
+          <Button asChild className="empty-state-action">
+            <Link to="/scenarios">Manage Scenarios</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="page-shell space-y-6">
+      <div className="page-header">
+        <h1 className="page-title">
+          <div className="page-title-icon bg-sky-500/10">
+            <Banknote className="h-5 w-5 text-sky-500" />
+          </div>
+          Cash Flow
+        </h1>
+        <p className="page-description">Track your spending against your plan</p>
+      </div>
+
+      <CashFlowContent activeScenarioId={activeScenarioId} />
+    </div>
+  );
+}
+
+interface CashFlowContentProps {
   activeScenarioId: string;
 }
 
-export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
+function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
   const { activeScenario } = useScenarios();
   const { getTotalDelta, isViewingDefault, defaultBudgetByCategoryMonthly } = useScenarioDiff();
   const { isWhatIfMode } = useWhatIf();

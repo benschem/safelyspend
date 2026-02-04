@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router';
-import { HandCoins, Target, PiggyBank, Sparkles, Settings, ChartSpline, Menu, History } from 'lucide-react';
+import { Banknote, HandCoins, Target, PiggyBank, Sparkles, Settings, ChartSpline, Menu, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -56,6 +56,9 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       <NavSection>
+        <NavItem to="/cash-flow" icon={<Banknote className="h-4 w-4" />} onClick={onNavigate}>
+          Cash Flow
+        </NavItem>
         <NavItem to="/budget" icon={<Target className="h-4 w-4" />} onClick={onNavigate}>
           Budget
         </NavItem>
