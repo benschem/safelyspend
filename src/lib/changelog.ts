@@ -21,6 +21,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.26.0',
+    date: '2026-02-05',
+    changes: [
+      'Smarter spending pace projection that accounts for fixed expenses separately from variable spending',
+      'Redesigned Cash Flow page with combined hero card and inline burn rate chart',
+      'Burn rate chart now shows budget, surplus, and danger zones visually',
+      'Improved spending status messages with more nuanced feedback',
+    ],
+  },
+  {
     version: '0.25.0',
     date: '2026-02-04',
     changes: [
