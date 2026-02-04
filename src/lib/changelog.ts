@@ -21,6 +21,21 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.20.0',
+    date: '2026-02-04',
+    changes: [
+      'Renamed Overview tab to Pulse with a new Activity icon',
+      'Redesigned Pulse tab with inline amounts, source counts, and % of income on summary cards',
+      'Fixed expenses card now shows due-to-date progress based on actual recurring dates',
+      'Spending section includes fixed expenses and savings contributions with progress bars',
+      'Spending pace for past months now reads "Spent $X under/over budget"',
+      'Scenario comparison text uses natural phrasing like "$200 more than current plan"',
+      'History icon used consistently for all history-related sections',
+      'Simplified income breakdown chart heading style',
+      'Day-of-month selectors now allow days 29–31 in all budget and category dialogs',
+    ],
+  },
+  {
     version: '0.19.0',
     date: '2026-02-04',
     changes: [
