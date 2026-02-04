@@ -1,6 +1,6 @@
 {
   "name": "safely-spend",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "description": "A personal finance tool that tells you how much you can safely spend.",
   "type": "module",
   "scripts": {

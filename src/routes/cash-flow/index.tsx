@@ -51,6 +51,7 @@ import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { UpImportDialog } from '@/components/up-import-dialog';
 import { CsvImportDialog } from '@/components/csv-import-dialog';
 import { AddToBudgetDialog } from '@/components/dialogs/add-to-budget-dialog';
+import { BulkCategoryDialog } from '@/components/dialogs/bulk-category-dialog';
 import {
   formatCents,
   formatDate,
@@ -113,9 +114,11 @@ export function CashFlowPage() {
     addTransaction,
     updateTransaction,
     deleteTransaction,
+    countByCategoryMismatch,
+    bulkUpdateCategory,
   } = useTransactions(pastQueryStartDate, pastQueryEndDate);
   const { categories, activeCategories, isLoading: categoriesLoading } = useCategories();
-  const { rules: categoryRules } = useCategoryRules();
+  const { rules: categoryRules, addRule, getNextPriority } = useCategoryRules();
   const { getRuleForCategory, setBudgetForCategory } = useBudgetRules(activeScenarioId);
 
   // Combined loading state
@@ -135,6 +138,13 @@ export function CashFlowPage() {
   const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
   const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
   const [budgetTransaction, setBudgetTransaction] = useState<Transaction | null>(null);
+  const [bulkCategoryInfo, setBulkCategoryInfo] = useState<{
+    description: string;
+    categoryId: string;
+    categoryName: string;
+    matchingCount: number;
+    transactionId: string;
+  } | null>(null);
 
   const getCategoryName = useCallback(
     (id: string | null) => (id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '-'),
@@ -235,6 +245,51 @@ export function CashFlowPage() {
       setBudgetTransaction(null);
     },
     [budgetTransaction, getRuleForCategory, setBudgetForCategory],
+  );
+
+  const handleCategoryChanged = useCallback(
+    async (info: { transactionId: string; description: string; newCategoryId: string }) => {
+      const count = await countByCategoryMismatch(
+        info.description,
+        info.newCategoryId,
+        info.transactionId,
+      );
+      if (count > 0) {
+        const catName = categories.find((c) => c.id === info.newCategoryId)?.name ?? 'Unknown';
+        setBulkCategoryInfo({
+          description: info.description,
+          categoryId: info.newCategoryId,
+          categoryName: catName,
+          matchingCount: count,
+          transactionId: info.transactionId,
+        });
+      }
+    },
+    [countByCategoryMismatch, categories],
+  );
+
+  const handleBulkApply = useCallback(
+    async (createRule: boolean) => {
+      if (!bulkCategoryInfo) return;
+      await bulkUpdateCategory(
+        bulkCategoryInfo.description,
+        bulkCategoryInfo.categoryId,
+        bulkCategoryInfo.transactionId,
+      );
+      if (createRule) {
+        await addRule({
+          name: `Auto: ${bulkCategoryInfo.description}`,
+          matchField: 'description',
+          matchType: 'equals',
+          matchValue: bulkCategoryInfo.description,
+          categoryId: bulkCategoryInfo.categoryId,
+          priority: getNextPriority(),
+          enabled: true,
+        });
+      }
+      setBulkCategoryInfo(null);
+    },
+    [bulkCategoryInfo, bulkUpdateCategory, addRule, getNextPriority],
   );
 
   // Filtered data
@@ -898,6 +953,7 @@ export function CashFlowPage() {
         transaction={editingTransaction}
         addTransaction={addTransaction}
         updateTransaction={updateTransaction}
+        onCategoryChanged={handleCategoryChanged}
       />
 
       <UpImportDialog open={upImportOpen} onOpenChange={setUpImportOpen} />
@@ -910,6 +966,17 @@ export function CashFlowPage() {
         categoryName={budgetTransactionCategoryName}
         existingBudget={existingBudgetForTransaction}
         onCreateRecurringBudget={handleCreateRecurringBudget}
+      />
+
+      <BulkCategoryDialog
+        open={bulkCategoryInfo !== null}
+        onOpenChange={(open) => {
+          if (!open) setBulkCategoryInfo(null);
+        }}
+        description={bulkCategoryInfo?.description ?? ''}
+        categoryName={bulkCategoryInfo?.categoryName ?? ''}
+        matchingCount={bulkCategoryInfo?.matchingCount ?? 0}
+        onApply={handleBulkApply}
       />
 
       <Dialog open={importWarningOpen} onOpenChange={setImportWarningOpen}>

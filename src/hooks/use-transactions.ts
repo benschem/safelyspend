@@ -99,6 +99,42 @@ export function useTransactions(startDate?: string, endDate?: string) {
     return fingerprints;
   }, []);
 
+  // Count transactions with same description but different category (for bulk category apply)
+  const countByCategoryMismatch = useCallback(
+    async (description: string, categoryId: string, excludeId: string): Promise<number> => {
+      const all = await db.transactions.toArray();
+      const descLower = description.toLowerCase();
+      return all.filter(
+        (t) =>
+          t.id !== excludeId &&
+          t.description.toLowerCase() === descLower &&
+          t.categoryId !== categoryId,
+      ).length;
+    },
+    [],
+  );
+
+  // Bulk update category for all transactions with matching description
+  const bulkUpdateCategory = useCallback(
+    async (description: string, categoryId: string, excludeId: string): Promise<void> => {
+      const descLower = description.toLowerCase();
+      await db.transaction('rw', db.transactions, async () => {
+        const all = await db.transactions.toArray();
+        const matching = all.filter(
+          (t) =>
+            t.id !== excludeId &&
+            t.description.toLowerCase() === descLower &&
+            t.categoryId !== categoryId,
+        );
+        const timestamp = now();
+        for (const t of matching) {
+          await db.transactions.update(t.id, { categoryId, updatedAt: timestamp });
+        }
+      });
+    },
+    [],
+  );
+
   // Bulk import transactions (for CSV import)
   const bulkImport = useCallback(
     async (transactionsData: Array<CreateEntity<Transaction>>): Promise<Transaction[]> => {
@@ -131,5 +167,7 @@ export function useTransactions(startDate?: string, endDate?: string) {
     deleteTransaction,
     getExistingFingerprints,
     bulkImport,
+    countByCategoryMismatch,
+    bulkUpdateCategory,
   };
 }

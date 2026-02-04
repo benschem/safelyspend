@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.19.0',
+    date: '2026-02-04',
+    changes: [
+      'After changing a transaction\'s category, you can now apply it to all matching transactions at once',
+      'Optionally create an import rule for future imports when bulk-applying categories',
+    ],
+  },
+  {
     version: '0.18.0',
     date: '2026-02-04',
     changes: [

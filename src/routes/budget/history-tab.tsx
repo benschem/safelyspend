@@ -52,6 +52,7 @@ import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { UpImportDialog } from '@/components/up-import-dialog';
 import { CsvImportDialog } from '@/components/csv-import-dialog';
 import { AddToBudgetDialog } from '@/components/dialogs/add-to-budget-dialog';
+import { BulkCategoryDialog } from '@/components/dialogs/bulk-category-dialog';
 import { DateRangeFilter } from '@/components/date-range-filter';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { Cadence, Transaction } from '@/lib/types';
@@ -80,7 +81,7 @@ export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
   const [searchParams] = useSearchParams();
   const { categories, activeCategories } = useCategories();
   const { getRuleForCategory, setBudgetForCategory } = useBudgetRules(activeScenarioId);
-  const { rules: categoryRules } = useCategoryRules();
+  const { rules: categoryRules, addRule, getNextPriority } = useCategoryRules();
 
   // Past section date filter state
   const [pastFilterStartDate, setPastFilterStartDate] = useState(getPastDefaultStartDate);
@@ -99,6 +100,8 @@ export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
     addTransaction,
     updateTransaction,
     deleteTransaction,
+    countByCategoryMismatch,
+    bulkUpdateCategory,
   } = useTransactions(pastQueryStartDate, pastQueryEndDate);
 
   // Averages cadence
@@ -115,6 +118,13 @@ export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
   const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
   const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
   const [budgetTransaction, setBudgetTransaction] = useState<Transaction | null>(null);
+  const [bulkCategoryInfo, setBulkCategoryInfo] = useState<{
+    description: string;
+    categoryId: string;
+    categoryName: string;
+    matchingCount: number;
+    transactionId: string;
+  } | null>(null);
 
   // Shared filter states for transactions
   const [filterType, setFilterType] = useState<FilterType>('all');
@@ -332,6 +342,51 @@ export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
       setBudgetTransaction(null);
     },
     [budgetTransaction, getRuleForCategory, setBudgetForCategory],
+  );
+
+  const handleCategoryChanged = useCallback(
+    async (info: { transactionId: string; description: string; newCategoryId: string }) => {
+      const count = await countByCategoryMismatch(
+        info.description,
+        info.newCategoryId,
+        info.transactionId,
+      );
+      if (count > 0) {
+        const catName = categories.find((c) => c.id === info.newCategoryId)?.name ?? 'Unknown';
+        setBulkCategoryInfo({
+          description: info.description,
+          categoryId: info.newCategoryId,
+          categoryName: catName,
+          matchingCount: count,
+          transactionId: info.transactionId,
+        });
+      }
+    },
+    [countByCategoryMismatch, categories],
+  );
+
+  const handleBulkApply = useCallback(
+    async (createRule: boolean) => {
+      if (!bulkCategoryInfo) return;
+      await bulkUpdateCategory(
+        bulkCategoryInfo.description,
+        bulkCategoryInfo.categoryId,
+        bulkCategoryInfo.transactionId,
+      );
+      if (createRule) {
+        await addRule({
+          name: `Auto: ${bulkCategoryInfo.description}`,
+          matchField: 'description',
+          matchType: 'equals',
+          matchValue: bulkCategoryInfo.description,
+          categoryId: bulkCategoryInfo.categoryId,
+          priority: getNextPriority(),
+          enabled: true,
+        });
+      }
+      setBulkCategoryInfo(null);
+    },
+    [bulkCategoryInfo, bulkUpdateCategory, addRule, getNextPriority],
   );
 
   // Close delete confirmation on Escape key
@@ -846,6 +901,7 @@ export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
         transaction={editingTransaction}
         addTransaction={addTransaction}
         updateTransaction={updateTransaction}
+        onCategoryChanged={handleCategoryChanged}
       />
 
       <UpImportDialog open={upImportOpen} onOpenChange={setUpImportOpen} />
@@ -858,6 +914,17 @@ export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
         categoryName={budgetTransactionCategoryName}
         existingBudget={existingBudgetForTransaction}
         onCreateRecurringBudget={handleCreateRecurringBudget}
+      />
+
+      <BulkCategoryDialog
+        open={bulkCategoryInfo !== null}
+        onOpenChange={(open) => {
+          if (!open) setBulkCategoryInfo(null);
+        }}
+        description={bulkCategoryInfo?.description ?? ''}
+        categoryName={bulkCategoryInfo?.categoryName ?? ''}
+        matchingCount={bulkCategoryInfo?.matchingCount ?? 0}
+        onApply={handleBulkApply}
       />
 
       <Dialog open={importWarningOpen} onOpenChange={setImportWarningOpen}>

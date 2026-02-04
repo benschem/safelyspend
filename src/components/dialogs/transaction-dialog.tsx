@@ -32,6 +32,11 @@ interface TransactionDialogProps {
     id: string,
     updates: Partial<Omit<Transaction, 'id' | 'userId' | 'createdAt'>>,
   ) => Promise<void>;
+  onCategoryChanged?: (info: {
+    transactionId: string;
+    description: string;
+    newCategoryId: string;
+  }) => void;
 }
 
 export function TransactionDialog({
@@ -41,6 +46,7 @@ export function TransactionDialog({
   initialType = 'expense',
   addTransaction,
   updateTransaction,
+  onCategoryChanged,
 }: TransactionDialogProps) {
   const isEditing = !!transaction;
   const todayDate = today();
@@ -130,6 +136,21 @@ export function TransactionDialog({
     try {
       if (isEditing && transaction) {
         await updateTransaction(transaction.id, data);
+        // Notify parent if category changed to a non-null value on a non-savings/adjustment type
+        const newCategoryId = data.categoryId;
+        if (
+          onCategoryChanged &&
+          newCategoryId &&
+          newCategoryId !== transaction.categoryId &&
+          transaction.type !== 'savings' &&
+          transaction.type !== 'adjustment'
+        ) {
+          onCategoryChanged({
+            transactionId: transaction.id,
+            description: data.description ?? transaction.description,
+            newCategoryId,
+          });
+        }
       } else {
         await addTransaction(data);
       }
