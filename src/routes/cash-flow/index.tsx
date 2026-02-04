@@ -15,8 +15,7 @@ import {
 
   Pin,
   Tag,
-  CircleDot,
-  CircleGauge,
+  Sparkles,
 } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
@@ -372,7 +371,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
       };
     }
 
-    // Current period - use same calculation as Budget page for consistency
+    // Current period - project based on actual spending pace
     if (!hasPlan) {
       const actualSoFar =
         periodCashFlow.income.actual -
@@ -386,11 +385,17 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
       };
     }
 
+    // Smart projection: fixed expenses on schedule + variable spending extrapolated
+    const projected =
+      periodCashFlow.income.expected -
+      periodCashFlow.projection.projectedTotal -
+      periodCashFlow.savings.expected;
+
     return {
-      amount: planned,
+      amount: projected,
       label:
-        planned > 0 ? 'Expected surplus' : planned < 0 ? 'Expected shortfall' : 'Budget balanced',
-      isPositive: planned >= 0,
+        projected > 0 ? 'Projected surplus' : projected < 0 ? 'Projected shortfall' : 'Budget balanced',
+      isPositive: projected >= 0,
       hasPlan,
     };
   }, [isPastPeriod, isFuturePeriod, periodCashFlow]);
@@ -448,40 +453,61 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
     const expectedByNow = Math.round(totalBudget * periodProgress);
     const burnRate = expectedByNow > 0 ? Math.round((actualSpending / expectedByNow) * 100) : 0;
 
+    // Smart projection: use fixed + variable split instead of naive linear extrapolation
+    // "In the red" = projected spending exceeds budget + surplus buffer
+    const projectedPercent = totalBudget > 0 ? (periodCashFlow.projection.projectedTotal / totalBudget) * 100 : 0;
+    const safeLimitPercent = hasSurplusBuffer ? 100 + (surplus / totalBudget) * 100 : 100;
+    const projectedInTheRed = projectedPercent > safeLimitPercent;
+
     // Descriptive message based on burn rate
-    if (burnRate > 120) {
-      const bufferNote = hasSurplusBuffer ? ' You have surplus buffer.' : ' Consider slowing down.';
+    if (projectedInTheRed) {
       return {
         amount: 0,
-        label: `Spending faster than your budget allows.${bufferNote}`,
+        label: 'Spending too fast,',
+        sublabel: 'going backwards.',
         isPositive: false,
+        hasBudget: true,
+      };
+    } else if (burnRate > 150) {
+      return {
+        amount: 0,
+        label: 'Spending too fast,',
+        sublabel: hasSurplusBuffer ? 'but you have surplus buffer.' : 'slow down.',
+        isPositive: hasSurplusBuffer,
+        hasBudget: true,
+      };
+    } else if (burnRate > 120) {
+      return {
+        amount: 0,
+        label: 'Spending faster than your budget allows,',
+        sublabel: hasSurplusBuffer ? 'but you have surplus buffer.' : 'consider slowing down.',
+        isPositive: hasSurplusBuffer,
         hasBudget: true,
       };
     } else if (burnRate > 100) {
       return {
         amount: 0,
         label: 'Slightly ahead of your budget.',
+        sublabel: undefined as string | undefined,
         isPositive: false,
         hasBudget: true,
       };
     } else {
       return {
         amount: 0,
-        label: 'On track with your budget. Keep it up!',
+        label: 'On track with your budget,',
+        sublabel: 'keep it up!',
         isPositive: true,
         hasBudget: true,
       };
     }
-  }, [isFuturePeriod, isPastPeriod, periodCashFlow, hasSurplusBuffer]);
+  }, [isFuturePeriod, isPastPeriod, periodCashFlow, hasSurplusBuffer, surplus]);
 
   // Headline status label for hero
   const heroStatusLabel = useMemo(() => {
     if (!headline.hasPlan && !isPastPeriod) return 'NO PLAN SET';
     if (headline.amount === 0 && headline.isPositive && headline.hasPlan) return 'BUDGET BALANCED';
-    if (isPastPeriod) {
-      return headline.isPositive ? 'ACTUAL SURPLUS' : 'ACTUAL SHORTFALL';
-    }
-    return headline.isPositive ? 'PROJECTED SURPLUS' : 'PROJECTED SHORTFALL';
+    return 'NET';
   }, [headline, isPastPeriod]);
 
   if (isLoading) {
@@ -597,72 +623,139 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
         </div>
       </div>
 
-      {/* Hero Header */}
-      <div className="mb-4 min-h-28 text-center sm:min-h-32">
-        {/* Status pill */}
-        <div className="flex min-h-8 items-center justify-center">
-          {isCurrentPeriod && (
-            <span className="flex items-center gap-1 rounded-full bg-sky-500/15 px-2.5 py-1 text-xs font-medium text-sky-600 dark:text-sky-400">
-              <CircleDot className="h-3 w-3" />
-              Today
-            </span>
-          )}
-          {isPastPeriod && (
-            <span className="flex items-center gap-1 rounded-full bg-slate-500/10 px-2.5 py-1 text-xs text-slate-600 dark:text-slate-400">
-              <History className="h-3 w-3" />
-              Historical
-            </span>
-          )}
-        </div>
-
-        {/* Hero Surplus/Shortfall */}
-        <div className="mt-4">
-          <p
-            className={cn(
-              'flex items-center justify-center gap-2 text-sm font-medium uppercase tracking-wide',
-              heroStatusLabel === 'NO PLAN SET'
-                ? 'text-muted-foreground'
-                : headline.isPositive
-                  ? 'text-green-500'
-                  : 'text-amber-500',
-            )}
-          >
-            <Banknote className="h-4 w-4" />
-            {heroStatusLabel}
-          </p>
-          {heroStatusLabel === 'BUDGET BALANCED' ? (
-            <p className="mt-2 text-5xl font-bold tracking-tight text-green-500">
-              Every dollar accounted for
-            </p>
-          ) : (
-            <p
-              className={cn(
-                'mt-2 text-5xl font-bold tracking-tight',
-                heroStatusLabel === 'NO PLAN SET'
-                  ? ''
-                  : headline.isPositive
-                    ? 'text-green-500'
-                    : 'text-amber-500',
+      {/* Hero + Spending Pace Combined Card */}
+      <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
+        <p className="text-sm font-medium text-muted-foreground">{periodLabel}</p>
+        <div className="mt-3 flex flex-col gap-5 lg:flex-row lg:items-stretch lg:gap-4">
+          {/* Left: hero content */}
+          <div className="min-w-0 space-y-2 text-center lg:flex-[1] lg:text-left">
+            {/* Pill + NET label */}
+            <div className="flex items-center justify-center gap-2 lg:justify-start">
+              {isCurrentPeriod && (
+                <span className="flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-0.5 text-xs font-medium text-violet-600 dark:text-violet-400">
+                  <Sparkles className="h-3 w-3" />
+                  Projected
+                </span>
               )}
-            >
-              {headline.isPositive && headline.amount > 0 ? '+' : ''}
-              {formatCents(headline.amount)}
-            </p>
-          )}
-          <p className="mt-1 text-sm text-muted-foreground">{periodLabel}</p>
-          <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
-          <ScenarioDelta
-            delta={getTotalDelta(
-              'surplus',
-              periodCashFlow.income.expected -
-                periodCashFlow.expenses.expected -
-                periodCashFlow.budgeted.expected -
-                periodCashFlow.savings.expected,
+              {isPastPeriod && (
+                <span className="flex items-center gap-1 rounded-full bg-slate-500/10 px-2 py-0.5 text-xs text-slate-600 dark:text-slate-400">
+                  <History className="h-3 w-3" />
+                  Historical
+                </span>
+              )}
+              <p
+                className={cn(
+                  'flex items-center gap-1.5 text-sm font-medium uppercase tracking-wide',
+                  heroStatusLabel === 'NO PLAN SET'
+                    ? 'text-muted-foreground'
+                    : headline.isPositive
+                      ? 'text-green-500'
+                      : 'text-amber-500',
+                )}
+              >
+                <Banknote className="h-4 w-4" />
+                {heroStatusLabel}
+              </p>
+            </div>
+            {isPastPeriod ? (
+              <>
+                {/* Past: dollar amount is hero, status text is supporting */}
+                <p
+                  className={cn(
+                    'text-3xl font-bold tracking-tight lg:text-4xl',
+                    headline.isPositive
+                      ? 'text-green-500'
+                      : 'text-amber-500',
+                  )}
+                >
+                  {headline.isPositive && headline.amount > 0 ? '+' : ''}
+                  {formatCents(headline.amount)}
+                </p>
+                {budgetStatus && (
+                  <p
+                    className={cn(
+                      'text-lg font-semibold',
+                      budgetStatus.isPositive
+                        ? 'text-green-600/70 dark:text-green-400/70'
+                        : 'text-amber-600/70 dark:text-amber-400/70',
+                    )}
+                  >
+                    {budgetStatus.label}
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                {/* Current/future: status text is hero, dollar amount is supporting */}
+                {budgetStatus && heroStatusLabel !== 'NO PLAN SET' ? (
+                  <p
+                    className={cn(
+                      'text-3xl font-bold tracking-tight lg:text-4xl',
+                      budgetStatus.isPositive
+                        ? 'text-green-500'
+                        : 'text-amber-500',
+                    )}
+                  >
+                    {budgetStatus.label}
+                    {budgetStatus.sublabel && (
+                      <> {budgetStatus.sublabel}</>
+                    )}
+                  </p>
+                ) : heroStatusLabel === 'BUDGET BALANCED' ? (
+                  <p className="text-3xl font-bold tracking-tight text-green-500 lg:text-4xl">
+                    Every dollar accounted for
+                  </p>
+                ) : (
+                  <p className="text-3xl font-bold tracking-tight text-muted-foreground lg:text-4xl">
+                    No plan set
+                  </p>
+                )}
+                <p
+                  className={cn(
+                    'text-lg font-semibold',
+                    heroStatusLabel === 'NO PLAN SET'
+                      ? 'text-muted-foreground'
+                      : headline.isPositive
+                        ? 'text-green-600/70 dark:text-green-400/70'
+                        : 'text-amber-600/70 dark:text-amber-400/70',
+                  )}
+                >
+                  {headline.isPositive && headline.amount > 0 ? '+' : ''}
+                  {formatCents(headline.amount)}
+                </p>
+              </>
             )}
-            show={showDeltas}
-          />
-        </div>
+            <ScenarioDelta
+              delta={getTotalDelta(
+                'surplus',
+                periodCashFlow.income.expected -
+                  periodCashFlow.expenses.expected -
+                  periodCashFlow.budgeted.expected -
+                  periodCashFlow.savings.expected,
+              )}
+              show={showDeltas}
+            />
+          </div>
 
+          {/* Right: compact burn rate chart (current period only) */}
+          {isCurrentPeriod && budgetStatus?.hasBudget && burnRateData.totalBudget > 0 && (
+            <div className="w-full min-w-0 lg:flex-[2]">
+              <BurnRateChart
+                compact
+                dailySpending={burnRateData.dailySpending}
+                totalBudget={burnRateData.totalBudget}
+                periodStart={burnRateData.periodStart}
+                periodEnd={burnRateData.periodEnd}
+                periodLabel={burnRateData.periodLabel}
+                viewMode="month"
+                surplusAmount={hasSurplusBuffer ? surplus : undefined}
+                fixedExpenseSchedule={burnRateData.fixedExpenseSchedule}
+                variableBudget={burnRateData.variableBudget}
+                fixedExpensesTotal={burnRateData.fixedExpensesTotal}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 4 Summary Cards */}
@@ -814,67 +907,6 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
           />
         </div>
       </div>
-
-      {/* Spending Pace with burn rate chart - full width */}
-      {budgetStatus && (
-        <div
-          className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}
-        >
-          <div className="mb-3 flex items-center gap-2">
-            <CircleGauge className="h-5 w-5 text-muted-foreground" />
-            <h3 className="text-lg font-semibold">Spending Pace</h3>
-          </div>
-          <p
-            className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
-          >
-            {isWhatIfMode && isViewingDefault
-              ? 'Based on your adjustments'
-              : `Based on "${activeScenario?.name ?? 'scenario'}"`}
-          </p>
-          {budgetStatus.amount > 0 ? (
-            <p
-              className={cn(
-                'text-xl font-bold',
-                budgetStatus.isPositive
-                  ? budgetStatus.hasBudget
-                    ? 'text-green-600 dark:text-green-400'
-                    : ''
-                  : 'text-amber-600 dark:text-amber-400',
-              )}
-            >
-              {formatCents(budgetStatus.amount)}
-              <span className="ml-2 text-sm font-normal text-muted-foreground">
-                {budgetStatus.label}
-              </span>
-            </p>
-          ) : (
-            <p
-              className={cn(
-                'text-sm',
-                budgetStatus.isPositive
-                  ? 'text-green-600 dark:text-green-400'
-                  : 'text-amber-600 dark:text-amber-400',
-              )}
-            >
-              {budgetStatus.label}
-            </p>
-          )}
-          {/* Burn rate chart - only show for current period */}
-          {isCurrentPeriod && budgetStatus.hasBudget && burnRateData.totalBudget > 0 && (
-            <div className="mt-4">
-              <BurnRateChart
-                dailySpending={burnRateData.dailySpending}
-                totalBudget={burnRateData.totalBudget}
-                periodStart={burnRateData.periodStart}
-                periodEnd={burnRateData.periodEnd}
-                periodLabel={burnRateData.periodLabel}
-                viewMode="month"
-                surplusAmount={hasSurplusBuffer ? surplus : undefined}
-              />
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Expenses & Savings Breakdown */}
       <div

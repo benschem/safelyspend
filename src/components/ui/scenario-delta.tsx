@@ -3,7 +3,7 @@ import { formatCents } from '@/lib/utils';
 interface ScenarioDeltaProps {
   /** Delta in cents (positive = increase from default, negative = decrease) */
   delta: number;
-  /** Period label (default: "/mo") */
+  /** Period label (default: " per month") */
   periodLabel?: string;
   /** Additional CSS classes */
   className?: string;
@@ -13,12 +13,12 @@ interface ScenarioDeltaProps {
 
 /**
  * Displays a delta value comparing current scenario to the default "Current Plan".
- * Shows "+$500/mo current plan" or "-$200/mo current plan" in purple.
+ * Shows "+$500 per month more than current plan" in purple.
  * Always renders to reserve space (invisible when delta is 0 or show is false).
  */
 export function ScenarioDelta({
   delta,
-  periodLabel = '/mo',
+  periodLabel = ' per month',
   className = '',
   show = true,
 }: ScenarioDeltaProps) {
