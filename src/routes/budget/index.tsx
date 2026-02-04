@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useOutletContext, useSearchParams } from 'react-router';
-import { CalendarFold, Target, RotateCcw } from 'lucide-react';
+import { Activity, Target, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageLoading } from '@/components/page-loading';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -14,9 +14,9 @@ type TabValue = (typeof VALID_TABS)[number];
 const STORAGE_KEY = 'budget:activeTab';
 
 const TAB_CONFIG = [
-  { value: 'overview' as const, label: 'Overview', icon: CalendarFold, color: 'text-sky-500' },
+  { value: 'overview' as const, label: 'Pulse', icon: Activity, color: 'text-sky-500' },
   { value: 'plan' as const, label: 'Plan', icon: Target, color: 'text-violet-500' },
-  { value: 'history' as const, label: 'History', icon: RotateCcw, color: 'text-slate-500' },
+  { value: 'history' as const, label: 'History', icon: History, color: 'text-slate-500' },
 ];
 
 const TAB_SUBTITLES: Record<TabValue, string> = {

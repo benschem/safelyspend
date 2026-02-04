@@ -31,6 +31,7 @@ import {
   BanknoteArrowUp,
   BanknoteArrowDown,
   ArrowLeftRight,
+  History,
   RotateCcw,
   Download,
   AlertTriangle,
@@ -665,7 +666,7 @@ export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
           <div className="mb-4 min-h-28 text-center sm:min-h-32">
             <div className="flex min-h-8 items-center justify-center">
               <span className="flex items-center gap-1 rounded-full bg-slate-500/10 px-2.5 py-1 text-xs text-slate-600 dark:text-slate-400">
-                <RotateCcw className="h-3 w-3" />
+                <History className="h-3 w-3" />
                 Historical
               </span>
             </div>
@@ -749,7 +750,7 @@ export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
       <div className="overflow-hidden rounded-lg border">
         <div className="flex items-center justify-between bg-card p-4">
           <div className="flex items-center gap-2">
-            <RotateCcw className="h-4 w-4 text-slate-500" />
+            <History className="h-4 w-4 text-slate-500" />
             <span className="font-medium">Past Transactions</span>
             {transactions.length > 0 && (
               <span className="hidden text-sm text-muted-foreground sm:inline">
