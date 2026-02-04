@@ -81,6 +81,7 @@ export function SettingsPage() {
   const [anchorAmount, setAnchorAmount] = useState('');
   const [anchorLabel, setAnchorLabel] = useState('');
   const [anchorError, setAnchorError] = useState<string | null>(null);
+  const [anchorConfirmZero, setAnchorConfirmZero] = useState(false);
   const [deletingAnchorId, setDeletingAnchorId] = useState<string | null>(null);
 
   // Savings anchor management state
@@ -98,6 +99,7 @@ export function SettingsPage() {
   const [savingsAnchorAmount, setSavingsAnchorAmount] = useState('');
   const [savingsAnchorLabel, setSavingsAnchorLabel] = useState('');
   const [savingsAnchorError, setSavingsAnchorError] = useState<string | null>(null);
+  const [savingsAnchorConfirmZero, setSavingsAnchorConfirmZero] = useState(false);
   const [deletingSavingsAnchorId, setDeletingSavingsAnchorId] = useState<string | null>(null);
 
   // Debug mode state - initialize from current debug setting
@@ -233,6 +235,7 @@ export function SettingsPage() {
     setAnchorAmount('');
     setAnchorLabel('');
     setAnchorError(null);
+    setAnchorConfirmZero(false);
     setAnchorDialogOpen(true);
   };
 
@@ -242,6 +245,7 @@ export function SettingsPage() {
     setAnchorAmount((anchor.balanceCents / 100).toFixed(2));
     setAnchorLabel(anchor.label ?? '');
     setAnchorError(null);
+    setAnchorConfirmZero(false);
     setAnchorDialogOpen(true);
   };
 
@@ -252,14 +256,14 @@ export function SettingsPage() {
     const cleanedAmount = anchorAmount.replace(/[$,\s]/g, '');
     const amount = parseFloat(cleanedAmount);
 
-    if (isNaN(amount)) {
+    if (isNaN(amount) || (!cleanedAmount && !anchorAmount.includes('0'))) {
       setAnchorError('Please enter a valid amount');
       return;
     }
 
-    // Warn if zero (but allow it)
-    if (amount === 0 && !anchorAmount.includes('0')) {
-      setAnchorError('Please enter a valid amount');
+    if (amount === 0 && !anchorConfirmZero) {
+      setAnchorConfirmZero(true);
+      setAnchorError('Balance is $0. Click save again to confirm.');
       return;
     }
 
@@ -289,7 +293,7 @@ export function SettingsPage() {
       }
       setAnchorDialogOpen(false);
     } catch (err) {
-      setAnchorError(err instanceof Error ? err.message : 'Failed to save anchor');
+      setAnchorError(err instanceof Error ? err.message : 'Could not save the balance. Please try again.');
     }
   };
 
@@ -311,6 +315,7 @@ export function SettingsPage() {
     setSavingsAnchorAmount('');
     setSavingsAnchorLabel('');
     setSavingsAnchorError(null);
+    setSavingsAnchorConfirmZero(false);
     setSavingsAnchorDialogOpen(true);
   };
 
@@ -321,6 +326,7 @@ export function SettingsPage() {
     setSavingsAnchorAmount((anchor.balanceCents / 100).toFixed(2));
     setSavingsAnchorLabel(anchor.label ?? '');
     setSavingsAnchorError(null);
+    setSavingsAnchorConfirmZero(false);
     setSavingsAnchorDialogOpen(true);
   };
 
@@ -343,6 +349,12 @@ export function SettingsPage() {
 
     if (amount < 0) {
       setSavingsAnchorError('Amount cannot be negative');
+      return;
+    }
+
+    if (amount === 0 && !savingsAnchorConfirmZero) {
+      setSavingsAnchorConfirmZero(true);
+      setSavingsAnchorError('Balance is $0. Click save again to confirm.');
       return;
     }
 
@@ -374,7 +386,7 @@ export function SettingsPage() {
       }
       setSavingsAnchorDialogOpen(false);
     } catch (err) {
-      setSavingsAnchorError(err instanceof Error ? err.message : 'Failed to save anchor');
+      setSavingsAnchorError(err instanceof Error ? err.message : 'Could not save the balance. Please try again.');
     }
   };
 
@@ -794,7 +806,7 @@ export function SettingsPage() {
                 step="0.01"
                 placeholder="0.00"
                 value={anchorAmount}
-                onChange={(e) => setAnchorAmount(e.target.value)}
+                onChange={(e) => { setAnchorAmount(e.target.value); setAnchorConfirmZero(false); }}
               />
             </div>
 
@@ -878,7 +890,7 @@ export function SettingsPage() {
                 min="0"
                 placeholder="0.00"
                 value={savingsAnchorAmount}
-                onChange={(e) => setSavingsAnchorAmount(e.target.value)}
+                onChange={(e) => { setSavingsAnchorAmount(e.target.value); setSavingsAnchorConfirmZero(false); }}
               />
             </div>
 
