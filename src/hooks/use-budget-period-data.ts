@@ -12,7 +12,7 @@ interface PeriodCashFlow {
   budgeted: { expected: number; actual: number };
   unbudgeted: { unallocated: number; actual: number };
   savings: { expected: number; actual: number };
-  expenses: { expected: number; actual: number };
+  expenses: { expected: number; actual: number; dueToDate: number };
   net: { projected: number; forecasted: number };
 }
 
@@ -174,6 +174,11 @@ function calculatePeriodCashFlow(
     .filter((f) => f.type === 'expense')
     .reduce((sum, f) => sum + f.amountCents, 0);
 
+  // Fixed expenses due up to effective date (for progress tracking)
+  const expensesDueToDate = periodForecasts
+    .filter((f) => f.type === 'expense' && f.date <= effectiveDate)
+    .reduce((sum, f) => sum + f.amountCents, 0);
+
   // Total budget for period
   const periodMultiplier = viewMode === 'year' ? 12 : viewMode === 'quarter' ? 3 : 1;
   const totalBudget = budgetRules.reduce(
@@ -245,7 +250,7 @@ function calculatePeriodCashFlow(
     budgeted: { expected: Math.round(totalBudget), actual: actualBudgetedExpenses },
     unbudgeted: { unallocated: Math.max(0, unallocated), actual: actualUnbudgetedExpenses },
     savings: { expected: Math.round(expectedSavings), actual: actualSavings },
-    expenses: { expected: Math.round(expectedExpenses), actual: actualExpenses },
+    expenses: { expected: Math.round(expectedExpenses), actual: actualExpenses, dueToDate: Math.round(expensesDueToDate) },
     net: { projected: projectedNet, forecasted: forecastedNet },
   };
 }
