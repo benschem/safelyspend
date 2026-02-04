@@ -522,6 +522,124 @@ describe('savings anchors validation', () => {
 });
 
 // =============================================================================
+// Interest Rate Schedule Tests
+// =============================================================================
+
+describe('interest rate schedule validation', () => {
+  const validMinimalData = {
+    scenarios: [],
+    categories: [],
+    transactions: [],
+    budgetRules: [],
+    forecastRules: [],
+    forecastEvents: [],
+    savingsGoals: [],
+  };
+
+  const makeGoal = (overrides: Record<string, unknown> = {}) => ({
+    id: 'goal-1',
+    userId: 'local',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    name: 'Test Goal',
+    targetAmountCents: 1000000,
+    ...overrides,
+  });
+
+  it('accepts savings goal with interestRateSchedule', () => {
+    const data = {
+      ...validMinimalData,
+      savingsGoals: [
+        makeGoal({
+          annualInterestRate: 4.5,
+          interestRateSchedule: [
+            { effectiveDate: '2026-03-01', annualRate: 5.0 },
+            { effectiveDate: '2026-07-01', annualRate: 4.25 },
+          ],
+        }),
+      ],
+    };
+    expect(() => validateImport(data)).not.toThrow();
+  });
+
+  it('accepts savings goal without interestRateSchedule (backwards compatibility)', () => {
+    const data = {
+      ...validMinimalData,
+      savingsGoals: [makeGoal({ annualInterestRate: 4.5 })],
+    };
+    expect(() => validateImport(data)).not.toThrow();
+  });
+
+  it('accepts savings goal with empty interestRateSchedule', () => {
+    const data = {
+      ...validMinimalData,
+      savingsGoals: [makeGoal({ interestRateSchedule: [] })],
+    };
+    expect(() => validateImport(data)).not.toThrow();
+  });
+
+  it('rejects interestRateSchedule entry with rate above 100', () => {
+    const data = {
+      ...validMinimalData,
+      savingsGoals: [
+        makeGoal({
+          interestRateSchedule: [{ effectiveDate: '2026-03-01', annualRate: 150 }],
+        }),
+      ],
+    };
+    expect(() => validateImport(data)).toThrow();
+  });
+
+  it('rejects interestRateSchedule entry with negative rate', () => {
+    const data = {
+      ...validMinimalData,
+      savingsGoals: [
+        makeGoal({
+          interestRateSchedule: [{ effectiveDate: '2026-03-01', annualRate: -1 }],
+        }),
+      ],
+    };
+    expect(() => validateImport(data)).toThrow();
+  });
+
+  it('rejects interestRateSchedule entry missing effectiveDate', () => {
+    const data = {
+      ...validMinimalData,
+      savingsGoals: [
+        makeGoal({
+          interestRateSchedule: [{ annualRate: 5.0 }],
+        }),
+      ],
+    };
+    expect(() => validateImport(data)).toThrow();
+  });
+
+  it('rejects interestRateSchedule entry missing annualRate', () => {
+    const data = {
+      ...validMinimalData,
+      savingsGoals: [
+        makeGoal({
+          interestRateSchedule: [{ effectiveDate: '2026-03-01' }],
+        }),
+      ],
+    };
+    expect(() => validateImport(data)).toThrow();
+  });
+
+  it('accepts interestRateSchedule with rate of 0', () => {
+    const data = {
+      ...validMinimalData,
+      savingsGoals: [
+        makeGoal({
+          interestRateSchedule: [{ effectiveDate: '2026-03-01', annualRate: 0 }],
+        }),
+      ],
+    };
+    expect(() => validateImport(data)).not.toThrow();
+  });
+});
+
+// =============================================================================
 // Constants Tests
 // =============================================================================
 

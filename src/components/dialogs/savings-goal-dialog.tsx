@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Ambulance, Trash2, Info } from 'lucide-react';
+import { Ambulance, Trash2, Info, Plus, X, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,7 +23,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { today, parseCentsFromInput } from '@/lib/utils';
-import type { SavingsGoal, SavingsAnchor, CreateEntity, Transaction } from '@/lib/types';
+import type { SavingsGoal, SavingsAnchor, CreateEntity, Transaction, InterestRateEntry } from '@/lib/types';
 
 interface SavingsGoalDialogProps {
   open: boolean;
@@ -65,6 +65,8 @@ export function SavingsGoalDialog({
   const [deadline, setDeadline] = useState('');
   const [interestRate, setInterestRate] = useState('');
   const [isEmergencyFund, setIsEmergencyFund] = useState(false);
+  const [rateSchedule, setRateSchedule] = useState<InterestRateEntry[]>([]);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -79,6 +81,9 @@ export function SavingsGoalDialog({
         setDeadline(goal.deadline ?? '');
         setInterestRate(goal.annualInterestRate?.toString() ?? '');
         setIsEmergencyFund(goal.isEmergencyFund ?? false);
+        const schedule = goal.interestRateSchedule ?? [];
+        setRateSchedule(schedule);
+        setScheduleOpen(schedule.length > 0);
       } else {
         setName('');
         setTargetAmount('');
@@ -88,6 +93,8 @@ export function SavingsGoalDialog({
         setDeadline('');
         setInterestRate('');
         setIsEmergencyFund(false);
+        setRateSchedule([]);
+        setScheduleOpen(false);
       }
       setFormError(null);
       setIsDeleting(false);
@@ -117,14 +124,20 @@ export function SavingsGoalDialog({
 
     const parsedInterestRate = interestRate ? parseFloat(interestRate) : null;
 
+    // Sort schedule by date and filter out invalid entries
+    const sortedSchedule = rateSchedule
+      .filter((e) => e.effectiveDate && !isNaN(e.annualRate))
+      .sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate));
+
     try {
       if (isEditing && goal) {
         const updates: Parameters<typeof updateSavingsGoal>[1] = {
           name: name.trim(),
           targetAmountCents,
           isEmergencyFund,
-          deadline: deadline || undefined,
-          annualInterestRate: parsedInterestRate || undefined,
+          ...(deadline ? { deadline } : { deadline: undefined as never }),
+          ...(parsedInterestRate ? { annualInterestRate: parsedInterestRate } : { annualInterestRate: undefined as never }),
+          ...(sortedSchedule.length > 0 ? { interestRateSchedule: sortedSchedule } : { interestRateSchedule: undefined as never }),
         };
         await updateSavingsGoal(goal.id, updates);
       } else {
@@ -134,6 +147,7 @@ export function SavingsGoalDialog({
           isEmergencyFund,
           ...(deadline ? { deadline } : {}),
           ...(parsedInterestRate ? { annualInterestRate: parsedInterestRate } : {}),
+          ...(sortedSchedule.length > 0 ? { interestRateSchedule: sortedSchedule } : {}),
         });
 
         // Create starting balance if amount > 0
@@ -340,6 +354,103 @@ export function SavingsGoalDialog({
               </span>
             </div>
           </div>
+
+          {/* Scheduled Rate Changes - only show when interest rate has a value */}
+          {interestRate && parseFloat(interestRate) > 0 && (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setScheduleOpen(!scheduleOpen)}
+                className="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                {scheduleOpen ? (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5" />
+                )}
+                Scheduled Rate Changes
+                {rateSchedule.length > 0 && (
+                  <span className="ml-1 text-xs text-muted-foreground">
+                    ({rateSchedule.length})
+                  </span>
+                )}
+              </button>
+
+              {scheduleOpen && (
+                <div className="space-y-2 rounded-lg border p-3">
+                  {rateSchedule.length > 0 && (
+                    <div className="space-y-2">
+                      {rateSchedule.map((entry, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <Input
+                            type="date"
+                            value={entry.effectiveDate}
+                            onChange={(e) => {
+                              const updated = [...rateSchedule];
+                              updated[index] = { ...entry, effectiveDate: e.target.value };
+                              setRateSchedule(updated);
+                            }}
+                            className="flex-1"
+                          />
+                          <div className="relative flex-1">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              max="100"
+                              value={entry.annualRate}
+                              onChange={(e) => {
+                                const updated = [...rateSchedule];
+                                updated[index] = {
+                                  ...entry,
+                                  annualRate: parseFloat(e.target.value) || 0,
+                                };
+                                setRateSchedule(updated);
+                              }}
+                              className="pr-12"
+                            />
+                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                              % p.a.
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRateSchedule(rateSchedule.filter((_, i) => i !== index));
+                            }}
+                            className="cursor-pointer p-1 text-muted-foreground hover:text-destructive"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const tomorrow = new Date();
+                      tomorrow.setDate(tomorrow.getDate() + 1);
+                      const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+                      setRateSchedule([
+                        ...rateSchedule,
+                        {
+                          effectiveDate: tomorrowStr,
+                          annualRate: parseFloat(interestRate) || 0,
+                        },
+                      ]);
+                    }}
+                    className="w-full"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add Rate Change
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex items-center justify-between gap-3 pt-2">
             {isEditing && deleteSavingsGoal ? (

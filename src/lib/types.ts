@@ -147,6 +147,11 @@ export interface CategoryRule extends BaseEntity {
 
 export type CompoundingFrequency = 'daily' | 'monthly' | 'yearly';
 
+export interface InterestRateEntry {
+  effectiveDate: string; // YYYY-MM-DD
+  annualRate: number; // Percentage, e.g., 4.5 for 4.5%
+}
+
 export interface SavingsGoal extends BaseEntity {
   name: string;
   targetAmountCents: number;
@@ -154,6 +159,7 @@ export interface SavingsGoal extends BaseEntity {
   annualInterestRate?: number; // Percentage, e.g., 4.5 for 4.5%
   compoundingFrequency?: CompoundingFrequency; // Defaults to 'monthly' if rate is set
   isEmergencyFund?: boolean; // Only one goal can be marked as emergency fund
+  interestRateSchedule?: InterestRateEntry[]; // Sorted by effectiveDate ascending
 }
 
 // -----------------------------------------------------------------------------

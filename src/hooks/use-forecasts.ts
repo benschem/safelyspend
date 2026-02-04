@@ -9,6 +9,7 @@ import type {
   Transaction,
 } from '@/lib/types';
 import { generateId, now, getLastDayOfMonth, formatISODate } from '@/lib/utils';
+import { getEffectiveRate } from '@/lib/interest-rate';
 
 const USER_ID = 'local';
 
@@ -211,9 +212,11 @@ function generateInterestForecasts(
 ): ExpandedForecast[] {
   const results: ExpandedForecast[] = [];
 
-  // Filter goals with interest rates
+  // Filter goals with interest rates (base rate or scheduled rates)
   const goalsWithInterest = savingsGoals.filter(
-    (g) => g.annualInterestRate && g.annualInterestRate > 0,
+    (g) =>
+      (g.annualInterestRate && g.annualInterestRate > 0) ||
+      (g.interestRateSchedule && g.interestRateSchedule.length > 0),
   );
   if (goalsWithInterest.length === 0) return results;
 
@@ -253,14 +256,6 @@ function generateInterestForecasts(
 
   // Generate monthly interest for each goal
   for (const goal of goalsWithInterest) {
-    const rate = goal.annualInterestRate! / 100; // Convert percentage to decimal
-    const monthlyRate =
-      goal.compoundingFrequency === 'yearly'
-        ? 0 // Yearly compounding - only apply at year end
-        : goal.compoundingFrequency === 'daily'
-          ? Math.pow(1 + rate / 365, 30) - 1 // Approximate daily compounding per month
-          : rate / 12; // Monthly compounding
-
     let balance = currentBalances[goal.id] ?? 0;
 
     // Iterate month by month
@@ -276,6 +271,16 @@ function generateInterestForecasts(
       if (monthEndDate > end) break;
 
       const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+      const monthDate = formatISODate(monthEndDate);
+
+      // Get the effective rate for this month
+      const effectiveRate = getEffectiveRate(goal, monthDate) / 100;
+      const monthlyRate =
+        goal.compoundingFrequency === 'yearly'
+          ? 0 // Yearly compounding - only apply at year end
+          : goal.compoundingFrequency === 'daily'
+            ? Math.pow(1 + effectiveRate / 365, 30) - 1 // Approximate daily compounding per month
+            : effectiveRate / 12; // Monthly compounding
 
       // Add actual transactions for this month to balance first
       const actualContributions = transactionsByGoalAndMonth[goal.id]?.[monthKey] ?? 0;
@@ -290,7 +295,7 @@ function generateInterestForecasts(
       if (goal.compoundingFrequency === 'yearly') {
         // Only apply interest in December (or goal's deadline month if set)
         if (month === 11) {
-          interestAmount = Math.round(balance * rate);
+          interestAmount = Math.round(balance * effectiveRate);
         }
       } else {
         interestAmount = Math.round(balance * monthlyRate);
@@ -299,7 +304,7 @@ function generateInterestForecasts(
       if (interestAmount > 0) {
         results.push({
           type: 'savings',
-          date: formatISODate(monthEndDate),
+          date: monthDate,
           amountCents: interestAmount,
           description: `Interest (${goal.name})`,
           categoryId: null,

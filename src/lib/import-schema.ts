@@ -82,6 +82,12 @@ const transactionSchema = baseEntitySchema.extend({
   importedAt: z.string().optional(),
 });
 
+// Interest Rate Schedule Entry
+const interestRateEntrySchema = z.object({
+  effectiveDate: z.string(),
+  annualRate: z.number().min(0).max(100),
+});
+
 // Savings Goal
 const savingsGoalSchema = baseEntitySchema.extend({
   name: z.string().min(1).max(100),
@@ -90,6 +96,7 @@ const savingsGoalSchema = baseEntitySchema.extend({
   annualInterestRate: z.number().min(0).max(100).optional(),
   compoundingFrequency: z.enum(['daily', 'monthly', 'yearly']).optional(),
   isEmergencyFund: z.boolean().optional(),
+  interestRateSchedule: z.array(interestRateEntrySchema).max(100).optional(),
 });
 
 // Balance Anchor

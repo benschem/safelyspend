@@ -5,7 +5,7 @@ import { useSavingsGoals } from './use-savings-goals';
 import { useSavingsAnchors } from './use-savings-anchors';
 import { useCategories } from './use-categories';
 import { getMonthsBetween, toMonthlyCents, type CadenceType } from '@/lib/utils';
-import type { Category, Cadence } from '@/lib/types';
+import type { Category, Cadence, InterestRateEntry } from '@/lib/types';
 
 export interface MonthlySpending {
   month: string; // YYYY-MM
@@ -61,6 +61,7 @@ export interface GoalMonthlySavings {
   startingBalance: number; // Balance at start of date range (for chart calculations)
   deadline: string | undefined;
   annualInterestRate: number | undefined;
+  interestRateSchedule: InterestRateEntry[] | undefined;
   monthlySavings: MonthlySavingsItem[];
 }
 
@@ -552,6 +553,7 @@ export function useReportsData(scenarioId: string | null, startDate: string, end
         startingBalance,
         deadline: goal.deadline,
         annualInterestRate: goal.annualInterestRate,
+        interestRateSchedule: goal.interestRateSchedule,
         monthlySavings: monthlySavingsData,
       };
     });

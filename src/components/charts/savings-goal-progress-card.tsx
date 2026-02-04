@@ -7,7 +7,9 @@ import {
   PiggyBank,
   Ambulance,
 } from 'lucide-react';
-import { formatCents, formatMonth } from '@/lib/utils';
+import { formatCents, formatMonth, today as getToday } from '@/lib/utils';
+import { getEffectiveRate } from '@/lib/interest-rate';
+import type { InterestRateEntry, SavingsGoal } from '@/lib/types';
 
 interface MonthlySavings {
   month: string;
@@ -23,6 +25,7 @@ interface SavingsGoalProgressCardProps {
   currentBalance: number;
   deadline: string | undefined;
   annualInterestRate: number | undefined;
+  interestRateSchedule?: InterestRateEntry[];
   monthlySavings: MonthlySavings[];
   isEmergencyFund?: boolean;
 }
@@ -35,6 +38,7 @@ function calculateExpectedCompletion(
   targetAmount: number,
   monthlySavings: MonthlySavings[],
   annualInterestRate: number | undefined,
+  interestRateSchedule?: InterestRateEntry[],
 ): { month: string; monthsAway: number } | null {
   if (targetAmount <= 0) return null;
   if (currentBalance >= targetAmount) return { month: 'reached', monthsAway: 0 };
@@ -44,17 +48,32 @@ function calculateExpectedCompletion(
   const monthCount = monthlySavings.length || 1;
   const avgMonthlyContribution = totalContributions / monthCount;
 
-  if (avgMonthlyContribution <= 0 && (!annualInterestRate || annualInterestRate <= 0)) {
+  const hasInterest =
+    (annualInterestRate && annualInterestRate > 0) ||
+    (interestRateSchedule && interestRateSchedule.length > 0);
+
+  if (avgMonthlyContribution <= 0 && !hasInterest) {
     return null; // No way to reach goal
   }
 
-  const monthlyRate = annualInterestRate ? annualInterestRate / 100 / 12 : 0;
+  // Build a minimal goal-like object for getEffectiveRate
+  const goalForRate = {
+    annualInterestRate,
+    interestRateSchedule,
+  } as Parameters<typeof getEffectiveRate>[0];
+
   let balance = currentBalance;
   let months = 0;
   const maxMonths = 600; // 50 years max
+  const now = new Date();
 
   // Simulate month by month
   while (balance < targetAmount && months < maxMonths) {
+    const simDate = new Date(now.getFullYear(), now.getMonth() + months, 28);
+    const simDateStr = `${simDate.getFullYear()}-${String(simDate.getMonth() + 1).padStart(2, '0')}-${String(simDate.getDate()).padStart(2, '0')}`;
+    const effectiveRate = getEffectiveRate(goalForRate, simDateStr);
+    const monthlyRate = effectiveRate ? effectiveRate / 100 / 12 : 0;
+
     balance += avgMonthlyContribution;
     balance += balance * monthlyRate; // Compound interest
     months++;
@@ -63,7 +82,6 @@ function calculateExpectedCompletion(
   if (months >= maxMonths) return null;
 
   // Calculate the actual month
-  const now = new Date();
   const targetDate = new Date(now.getFullYear(), now.getMonth() + months, 1);
   const targetMonth = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
 
@@ -76,6 +94,7 @@ export function SavingsGoalProgressCard({
   currentBalance,
   deadline,
   annualInterestRate,
+  interestRateSchedule,
   monthlySavings,
   isEmergencyFund,
 }: SavingsGoalProgressCardProps) {
@@ -84,10 +103,22 @@ export function SavingsGoalProgressCard({
 
   const isGoalReached = currentBalance >= targetAmount && targetAmount > 0;
 
+  // Compute effective rate for display (today's rate considering schedule)
+  const displayRate = useMemo(() => {
+    const goalForRate = { annualInterestRate, interestRateSchedule } as SavingsGoal;
+    return getEffectiveRate(goalForRate, getToday());
+  }, [annualInterestRate, interestRateSchedule]);
+
   const expectedCompletion = useMemo(
     () =>
-      calculateExpectedCompletion(currentBalance, targetAmount, monthlySavings, annualInterestRate),
-    [currentBalance, targetAmount, monthlySavings, annualInterestRate],
+      calculateExpectedCompletion(
+        currentBalance,
+        targetAmount,
+        monthlySavings,
+        annualInterestRate,
+        interestRateSchedule,
+      ),
+    [currentBalance, targetAmount, monthlySavings, annualInterestRate, interestRateSchedule],
   );
 
   // Find the month the goal was reached by walking backwards through contributions
@@ -177,10 +208,10 @@ export function SavingsGoalProgressCard({
           )}
           {goalName}
         </h4>
-        {annualInterestRate && annualInterestRate > 0 && (
+        {displayRate > 0 && (
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
             <BadgePercent className="h-3.5 w-3.5" />
-            <span>{annualInterestRate}%</span>
+            <span>{displayRate}%</span>
           </div>
         )}
       </div>

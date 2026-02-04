@@ -30,6 +30,7 @@ import { SavingsGoalDialog } from '@/components/dialogs/savings-goal-dialog';
 import { SavingsTransactionDialog } from '@/components/dialogs/savings-transaction-dialog';
 import { SavingsGoalProgressCard } from '@/components/charts';
 import { formatCents, formatMonth, today as getToday } from '@/lib/utils';
+import { getEffectiveRate } from '@/lib/interest-rate';
 import type { SavingsGoal } from '@/lib/types';
 
 interface OutletContext {
@@ -146,10 +147,28 @@ export function SavingsIndexPage() {
       .reduce((sum, c) => sum + c.amountCents, 0);
     const plannedMonthlyRate = Math.round(totalPlannedSavings / 12);
 
-    // Annual interest (based on current balances and interest rates)
+    // Annual interest: project 12 months forward using per-month effective rates
     const annualInterest = savingsByGoal.reduce((sum, g) => {
-      if (!g.annualInterestRate || g.annualInterestRate <= 0) return sum;
-      return sum + Math.round(g.currentBalance * (g.annualInterestRate / 100));
+      const goalObj = goalMap[g.goalId];
+      const hasInterest =
+        (g.annualInterestRate && g.annualInterestRate > 0) ||
+        (g.interestRateSchedule && g.interestRateSchedule.length > 0);
+      if (!hasInterest) return sum;
+
+      let totalInterest = 0;
+      let balance = g.currentBalance;
+      const nowDate = new Date(today);
+      for (let i = 0; i < 12; i++) {
+        const simDate = new Date(nowDate.getFullYear(), nowDate.getMonth() + i, 28);
+        const simDateStr = `${simDate.getFullYear()}-${String(simDate.getMonth() + 1).padStart(2, '0')}-${String(simDate.getDate()).padStart(2, '0')}`;
+        const rate = goalObj
+          ? getEffectiveRate(goalObj, simDateStr)
+          : (g.annualInterestRate ?? 0);
+        const monthlyInterest = Math.round(balance * (rate / 100 / 12));
+        totalInterest += monthlyInterest;
+        balance += monthlyInterest;
+      }
+      return sum + totalInterest;
     }, 0);
 
     // Find the nearest expected completion date across unreached goals
@@ -159,17 +178,26 @@ export function SavingsIndexPage() {
       const totalContrib = g.monthlySavings.reduce((s, m) => s + m.actual + m.forecast, 0);
       const count = g.monthlySavings.length || 1;
       const avgMonthly = totalContrib / count;
-      const monthlyRate = g.annualInterestRate ? g.annualInterestRate / 100 / 12 : 0;
-      if (avgMonthly <= 0 && monthlyRate <= 0) continue;
+      const goalObj = goalMap[g.goalId];
+      const hasInterest =
+        (g.annualInterestRate && g.annualInterestRate > 0) ||
+        (g.interestRateSchedule && g.interestRateSchedule.length > 0);
+      if (avgMonthly <= 0 && !hasInterest) continue;
       let bal = g.currentBalance;
       let months = 0;
+      const nowDate = new Date(today);
       while (bal < g.targetAmount && months < 600) {
+        const simDate = new Date(nowDate.getFullYear(), nowDate.getMonth() + months, 28);
+        const simDateStr = `${simDate.getFullYear()}-${String(simDate.getMonth() + 1).padStart(2, '0')}-${String(simDate.getDate()).padStart(2, '0')}`;
+        const effectiveRate = goalObj
+          ? getEffectiveRate(goalObj, simDateStr)
+          : (g.annualInterestRate ?? 0);
+        const monthlyRate = effectiveRate ? effectiveRate / 100 / 12 : 0;
         bal += avgMonthly;
         bal += bal * monthlyRate;
         months++;
       }
       if (months >= 600) continue;
-      const nowDate = new Date(today);
       const d = new Date(nowDate.getFullYear(), nowDate.getMonth() + months, 1);
       const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       if (!nextGoalDate || month < nextGoalDate) nextGoalDate = month;
@@ -185,7 +213,7 @@ export function SavingsIndexPage() {
       annualInterest,
       nextGoalDate,
     };
-  }, [savingsByGoal, savingsTransactions, savingsContributions]);
+  }, [savingsByGoal, savingsTransactions, savingsContributions, goalMap]);
 
   // Get transaction count per goal for delete warning
   const transactionCountByGoal = useMemo(() => {
@@ -368,6 +396,7 @@ export function SavingsIndexPage() {
                     currentBalance={goal.currentBalance}
                     deadline={goal.deadline}
                     annualInterestRate={goal.annualInterestRate}
+                    {...(goal.interestRateSchedule ? { interestRateSchedule: goal.interestRateSchedule } : {})}
                     monthlySavings={goal.monthlySavings}
                     isEmergencyFund={savingsGoal?.isEmergencyFund ?? false}
                   />

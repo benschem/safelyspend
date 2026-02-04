@@ -69,6 +69,15 @@ export function useSavingsGoals() {
         if (updates.deadline === undefined && 'deadline' in updates) delete goal.deadline;
         if (updates.annualInterestRate === undefined && 'annualInterestRate' in updates)
           delete goal.annualInterestRate;
+        // Clear schedule if set to empty array or undefined
+        if ('interestRateSchedule' in updates) {
+          if (
+            !updates.interestRateSchedule ||
+            updates.interestRateSchedule.length === 0
+          ) {
+            delete goal.interestRateSchedule;
+          }
+        }
       });
     },
     [],
