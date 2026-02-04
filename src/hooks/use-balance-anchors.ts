@@ -43,7 +43,7 @@ export function useBalanceAnchors() {
       // Check for existing anchor on same date
       const existingOnDate = rawAnchors.find((a) => a.date === data.date);
       if (existingOnDate) {
-        throw new Error('An anchor already exists for this date');
+        throw new Error('You already have a balance set for this date. Edit the existing one or choose a different date.');
       }
 
       const timestamp = now();
@@ -66,7 +66,7 @@ export function useBalanceAnchors() {
       if (updates.date) {
         const existingOnDate = rawAnchors.find((a) => a.date === updates.date && a.id !== id);
         if (existingOnDate) {
-          throw new Error('An anchor already exists for this date');
+          throw new Error('You already have a balance set for this date. Edit the existing one or choose a different date.');
         }
       }
 

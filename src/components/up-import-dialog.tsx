@@ -169,9 +169,9 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
         setDuplicates([...dupes, ...crossFileDupes]);
         setSkippedCount(totalSkipped);
         setStep('preview');
-      } catch (err) {
+      } catch {
         setErrors([
-          `Failed to read files: ${err instanceof Error ? err.message : 'Unknown error'}`,
+          'Could not read the selected file(s). Please make sure they are valid CSV files and try again.',
         ]);
       }
     },

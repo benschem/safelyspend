@@ -225,12 +225,12 @@ export function validateImport(rawData: unknown): ValidatedBudgetData {
 export function getImportErrorMessage(error: z.ZodError): string {
   const firstIssue = error.issues[0];
   if (!firstIssue) {
-    return 'Invalid data format';
+    return 'The file doesn\u2019t appear to be a valid budget export. Make sure the file was exported from this app.';
   }
 
-  const path = firstIssue.path.join('.');
+  const path = firstIssue.path.join(' \u203A ');
   if (path) {
-    return `Invalid data at "${path}": ${firstIssue.message}`;
+    return `The import file contains invalid data (${path}: ${firstIssue.message}). Make sure the file was exported from this app.`;
   }
   return firstIssue.message;
 }

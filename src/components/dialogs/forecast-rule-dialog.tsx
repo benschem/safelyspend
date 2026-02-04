@@ -149,7 +149,7 @@ export function ForecastRuleDialog({
     setFormError(null);
 
     if (!scenarioId) {
-      setFormError('No scenario selected');
+      setFormError('Something went wrong. Please close this dialog and try again.');
       return;
     }
 

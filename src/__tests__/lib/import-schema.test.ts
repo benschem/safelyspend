@@ -281,7 +281,7 @@ describe('getImportErrorMessage', () => {
     // Create an empty ZodError manually
     const emptyError = new z.ZodError([]);
     const message = getImportErrorMessage(emptyError);
-    expect(message).toBe('Invalid data format');
+    expect(message).toContain('valid budget export');
   });
 });
 

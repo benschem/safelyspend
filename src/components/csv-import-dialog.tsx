@@ -197,7 +197,7 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
 
         setStep('mapping');
       } catch {
-        setParseErrors(['Failed to read file.']);
+        setParseErrors(['Could not read the file. Please check it\u2019s a valid CSV and try again.']);
       }
     },
     [],
