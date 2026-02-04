@@ -52,4 +52,11 @@ export default [
       },
     },
   },
+  // autoFocus inside modal dialogs is the accessible pattern (focus must land inside the trap)
+  {
+    files: ['src/components/dialogs/**'],
+    rules: {
+      'jsx-a11y/no-autofocus': 'off',
+    },
+  },
 ];

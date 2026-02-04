@@ -144,7 +144,13 @@ export function BudgetRuleDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSave();
+          }}
+          className="space-y-4"
+        >
           {formError && (
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
               {formError}
@@ -164,6 +170,7 @@ export function BudgetRuleDialog({
                 placeholder="0.00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
+                autoFocus
               />
             </div>
 
@@ -273,19 +280,19 @@ export function BudgetRuleDialog({
           <div className="flex justify-between gap-3 pt-2">
             <div>
               {isEditing && (
-                <Button variant="destructive" onClick={handleDelete}>
+                <Button type="button" variant="destructive" onClick={handleDelete}>
                   Remove
                 </Button>
               )}
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSave}>{isEditing ? 'Save' : 'Set'}</Button>
+              <Button type="submit">{isEditing ? 'Save' : 'Set'}</Button>
             </div>
           </div>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

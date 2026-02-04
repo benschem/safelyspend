@@ -116,7 +116,13 @@ export function ScenarioDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSave();
+          }}
+          className="space-y-4"
+        >
           {formError && (
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
               {formError}
@@ -132,6 +138,7 @@ export function ScenarioDialog({
               placeholder="e.g., Base Budget, Optimistic"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              autoFocus
             />
           </div>
 
@@ -175,12 +182,12 @@ export function ScenarioDialog({
           )}
 
           <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>{isEditing ? 'Save' : 'Create'} Scenario</Button>
+            <Button type="submit">{isEditing ? 'Save' : 'Create'} Scenario</Button>
           </div>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

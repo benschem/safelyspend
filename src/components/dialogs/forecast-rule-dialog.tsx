@@ -242,7 +242,13 @@ export function ForecastRuleDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSave();
+          }}
+          className="space-y-4"
+        >
           {formError && (
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
               {formError}
@@ -279,6 +285,7 @@ export function ForecastRuleDialog({
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              autoFocus
             />
           </div>
 
@@ -452,12 +459,12 @@ export function ForecastRuleDialog({
           )}
 
           <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>{isEditing ? 'Save' : 'Add'}</Button>
+            <Button type="submit">{isEditing ? 'Save' : 'Add'}</Button>
           </div>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

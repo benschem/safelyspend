@@ -75,7 +75,13 @@ export function CategoryDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSave();
+          }}
+          className="space-y-4"
+        >
           {formError && (
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
               {formError}
@@ -91,22 +97,17 @@ export function CategoryDialog({
               placeholder="e.g., Groceries, Utilities"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleSave();
-                }
-              }}
+              autoFocus
             />
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>{isEditing ? 'Save' : 'Add'} Category</Button>
+            <Button type="submit">{isEditing ? 'Save' : 'Add'} Category</Button>
           </div>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

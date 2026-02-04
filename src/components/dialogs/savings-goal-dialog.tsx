@@ -174,7 +174,13 @@ export function SavingsGoalDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSave();
+          }}
+          className="space-y-4"
+        >
           {formError && (
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
               {formError}
@@ -190,6 +196,7 @@ export function SavingsGoalDialog({
               placeholder="e.g., Emergency Fund, Holiday"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              autoFocus
             />
           </div>
 
@@ -330,6 +337,7 @@ export function SavingsGoalDialog({
           <div className="flex items-center justify-between gap-3 pt-2">
             {isEditing && deleteSavingsGoal ? (
               <Button
+                type="button"
                 variant={isDeleting ? 'destructive' : 'ghost'}
                 onClick={handleDelete}
                 onBlur={() => setTimeout(() => setIsDeleting(false), 200)}
@@ -346,13 +354,13 @@ export function SavingsGoalDialog({
               <div />
             )}
             <div className="flex gap-3">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSave}>{isEditing ? 'Save' : 'Create'} Goal</Button>
+              <Button type="submit">{isEditing ? 'Save' : 'Create'} Goal</Button>
             </div>
           </div>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

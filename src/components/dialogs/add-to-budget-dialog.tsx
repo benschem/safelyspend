@@ -94,7 +94,13 @@ export function AddToBudgetDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 pt-2">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSave();
+          }}
+          className="space-y-4 pt-2"
+        >
           {formError && (
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
               {formError}
@@ -123,6 +129,7 @@ export function AddToBudgetDialog({
                 min="0"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
+                autoFocus
               />
             </div>
             <div className="space-y-2">
@@ -209,14 +216,14 @@ export function AddToBudgetDialog({
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>
+            <Button type="submit">
               {existingBudget ? 'Update Budget' : 'Create Budget'}
             </Button>
           </div>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

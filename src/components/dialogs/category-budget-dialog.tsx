@@ -256,7 +256,13 @@ export function CategoryBudgetDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSave();
+          }}
+          className="space-y-4"
+        >
           {formError && (
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
               {formError}
@@ -272,12 +278,7 @@ export function CategoryBudgetDialog({
               placeholder="e.g., Groceries, Transport"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleSave();
-                }
-              }}
+              autoFocus
             />
           </div>
 
@@ -475,7 +476,7 @@ export function CategoryBudgetDialog({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" onClick={handleArchiveToggle}>
+                      <Button type="button" variant="ghost" size="icon" onClick={handleArchiveToggle}>
                         {category.isArchived ? (
                           <ArchiveRestore className="h-4 w-4" />
                         ) : (
@@ -494,6 +495,7 @@ export function CategoryBudgetDialog({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
+                        type="button"
                         variant={confirmingDelete ? 'destructive' : 'ghost'}
                         size="icon"
                         onClick={handleDelete}
@@ -512,13 +514,13 @@ export function CategoryBudgetDialog({
 
             {/* Right side: Cancel/Save buttons */}
             <div className="flex gap-3">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSave}>{isEditing ? 'Save Changes' : 'Add Category'}</Button>
+              <Button type="submit">{isEditing ? 'Save Changes' : 'Add Category'}</Button>
             </div>
           </div>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
