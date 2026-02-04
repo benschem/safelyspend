@@ -662,9 +662,7 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
               )}
             >
               <div className="mb-2 flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/10">
-                  <ChartPie className="h-4 w-4 text-green-500" />
-                </div>
+                <ChartPie className="h-5 w-5 text-muted-foreground" />
                 <h3 className="text-lg font-semibold">
                   {surplusHidden ? 'Budget Breakdown' : 'Income Breakdown'}
                 </h3>
@@ -681,7 +679,7 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
                         : 0;
                       return (
                         <span
-                          className={`inline-block min-w-[4.5rem] ${incomeDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
+                          className={incomeDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'hidden'}
                         >
                           {' '}
                           ({incomeDelta > 0 ? '+' : ''}
