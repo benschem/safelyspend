@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.25.0',
+    date: '2026-02-04',
+    changes: [
+      'Warnings appear when creating a transaction or forecast that looks like a duplicate',
+      'Deleting transactions, categories, and forecast rules now shows an undo option for 5 seconds',
+    ],
+  },
+  {
     version: '0.24.0',
     date: '2026-02-04',
     changes: [
