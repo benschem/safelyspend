@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -10,9 +9,9 @@ import {
   BanknoteArrowDown,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   History,
-  Sparkles,
-  Plus,
+
   CheckCircle2,
   Pin,
   CircleDot,
@@ -20,10 +19,10 @@ import {
 } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
-import { useTransactions } from '@/hooks/use-transactions';
+
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
-import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
+
 import { useBudgetPeriodData } from '@/hooks/use-budget-period-data';
 import { ScenarioDelta } from '@/components/ui/scenario-delta';
 import { useWhatIf } from '@/contexts/what-if-context';
@@ -47,30 +46,19 @@ const MONTHS = [
   'December',
 ];
 
-interface OutletContext {
-  activeScenarioId: string | null;
-  startDate: string;
-  endDate: string;
-}
-
 interface OverviewTabProps {
   activeScenarioId: string;
 }
 
 export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
-  const { startDate, endDate } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
   const { getTotalDelta, isViewingDefault, defaultBudgetByCategoryMonthly } = useScenarioDiff();
   const { isWhatIfMode } = useWhatIf();
-  const { addTransaction, updateTransaction } = useTransactions(startDate, endDate);
   const { budgetRules } = useBudgetRules(activeScenarioId);
   // Selected period state - defaults to current month
   const [selectedMonth, setSelectedMonth] = useState(() => new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState(() => new Date().getFullYear());
-
-  // Transaction dialog state
-  const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
 
   // Get forecast date range for the selected month
   const forecastDateRange = useMemo(() => {
@@ -360,130 +348,129 @@ export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
   const heroStatusLabel = useMemo(() => {
     if (!headline.hasPlan && !isPastPeriod) return 'NO PLAN SET';
     if (headline.amount === 0 && headline.isPositive && headline.hasPlan) return 'BUDGET BALANCED';
-    return headline.isPositive ? 'SURPLUS' : 'SHORTFALL';
+    if (isPastPeriod) {
+      return headline.isPositive ? 'ACTUAL SURPLUS' : 'ACTUAL SHORTFALL';
+    }
+    return headline.isPositive ? 'PROJECTED SURPLUS' : 'PROJECTED SHORTFALL';
   }, [headline, isPastPeriod]);
 
   if (isLoading) {
     return null;
   }
 
+  // Whether the selected month is the current month (can't go further forward)
+  const now = new Date();
+  const isAtCurrentMonth =
+    selectedMonth.getFullYear() === now.getFullYear() &&
+    selectedMonth.getMonth() === now.getMonth();
+
   return (
     <div className="space-y-6">
-      {/* Add Expense button */}
-      <div className="flex justify-end">
-        <Button className="h-10" onClick={() => setTransactionDialogOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Add Expense
-        </Button>
-      </div>
-
-      {/* Hero Header - Period Selector + Surplus/Shortfall */}
-      <div className="mb-4 min-h-28 text-center sm:min-h-32">
-        {/* Today link - above period when not current */}
-        <div className="flex min-h-8 items-center justify-center">
-          {!isCurrentPeriod && (
-            <Button variant="ghost" size="sm" onClick={goToCurrent} className="text-xs">
-              {isPastPeriod ? 'Today →' : '← Today'}
-            </Button>
-          )}
-        </div>
-        {/* Period Navigation */}
-        <div className="flex items-center justify-center gap-2">
-          <Button variant="ghost" size="icon" onClick={goToPrevious} className="h-10 w-10">
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <Popover
-            open={calendarOpen}
-            onOpenChange={(open) => {
-              setCalendarOpen(open);
-              if (open) setPickerYear(selectedYear);
-            }}
-          >
-            <PopoverTrigger asChild>
+      {/* Period Navigation - top left */}
+      <div className="flex items-center gap-2">
+        <Popover
+          open={calendarOpen}
+          onOpenChange={(open) => {
+            setCalendarOpen(open);
+            if (open) setPickerYear(selectedYear);
+          }}
+        >
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex h-9 w-44 cursor-pointer items-center justify-between rounded-md border border-input bg-background px-3 text-sm shadow-sm hover:bg-muted/50"
+            >
+              <span>{periodLabel}</span>
+              <ChevronDown className="h-4 w-4 opacity-50" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-3" align="start">
+            {/* Year navigation */}
+            <div className="mb-3 flex items-center justify-between">
               <Button
                 variant="ghost"
-                className="w-52 text-3xl font-bold tracking-tight hover:bg-transparent hover:text-foreground/80 sm:w-56"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setPickerYear((y) => y - 1)}
               >
-                {periodLabel}
+                <ChevronLeft className="h-4 w-4" />
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-3" align="center">
-              {/* Year navigation */}
-              <div className="mb-3 flex items-center justify-between">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => setPickerYear((y) => y - 1)}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm font-semibold">{pickerYear}</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => setPickerYear((y) => y + 1)}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-              {/* Month grid */}
-              <div className="grid grid-cols-3 gap-1">
-                {MONTHS.map((month, index) => {
-                  const isSelected =
-                    pickerYear === selectedYear && index === selectedMonthIndex;
-                  const isCurrent =
-                    pickerYear === new Date().getFullYear() && index === new Date().getMonth();
-                  return (
-                    <Button
-                      key={month}
-                      variant={isSelected ? 'default' : 'ghost'}
-                      size="sm"
-                      className={cn(
-                        'h-8 text-xs',
-                        isCurrent && !isSelected && 'border border-primary',
-                      )}
-                      onClick={() => {
-                        setSelectedMonth(new Date(pickerYear, index, 1));
-                        setCalendarOpen(false);
-                      }}
-                    >
-                      {month.slice(0, 3)}
-                    </Button>
-                  );
-                })}
-              </div>
-            </PopoverContent>
-          </Popover>
-          <Button variant="ghost" size="icon" onClick={goToNext} className="h-10 w-10">
-            <ChevronRight className="h-5 w-5" />
+              <span className="text-sm font-semibold">{pickerYear}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setPickerYear((y) => y + 1)}
+                disabled={pickerYear >= now.getFullYear()}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            {/* Month grid */}
+            <div className="grid grid-cols-3 gap-1">
+              {MONTHS.map((month, index) => {
+                const isSelected =
+                  pickerYear === selectedYear && index === selectedMonthIndex;
+                const isCurrent =
+                  pickerYear === now.getFullYear() && index === now.getMonth();
+                const isFutureMonth =
+                  pickerYear > now.getFullYear() ||
+                  (pickerYear === now.getFullYear() && index > now.getMonth());
+                return (
+                  <Button
+                    key={month}
+                    variant={isSelected ? 'default' : 'ghost'}
+                    size="sm"
+                    disabled={isFutureMonth}
+                    className={cn(
+                      'h-8 text-xs',
+                      isCurrent && !isSelected && 'border border-primary',
+                    )}
+                    onClick={() => {
+                      setSelectedMonth(new Date(pickerYear, index, 1));
+                      setCalendarOpen(false);
+                    }}
+                  >
+                    {month.slice(0, 3)}
+                  </Button>
+                );
+              })}
+            </div>
+          </PopoverContent>
+        </Popover>
+        <Button variant="ghost" size="icon" onClick={goToPrevious} className="h-9 w-9">
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={goToNext}
+          className="h-9 w-9"
+          disabled={isAtCurrentMonth}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+        {!isCurrentPeriod && (
+          <Button variant="ghost" size="sm" onClick={goToCurrent} className="text-xs">
+            Today →
           </Button>
-        </div>
+        )}
+      </div>
 
-        {/* Status line - day counter or badge */}
-        <div className="mt-2 flex min-h-9 items-center justify-center gap-2">
+      {/* Hero Header */}
+      <div className="mb-4 min-h-28 text-center sm:min-h-32">
+        {/* Status pill */}
+        <div className="flex min-h-8 items-center justify-center">
           {isCurrentPeriod && (
-            <>
-              <span className="flex items-center gap-1 rounded-full bg-gray-500/15 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-                <CircleDot className="h-3 w-3" />
-                Today
-              </span>
-              <span className="text-sm text-muted-foreground">
-                Day {periodCashFlow.dayOfPeriod} of {periodCashFlow.daysInPeriod}
-              </span>
-            </>
+            <span className="flex items-center gap-1 rounded-full bg-gray-500/15 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400">
+              <CircleDot className="h-3 w-3" />
+              Today
+            </span>
           )}
           {isPastPeriod && (
             <span className="flex items-center gap-1 rounded-full bg-slate-500/10 px-2.5 py-1 text-xs text-slate-600 dark:text-slate-400">
               <History className="h-3 w-3" />
               Historical
-            </span>
-          )}
-          {isFuturePeriod && (
-            <span className="flex items-center gap-1 rounded-full bg-violet-500/10 px-2.5 py-1 text-xs text-violet-600 dark:text-violet-400">
-              <Sparkles className="h-3 w-3" />
-              Projected
             </span>
           )}
         </div>
@@ -522,6 +509,12 @@ export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
               {formatCents(headline.amount)}
             </p>
           )}
+          <p className="mt-1 text-sm text-muted-foreground">
+            {isCurrentPeriod
+              ? `Day ${periodCashFlow.dayOfPeriod} of ${periodCashFlow.daysInPeriod}`
+              : periodLabel}
+          </p>
+          <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
           <ScenarioDelta
             delta={getTotalDelta(
               'surplus',
@@ -530,16 +523,8 @@ export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
                 periodCashFlow.budgeted.expected -
                 periodCashFlow.savings.expected,
             )}
-            className="mt-1"
             show={showDeltas}
           />
-          <p className="mt-1 text-sm text-muted-foreground">
-            {isFuturePeriod
-              ? 'expected by end of month'
-              : isPastPeriod
-                ? 'actual'
-                : 'projected'}
-          </p>
         </div>
 
       </div>
@@ -871,13 +856,6 @@ export function OverviewTab({ activeScenarioId }: OverviewTabProps) {
         )}
       </div>
 
-      <TransactionDialog
-        open={transactionDialogOpen}
-        onOpenChange={setTransactionDialogOpen}
-        initialType="expense"
-        addTransaction={addTransaction}
-        updateTransaction={updateTransaction}
-      />
     </div>
   );
 }

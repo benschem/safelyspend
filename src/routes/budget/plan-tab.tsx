@@ -13,9 +13,12 @@ import {
   Banknote,
   BanknoteArrowUp,
   BanknoteArrowDown,
+  ChartPie,
+  Sparkles,
 } from 'lucide-react';
 import { cn, formatCents } from '@/lib/utils';
 import { CHART_COLORS } from '@/lib/chart-colors';
+import { useScenarios } from '@/hooks/use-scenarios';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useForecasts } from '@/hooks/use-forecasts';
@@ -65,6 +68,7 @@ interface PlanTabProps {
 }
 
 export function PlanTab({ activeScenarioId }: PlanTabProps) {
+  const { activeScenario } = useScenarios();
   const { isWhatIfMode } = useWhatIf();
   const { getTotalDelta, isViewingDefault } = useScenarioDiff();
   const showDeltas = !isViewingDefault || isWhatIfMode;
@@ -352,71 +356,6 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
     };
   }, [categoryRows, incomeForecasts, savingsForecasts, breakdownPeriod]);
 
-  // Track record calculations (historical averages)
-  const hasAnyTransactions = allTransactions.length > 0;
-
-  const trackRecord = useMemo(() => {
-    if (allTransactions.length === 0) {
-      return { income: 0, expenses: 0, savings: 0, net: 0 };
-    }
-
-    const dates = allTransactions.map((t) => new Date(t.date));
-    const firstDate = new Date(Math.min(...dates.map((d) => d.getTime())));
-    const lastDate = new Date(Math.max(...dates.map((d) => d.getTime())));
-
-    const daysDiff = Math.max(
-      1,
-      Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)) + 1,
-    );
-
-    let periods: number;
-    switch (breakdownPeriod) {
-      case 'weekly':
-        periods = Math.max(1, daysDiff / 7);
-        break;
-      case 'fortnightly':
-        periods = Math.max(1, daysDiff / 14);
-        break;
-      case 'monthly':
-        periods = Math.max(
-          1,
-          (lastDate.getFullYear() - firstDate.getFullYear()) * 12 +
-            (lastDate.getMonth() - firstDate.getMonth()) +
-            1,
-        );
-        break;
-      case 'quarterly':
-        periods = Math.max(1, daysDiff / 91);
-        break;
-      case 'yearly':
-        periods = Math.max(1, daysDiff / 365);
-        break;
-    }
-
-    const totalIncome = allTransactions
-      .filter((t) => t.type === 'income')
-      .reduce((sum, t) => sum + t.amountCents, 0);
-
-    const totalExpenses = allTransactions
-      .filter((t) => t.type === 'expense')
-      .reduce((sum, t) => sum + t.amountCents, 0);
-
-    const totalSavingsAmount = allTransactions
-      .filter((t) => t.type === 'savings')
-      .reduce((sum, t) => sum + t.amountCents, 0);
-
-    const income = Math.round(totalIncome / periods);
-    const expenses = Math.round(totalExpenses / periods);
-    const savings = Math.round(totalSavingsAmount / periods);
-
-    return {
-      income,
-      expenses,
-      savings,
-      net: income - expenses - savings,
-    };
-  }, [allTransactions, breakdownPeriod]);
-
   // Build chart segments
   const budgetBreakdownSegments = useMemo(() => {
     const orderedSegments = [
@@ -539,52 +478,46 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="weekly">Weekly</SelectItem>
-            <SelectItem value="fortnightly">Fortnightly</SelectItem>
-            <SelectItem value="monthly">Monthly</SelectItem>
-            <SelectItem value="quarterly">Quarterly</SelectItem>
-            <SelectItem value="yearly">Yearly</SelectItem>
+            <SelectItem value="weekly">Per week</SelectItem>
+            <SelectItem value="fortnightly">Per fortnight</SelectItem>
+            <SelectItem value="monthly">Per month</SelectItem>
+            <SelectItem value="quarterly">Per quarter</SelectItem>
+            <SelectItem value="yearly">Per year</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Budget Status Hero */}
       {(totals.income > 0 || isOvercommitted) && (
-        <div className="mb-6 min-h-28 text-center sm:min-h-32">
-          <div className="min-h-8" />
+        <div className="mb-4 min-h-28 text-center sm:min-h-32">
+          <div className="flex min-h-8 items-center justify-center">
+            <span className="flex items-center gap-1 rounded-full bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-600 dark:text-violet-400">
+              <Sparkles className="h-3 w-3" />
+              {activeScenario?.name ?? 'Default'}
+            </span>
+          </div>
           {isOvercommitted ? (
-            <>
+            <div className="mt-4">
               <p className="flex items-center justify-center gap-2 text-sm font-medium uppercase tracking-wide text-amber-500">
                 <CreditCard className="h-4 w-4" />
-                Overcommitted
+                Planned Shortfall
               </p>
               <p className="mt-2 text-5xl font-bold tracking-tight text-amber-500">
                 {formatCents(Math.abs(totals.unallocated))}
               </p>
-              <ScenarioDelta
-                delta={getTotalDelta('surplus', totals.monthlySurplus)}
-                className="mt-1"
-                show={showDeltas}
-              />
               <p className="mt-1 text-sm text-muted-foreground">
-                {totals.income > 0
-                  ? `${FREQUENCY_PER_LABELS[breakdownPeriod]} on average`
-                  : 'Add income to cover your planned expenses and savings'}
+                {totals.income === 0
+                  ? 'Add income to cover your planned expenses and savings'
+                  : FREQUENCY_PER_LABELS[breakdownPeriod]}
               </p>
               <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
-              {hasAnyTransactions && (
-                <p className="text-sm text-muted-foreground">
-                  Track Record:{' '}
-                  <span className={trackRecord.net >= 0 ? 'text-green-500' : 'text-amber-500'}>
-                    {trackRecord.net >= 0 ? '+' : ''}
-                    {formatCents(trackRecord.net)}
-                  </span>{' '}
-                  {FREQUENCY_PER_LABELS[breakdownPeriod]}
-                </p>
-              )}
-            </>
+              <ScenarioDelta
+                delta={getTotalDelta('surplus', totals.monthlySurplus)}
+                show={showDeltas}
+              />
+            </div>
           ) : isFullyAllocated ? (
-            <>
+            <div className="mt-4">
               <p className="flex items-center justify-center gap-2 text-sm font-medium uppercase tracking-wide text-green-500">
                 <Scale className="h-4 w-4" />
                 Budget Balanced
@@ -592,55 +525,33 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
               <p className="mt-2 text-5xl font-bold tracking-tight text-green-500">
                 Every dollar accounted for
               </p>
-              <ScenarioDelta
-                delta={getTotalDelta('surplus', totals.monthlySurplus)}
-                className="mt-1"
-                show={showDeltas}
-              />
               <p className="mt-1 text-sm text-muted-foreground">
-                {FREQUENCY_PER_LABELS[breakdownPeriod]} on average
+                {FREQUENCY_PER_LABELS[breakdownPeriod]}
               </p>
               <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
-              {hasAnyTransactions && (
-                <p className="text-sm text-muted-foreground">
-                  Track Record:{' '}
-                  <span className={trackRecord.net >= 0 ? 'text-green-500' : 'text-amber-500'}>
-                    {trackRecord.net >= 0 ? '+' : ''}
-                    {formatCents(trackRecord.net)}
-                  </span>{' '}
-                  {FREQUENCY_PER_LABELS[breakdownPeriod]}
-                </p>
-              )}
-            </>
+              <ScenarioDelta
+                delta={getTotalDelta('surplus', totals.monthlySurplus)}
+                show={showDeltas}
+              />
+            </div>
           ) : hasAvailable ? (
-            <>
+            <div className="mt-4">
               <p className="flex items-center justify-center gap-2 text-sm font-medium uppercase tracking-wide text-green-500">
                 <Banknote className="h-4 w-4" />
-                Surplus
+                Planned Surplus
               </p>
               <p className="mt-2 text-5xl font-bold tracking-tight text-green-500">
                 {formatCents(totals.unallocated)}
               </p>
-              <ScenarioDelta
-                delta={getTotalDelta('surplus', totals.monthlySurplus)}
-                className="mt-1"
-                show={showDeltas}
-              />
               <p className="mt-1 text-sm text-muted-foreground">
-                {FREQUENCY_PER_LABELS[breakdownPeriod]} on average
+                {FREQUENCY_PER_LABELS[breakdownPeriod]}
               </p>
               <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
-              {hasAnyTransactions && (
-                <p className="text-sm text-muted-foreground">
-                  Track Record:{' '}
-                  <span className={trackRecord.net >= 0 ? 'text-green-500' : 'text-amber-500'}>
-                    {trackRecord.net >= 0 ? '+' : ''}
-                    {formatCents(trackRecord.net)}
-                  </span>{' '}
-                  {FREQUENCY_PER_LABELS[breakdownPeriod]}
-                </p>
-              )}
-            </>
+              <ScenarioDelta
+                delta={getTotalDelta('surplus', totals.monthlySurplus)}
+                show={showDeltas}
+              />
+            </div>
           ) : null}
         </div>
       )}
@@ -658,13 +569,11 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
           <p className="mt-2 text-2xl font-bold">
             {totals.income > 0 ? formatCents(totals.income) : '—'}
           </p>
-          {hasAnyTransactions ? (
-            <p className="text-sm text-muted-foreground">{formatCents(trackRecord.income)} avg</p>
-          ) : totals.income > 0 ? (
+          {totals.income > 0 && (
             <p className="text-sm text-muted-foreground">
               {incomeRules.length} source{incomeRules.length !== 1 ? 's' : ''}
             </p>
-          ) : null}
+          )}
           <ScenarioDelta delta={getTotalDelta('income', totals.monthlyIncome)} show={showDeltas} />
         </div>
 
@@ -698,20 +607,11 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
           <p className="mt-2 text-2xl font-bold">
             {totals.variable > 0 ? formatCents(totals.variable) : '—'}
           </p>
-          {hasAnyTransactions && trackRecord.expenses > 0 ? (
-            <p
-              className={cn(
-                'text-sm',
-                trackRecord.expenses <= totals.variable ? 'text-green-500' : 'text-amber-500',
-              )}
-            >
-              {formatCents(trackRecord.expenses)} avg
-            </p>
-          ) : totals.income > 0 && totals.variable > 0 ? (
+          {totals.income > 0 && totals.variable > 0 && (
             <p className="text-sm text-muted-foreground">
               {Math.round((totals.variable / totals.income) * 100)}% of income
             </p>
-          ) : null}
+          )}
           <ScenarioDelta
             delta={getTotalDelta('budget', totals.monthlyVariable)}
             show={showDeltas}
@@ -729,20 +629,11 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
           <p className="mt-2 text-2xl font-bold">
             {totals.savings > 0 ? formatCents(totals.savings) : '—'}
           </p>
-          {hasAnyTransactions && trackRecord.savings > 0 ? (
-            <p
-              className={cn(
-                'text-sm',
-                trackRecord.savings >= totals.savings ? 'text-green-500' : 'text-amber-500',
-              )}
-            >
-              {formatCents(trackRecord.savings)} avg
-            </p>
-          ) : totals.income > 0 && totals.savings > 0 ? (
+          {totals.income > 0 && totals.savings > 0 && (
             <p className="text-sm text-muted-foreground">
               {Math.round((totals.savings / totals.income) * 100)}% of income
             </p>
-          ) : null}
+          )}
           <ScenarioDelta
             delta={getTotalDelta('savings', totals.monthlySavings)}
             show={showDeltas}
@@ -770,9 +661,14 @@ export function PlanTab({ activeScenarioId }: PlanTabProps) {
                 showDeltas && 'border-violet-500/30',
               )}
             >
-              <h3 className="mb-2 text-lg font-semibold">
-                {surplusHidden ? 'Budget Breakdown' : 'Income Breakdown'}
-              </h3>
+              <div className="mb-2 flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/10">
+                  <ChartPie className="h-4 w-4 text-green-500" />
+                </div>
+                <h3 className="text-lg font-semibold">
+                  {surplusHidden ? 'Budget Breakdown' : 'Income Breakdown'}
+                </h3>
+              </div>
               <p className="mb-4 text-sm text-muted-foreground">
                 {surplusHidden ? (
                   `How your ${formatCents(budgetTotal)} budget is allocated`

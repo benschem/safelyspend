@@ -25,6 +25,7 @@ import {
   Plus,
   Target,
   PiggyBank,
+  Banknote,
   ChevronDown,
   ChevronUp,
   BanknoteArrowUp,
@@ -89,8 +90,14 @@ export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
   // Transaction hooks with date filtering
   const pastQueryStartDate = pastFilterStartDate || undefined;
   const pastQueryEndDate = pastFilterEndDate || undefined;
-  const { transactions, allTransactions, addTransaction, updateTransaction, deleteTransaction } =
-    useTransactions(pastQueryStartDate, pastQueryEndDate);
+  const {
+    transactions,
+    allTransactions,
+    isLoading,
+    addTransaction,
+    updateTransaction,
+    deleteTransaction,
+  } = useTransactions(pastQueryStartDate, pastQueryEndDate);
 
   // Averages cadence
   const [averageCadence, setAverageCadence] = useState<AverageCadence>('monthly');
@@ -559,79 +566,116 @@ export function HistoryTab({ activeScenarioId }: HistoryTabProps) {
     ],
   );
 
+  if (isLoading) {
+    return null;
+  }
+
   return (
     <div className="space-y-6">
       {/* Track Record Summary */}
       {hasAnyTransactions && transactionDateRange && (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">
-              Based on {transactionDateRange.count.toLocaleString()} transactions from{' '}
-              {transactionDateRange.from} to {transactionDateRange.to}
-            </p>
+        <>
+          {/* Cadence selector - top left */}
+          <div>
             <Select
               value={averageCadence}
               onValueChange={(v) => setAverageCadence(v as AverageCadence)}
             >
-              <SelectTrigger className="w-36">
+              <SelectTrigger className="w-44">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="fortnightly">Fortnightly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-                <SelectItem value="quarterly">Quarterly</SelectItem>
-                <SelectItem value="yearly">Yearly</SelectItem>
+                <SelectItem value="weekly">Weekly average</SelectItem>
+                <SelectItem value="fortnightly">Fortnightly average</SelectItem>
+                <SelectItem value="monthly">Monthly average</SelectItem>
+                <SelectItem value="quarterly">Quarterly average</SelectItem>
+                <SelectItem value="yearly">Yearly average</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
+          {/* Hero - Average Net */}
+          <div className="mb-4 min-h-28 text-center sm:min-h-32">
+            <div className="flex min-h-8 items-center justify-center">
+              <span className="flex items-center gap-1 rounded-full bg-slate-500/10 px-2.5 py-1 text-xs text-slate-600 dark:text-slate-400">
+                <RotateCcw className="h-3 w-3" />
+                Historical
+              </span>
+            </div>
+            <div className="mt-4">
+              <p
+                className={cn(
+                  'flex items-center justify-center gap-2 text-sm font-medium uppercase tracking-wide',
+                  trackRecord.net >= 0 ? 'text-green-500' : 'text-amber-500',
+                )}
+              >
+                <Banknote className="h-4 w-4" />
+                Average Net
+              </p>
+              <p
+                className={cn(
+                  'mt-2 text-5xl font-bold tracking-tight',
+                  trackRecord.net >= 0 ? 'text-green-500' : 'text-amber-500',
+                )}
+              >
+                {trackRecord.net >= 0 ? '+' : ''}
+                {formatCents(trackRecord.net)}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Based on {transactionDateRange.count.toLocaleString()} transactions from{' '}
+                {transactionDateRange.from} to {transactionDateRange.to}
+              </p>
+              <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
+              <p className="invisible text-xs">placeholder</p>
+            </div>
+          </div>
+
           {/* Averages Cards */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div className="rounded-xl border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Avg Income</p>
-              <p className="mt-1 text-xl font-bold text-green-600">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border bg-card p-5">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/10">
+                  <BanknoteArrowUp className="h-4 w-4 text-green-500" />
+                </div>
+                <span className="text-sm text-muted-foreground">Average Income</span>
+              </div>
+              <p className="mt-2 text-2xl font-bold text-green-600">
                 {formatCents(trackRecord.income)}
               </p>
               <p className="text-xs text-muted-foreground">
                 {FREQUENCY_PER_LABELS[averageCadence]}
               </p>
             </div>
-            <div className="rounded-xl border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Avg Expenses</p>
-              <p className="mt-1 text-xl font-bold text-red-600">
+            <div className="rounded-xl border bg-card p-5">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10">
+                  <BanknoteArrowDown className="h-4 w-4 text-red-500" />
+                </div>
+                <span className="text-sm text-muted-foreground">Average Expenses</span>
+              </div>
+              <p className="mt-2 text-2xl font-bold text-red-600">
                 {formatCents(trackRecord.expenses)}
               </p>
               <p className="text-xs text-muted-foreground">
                 {FREQUENCY_PER_LABELS[averageCadence]}
               </p>
             </div>
-            <div className="rounded-xl border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Avg Savings</p>
-              <p className="mt-1 text-xl font-bold text-blue-600">
+            <div className="rounded-xl border bg-card p-5">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10">
+                  <PiggyBank className="h-4 w-4 text-blue-500" />
+                </div>
+                <span className="text-sm text-muted-foreground">Average Savings</span>
+              </div>
+              <p className="mt-2 text-2xl font-bold text-blue-600">
                 {formatCents(trackRecord.savings)}
               </p>
               <p className="text-xs text-muted-foreground">
                 {FREQUENCY_PER_LABELS[averageCadence]}
               </p>
             </div>
-            <div className="rounded-xl border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Avg Net</p>
-              <p
-                className={cn(
-                  'mt-1 text-xl font-bold',
-                  trackRecord.net >= 0 ? 'text-green-600' : 'text-amber-600',
-                )}
-              >
-                {trackRecord.net >= 0 ? '+' : ''}
-                {formatCents(trackRecord.net)}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {FREQUENCY_PER_LABELS[averageCadence]}
-              </p>
-            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* Transactions */}
