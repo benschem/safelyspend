@@ -79,10 +79,10 @@ export function formatCents(cents: number): string {
  * Handles empty strings, invalid input, and decimal values
  */
 export function parseCentsFromInput(input: string): number {
-  const trimmed = input.trim();
-  if (!trimmed) return 0;
+  const cleaned = input.replace(/[$,\s]/g, '');
+  if (!cleaned) return 0;
 
-  const parsed = parseFloat(trimmed);
+  const parsed = parseFloat(cleaned);
   if (isNaN(parsed)) return 0;
 
   return Math.round(parsed * 100);

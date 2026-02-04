@@ -162,8 +162,15 @@ describe('parseCentsFromInput', () => {
 
   it('parses invalid input as 0', () => {
     expect(parseCentsFromInput('abc')).toBe(0);
-    expect(parseCentsFromInput('$100')).toBe(0); // dollar sign not supported
     expect(parseCentsFromInput('one hundred')).toBe(0);
+  });
+
+  it('ignores dollar signs, commas, and spaces', () => {
+    expect(parseCentsFromInput('$100')).toBe(10000);
+    expect(parseCentsFromInput('$1,000')).toBe(100000);
+    expect(parseCentsFromInput('1 000')).toBe(100000);
+    expect(parseCentsFromInput('$1,234.56')).toBe(123456);
+    expect(parseCentsFromInput(' $ 50 ')).toBe(5000);
   });
 
   it('parses whole dollar amounts', () => {
