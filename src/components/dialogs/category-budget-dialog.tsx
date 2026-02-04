@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Archive, ArchiveRestore, Trash2 } from 'lucide-react';
 import { parseCentsFromInput, formatCents } from '@/lib/utils';
 import type { Cadence, Category, CreateEntity, BudgetRule } from '@/lib/types';
+import { db } from '@/lib/db';
 
 interface CategoryBudgetDialogProps {
   open: boolean;
@@ -107,7 +109,6 @@ export function CategoryBudgetDialog({
   const [monthOfQuarter, setMonthOfQuarter] = useState('0');
   const [monthOfYear, setMonthOfYear] = useState('0');
   const [formError, setFormError] = useState<string | null>(null);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -228,21 +229,22 @@ export function CategoryBudgetDialog({
     }
   };
 
-  const handleDelete = async () => {
-    if (confirmingDelete && category && deleteCategory) {
+  const handleDelete = useCallback(async () => {
+    if (category && deleteCategory) {
+      const capturedCategory = { ...category };
       await deleteCategory(category.id);
       onOpenChange(false);
-    } else {
-      setConfirmingDelete(true);
+      toast(`"${capturedCategory.name}" deleted`, {
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            db.categories.put(capturedCategory);
+          },
+        },
+        duration: 5000,
+      });
     }
-  };
-
-  // Reset confirmingDelete when dialog closes
-  useEffect(() => {
-    if (!open) {
-      setConfirmingDelete(false);
-    }
-  }, [open]);
+  }, [category, deleteCategory, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -496,17 +498,14 @@ export function CategoryBudgetDialog({
                     <TooltipTrigger asChild>
                       <Button
                         type="button"
-                        variant={confirmingDelete ? 'destructive' : 'ghost'}
+                        variant="ghost"
                         size="icon"
                         onClick={handleDelete}
-                        onBlur={() => setTimeout(() => setConfirmingDelete(false), 200)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>
-                      {confirmingDelete ? 'Click again to confirm deletion' : 'Delete category'}
-                    </TooltipContent>
+                    <TooltipContent>Delete category</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               )}

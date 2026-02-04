@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Link, useParams, useOutletContext } from 'react-router';
+import { Link, useParams, useOutletContext, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -24,7 +24,8 @@ import { CategoryDialog } from '@/components/dialogs/category-dialog';
 import { CategoryMonthlyChart } from '@/components/charts/category-monthly-chart';
 import { DescriptionBreakdown } from '@/components/description-breakdown';
 import { cn, formatCents, formatDate, formatISODate } from '@/lib/utils';
-import type { Transaction, BudgetRule } from '@/lib/types';
+import { useUndoDelete } from '@/hooks/use-undo-delete';
+import type { Transaction, BudgetRule, Category } from '@/lib/types';
 
 const MONTHS = [
   'January',
@@ -73,9 +74,10 @@ export function CategoryDetailPage() {
   const backLink = '/budget';
   const backLabel = 'Back to Budget';
 
+  const navigate = useNavigate();
+
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   // Fixed to current month
   const now = new Date();
@@ -114,6 +116,7 @@ export function CategoryDetailPage() {
     updateCategory,
     addCategory,
     deleteCategory,
+    restoreCategory,
   } = useCategories();
   const { allTransactions, isLoading: transactionsLoading } = useTransactions();
   const { getRuleForCategory, isLoading: budgetLoading } = useBudgetRules(activeScenarioId);
@@ -219,15 +222,15 @@ export function CategoryDetailPage() {
     }
   }, [category, updateCategory]);
 
-  // Handle delete
+  // Undo-wrapped delete
+  const undoDelete = useUndoDelete<Category>(deleteCategory, restoreCategory, 'Category');
+
   const handleDelete = useCallback(async () => {
-    if (confirmingDelete && category) {
-      await deleteCategory(category.id);
-      window.location.href = '/budget';
-    } else {
-      setConfirmingDelete(true);
+    if (category) {
+      await undoDelete(category, `"${category.name}" deleted`);
+      navigate('/budget');
     }
-  }, [confirmingDelete, category, deleteCategory]);
+  }, [category, undoDelete, navigate]);
 
   // Loading state
   if (isLoading) {
@@ -319,20 +322,15 @@ export function CategoryDetailPage() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant={confirmingDelete ? 'destructive' : 'outline'}
+                    variant="outline"
                     size="sm"
                     onClick={handleDelete}
-                    onBlur={() => setTimeout(() => setConfirmingDelete(false), 200)}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
-                    {confirmingDelete ? 'Confirm' : 'Delete'}
+                    Delete
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>
-                  {confirmingDelete
-                    ? 'Click again to confirm deletion'
-                    : 'Permanently delete this category'}
-                </TooltipContent>
+                <TooltipContent>Delete this category</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
