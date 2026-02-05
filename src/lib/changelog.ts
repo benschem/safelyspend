@@ -21,6 +21,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.29.0',
+    date: '2026-02-05',
+    changes: [
+      'Added a Budget/Income toggle to the spending breakdown on the cash flow page',
+      'Spending bars now show proportions relative to total income when the Income view is selected',
+      'Consistent labelling across all categories and savings: budget/planned amount next to the name, spent/saved amount with percentage on the right',
+    ],
+  },
+  {
     version: '0.28.2',
     date: '2026-02-05',
     changes: [
