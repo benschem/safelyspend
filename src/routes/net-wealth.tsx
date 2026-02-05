@@ -1,5 +1,5 @@
-import { useMemo, useCallback } from 'react';
-import { Link, useOutletContext, useNavigate } from 'react-router';
+import { useMemo } from 'react';
+import { Link, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import {
@@ -59,25 +59,6 @@ export function NetWealthPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
   const { getActiveAnchor } = useBalanceAnchors();
-  const navigate = useNavigate();
-
-  // Helper to set up insights navigation with 3-year view
-  const goToSavingsInsights = useCallback(
-    (viewType: string) => {
-      localStorage.setItem('budget:savingsChartView', viewType);
-      localStorage.setItem(
-        'budget:viewState',
-        JSON.stringify({
-          mode: 'around-present',
-          amount: 3,
-          unit: 'years',
-          lastPresetMode: 'around-present',
-        }),
-      );
-      navigate('/insights?tab=savings');
-    },
-    [navigate],
-  );
 
   // Fixed date ranges - no user selection
   const today = (() => {
@@ -218,7 +199,7 @@ export function NetWealthPage() {
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
           {/* Cash */}
           <Link
-            to="/insights?tab=cashflow"
+            to="/cash-flow"
             className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50"
           >
             <div className="flex items-center justify-between">
@@ -238,10 +219,9 @@ export function NetWealthPage() {
           </Link>
 
           {/* Dedicated Savings */}
-          <button
-            type="button"
-            onClick={() => goToSavingsInsights('dedicated')}
-            className="group cursor-pointer rounded-xl border bg-card p-5 text-left transition-colors hover:bg-muted/50"
+          <Link
+            to="/savings"
+            className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50"
           >
             <div className="flex items-center justify-between">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10">
@@ -255,13 +235,12 @@ export function NetWealthPage() {
             </p>
             <div className="mt-3 mb-2 h-px bg-border" />
             <p className="text-sm text-muted-foreground">For your future goals</p>
-          </button>
+          </Link>
 
           {/* Emergency Fund */}
-          <button
-            type="button"
-            onClick={() => goToSavingsInsights(emergencyFund?.id ?? 'total')}
-            className="group cursor-pointer rounded-xl border bg-card p-5 text-left transition-colors hover:bg-muted/50"
+          <Link
+            to="/savings"
+            className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50"
           >
             <div className="flex items-center justify-between">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
@@ -273,7 +252,7 @@ export function NetWealthPage() {
             <p className="mt-1 text-xl font-semibold">{formatCents(emergencyFundBalance ?? 0)}</p>
             <div className="mt-3 mb-2 h-px bg-border" />
             <p className="text-sm text-muted-foreground">For life&apos;s surprises</p>
-          </button>
+          </Link>
 
           {/* Super - Coming Soon */}
           <div className="rounded-xl border bg-card p-5 opacity-50">
