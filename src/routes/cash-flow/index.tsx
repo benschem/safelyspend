@@ -116,6 +116,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
   const [selectedMonth, setSelectedMonth] = useState(() => new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState(() => new Date().getFullYear());
+  const [spendingView, setSpendingView] = useState<'budget' | 'income'>('budget');
 
   // Get forecast date range for the selected month
   const forecastDateRange = useMemo(() => {
@@ -703,12 +704,42 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
       <div
         className={cn('rounded-xl border bg-card p-6', showDeltas && 'border-violet-500/30')}
       >
-        <div className="mb-4 flex items-center gap-2">
-          <BanknoteArrowDown className="h-5 w-5 text-muted-foreground" />
-          <h3 className="text-lg font-semibold">
-            Spending over {periodLabel}
-            {isCurrentPeriod && ' to date'}
-          </h3>
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <BanknoteArrowDown className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">
+              Spending over {periodLabel}
+              {isCurrentPeriod && ' to date'}
+            </h3>
+          </div>
+          {income > 0 && (
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() => setSpendingView('budget')}
+                className={cn(
+                  'cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                  spendingView === 'budget'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80',
+                )}
+              >
+                Budget
+              </button>
+              <button
+                type="button"
+                onClick={() => setSpendingView('income')}
+                className={cn(
+                  'cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                  spendingView === 'income'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80',
+                )}
+              >
+                Income
+              </button>
+            </div>
+          )}
         </div>
         <p
           className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
@@ -729,6 +760,11 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
             {categoryProgress.map((item) => {
               // Fixed-only categories show checkmark + "Paid"
               if (item.isFixedOnly) {
+                const fixedIncomeView = spendingView === 'income' && income > 0;
+                const fixedPercentOfIncome = fixedIncomeView ? Math.round((item.fixedAmount / income) * 100) : 0;
+                const fixedSpentPercentOfIncome = fixedIncomeView ? Math.round((item.spent / income) * 100) : 0;
+                const fixedBudgetPercent = item.fixedAmount > 0 ? Math.round((item.spent / item.fixedAmount) * 100) : 0;
+
                 return (
                   <Link
                     key={item.id}
@@ -743,26 +779,57 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                           <Pin className="h-3 w-3" />
                           Fixed
                         </span>
+                        <span className="text-xs text-muted-foreground">
+                          Budgeted {formatCents(item.fixedAmount)}
+                        </span>
                       </div>
                       <span className="font-mono text-muted-foreground">
-                        {formatCents(item.fixedAmount)}
+                        {fixedIncomeView
+                          ? <>Spent {formatCents(item.spent)} ({fixedSpentPercentOfIncome}% of income)</>
+                          : <>Spent {formatCents(item.spent)} ({fixedBudgetPercent}% of budget)</>
+                        }
                       </span>
                     </div>
-                    <div className="relative h-2 rounded-full bg-muted">
-                      <div
-                        className="absolute h-2 rounded-full bg-green-500"
-                        style={{ width: '100%' }}
-                      />
-                    </div>
+                    {fixedIncomeView ? (
+                      <div className="relative h-2 rounded-full bg-muted">
+                        {/* Budget allocation (lighter) */}
+                        <div
+                          className="absolute h-2 rounded-full"
+                          style={{
+                            width: `${Math.min(fixedPercentOfIncome, 100)}%`,
+                            backgroundColor: item.color,
+                            opacity: 0.3,
+                          }}
+                        />
+                        {/* Actual spending (full color) */}
+                        <div
+                          className="absolute h-2 rounded-full"
+                          style={{
+                            width: `${Math.min(fixedSpentPercentOfIncome, 100)}%`,
+                            backgroundColor: item.color,
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="relative h-2 rounded-full bg-muted">
+                        <div
+                          className="absolute h-2 rounded-full bg-green-500"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                    )}
                   </Link>
                 );
               }
 
               // Variable categories show progress bar
               const hasBudget = item.budget > 0;
-              const isOverBudget = hasBudget && item.spent > item.budget;
+              const isIncomeView = spendingView === 'income' && income > 0;
+              const isOverBudget = !isIncomeView && hasBudget && item.spent > item.budget;
               const percentage = hasBudget ? Math.round((item.spent / item.budget) * 100) : 0;
-              const isWarning = percentage >= 80 && percentage < 100;
+              const isWarning = !isIncomeView && percentage >= 80 && percentage < 100;
+              const spentPercentOfIncome = isIncomeView ? Math.round((item.spent / income) * 100) : 0;
+              const budgetPercentOfIncome = isIncomeView && hasBudget ? Math.round((item.budget / income) * 100) : 0;
 
               return (
                 <Link
@@ -789,6 +856,22 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                           </Tooltip>
                         </TooltipProvider>
                       )}
+                      {hasBudget && (
+                        <span className="text-xs text-muted-foreground">
+                          Budgeted {formatCents(item.budget)}
+                          {(() => {
+                            const defaultBudget = defaultBudgetByCategoryMonthly[item.id] ?? 0;
+                            const currentBudget = variableBudgetsPerCategory[item.id] ?? 0;
+                            const delta = currentBudget - defaultBudget;
+                            if (!showDeltas || delta === 0) return null;
+                            return (
+                              <span className="ml-1 text-violet-600 dark:text-violet-400">
+                                ({delta > 0 ? '+' : ''}{formatCents(delta)})
+                              </span>
+                            );
+                          })()}
+                        </span>
+                      )}
                     </div>
                     <span
                       className={cn(
@@ -800,46 +883,54 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                             : 'text-muted-foreground',
                       )}
                     >
-                      {hasBudget ? (
-                        <>
-                          {formatCents(item.spent)} of budgeted {formatCents(item.budget)}
-                          {(() => {
-                            // In month view, compare monthly budgets directly
-                            const defaultBudget = defaultBudgetByCategoryMonthly[item.id] ?? 0;
-                            const currentBudget = variableBudgetsPerCategory[item.id] ?? 0;
-                            const delta = currentBudget - defaultBudget;
-                            const showDelta = showDeltas && delta !== 0;
-                            return (
-                              <span
-                                className={`ml-1 inline-block min-w-[3.5rem] ${showDelta ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
-                              >
-                                ({delta > 0 ? '+' : ''}
-                                {formatCents(delta)})
-                              </span>
-                            );
-                          })()}
-                          <span className="ml-1">({percentage}%)</span>
-                        </>
+                      {isIncomeView ? (
+                        <>Spent {formatCents(item.spent)} ({spentPercentOfIncome}% of income)</>
+                      ) : hasBudget ? (
+                        <>Spent {formatCents(item.spent)} ({percentage}% of budget)</>
                       ) : (
-                        formatCents(item.spent)
+                        <>Spent {formatCents(item.spent)}</>
                       )}
                     </span>
                   </div>
-                  <div className="relative h-2 rounded-full bg-muted">
-                    <div
-                      className={cn(
-                        'absolute h-2 rounded-full',
-                        isOverBudget ? 'bg-red-500' : isWarning ? 'bg-amber-500' : '',
+                  {isIncomeView ? (
+                    <div className="relative h-2 rounded-full bg-muted">
+                      {/* Budget allocation (lighter) */}
+                      {hasBudget && (
+                        <div
+                          className="absolute h-2 rounded-full"
+                          style={{
+                            width: `${Math.min(budgetPercentOfIncome, 100)}%`,
+                            backgroundColor: item.color,
+                            opacity: 0.3,
+                          }}
+                        />
                       )}
-                      style={{
-                        width: `${Math.min(percentage, 100)}%`,
-                        backgroundColor: isOverBudget || isWarning ? undefined : item.color,
-                      }}
-                    />
-                    {isOverBudget && (
-                      <div className="absolute right-0 h-2 w-1 rounded-r-full bg-red-700" />
-                    )}
-                  </div>
+                      {/* Actual spending (full color) */}
+                      <div
+                        className="absolute h-2 rounded-full"
+                        style={{
+                          width: `${Math.min(spentPercentOfIncome, 100)}%`,
+                          backgroundColor: item.color,
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="relative h-2 rounded-full bg-muted">
+                      <div
+                        className={cn(
+                          'absolute h-2 rounded-full',
+                          isOverBudget ? 'bg-red-500' : isWarning ? 'bg-amber-500' : '',
+                        )}
+                        style={{
+                          width: `${Math.min(percentage, 100)}%`,
+                          backgroundColor: isOverBudget || isWarning ? undefined : item.color,
+                        }}
+                      />
+                      {isOverBudget && (
+                        <div className="absolute right-0 h-2 w-1 rounded-r-full bg-red-700" />
+                      )}
+                    </div>
+                  )}
                 </Link>
               );
             })}
@@ -862,6 +953,9 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                   const percentage = hasExpected
                     ? Math.round((goal.actual / goal.expected) * 100)
                     : 0;
+                  const savingsIncomeView = spendingView === 'income' && income > 0;
+                  const savingsActualPercentOfIncome = savingsIncomeView ? Math.round((goal.actual / income) * 100) : 0;
+                  const savingsExpectedPercentOfIncome = savingsIncomeView && hasExpected ? Math.round((goal.expected / income) * 100) : 0;
 
                   return (
                     <div key={goal.id} className="space-y-2">
@@ -869,28 +963,48 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                         <div className="flex items-center gap-2">
                           <PiggyBank className="h-4 w-4 text-muted-foreground" />
                           <span className="font-medium">{goal.name}</span>
+                          {hasExpected && (
+                            <span className="text-xs text-muted-foreground">
+                              Planned {formatCents(goal.expected)}
+                            </span>
+                          )}
                         </div>
                         <span className="font-mono text-muted-foreground">
-                          {isFuturePeriod ? (
-                            formatCents(goal.expected)
+                          {savingsIncomeView ? (
+                            <>Saved {formatCents(goal.actual)} ({savingsActualPercentOfIncome}% of income)</>
                           ) : hasExpected ? (
-                            <>
-                              {formatCents(goal.actual)} of {formatCents(goal.expected)}
-                              <span className="ml-1">({percentage}%)</span>
-                            </>
+                            <>Saved {formatCents(goal.actual)} ({percentage}% of planned)</>
                           ) : (
-                            formatCents(goal.actual)
+                            <>Saved {formatCents(goal.actual)}</>
                           )}
                         </span>
                       </div>
-                      {hasExpected && (
+                      {savingsIncomeView ? (
+                        <div className="relative h-2 rounded-full bg-muted">
+                          {/* Expected allocation (lighter) */}
+                          {hasExpected && (
+                            <div
+                              className="absolute h-2 rounded-full bg-blue-500"
+                              style={{
+                                width: `${Math.min(savingsExpectedPercentOfIncome, 100)}%`,
+                                opacity: 0.3,
+                              }}
+                            />
+                          )}
+                          {/* Actual savings (full color) */}
+                          <div
+                            className="absolute h-2 rounded-full bg-blue-500"
+                            style={{ width: `${Math.min(savingsActualPercentOfIncome, 100)}%` }}
+                          />
+                        </div>
+                      ) : hasExpected ? (
                         <div className="relative h-2 rounded-full bg-muted">
                           <div
                             className="absolute h-2 rounded-full bg-blue-500"
                             style={{ width: `${Math.min(percentage, 100)}%` }}
                           />
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   );
                 })}
