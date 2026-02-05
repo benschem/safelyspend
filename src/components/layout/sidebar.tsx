@@ -1,10 +1,11 @@
-import { NavLink, useLocation } from 'react-router';
-import { Banknote, HandCoins, Target, PiggyBank, Sparkles, Settings, ChartSpline, Menu, History } from 'lucide-react';
+import { NavLink, useLocation, Link } from 'react-router';
+import { Banknote, HandCoins, Target, PiggyBank, Sparkles, Settings, ChartSpline, Menu, History, ClipboardCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useEffect, useState } from 'react';
+import { useAppConfig } from '@/hooks/use-app-config';
 
 interface NavItemProps {
   to: string;
@@ -52,6 +53,38 @@ function NavSection({ title, children }: NavSectionProps) {
   );
 }
 
+function CheckInButton({ onNavigate }: { onNavigate?: (() => void) | undefined }) {
+  const { isCheckInDue, isDemo } = useAppConfig();
+
+  // Hide check-in button in demo mode
+  if (isDemo) return null;
+
+  return (
+    <div className="px-3 py-2">
+      <Link
+        to="/check-in"
+        onClick={onNavigate}
+        className={cn(
+          'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors cursor-pointer',
+          'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+          isCheckInDue && 'bg-primary/10 text-primary hover:bg-primary/20',
+        )}
+      >
+        <div className="relative">
+          <ClipboardCheck className="h-4 w-4" />
+          {isCheckInDue && (
+            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" />
+          )}
+        </div>
+        Check In
+        {isCheckInDue && (
+          <span className="ml-auto text-xs font-normal text-primary">Due</span>
+        )}
+      </Link>
+    </div>
+  );
+}
+
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
@@ -95,6 +128,8 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       </NavSection>
 
       <div className="flex-1" />
+
+      <CheckInButton onNavigate={onNavigate} />
 
       <Separator />
 

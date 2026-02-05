@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Link, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -11,15 +11,17 @@ import {
   ChevronRight,
   ChevronDown,
   History,
-
   Pin,
   Tag,
   Sparkles,
   Gauge,
   Wallet,
+  ClipboardCheck,
+  X,
 } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
+import { useAppConfig } from '@/hooks/use-app-config';
 
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
@@ -33,6 +35,7 @@ import { useWhatIf } from '@/contexts/what-if-context';
 import { BurnRateChart } from '@/components/charts/burn-rate-chart';
 import { CHART_COLORS } from '@/lib/chart-colors';
 import { cn, formatCents, toMonthlyCents, type CadenceType } from '@/lib/utils';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import type { ForecastRule } from '@/lib/types';
 
 const MONTHS = [
@@ -98,6 +101,46 @@ export function CashFlowPage() {
   }
 
   return <CashFlowContent activeScenarioId={activeScenarioId} />;
+}
+
+function CheckInNudge() {
+  const { checkInCadence, isDemo } = useAppConfig();
+  const [dismissed, setDismissed] = useState(
+    () => localStorage.getItem(STORAGE_KEYS.CHECKIN_NUDGE_DISMISSED) === '1',
+  );
+
+  const handleDismiss = useCallback(() => {
+    localStorage.setItem(STORAGE_KEYS.CHECKIN_NUDGE_DISMISSED, '1');
+    setDismissed(true);
+  }, []);
+
+  // Don't show in demo, if cadence already set, or if dismissed
+  if (isDemo || checkInCadence || dismissed) return null;
+
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+      <ClipboardCheck className="h-5 w-5 shrink-0 text-primary" />
+      <div className="flex-1 text-sm">
+        <span className="font-medium">Set up periodic check-ins</span>
+        <span className="text-muted-foreground">
+          {' '}to keep your balances accurate.
+        </span>
+      </div>
+      <Link to="/check-in">
+        <Button size="sm" variant="outline">
+          Get started
+        </Button>
+      </Link>
+      <button
+        type="button"
+        onClick={handleDismiss}
+        className="cursor-pointer rounded p-1 text-muted-foreground hover:text-foreground"
+        aria-label="Dismiss"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
 }
 
 interface CashFlowContentProps {
@@ -634,6 +677,9 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
           </Popover>
         </div>
       </div>
+
+      {/* Check-in nudge */}
+      <CheckInNudge />
 
       {/* Summary + Breakdown side by side */}
       <div className="grid gap-6 lg:grid-cols-2">

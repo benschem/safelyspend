@@ -27,6 +27,7 @@ import {
   Info,
   Sparkles,
   PiggyBank,
+  ClipboardCheck,
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -36,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useAppConfig } from '@/hooks/use-app-config';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useSavingsAnchors } from '@/hooks/use-savings-anchors';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
@@ -101,6 +103,9 @@ export function SettingsPage() {
   const [savingsAnchorError, setSavingsAnchorError] = useState<string | null>(null);
   const [savingsAnchorConfirmZero, setSavingsAnchorConfirmZero] = useState(false);
   const [deletingSavingsAnchorId, setDeletingSavingsAnchorId] = useState<string | null>(null);
+
+  // Check-in preferences
+  const { checkInCadence, lastCheckInDate, daysSinceLastCheckIn, setCheckInCadence } = useAppConfig();
 
   // Debug mode state - initialize from current debug setting
   const [debugEnabled, setDebugEnabled] = useState(() => debug.isEnabled());
@@ -693,6 +698,66 @@ export function SettingsPage() {
                   </p>
                 </div>
                 <ThemeToggle />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <Separator />
+
+        {/* Check-in Preferences Section */}
+        <section className="section">
+          <div className="section-header">
+            <div className="flex items-center gap-2">
+              <ClipboardCheck className="h-5 w-5 text-primary" />
+              <h2>Check-in</h2>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Periodic check-ins help you keep your finances up to date.
+            </p>
+          </div>
+          <div className="section-content">
+            <div className="panel">
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3>Check-in Frequency</h3>
+                  <p className="text-sm text-muted-foreground">
+                    How often you want to be reminded to check in.
+                  </p>
+                </div>
+                <Select
+                  value={checkInCadence ?? ''}
+                  onValueChange={(v) =>
+                    setCheckInCadence(v as 'weekly' | 'fortnightly' | 'monthly' | 'quarterly')
+                  }
+                >
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Not set" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="fortnightly">Fortnightly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Separator />
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3>Last Check-in</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {lastCheckInDate
+                      ? `${formatDate(lastCheckInDate)}${daysSinceLastCheckIn !== null ? ` (${daysSinceLastCheckIn} day${daysSinceLastCheckIn !== 1 ? 's' : ''} ago)` : ''}`
+                      : 'No check-ins yet'}
+                  </p>
+                </div>
+                <Link to="/check-in">
+                  <Button variant="outline" className="w-full sm:w-auto">
+                    <ClipboardCheck className="h-4 w-4" />
+                    Check In Now
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>
