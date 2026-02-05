@@ -239,7 +239,7 @@ export function SpendingBreakdownChart({
 
       {/* Interactive Legend */}
       <div className="mt-3 flex flex-wrap gap-2">
-        {segments.map((segment) => {
+        {segments.filter((s) => s.amount > 0).map((segment) => {
           const percentage = ((segment.amount / total) * 100).toFixed(0);
           const isHidden = hiddenSegments.has(segment.id);
           const canToggle = !disableToggle || toggleableIds.includes(segment.id);

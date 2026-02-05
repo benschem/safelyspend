@@ -257,6 +257,14 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     }
   }, [isLoading, searchParams, setSearchParams, setIncomeOpen, setFixedExpensesOpen, setBudgetedExpensesOpen, setSavingsOpen]);
 
+  // Expand a section and scroll to it
+  const scrollToSection = useCallback((section: string, setOpen: (open: boolean) => void) => {
+    setOpen(true);
+    requestAnimationFrame(() => {
+      sectionRefs.current[section]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, []);
+
   // Chart visibility state
   const [hiddenSegments, setHiddenSegments] = useState<Set<string>>(new Set());
 
@@ -468,14 +476,14 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
 
   // Build chart segments
   const budgetBreakdownSegments = useMemo(() => {
-    const orderedSegments = [
+    // Always include all segments (even with 0 amount) so Recharts Bar components
+    // maintain stable order and new segments don't animate in at the wrong position
+    return [
       { id: 'fixed', name: 'Fixed Expenses', amount: totals.fixed },
       { id: 'savings', name: 'Savings', amount: totals.savings },
       { id: 'variable', name: 'Budgeted Expenses', amount: totals.variable },
-      { id: 'surplus', name: 'Surplus', amount: totals.unallocated },
+      { id: 'surplus', name: 'Surplus', amount: Math.max(0, totals.unallocated) },
     ];
-
-    return orderedSegments.filter((s) => s.amount > 0);
   }, [totals]);
 
   // Category color map
@@ -657,7 +665,11 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
       {/* Summary Cards */}
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Income Card */}
-        <div className="rounded-xl border bg-card p-5">
+        <button
+          type="button"
+          onClick={() => scrollToSection('income', setIncomeOpen)}
+          className="cursor-pointer rounded-xl border bg-card p-5 text-left transition-colors hover:bg-muted/50"
+        >
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/10">
               <BanknoteArrowUp className="h-4 w-4 text-green-500" />
@@ -673,10 +685,14 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
             </p>
           )}
           <ScenarioDelta delta={getTotalDelta('income', totals.monthlyIncome)} show={showDeltas} />
-        </div>
+        </button>
 
         {/* Fixed Expenses Card */}
-        <div className="rounded-xl border bg-card p-5">
+        <button
+          type="button"
+          onClick={() => scrollToSection('fixed', setFixedExpensesOpen)}
+          className="cursor-pointer rounded-xl border bg-card p-5 text-left transition-colors hover:bg-muted/50"
+        >
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10">
               <BanknoteArrowDown className="h-4 w-4 text-red-500" />
@@ -692,10 +708,14 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
             </p>
           )}
           <ScenarioDelta delta={getTotalDelta('fixed', totals.monthlyFixed)} show={showDeltas} />
-        </div>
+        </button>
 
         {/* Budgeted Expenses Card */}
-        <div className="rounded-xl border bg-card p-5">
+        <button
+          type="button"
+          onClick={() => scrollToSection('variable', setBudgetedExpensesOpen)}
+          className="cursor-pointer rounded-xl border bg-card p-5 text-left transition-colors hover:bg-muted/50"
+        >
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10">
               <BanknoteArrowDown className="h-4 w-4 text-red-500" />
@@ -714,10 +734,14 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
             delta={getTotalDelta('budget', totals.monthlyVariable)}
             show={showDeltas}
           />
-        </div>
+        </button>
 
         {/* Savings Card */}
-        <div className="rounded-xl border bg-card p-5">
+        <button
+          type="button"
+          onClick={() => scrollToSection('savings', setSavingsOpen)}
+          className="cursor-pointer rounded-xl border bg-card p-5 text-left transition-colors hover:bg-muted/50"
+        >
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10">
               <PiggyBank className="h-4 w-4 text-blue-500" />
@@ -736,11 +760,11 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
             delta={getTotalDelta('savings', totals.monthlySavings)}
             show={showDeltas}
           />
-        </div>
+        </button>
       </div>
 
       {/* Breakdown Chart */}
-      {budgetBreakdownSegments.length > 0 &&
+      {budgetBreakdownSegments.some((s) => s.amount > 0) &&
         (() => {
           const surplusHidden = hiddenSegments.has('surplus');
           const budgetTotal = totals.fixed + totals.savings + totals.variable;

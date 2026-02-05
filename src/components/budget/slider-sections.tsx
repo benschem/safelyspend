@@ -11,6 +11,7 @@ import {
   BanknoteArrowUp,
   BanknoteArrowDown,
   PiggyBank,
+  Tag,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatCents, type CadenceType } from '@/lib/utils';
@@ -259,7 +260,8 @@ export function FixedExpenseSliderSection({
             ) : (
               groupedRules.map((group) => (
                 <div key={group.categoryId ?? '__uncategorized__'}>
-                  <div className="mb-2 text-sm font-medium text-muted-foreground">
+                  <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                    <Tag className="h-3.5 w-3.5" />
                     {group.categoryId ? (
                       <Link to={`/categories/${group.categoryId}`} className="hover:underline">
                         {group.name}
@@ -412,6 +414,7 @@ export function BudgetedSpendingSliderSection({
                     key={rule.id}
                     label={categoryName}
                     labelHref={`/categories/${rule.categoryId}`}
+                    icon={<Tag className="h-3.5 w-3.5" />}
                     value={value}
                     baseline={baseline}
                     min={range.min}
