@@ -21,6 +21,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.30.0',
+    date: '2026-02-05',
+    changes: [
+      'New Check-in Wizard guides you through importing transactions, confirming savings, and verifying your cash balance',
+      'Choose a check-in frequency (weekly, fortnightly, monthly, or quarterly) to get reminders in the sidebar',
+      'Savings step lets you record contributions and withdrawals, then confirm balances for each goal',
+      'Summary step shows your financial snapshot: cash balance, savings progress, budget status, and top spending',
+      'Check-in preferences section added to Settings page',
+    ],
+  },
+  {
     version: '0.29.0',
     date: '2026-02-05',
     changes: [
