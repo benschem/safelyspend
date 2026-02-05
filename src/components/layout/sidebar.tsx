@@ -55,18 +55,20 @@ function NavSection({ title, children }: NavSectionProps) {
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
-      <NavSection>
+      <NavSection title="Overview">
+        <NavItem to="/net-wealth" icon={<HandCoins className="h-4 w-4" />} onClick={onNavigate}>
+          Net Wealth
+        </NavItem>
         <NavItem to="/cash-flow" icon={<Banknote className="h-4 w-4" />} onClick={onNavigate}>
           Cash Flow
         </NavItem>
+      </NavSection>
+
+      <Separator className="my-2" />
+
+      <NavSection title="Plan">
         <NavItem to="/budget" icon={<Target className="h-4 w-4" />} onClick={onNavigate}>
           Budget
-        </NavItem>
-        <NavItem to="/transactions" icon={<History className="h-4 w-4" />} onClick={onNavigate}>
-          Transactions
-        </NavItem>
-        <NavItem to="/insights" icon={<ChartSpline className="h-4 w-4" />} onClick={onNavigate}>
-          Insights
         </NavItem>
         <NavItem to="/scenarios" icon={<Sparkles className="h-4 w-4" />} onClick={onNavigate}>
           What If
@@ -75,12 +77,20 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
       <Separator className="my-2" />
 
-      <NavSection title="Monitor">
-        <NavItem to="/net-wealth" icon={<HandCoins className="h-4 w-4" />} onClick={onNavigate}>
-          Net Wealth
+      <NavSection title="Track">
+        <NavItem to="/transactions" icon={<History className="h-4 w-4" />} onClick={onNavigate}>
+          Transactions
         </NavItem>
         <NavItem to="/savings" icon={<PiggyBank className="h-4 w-4" />} onClick={onNavigate}>
           Savings
+        </NavItem>
+      </NavSection>
+
+      <Separator className="my-2" />
+
+      <NavSection title="Analyse">
+        <NavItem to="/insights" icon={<ChartSpline className="h-4 w-4" />} onClick={onNavigate}>
+          Insights
         </NavItem>
       </NavSection>
 
