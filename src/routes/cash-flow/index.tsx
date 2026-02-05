@@ -66,8 +66,8 @@ export function CashFlowPage() {
       <div className="page-shell">
         <div className="page-header">
           <h1 className="page-title">
-            <div className="page-title-icon bg-sky-500/10">
-              <Banknote className="h-5 w-5 text-sky-500" />
+            <div className="page-title-icon bg-slate-500/10">
+              <Banknote className="h-5 w-5 text-slate-500" />
             </div>
             Cash Flow
           </h1>
@@ -82,8 +82,8 @@ export function CashFlowPage() {
       <div className="page-shell space-y-6">
         <div className="page-header">
           <h1 className="page-title">
-            <div className="page-title-icon bg-sky-500/10">
-              <Banknote className="h-5 w-5 text-sky-500" />
+            <div className="page-title-icon bg-slate-500/10">
+              <Banknote className="h-5 w-5 text-slate-500" />
             </div>
             Cash Flow
           </h1>
@@ -577,8 +577,8 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
       <div className="page-header flex items-start justify-between gap-4">
         <div>
           <h1 className="page-title">
-            <div className="page-title-icon bg-sky-500/10">
-              <Banknote className="h-5 w-5 text-sky-500" />
+            <div className="page-title-icon bg-slate-500/10">
+              <Banknote className="h-5 w-5 text-slate-500" />
             </div>
             Cash Flow
           </h1>

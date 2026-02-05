@@ -323,8 +323,8 @@ export function SavingsIndexPage() {
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-xl border bg-card p-5">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-500/10">
-                  <Goal className="h-3.5 w-3.5 text-sky-500" />
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/10">
+                  <Goal className="h-3.5 w-3.5 text-blue-500" />
                 </div>
                 Goals Reached
               </div>

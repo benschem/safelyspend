@@ -170,17 +170,6 @@ export const categoryFormSchema = z.object({
 export type CategoryFormData = z.infer<typeof categoryFormSchema>;
 
 // =============================================================================
-// First Run Wizard Schemas
-// =============================================================================
-
-export const firstRunSetupSchema = z.object({
-  spendingBalance: optionalMoneyInputSchema,
-  balanceDate: dateSchema,
-});
-
-export type FirstRunSetupData = z.infer<typeof firstRunSetupSchema>;
-
-// =============================================================================
 // Utilities
 // =============================================================================
 
