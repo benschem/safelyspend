@@ -46,6 +46,8 @@ export interface AppConfig {
   id: 'singleton';
   isInitialized: boolean;
   isDemo: boolean;
+  checkInCadence?: 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | null;
+  lastCheckInDate?: string | null; // ISO date
 }
 
 // Active scenario reference
@@ -212,11 +214,14 @@ export async function importAllData(
         });
       }
 
-      // Mark as initialised
+      // Mark as initialised (preserve check-in preferences if they exist)
+      const existingConfig = await db.appConfig.get('singleton');
       await db.appConfig.put({
         id: 'singleton',
         isInitialized: true,
         isDemo: false,
+        checkInCadence: existingConfig?.checkInCadence ?? null,
+        lastCheckInDate: existingConfig?.lastCheckInDate ?? null,
       });
     },
   );
@@ -267,7 +272,7 @@ export async function fullReset(): Promise<void> {
   await resetDatabase();
 
   // Clear localStorage preferences
-  const keysToRemove = [STORAGE_KEYS.VIEW_STATE, STORAGE_KEYS.THEME];
+  const keysToRemove = [STORAGE_KEYS.VIEW_STATE, STORAGE_KEYS.THEME, STORAGE_KEYS.CHECKIN_NUDGE_DISMISSED];
   keysToRemove.forEach((key) => localStorage.removeItem(key));
 }
 

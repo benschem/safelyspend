@@ -10,6 +10,8 @@ export const STORAGE_KEYS = {
   THEME: 'budget:theme',
   /** Demo persona selection */
   DEMO_PERSONA: 'budget:demoPersonaId',
+  /** Check-in nudge dismissed */
+  CHECKIN_NUDGE_DISMISSED: 'budget:checkInNudgeDismissed',
 } as const;
 
 /** Event name for cross-tab storage sync */

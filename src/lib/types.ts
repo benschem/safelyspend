@@ -39,6 +39,8 @@ export interface Category extends BaseEntity {
 
 export type Cadence = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly';
 
+export type CheckInCadence = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly';
+
 // -----------------------------------------------------------------------------
 // Budget Rule - Spending limits per category with cadence
 // -----------------------------------------------------------------------------
