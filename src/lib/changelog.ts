@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.28.1',
+    date: '2026-02-05',
+    changes: [
+      'Reorganized sidebar navigation into clearer sections: Overview, Plan, Track, and Analyse',
+    ],
+  },
+  {
     version: '0.28.0',
     date: '2026-02-05',
     changes: [
