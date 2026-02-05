@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.28.2',
+    date: '2026-02-05',
+    changes: [
+      'Cash flow breakdown values now link to the relevant budget section or settings page for quick editing',
+    ],
+  },
+  {
     version: '0.28.1',
     date: '2026-02-05',
     changes: [

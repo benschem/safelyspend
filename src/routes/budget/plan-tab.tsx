@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import {
   PiggyBank,
@@ -13,7 +14,6 @@ import {
 import { cn, formatCents, toMonthlyCents, type CadenceType } from '@/lib/utils';
 import { CHART_COLORS } from '@/lib/chart-colors';
 import { useScenarios } from '@/hooks/use-scenarios';
-import { useLocalStorage } from '@/hooks/use-local-storage';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useAdjustedBudgets, useAdjustedForecasts } from '@/hooks/use-adjusted-values';
@@ -218,17 +218,44 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     [categories, getRuleForCategory, setBudgetForCategory],
   );
 
-  // Collapsible sections state (persisted)
-  const [budgetedExpensesOpen, setBudgetedExpensesOpen] = useLocalStorage(
-    'budget:budgetedExpensesOpen',
-    false,
-  );
-  const [incomeOpen, setIncomeOpen] = useLocalStorage('budget:incomeOpen', false);
-  const [fixedExpensesOpen, setFixedExpensesOpen] = useLocalStorage(
-    'budget:fixedExpensesOpen',
-    false,
-  );
-  const [savingsOpen, setSavingsOpen] = useLocalStorage('budget:savingsOpen', false);
+  // Collapsible sections state (reset on nav away, opened via ?section= links)
+  const [budgetedExpensesOpen, setBudgetedExpensesOpen] = useState(false);
+  const [incomeOpen, setIncomeOpen] = useState(false);
+  const [fixedExpensesOpen, setFixedExpensesOpen] = useState(false);
+  const [savingsOpen, setSavingsOpen] = useState(false);
+
+  // Handle ?section= URL param: expand + scroll to matching section
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    if (isLoading) return; // Wait for content to render before scrolling
+
+    const section = searchParams.get('section');
+    if (!section) return;
+
+    // Expand the matching section
+    const sectionMap: Record<string, (open: boolean) => void> = {
+      income: setIncomeOpen,
+      fixed: setFixedExpensesOpen,
+      variable: setBudgetedExpensesOpen,
+      savings: setSavingsOpen,
+    };
+    const setter = sectionMap[section];
+    if (setter) {
+      setter(true);
+      // Clear the param so it doesn't re-trigger
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('section');
+        return next;
+      }, { replace: true });
+      // Scroll to section after DOM update
+      requestAnimationFrame(() => {
+        sectionRefs.current[section]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  }, [isLoading, searchParams, setSearchParams, setIncomeOpen, setFixedExpensesOpen, setBudgetedExpensesOpen, setSavingsOpen]);
 
   // Chart visibility state
   const [hiddenSegments, setHiddenSegments] = useState<Set<string>>(new Set());
@@ -787,59 +814,67 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
       </div>
 
       {/* Income Sources Section */}
-      <IncomeSliderSection
-        incomeRules={incomeRules}
-        isOpen={incomeOpen}
-        onOpenChange={setIncomeOpen}
-        onAddClick={() => openAddRuleDialog('income')}
-        onEditRule={openEditRuleDialog}
-        onDeleteRule={handleDeleteForecastRule}
-        periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
-        periodTotal={totals.income}
-        monthlyDelta={showDeltas ? getTotalDelta('income', totals.monthlyIncome) : undefined}
-      />
+      <div id="section-income" ref={(el) => { sectionRefs.current['income'] = el; }}>
+        <IncomeSliderSection
+          incomeRules={incomeRules}
+          isOpen={incomeOpen}
+          onOpenChange={setIncomeOpen}
+          onAddClick={() => openAddRuleDialog('income')}
+          onEditRule={openEditRuleDialog}
+          onDeleteRule={handleDeleteForecastRule}
+          periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
+          periodTotal={totals.income}
+          monthlyDelta={showDeltas ? getTotalDelta('income', totals.monthlyIncome) : undefined}
+        />
+      </div>
 
       {/* Fixed Expenses Section */}
-      <FixedExpenseSliderSection
-        expenseRules={expenseRules}
-        categories={categories}
-        isOpen={fixedExpensesOpen}
-        onOpenChange={setFixedExpensesOpen}
-        onAddClick={() => openAddRuleDialog('expense')}
-        onEditRule={openEditRuleDialog}
-        onDeleteRule={handleDeleteForecastRule}
-        periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
-        periodTotal={totals.fixed}
-        monthlyDelta={showDeltas ? getTotalDelta('fixed', totals.monthlyFixed) : undefined}
-      />
+      <div id="section-fixed" ref={(el) => { sectionRefs.current['fixed'] = el; }}>
+        <FixedExpenseSliderSection
+          expenseRules={expenseRules}
+          categories={categories}
+          isOpen={fixedExpensesOpen}
+          onOpenChange={setFixedExpensesOpen}
+          onAddClick={() => openAddRuleDialog('expense')}
+          onEditRule={openEditRuleDialog}
+          onDeleteRule={handleDeleteForecastRule}
+          periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
+          periodTotal={totals.fixed}
+          monthlyDelta={showDeltas ? getTotalDelta('fixed', totals.monthlyFixed) : undefined}
+        />
+      </div>
 
       {/* Budgeted Expenses */}
-      <BudgetedSpendingSliderSection
-        budgetRules={budgetRules}
-        categories={categories}
-        isOpen={budgetedExpensesOpen}
-        onOpenChange={setBudgetedExpensesOpen}
-        onAddClick={() => setAddCategoryDialogOpen(true)}
-        onEditBudget={handleEditBudgetRule}
-        onDeleteBudget={handleDeleteBudgetRule}
-        periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
-        periodTotal={totals.variable}
-        monthlyDelta={showDeltas ? getTotalDelta('budget', totals.monthlyVariable) : undefined}
-      />
+      <div id="section-variable" ref={(el) => { sectionRefs.current['variable'] = el; }}>
+        <BudgetedSpendingSliderSection
+          budgetRules={budgetRules}
+          categories={categories}
+          isOpen={budgetedExpensesOpen}
+          onOpenChange={setBudgetedExpensesOpen}
+          onAddClick={() => setAddCategoryDialogOpen(true)}
+          onEditBudget={handleEditBudgetRule}
+          onDeleteBudget={handleDeleteBudgetRule}
+          periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
+          periodTotal={totals.variable}
+          monthlyDelta={showDeltas ? getTotalDelta('budget', totals.monthlyVariable) : undefined}
+        />
+      </div>
 
       {/* Savings Contributions Section */}
-      <SavingsSliderSection
-        savingsRules={savingsRules}
-        savingsGoals={savingsGoals}
-        isOpen={savingsOpen}
-        onOpenChange={setSavingsOpen}
-        onAddClick={() => openAddRuleDialog('savings')}
-        onEditRule={openEditRuleDialog}
-        onDeleteRule={handleDeleteForecastRule}
-        periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
-        periodTotal={totals.savings}
-        monthlyDelta={showDeltas ? getTotalDelta('savings', totals.monthlySavings) : undefined}
-      />
+      <div id="section-savings" ref={(el) => { sectionRefs.current['savings'] = el; }}>
+        <SavingsSliderSection
+          savingsRules={savingsRules}
+          savingsGoals={savingsGoals}
+          isOpen={savingsOpen}
+          onOpenChange={setSavingsOpen}
+          onAddClick={() => openAddRuleDialog('savings')}
+          onEditRule={openEditRuleDialog}
+          onDeleteRule={handleDeleteForecastRule}
+          periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
+          periodTotal={totals.savings}
+          monthlyDelta={showDeltas ? getTotalDelta('savings', totals.monthlySavings) : undefined}
+        />
+      </div>
 
       {/* Add Category Dialog */}
       <CategoryBudgetDialog

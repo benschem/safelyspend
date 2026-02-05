@@ -1,4 +1,5 @@
 import { useCallback, useState, useEffect, useRef, type ReactNode } from 'react';
+import { Link } from 'react-router';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,8 @@ interface BudgetSliderProps {
   defaultValue?: number | undefined;
   /** Optional action buttons rendered in the label row */
   actions?: ReactNode;
+  /** Optional link destination for the label */
+  labelHref?: string | undefined;
 }
 
 const variantStyles: Record<SliderVariant, { track: string; thumb: string; text: string }> = {
@@ -80,6 +83,7 @@ export function BudgetSlider({
   differsFromDefault = false,
   defaultValue,
   actions,
+  labelHref,
 }: BudgetSliderProps) {
   // Internal state for immediate UI feedback
   const [localValue, setLocalValue] = useState(value);
@@ -247,7 +251,11 @@ export function BudgetSlider({
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           {icon && <span className="text-muted-foreground">{icon}</span>}
-          <span className="font-medium">{label}</span>
+          {labelHref ? (
+            <Link to={labelHref} className="font-medium hover:underline">{label}</Link>
+          ) : (
+            <span className="font-medium">{label}</span>
+          )}
           {actions}
         </div>
         <div className="flex items-center gap-2">

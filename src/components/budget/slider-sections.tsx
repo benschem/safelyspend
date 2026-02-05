@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import {
@@ -195,8 +196,24 @@ export function FixedExpenseSliderSection({
   const { adjustments, baselineValues, setFixedExpenseAdjustment } = useWhatIf();
   const { isExpenseDifferent, defaultExpenseByDescription } = useScenarioDiff();
 
-  const getCategoryName = (id: string | null) =>
-    id ? (categories.find((c) => c.id === id)?.name ?? 'Unknown') : '—';
+  // Group rules by category
+  const groupedRules = useMemo(() => {
+    const groups = new Map<string, { name: string; categoryId: string | null; rules: ForecastRule[] }>();
+    for (const rule of expenseRules) {
+      const key = rule.categoryId ?? '__uncategorized__';
+      if (!groups.has(key)) {
+        const category = rule.categoryId ? categories.find((c) => c.id === rule.categoryId) : null;
+        groups.set(key, {
+          name: category?.name ?? 'Uncategorized',
+          categoryId: rule.categoryId,
+          rules: [],
+        });
+      }
+      groups.get(key)!.rules.push(rule);
+    }
+    // Sort groups alphabetically by name
+    return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [expenseRules, categories]);
 
   return (
     <Collapsible open={isOpen} onOpenChange={onOpenChange} className="mb-4">
@@ -228,7 +245,7 @@ export function FixedExpenseSliderSection({
           </Button>
         </div>
         <CollapsibleContent>
-          <div className="space-y-3 border-t p-4">
+          <div className="space-y-4 border-t p-4">
             {expenseRules.length === 0 ? (
               <p className="py-2 text-center text-sm text-muted-foreground">
                 No fixed expenses yet.{' '}
@@ -240,38 +257,52 @@ export function FixedExpenseSliderSection({
                 </button>
               </p>
             ) : (
-              expenseRules.map((rule) => {
-                const baseline =
-                  baselineValues.fixedExpenseAdjustments[rule.id] ?? rule.amountCents;
-                const value = adjustments.fixedExpenseAdjustments[rule.id] ?? baseline;
-                const range = getSliderRange(baseline);
-                const categoryName = getCategoryName(rule.categoryId);
-                const differsFromDefault = isExpenseDifferent(rule.description, baseline);
-                const defaultValue = defaultExpenseByDescription[rule.description];
+              groupedRules.map((group) => (
+                <div key={group.categoryId ?? '__uncategorized__'}>
+                  <div className="mb-2 text-sm font-medium text-muted-foreground">
+                    {group.categoryId ? (
+                      <Link to={`/categories/${group.categoryId}`} className="hover:underline">
+                        {group.name}
+                      </Link>
+                    ) : (
+                      group.name
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    {group.rules.map((rule) => {
+                      const baseline =
+                        baselineValues.fixedExpenseAdjustments[rule.id] ?? rule.amountCents;
+                      const value = adjustments.fixedExpenseAdjustments[rule.id] ?? baseline;
+                      const range = getSliderRange(baseline);
+                      const differsFromDefault = isExpenseDifferent(rule.description, baseline);
+                      const defaultValue = defaultExpenseByDescription[rule.description];
 
-                return (
-                  <BudgetSlider
-                    key={rule.id}
-                    label={`${rule.description} (${categoryName})`}
-                    value={value}
-                    baseline={baseline}
-                    min={range.min}
-                    max={range.max}
-                    step={range.step}
-                    onChange={(cents) => setFixedExpenseAdjustment(rule.id, cents)}
-                    cadence={rule.cadence as CadenceType}
-                    variant="expense"
-                    differsFromDefault={differsFromDefault}
-                    defaultValue={defaultValue}
-                    actions={
-                      <SliderActions
-                        onEdit={() => onEditRule(rule)}
-                        onDelete={() => onDeleteRule(rule.id)}
-                      />
-                    }
-                  />
-                );
-              })
+                      return (
+                        <BudgetSlider
+                          key={rule.id}
+                          label={rule.description}
+                          value={value}
+                          baseline={baseline}
+                          min={range.min}
+                          max={range.max}
+                          step={range.step}
+                          onChange={(cents) => setFixedExpenseAdjustment(rule.id, cents)}
+                          cadence={rule.cadence as CadenceType}
+                          variant="expense"
+                          differsFromDefault={differsFromDefault}
+                          defaultValue={defaultValue}
+                          actions={
+                            <SliderActions
+                              onEdit={() => onEditRule(rule)}
+                              onDelete={() => onDeleteRule(rule.id)}
+                            />
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </CollapsibleContent>
@@ -380,6 +411,7 @@ export function BudgetedSpendingSliderSection({
                   <BudgetSlider
                     key={rule.id}
                     label={categoryName}
+                    labelHref={`/categories/${rule.categoryId}`}
                     value={value}
                     baseline={baseline}
                     min={range.min}
@@ -493,6 +525,7 @@ export function SavingsSliderSection({
                   <BudgetSlider
                     key={rule.id}
                     label={goalName}
+                    labelHref="/savings"
                     value={value}
                     baseline={baseline}
                     min={range.min}

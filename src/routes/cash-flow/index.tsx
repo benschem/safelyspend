@@ -1159,11 +1159,11 @@ function CashFlowBreakdown({
             <div className="w-28 text-right text-xs font-medium text-muted-foreground">Actual</div>
           </div>
 
-          <TwoColRow label="Starting cash" left={hasAnchor ? formatCents(startingBalance as number) : '—'} right={hasAnchor ? formatCents(startingBalance as number) : '—'} mobileColumn={mobileColumn} />
-          <TwoColRow label="+ Income" left={fmtSigned(income, '+')} right={fmtSigned(periodCashFlow.income.actual, '+')} mobileColumn={mobileColumn} className="text-green-600 dark:text-green-400" />
-          <TwoColRow label="− Fixed expenses" left={fixed > 0 ? fmtSigned(fixed, '−') : '—'} right={pastActualFixed > 0 ? fmtSigned(pastActualFixed, '−') : '—'} mobileColumn={mobileColumn} />
-          <TwoColRow label="− Variable spending" left={variable > 0 ? fmtSigned(variable, '−') : '—'} right={periodCashFlow.projection.variableActual > 0 ? fmtSigned(periodCashFlow.projection.variableActual, '−') : '—'} mobileColumn={mobileColumn} />
-          <TwoColRow label="− Savings" left={savings > 0 ? fmtSigned(savings, '−') : '—'} right={periodCashFlow.savings.actual > 0 ? fmtSigned(periodCashFlow.savings.actual, '−') : '—'} mobileColumn={mobileColumn} />
+          <TwoColRow label="Starting cash" left={hasAnchor ? formatCents(startingBalance as number) : '—'} right={hasAnchor ? formatCents(startingBalance as number) : '—'} leftHref="/settings" mobileColumn={mobileColumn} />
+          <TwoColRow label="+ Income" left={fmtSigned(income, '+')} right={fmtSigned(periodCashFlow.income.actual, '+')} leftHref="/budget?section=income" mobileColumn={mobileColumn} className="text-green-600 dark:text-green-400" />
+          <TwoColRow label="− Fixed expenses" left={fixed > 0 ? fmtSigned(fixed, '−') : '—'} right={pastActualFixed > 0 ? fmtSigned(pastActualFixed, '−') : '—'} leftHref="/budget?section=fixed" mobileColumn={mobileColumn} />
+          <TwoColRow label="− Variable spending" left={variable > 0 ? fmtSigned(variable, '−') : '—'} right={periodCashFlow.projection.variableActual > 0 ? fmtSigned(periodCashFlow.projection.variableActual, '−') : '—'} leftHref="/budget?section=variable" mobileColumn={mobileColumn} />
+          <TwoColRow label="− Savings" left={savings > 0 ? fmtSigned(savings, '−') : '—'} right={periodCashFlow.savings.actual > 0 ? fmtSigned(periodCashFlow.savings.actual, '−') : '—'} leftHref="/budget?section=savings" mobileColumn={mobileColumn} />
 
           {/* Divider */}
           <div className="my-2 border-t border-border" />
@@ -1198,7 +1198,7 @@ function CashFlowBreakdown({
             <div className="w-24 text-right text-xs font-medium text-muted-foreground sm:w-28">Current</div>
           </div>
         )}
-        <SingleRow label="Starting cash" value={hasAnchor ? formatCents(startingBalance as number) : '—'} />
+        <SingleRow label="Starting cash" value={hasAnchor ? formatCents(startingBalance as number) : '—'} href="/settings" />
 
         <SingleRow
           label="+ Income"
@@ -1206,6 +1206,7 @@ function CashFlowBreakdown({
           delta={renderDelta(incomeDelta)}
           annotation={isCurrentPeriod ? `${formatCents(periodCashFlow.income.actual)} received` : undefined}
           className="text-green-600 dark:text-green-400"
+          href="/budget?section=income"
         />
 
         <SingleRow
@@ -1213,6 +1214,7 @@ function CashFlowBreakdown({
           value={fixed > 0 ? fmtSigned(fixed, '−') : '—'}
           delta={renderDelta(-fixedDelta)}
           annotation={isCurrentPeriod ? `${formatCents(periodCashFlow.expenses.dueToDate)} due` : undefined}
+          href="/budget?section=fixed"
         />
 
         <SingleRow
@@ -1220,6 +1222,7 @@ function CashFlowBreakdown({
           value={variable > 0 ? fmtSigned(variable, '−') : '—'}
           delta={renderDelta(-variableDelta)}
           annotation={isCurrentPeriod ? `${formatCents(periodCashFlow.projection.variableActual)} spent` : undefined}
+          href="/budget?section=variable"
         />
 
         <SingleRow
@@ -1227,6 +1230,7 @@ function CashFlowBreakdown({
           value={savings > 0 ? fmtSigned(savings, '−') : '—'}
           delta={renderDelta(-savingsDelta)}
           annotation={isCurrentPeriod ? `${formatCents(periodCashFlow.savings.actual)} saved` : undefined}
+          href="/budget?section=savings"
         />
 
         {/* Divider */}
@@ -1284,6 +1288,7 @@ function SingleRow({
   annotation,
   valueColor,
   className,
+  href,
   isBold = false,
 }: {
   label: string;
@@ -1292,17 +1297,26 @@ function SingleRow({
   annotation?: string | undefined;
   valueColor?: string | undefined;
   className?: string;
+  href?: string;
   isBold?: boolean;
 }) {
+  const valContent = href ? (
+    <Link to={href} className={cn('w-28 text-right font-mono text-sm tabular-nums hover:underline', isBold && 'font-semibold', className, valueColor)}>
+      {value}
+    </Link>
+  ) : (
+    <span className={cn('w-28 text-right font-mono text-sm tabular-nums', isBold && 'font-semibold', className, valueColor)}>
+      {value}
+    </span>
+  );
+
   return (
     <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 py-0.5">
       <span className={cn('text-sm text-muted-foreground', isBold && 'font-semibold text-foreground')}>
         {label}
         {delta}
       </span>
-      <span className={cn('w-28 text-right font-mono text-sm tabular-nums', isBold && 'font-semibold', className, valueColor)}>
-        {value}
-      </span>
+      {valContent}
       <span className="w-24 text-right text-xs text-muted-foreground self-center sm:w-28">
         {annotation ?? ''}
       </span>
@@ -1318,6 +1332,7 @@ function TwoColRow({
   leftColor,
   rightColor,
   className,
+  leftHref,
   mobileColumn,
   isBold = false,
 }: {
@@ -1327,24 +1342,40 @@ function TwoColRow({
   leftColor?: string | undefined;
   rightColor?: string | undefined;
   className?: string;
+  leftHref?: string;
   mobileColumn: 'left' | 'right';
   isBold?: boolean;
 }) {
   const valCls = cn('w-28 text-right font-mono text-sm tabular-nums', isBold && 'font-semibold', className);
+
+  const leftContent = leftHref ? (
+    <Link to={leftHref} className={cn(valCls, leftColor, 'hover:underline')}>{left}</Link>
+  ) : (
+    <span className={cn(valCls, leftColor)}>{left}</span>
+  );
+
+  const rightContent = <span className={cn(valCls, rightColor)}>{right}</span>;
+
   return (
     <>
       {/* Desktop */}
       <div className="hidden sm:grid sm:grid-cols-[1fr_auto_auto] sm:gap-x-4 sm:py-0.5">
         <span className={cn('text-sm text-muted-foreground', isBold && 'font-semibold text-foreground')}>{label}</span>
-        <span className={cn(valCls, leftColor)}>{left}</span>
-        <span className={cn(valCls, rightColor)}>{right}</span>
+        {leftContent}
+        {rightContent}
       </div>
       {/* Mobile */}
       <div className="grid grid-cols-[1fr_auto] gap-x-4 py-0.5 sm:hidden">
         <span className={cn('text-sm text-muted-foreground', isBold && 'font-semibold text-foreground')}>{label}</span>
-        <span className={cn(valCls, mobileColumn === 'left' ? leftColor : rightColor)}>
-          {mobileColumn === 'left' ? left : right}
-        </span>
+        {mobileColumn === 'left' ? (
+          leftHref ? (
+            <Link to={leftHref} className={cn(valCls, leftColor, 'hover:underline')}>{left}</Link>
+          ) : (
+            <span className={cn(valCls, leftColor)}>{left}</span>
+          )
+        ) : (
+          <span className={cn(valCls, rightColor)}>{right}</span>
+        )}
       </div>
     </>
   );
