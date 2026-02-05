@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.31.0',
+    date: '2026-02-05',
+    changes: [
+      'Setup wizard now includes a transactions step where you can import CSV files, Up Bank exports, or add transactions manually',
+      'Categories created during setup are now deduplicated with imported transaction categories',
+    ],
+  },
+  {
     version: '0.30.0',
     date: '2026-02-05',
     changes: [
