@@ -24,7 +24,7 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
     <div className="flex min-h-screen flex-col bg-background">
       <main className="flex flex-1 flex-col">
         {/* Hero */}
-        <section className="flex flex-col items-center justify-center px-4 pt-16 pb-12 text-center">
+        <section className="flex flex-col items-center justify-center bg-gradient-to-b from-primary/5 to-transparent px-4 pt-16 pb-12 text-center">
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
             Know what you can safely spend
           </h1>

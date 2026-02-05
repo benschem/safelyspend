@@ -5,40 +5,40 @@
 
 @theme {
   --font-sans:
-    ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-    'Noto Color Emoji';
+    'DM Sans Variable', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    'Segoe UI Symbol', 'Noto Color Emoji';
 
-  /* Light mode - clean neutral */
-  --color-background: hsl(220 15% 98%);
-  --color-foreground: hsl(220 10% 12%);
+  /* Light mode - warm neutrals + teal primary */
+  --color-background: hsl(40 25% 97.5%);
+  --color-foreground: hsl(30 10% 12%);
   --color-card: hsl(0 0% 100%);
-  --color-card-foreground: hsl(220 10% 12%);
+  --color-card-foreground: hsl(30 10% 12%);
   --color-popover: hsl(0 0% 100%);
-  --color-popover-foreground: hsl(220 10% 12%);
-  --color-muted: hsl(220 10% 95%);
-  --color-muted-foreground: hsl(220 5% 45%);
-  --color-border: hsl(220 10% 88%);
-  --color-input: hsl(220 10% 88%);
-  --color-primary: hsl(220 10% 15%);
-  --color-primary-foreground: hsl(220 15% 98%);
-  --color-secondary: hsl(220 10% 95%);
-  --color-secondary-foreground: hsl(220 10% 15%);
-  --color-accent: hsl(220 10% 95%);
-  --color-accent-foreground: hsl(220 10% 15%);
+  --color-popover-foreground: hsl(30 10% 12%);
+  --color-muted: hsl(40 15% 94%);
+  --color-muted-foreground: hsl(30 5% 42%);
+  --color-border: hsl(40 12% 90%);
+  --color-input: hsl(40 12% 90%);
+  --color-primary: hsl(168 55% 34%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-secondary: hsl(40 15% 94%);
+  --color-secondary-foreground: hsl(30 10% 15%);
+  --color-accent: hsl(40 15% 94%);
+  --color-accent-foreground: hsl(30 10% 15%);
   --color-destructive: #ef4444;
   --color-destructive-foreground: #fafafa;
-  --color-ring: hsl(220 10% 12%);
+  --color-ring: hsl(168 55% 34%);
 
-  --color-sidebar-background: hsl(220 10% 97%);
-  --color-sidebar-foreground: hsl(220 10% 12%);
-  --color-sidebar-border: hsl(220 10% 88%);
-  --color-sidebar-accent: hsl(220 10% 93%);
-  --color-sidebar-accent-foreground: hsl(220 10% 15%);
+  --color-sidebar-background: hsl(40 15% 96%);
+  --color-sidebar-foreground: hsl(30 10% 12%);
+  --color-sidebar-border: hsl(40 12% 90%);
+  --color-sidebar-accent: hsl(40 15% 94%);
+  --color-sidebar-accent-foreground: hsl(30 10% 15%);
 
   /* Semantic tokens */
   --color-surface-raised: hsl(0 0% 100%);
-  --color-border-subtle: hsl(220 8% 90%);
-  --shadow-color: hsl(220 10% 50% / 0.08);
+  --color-border-subtle: hsl(40 8% 92%);
+  --shadow-color: hsl(30 10% 50% / 0.10);
 
   /* Unified radius */
   --radius-sm: 0.375rem;
@@ -48,36 +48,36 @@
 
 /* Dark mode overrides */
 .dark {
-  --color-background: hsl(220 15% 8%);
-  --color-foreground: hsl(220 10% 95%);
-  --color-card: hsl(220 12% 12%);
-  --color-card-foreground: hsl(220 10% 95%);
-  --color-popover: hsl(220 12% 12%);
-  --color-popover-foreground: hsl(220 10% 95%);
-  --color-muted: hsl(220 10% 18%);
-  --color-muted-foreground: hsl(220 5% 55%);
-  --color-border: hsl(220 10% 22%);
-  --color-input: hsl(220 10% 22%);
-  --color-primary: hsl(220 10% 95%);
-  --color-primary-foreground: hsl(220 15% 12%);
-  --color-secondary: hsl(220 10% 18%);
-  --color-secondary-foreground: hsl(220 10% 95%);
-  --color-accent: hsl(220 10% 18%);
-  --color-accent-foreground: hsl(220 10% 95%);
+  --color-background: hsl(30 10% 7%);
+  --color-foreground: hsl(40 10% 94%);
+  --color-card: hsl(30 8% 11%);
+  --color-card-foreground: hsl(40 10% 94%);
+  --color-popover: hsl(30 8% 11%);
+  --color-popover-foreground: hsl(40 10% 94%);
+  --color-muted: hsl(30 8% 17%);
+  --color-muted-foreground: hsl(30 5% 55%);
+  --color-border: hsl(30 8% 19%);
+  --color-input: hsl(30 8% 19%);
+  --color-primary: hsl(168 50% 50%);
+  --color-primary-foreground: hsl(30 10% 7%);
+  --color-secondary: hsl(30 8% 17%);
+  --color-secondary-foreground: hsl(40 10% 94%);
+  --color-accent: hsl(30 8% 17%);
+  --color-accent-foreground: hsl(40 10% 94%);
   --color-destructive: #f87171;
   --color-destructive-foreground: #1a1a1a;
-  --color-ring: hsl(220 10% 70%);
+  --color-ring: hsl(168 50% 50%);
 
-  --color-sidebar-background: hsl(220 15% 8%);
-  --color-sidebar-foreground: hsl(220 10% 95%);
-  --color-sidebar-border: hsl(220 10% 22%);
-  --color-sidebar-accent: hsl(220 10% 18%);
-  --color-sidebar-accent-foreground: hsl(220 10% 95%);
+  --color-sidebar-background: hsl(30 10% 7%);
+  --color-sidebar-foreground: hsl(40 10% 94%);
+  --color-sidebar-border: hsl(30 8% 19%);
+  --color-sidebar-accent: hsl(30 8% 17%);
+  --color-sidebar-accent-foreground: hsl(40 10% 94%);
 
   /* Semantic tokens - dark */
-  --color-surface-raised: hsl(220 12% 14%);
-  --color-border-subtle: hsl(220 8% 25%);
-  --shadow-color: hsl(0 0% 0% / 0.25);
+  --color-surface-raised: hsl(30 8% 14%);
+  --color-border-subtle: hsl(30 8% 25%);
+  --shadow-color: hsl(0 0% 0% / 0.30);
 }
 
 @layer base {
@@ -150,7 +150,7 @@
   /* Panel - raised surface for grouped content */
   .panel {
     @apply rounded-lg border bg-surface-raised;
-    box-shadow: 0 1px 3px var(--shadow-color);
+    box-shadow: 0 2px 8px var(--shadow-color);
   }
 
   /* Panel header - top area with title and optional actions */
@@ -179,5 +179,10 @@
 
   .empty-state-action {
     @apply mt-4;
+  }
+
+  /* Card elevation - subtle depth for bordered cards */
+  .bg-card:where([class*="rounded"]) {
+    box-shadow: 0 1px 4px var(--shadow-color);
   }
 }
