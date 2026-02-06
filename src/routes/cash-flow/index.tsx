@@ -1354,8 +1354,8 @@ function CashFlowBreakdown({
         {isCurrentPeriod && (
           <div className="mb-2 grid grid-cols-[1fr_auto_auto] gap-x-4">
             <div />
-            <div className="w-28 text-right text-xs font-medium text-muted-foreground">Planned</div>
-            <div className="w-24 text-right text-xs font-medium text-muted-foreground sm:w-28">Current</div>
+            <div className="w-20 text-right text-xs font-medium text-muted-foreground sm:w-28">Planned</div>
+            <div className="w-16 text-right text-xs font-medium text-muted-foreground sm:w-28">Current</div>
           </div>
         )}
         <SingleRow label="Starting cash" value={hasAnchor ? formatCents(startingBalance as number) : '—'} href="/settings" />
@@ -1461,23 +1461,23 @@ function SingleRow({
   isBold?: boolean;
 }) {
   const valContent = href ? (
-    <Link to={href} className={cn('w-28 text-right font-mono text-sm tabular-nums hover:underline', isBold && 'font-semibold', className, valueColor)}>
+    <Link to={href} className={cn('w-20 text-right font-mono text-sm tabular-nums hover:underline sm:w-28', isBold && 'font-semibold', className, valueColor)}>
       {value}
     </Link>
   ) : (
-    <span className={cn('w-28 text-right font-mono text-sm tabular-nums', isBold && 'font-semibold', className, valueColor)}>
+    <span className={cn('w-20 text-right font-mono text-sm tabular-nums sm:w-28', isBold && 'font-semibold', className, valueColor)}>
       {value}
     </span>
   );
 
   return (
-    <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 py-0.5">
+    <div className="grid grid-cols-[1fr_auto_auto] gap-x-2 py-0.5 sm:gap-x-4">
       <span className={cn('text-sm text-muted-foreground', isBold && 'font-semibold text-foreground')}>
         {label}
         {delta}
       </span>
       {valContent}
-      <span className="w-24 text-right text-xs text-muted-foreground self-center sm:w-28">
+      <span className="w-16 text-right text-xs text-muted-foreground self-center sm:w-28">
         {annotation ?? ''}
       </span>
     </div>

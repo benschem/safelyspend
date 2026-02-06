@@ -319,36 +319,38 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
                 <span className="text-sm font-medium">Monthly Breakdown</span>
               </div>
 
-              <div className="mt-4">
-                {/* Header row */}
-                <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 pb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  <span />
-                  <span className="w-24 text-right">Planned</span>
-                  <span className="w-24 text-right">Current</span>
-                </div>
+              <div className="-mx-5 mt-4 overflow-x-auto px-5">
+                <div className="min-w-[280px]">
+                  {/* Header row */}
+                  <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 pb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    <span />
+                    <span className="w-16 text-right sm:w-20">Planned</span>
+                    <span className="w-16 text-right sm:w-20">Current</span>
+                  </div>
 
-                <BreakdownRow label="Starting cash" planned={428000} current={428000} />
-                <BreakdownRow
-                  label="+ Income"
-                  planned={725000}
-                  current={510000}
-                  prefix="+"
-                  color="green"
-                />
-                <BreakdownRow label="− Fixed expenses" planned={-342000} current={-289000} />
-                <BreakdownRow label="− Variable spending" planned={-180000} current={-118000} />
-                <BreakdownRow label="− Savings" planned={-100000} current={-50000} />
+                  <BreakdownRow label="Starting cash" planned={428000} current={428000} />
+                  <BreakdownRow
+                    label="+ Income"
+                    planned={725000}
+                    current={510000}
+                    prefix="+"
+                    color="green"
+                  />
+                  <BreakdownRow label="− Fixed expenses" planned={-342000} current={-289000} />
+                  <BreakdownRow label="− Variable spending" planned={-180000} current={-118000} />
+                  <BreakdownRow label="− Savings" planned={-100000} current={-50000} />
 
-                <div className="my-2 border-t" />
+                  <div className="my-2 border-t" />
 
-                <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 py-1">
-                  <span className="text-sm font-semibold">Net change</span>
-                  <span className="w-24 text-right font-mono text-sm font-bold tabular-nums text-green-600 dark:text-green-400">
-                    +{formatCents(103000)}
-                  </span>
-                  <span className="w-24 text-right font-mono text-sm font-bold tabular-nums text-green-600 dark:text-green-400">
-                    +{formatCents(53000)}
-                  </span>
+                  <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 py-1">
+                    <span className="text-sm font-semibold">Net change</span>
+                    <span className="w-16 text-right font-mono text-sm font-bold tabular-nums text-green-600 dark:text-green-400 sm:w-20">
+                      +{formatCents(103000)}
+                    </span>
+                    <span className="w-16 text-right font-mono text-sm font-bold tabular-nums text-green-600 dark:text-green-400 sm:w-20">
+                      +{formatCents(53000)}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -637,13 +639,13 @@ function BreakdownRow({
   const colorClass = color === 'green' ? 'text-green-600 dark:text-green-400' : '';
 
   return (
-    <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 py-1">
+    <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 py-1">
       <span className="text-sm text-muted-foreground">{label}</span>
-      <span className={`w-24 text-right font-mono text-sm tabular-nums ${colorClass}`}>
+      <span className={`w-16 text-right font-mono text-sm tabular-nums sm:w-20 ${colorClass}`}>
         {prefix}
         {formatCents(Math.abs(planned))}
       </span>
-      <span className={`w-24 text-right font-mono text-sm tabular-nums ${colorClass}`}>
+      <span className={`w-16 text-right font-mono text-sm tabular-nums sm:w-20 ${colorClass}`}>
         {prefix}
         {formatCents(Math.abs(current))}
       </span>
