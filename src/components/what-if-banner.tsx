@@ -270,6 +270,7 @@ export function WhatIfBanner() {
             <button
               type="button"
               onClick={() => setBannerCollapsed(false)}
+              aria-label={`Expand scenario controls: ${activeScenario?.name ?? 'Scenario'}`}
               className={`flex h-11 w-56 cursor-pointer items-center gap-2 border-b border-r px-4 transition-colors ${
                 showPurple
                   ? 'border-violet-500/50 bg-violet-500/10 text-violet-800 hover:bg-violet-500/20 dark:text-violet-200 dark:hover:bg-violet-500/20'
@@ -300,6 +301,7 @@ export function WhatIfBanner() {
         <button
           type="button"
           onClick={() => setBannerCollapsed(true)}
+          aria-label="Collapse scenario controls"
           className={`flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 transition-colors sm:gap-3 ${
             showPurple ? 'hover:bg-violet-200 dark:hover:bg-violet-800' : 'hover:bg-muted'
           }`}

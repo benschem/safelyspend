@@ -31,13 +31,20 @@ export function RootLayout() {
   return (
     <WhatIfProvider activeScenarioId={activeScenarioId}>
       <div className="flex h-screen flex-col">
+        {/* Skip to main content link for keyboard users */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+        >
+          Skip to main content
+        </a>
         {isDemo && <DemoBanner />}
         <WhatIfBanner />
         <div className="flex flex-1 overflow-hidden">
           <Sidebar />
           <div className="flex flex-1 flex-col overflow-hidden">
             <Header />
-            <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+            <main id="main-content" className="flex-1 overflow-y-auto p-4 sm:p-6">
               <PageErrorBoundary>
                 <Outlet context={{ activeScenarioId }} />
               </PageErrorBoundary>

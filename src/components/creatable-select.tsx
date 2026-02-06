@@ -180,6 +180,7 @@ export function CreatableSelect({
             ref={listRef}
             id="select-listbox"
             role="listbox"
+            aria-label="Options"
             className="max-h-60 overflow-y-auto py-1"
           >
             {allowNone && (

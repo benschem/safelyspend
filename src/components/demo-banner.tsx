@@ -79,7 +79,7 @@ export function DemoBanner() {
               size="sm"
               onClick={() => setDialogOpen(true)}
               className="h-7 w-7 border-yellow-600 bg-transparent p-0 hover:bg-yellow-200 dark:border-yellow-500 dark:hover:bg-yellow-900 sm:hidden"
-              title="Start your own budget"
+              aria-label="Start your own budget"
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -92,7 +92,7 @@ export function DemoBanner() {
             size="sm"
             onClick={handleReset}
             className="h-7 w-7 shrink-0 p-0 hover:bg-yellow-200 dark:hover:bg-yellow-900"
-            title="Back to landing page"
+            aria-label="Back to landing page"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>

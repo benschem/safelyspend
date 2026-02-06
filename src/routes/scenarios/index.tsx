@@ -200,6 +200,7 @@ export function ScenariosIndexPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => openEditDialog(defaultScenario)}
+                          aria-label="Edit Current Plan"
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -272,6 +273,7 @@ export function ScenariosIndexPage() {
                                 onClick={() =>
                                   setActiveScenarioId(isActive ? defaultScenario!.id : scenario.id)
                                 }
+                                aria-label={isActive ? 'Back to Current Plan' : 'Explore this scenario'}
                               >
                                 <Play
                                   className={`h-4 w-4 ${isActive ? 'fill-violet-500 text-violet-500' : ''}`}
@@ -288,6 +290,7 @@ export function ScenariosIndexPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => updateScenario(scenario.id, { isDefault: true })}
+                                aria-label="Make Current Plan"
                               >
                                 <Star className="h-4 w-4" />
                               </Button>
@@ -300,6 +303,7 @@ export function ScenariosIndexPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => openEditDialog(scenario)}
+                                aria-label="Edit scenario"
                               >
                                 <Pencil className="h-4 w-4" />
                               </Button>
@@ -313,6 +317,7 @@ export function ScenariosIndexPage() {
                                 size="sm"
                                 onClick={() => handleDelete(scenario.id)}
                                 onBlur={() => setTimeout(() => setDeletingId(null), 200)}
+                                aria-label={isDeleting ? 'Confirm delete' : 'Delete scenario'}
                               >
                                 {isDeleting ? 'Confirm' : <Trash2 className="h-4 w-4" />}
                               </Button>

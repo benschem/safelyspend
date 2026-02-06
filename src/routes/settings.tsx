@@ -486,13 +486,14 @@ export function SettingsPage() {
                             Cancel
                           </Button>
                         )}
-                        <Button variant="ghost" size="sm" onClick={() => openEditAnchor(anchor)}>
+                        <Button variant="ghost" size="sm" onClick={() => openEditAnchor(anchor)} aria-label="Edit anchor">
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
                           variant={deletingAnchorId === anchor.id ? 'destructive' : 'ghost'}
                           size="sm"
                           onClick={() => handleDeleteAnchor(anchor.id)}
+                          aria-label={deletingAnchorId === anchor.id ? 'Confirm delete' : 'Delete anchor'}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -576,6 +577,7 @@ export function SettingsPage() {
                                       variant="ghost"
                                       size="sm"
                                       onClick={() => openEditSavingsAnchor(anchor)}
+                                      aria-label="Edit savings anchor"
                                     >
                                       <Pencil className="h-4 w-4" />
                                     </Button>
@@ -587,6 +589,7 @@ export function SettingsPage() {
                                       }
                                       size="sm"
                                       onClick={() => handleDeleteSavingsAnchor(anchor.id)}
+                                      aria-label={deletingSavingsAnchorId === anchor.id ? 'Confirm delete' : 'Delete savings anchor'}
                                     >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>

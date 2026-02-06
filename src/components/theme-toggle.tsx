@@ -52,7 +52,7 @@ export function ThemeToggleButton() {
   };
 
   return (
-    <Button variant="ghost" size="icon" onClick={cycleTheme} title={`Theme: ${theme}`}>
+    <Button variant="ghost" size="icon" onClick={cycleTheme} aria-label={`Theme: ${theme}`}>
       {resolvedTheme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
     </Button>
   );

@@ -21,6 +21,8 @@ export function YearGrid({ year, months, onMonthClick }: YearGridProps) {
             key={month.month}
             type="button"
             onClick={() => onMonthClick(month.monthIndex)}
+            aria-label={`${month.month}: ${month.surplus >= 0 ? '+' : ''}${formatCents(month.surplus)}${month.isCurrentMonth ? ' (current month)' : ''}${month.isFuture ? ' (projected)' : ''}`}
+            aria-current={month.isCurrentMonth ? 'true' : undefined}
             className={cn(
               'cursor-pointer rounded-lg border bg-card p-3 text-left transition-colors hover:bg-muted/50',
               month.isCurrentMonth && 'border-primary ring-1 ring-primary/20',

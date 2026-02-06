@@ -54,6 +54,8 @@ export function DateRangeFilter({
           {hasFilter && (
             <X
               className="ml-auto h-4 w-4 shrink-0 cursor-pointer opacity-50 hover:opacity-100"
+              role="button"
+              aria-label="Clear date filter"
               onClick={(e) => {
                 e.stopPropagation();
                 onClear();

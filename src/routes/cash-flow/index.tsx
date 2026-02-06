@@ -593,7 +593,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
           >
             ← Today
           </Button>
-          <Button variant="ghost" size="icon" onClick={goToPrevious} className="h-9 w-9">
+          <Button variant="ghost" size="icon" onClick={goToPrevious} className="h-9 w-9" aria-label="Previous month">
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button
@@ -602,6 +602,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
             onClick={goToNext}
             className="h-9 w-9"
             disabled={isAtCurrentMonth}
+            aria-label="Next month"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -629,6 +630,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                   size="icon"
                   className="h-7 w-7"
                   onClick={() => setPickerYear((y) => y - 1)}
+                  aria-label="Previous year"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -639,6 +641,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                   className="h-7 w-7"
                   onClick={() => setPickerYear((y) => y + 1)}
                   disabled={pickerYear >= now.getFullYear()}
+                  aria-label="Next year"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>

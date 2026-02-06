@@ -232,6 +232,7 @@ interface SortableHeaderProps {
 export function SortableHeader({ column, children, className }: SortableHeaderProps) {
   const sorted = column.getIsSorted();
   const isRightAligned = className?.includes('justify-end');
+  const sortLabel = sorted === 'asc' ? 'sorted ascending' : sorted === 'desc' ? 'sorted descending' : 'not sorted';
 
   return (
     <div className={isRightAligned ? 'flex justify-end' : ''}>
@@ -239,6 +240,7 @@ export function SortableHeader({ column, children, className }: SortableHeaderPr
         variant="ghost"
         onClick={() => column.toggleSorting(sorted === 'asc')}
         className={`h-8 ${isRightAligned ? '-mr-4' : '-ml-4'} ${className ?? ''}`}
+        aria-label={`Sort by ${typeof children === 'string' ? children : 'column'}, currently ${sortLabel}`}
       >
         {children}
         {sorted === 'asc' ? (

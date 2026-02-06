@@ -36,6 +36,7 @@ function SliderActions({
               type="button"
               onClick={onEdit}
               className="cursor-pointer rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Edit"
             >
               <Pencil className="h-3 w-3" />
             </button>
@@ -50,6 +51,7 @@ function SliderActions({
               type="button"
               onClick={onDelete}
               className="cursor-pointer rounded p-1 text-muted-foreground hover:bg-muted hover:text-red-500"
+              aria-label="Delete"
             >
               <Trash2 className="h-3 w-3" />
             </button>
@@ -109,6 +111,7 @@ export function IncomeSliderSection({
           <Button
             variant="ghost"
             size="sm"
+            aria-label="Add income"
             onClick={(e) => {
               e.stopPropagation();
               onAddClick();
@@ -237,6 +240,7 @@ export function FixedExpenseSliderSection({
           <Button
             variant="ghost"
             size="sm"
+            aria-label="Add fixed expense"
             onClick={(e) => {
               e.stopPropagation();
               onAddClick();
@@ -378,6 +382,7 @@ export function BudgetedSpendingSliderSection({
           <Button
             variant="ghost"
             size="sm"
+            aria-label="Add budget"
             onClick={(e) => {
               e.stopPropagation();
               onAddClick();
@@ -495,6 +500,7 @@ export function SavingsSliderSection({
           <Button
             variant="ghost"
             size="sm"
+            aria-label="Add savings contribution"
             onClick={(e) => {
               e.stopPropagation();
               onAddClick();

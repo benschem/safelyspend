@@ -348,6 +348,7 @@ export function BudgetSlider({
                   type="button"
                   onClick={handleReset}
                   className="cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  aria-label={`Reset to ${formatCents(baseline)}`}
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                 </button>
