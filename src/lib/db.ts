@@ -105,13 +105,16 @@ export class BudgetDatabase extends Dexie {
 export const db = new BudgetDatabase();
 
 /** Current data export version - increment when export format changes */
-export const CURRENT_DATA_VERSION = 2;
+export const CURRENT_DATA_VERSION = 3;
 
 // Budget backup type for export/import
 export interface BudgetBackup extends BudgetData {
   version: number;
   exportedAt: string;
   activeScenarioId: string | null;
+  // Added in v3
+  checkInCadence?: 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | null;
+  lastCheckInDate?: string | null;
 }
 
 /**
@@ -129,6 +132,7 @@ export async function exportAllData(): Promise<BudgetBackup> {
     savingsAnchors,
     categoryRules,
     activeScenario,
+    appConfig,
   ] = await Promise.all([
     db.scenarios.toArray(),
     db.categories.toArray(),
@@ -140,6 +144,7 @@ export async function exportAllData(): Promise<BudgetBackup> {
     db.savingsAnchors.toArray(),
     db.categoryRules.toArray(),
     db.activeScenario.get('singleton'),
+    db.appConfig.get('singleton'),
   ]);
 
   return {
@@ -155,6 +160,8 @@ export async function exportAllData(): Promise<BudgetBackup> {
     savingsAnchors,
     categoryRules,
     activeScenarioId: activeScenario?.scenarioId ?? null,
+    checkInCadence: appConfig?.checkInCadence ?? null,
+    lastCheckInDate: appConfig?.lastCheckInDate ?? null,
   };
 }
 
@@ -214,14 +221,13 @@ export async function importAllData(
         });
       }
 
-      // Mark as initialised (preserve check-in preferences if they exist)
-      const existingConfig = await db.appConfig.get('singleton');
+      // Mark as initialised and restore check-in preferences from backup
       await db.appConfig.put({
         id: 'singleton',
         isInitialized: true,
         isDemo: false,
-        checkInCadence: existingConfig?.checkInCadence ?? null,
-        lastCheckInDate: existingConfig?.lastCheckInDate ?? null,
+        checkInCadence: (backup as BudgetBackup).checkInCadence ?? null,
+        lastCheckInDate: (backup as BudgetBackup).lastCheckInDate ?? null,
       });
     },
   );

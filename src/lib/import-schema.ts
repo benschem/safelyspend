@@ -128,6 +128,9 @@ const categoryRuleSchema = baseEntitySchema.extend({
   enabled: z.boolean(),
 });
 
+// Check-in cadence enum
+const checkInCadenceSchema = z.enum(['weekly', 'fortnightly', 'monthly', 'quarterly']);
+
 // Full budget data schema with reasonable limits
 export const budgetDataSchema = z.object({
   // Version for future migrations
@@ -149,6 +152,10 @@ export const budgetDataSchema = z.object({
 
   // Optional state
   activeScenarioId: z.string().nullable().optional(),
+
+  // Check-in preferences (added in v3)
+  checkInCadence: checkInCadenceSchema.nullable().optional(),
+  lastCheckInDate: z.string().nullable().optional(),
 });
 
 export type ValidatedBudgetData = z.infer<typeof budgetDataSchema>;
@@ -200,10 +207,13 @@ function migrateImportData(data: ValidatedBudgetData): ValidatedBudgetData {
     debug.info('import', `Discarding ${forecastEvents.length} forecastEvents (removed in v2)`);
   }
 
-  // Ensure savingsAnchors array exists (added in v3)
+  // Ensure savingsAnchors array exists (added in schema v3)
   if (!migrated.savingsAnchors) {
     migrated.savingsAnchors = [];
   }
+
+  // v2 -> v3: checkInCadence and lastCheckInDate added (optional, no migration needed)
+  // They will be undefined/null for older exports, which is fine
 
   // Update version to current
   migrated.version = CURRENT_DATA_VERSION;
