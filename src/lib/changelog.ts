@@ -21,6 +21,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.32.0',
+    date: '2026-02-06',
+    changes: [
+      'Redesigned landing page with interactive budget sliders and product previews',
+      'Fixed iOS Safari zoom issue when tapping on form fields',
+      'Improved mobile layout for tables and breakdown views',
+      'Deleting a category now properly handles linked transactions and budget rules',
+    ],
+  },
+  {
     version: '0.31.0',
     date: '2026-02-05',
     changes: [
