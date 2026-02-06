@@ -821,7 +821,7 @@ function BalanceStep({
 // Summary Step
 // ─────────────────────────────────────────────────────────────
 
-function SummaryStep({ onFinish, interacted }: { onFinish: () => void; interacted: boolean }) {
+function SummaryStep({ onFinish }: { onFinish: () => void }) {
   const navigate = useNavigate();
   const { activeScenario } = useScenarios();
   const scenarioId = activeScenario?.id ?? null;
@@ -1018,7 +1018,7 @@ function SummaryStep({ onFinish, interacted }: { onFinish: () => void; interacte
       <div className="mt-8 flex gap-3">
         <Button
           onClick={() => {
-            if (interacted) onFinish();
+            onFinish();
             navigate('/cash-flow');
           }}
           size="lg"
@@ -1071,8 +1071,8 @@ export function CheckInWizard() {
     return balance;
   }, [activeAnchor, allTransactions, todayStr]);
 
-  const [interacted, setInteracted] = useState(false);
-  const handleInteract = useCallback(() => setInteracted(true), []);
+  // No-op - we always mark check-in complete now, but steps still call this
+  const handleInteract = useCallback(() => {}, []);
 
   const isFirstCheckIn = !lastCheckInDate;
 
@@ -1168,7 +1168,7 @@ export function CheckInWizard() {
             {step === 'savings' && <SavingsStep onNext={goNext} onSkip={goNext} onInteract={handleInteract} />}
             {step === 'savings-confirm' && <SavingsConfirmStep onNext={goNext} onSkip={goNext} onInteract={handleInteract} />}
             {step === 'balance' && <BalanceStep onNext={goNext} onSkip={goNext} onInteract={handleInteract} />}
-            {step === 'summary' && <SummaryStep onFinish={handleFinish} interacted={interacted} />}
+            {step === 'summary' && <SummaryStep onFinish={handleFinish} />}
           </div>
         </div>
 

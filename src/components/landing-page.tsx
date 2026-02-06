@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   ArrowRight,
   Banknote,
@@ -68,9 +69,22 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
     <div className="flex min-h-screen flex-col bg-background">
       <header className="flex items-center justify-between border-b px-4 py-3 sm:px-6">
         <span className="text-lg font-semibold">SafelySpend</span>
-        <Button variant="outline" size="sm" disabled>
-          Log in
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                disabled
+                className="inline-flex h-8 cursor-not-allowed items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium opacity-50 shadow-sm"
+              >
+                Log in
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Accounts coming soon</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </header>
 
       <main className="flex flex-1 flex-col">

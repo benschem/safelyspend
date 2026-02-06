@@ -33,6 +33,11 @@ export function useCategories() {
   );
 
   const deleteCategory = useCallback(async (id: string) => {
+    // Nullify categoryId on transactions that reference this category
+    await db.transactions.where('categoryId').equals(id).modify({ categoryId: null });
+    // Delete budget rules that reference this category
+    await db.budgetRules.where('categoryId').equals(id).delete();
+    // Delete the category
     await db.categories.delete(id);
   }, []);
 

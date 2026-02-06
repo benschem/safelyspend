@@ -260,7 +260,7 @@ export function NetWealthPage() {
               <Building2 className="h-5 w-5 text-orange-500" />
             </div>
             <p className="mt-4 text-sm text-muted-foreground">Super</p>
-            <p className="mt-1 text-xl font-semibold text-muted-foreground">$142,850</p>
+            <p className="mt-1 text-xl font-semibold text-muted-foreground">—</p>
             <div className="mt-3 mb-2 h-px bg-border" />
             <p className="text-sm text-muted-foreground">Coming soon</p>
           </div>
@@ -271,7 +271,7 @@ export function NetWealthPage() {
               <Sprout className="h-5 w-5 text-purple-500" />
             </div>
             <p className="mt-4 text-sm text-muted-foreground">Investments</p>
-            <p className="mt-1 text-xl font-semibold text-muted-foreground">$28,340</p>
+            <p className="mt-1 text-xl font-semibold text-muted-foreground">—</p>
             <div className="mt-3 mb-2 h-px bg-border" />
             <p className="text-sm text-muted-foreground">Coming soon</p>
           </div>
@@ -282,7 +282,7 @@ export function NetWealthPage() {
               <CreditCard className="h-5 w-5 text-red-500" />
             </div>
             <p className="mt-4 text-sm text-muted-foreground">Debt</p>
-            <p className="mt-1 text-xl font-semibold text-muted-foreground">$385,200</p>
+            <p className="mt-1 text-xl font-semibold text-muted-foreground">—</p>
             <div className="mt-3 mb-2 h-px bg-border" />
             <p className="text-sm text-muted-foreground">Coming soon</p>
           </div>
