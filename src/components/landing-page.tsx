@@ -719,6 +719,7 @@ function BudgetSliderPreview() {
                 </div>
               </div>
               <Slider
+                aria-label={slider.label}
                 value={[value]}
                 min={slider.min}
                 max={slider.max}

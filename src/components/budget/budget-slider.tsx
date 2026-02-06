@@ -306,6 +306,7 @@ export function BudgetSlider({
       {/* Slider with baseline marker */}
       <div className="relative">
         <Slider
+          aria-label={label}
           value={[localValue]}
           min={min}
           max={max}
