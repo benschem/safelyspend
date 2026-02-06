@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.32.2',
+    date: '2026-02-06',
+    changes: [
+      'Wizards and import dialogs now load on demand for faster initial page loads',
+      'Demo data and landing page are no longer included in the main app bundle',
+    ],
+  },
+  {
     version: '0.32.1',
     date: '2026-02-06',
     changes: [

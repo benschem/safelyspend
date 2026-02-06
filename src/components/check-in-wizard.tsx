@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router';
 import {
   ArrowLeft,
@@ -25,8 +25,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CsvImportDialog } from '@/components/csv-import-dialog';
-import { UpImportDialog } from '@/components/up-import-dialog';
+const CsvImportDialog = lazy(() =>
+  import('@/components/csv-import-dialog').then((m) => ({ default: m.CsvImportDialog })),
+);
+const UpImportDialog = lazy(() =>
+  import('@/components/up-import-dialog').then((m) => ({ default: m.UpImportDialog })),
+);
 import { useAppConfig } from '@/hooks/use-app-config';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useSavingsAnchors } from '@/hooks/use-savings-anchors';
@@ -238,8 +242,10 @@ function ImportStep({
         </Button>
       </div>
 
-      <CsvImportDialog open={csvOpen} onOpenChange={(v) => handleDialogClose(v, setCsvOpen)} />
-      <UpImportDialog open={upOpen} onOpenChange={(v) => handleDialogClose(v, setUpOpen)} />
+      <Suspense fallback={null}>
+        <CsvImportDialog open={csvOpen} onOpenChange={(v) => handleDialogClose(v, setCsvOpen)} />
+        <UpImportDialog open={upOpen} onOpenChange={(v) => handleDialogClose(v, setUpOpen)} />
+      </Suspense>
     </div>
   );
 }

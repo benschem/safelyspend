@@ -2,8 +2,6 @@ import { createBrowserRouter, RouterProvider, Navigate } from 'react-router';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/sonner';
 import { RootLayout } from '@/components/layout/root-layout';
-import { FirstRunWizard } from '@/components/first-run-wizard';
-import { CheckInWizard } from '@/components/check-in-wizard';
 import { ErrorBoundary } from '@/components/error-boundary';
 
 // Dev-only: style guide and error preview not bundled in production
@@ -23,9 +21,19 @@ const devOnlyRoutes = import.meta.env.DEV
 
 const router = createBrowserRouter([
   // Landing page (outside of RootLayout - no sidebar/header)
-  { path: '/landing', element: <FirstRunWizard />, errorElement: <ErrorBoundary /> },
+  {
+    path: '/landing',
+    lazy: () =>
+      import('@/components/first-run-wizard').then((m) => ({ Component: m.FirstRunWizard })),
+    errorElement: <ErrorBoundary />,
+  },
   // Check-in wizard (outside of RootLayout - full screen)
-  { path: '/check-in', element: <CheckInWizard />, errorElement: <ErrorBoundary /> },
+  {
+    path: '/check-in',
+    lazy: () =>
+      import('@/components/check-in-wizard').then((m) => ({ Component: m.CheckInWizard })),
+    errorElement: <ErrorBoundary />,
+  },
   {
     path: '/',
     element: <RootLayout />,

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import {
   ArrowLeft,
@@ -19,8 +19,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { CsvImportDialog } from '@/components/csv-import-dialog';
-import { UpImportDialog } from '@/components/up-import-dialog';
+const CsvImportDialog = lazy(() =>
+  import('@/components/csv-import-dialog').then((m) => ({ default: m.CsvImportDialog })),
+);
+const UpImportDialog = lazy(() =>
+  import('@/components/up-import-dialog').then((m) => ({ default: m.UpImportDialog })),
+);
 import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { useAppConfig } from '@/hooks/use-app-config';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
@@ -31,9 +35,11 @@ import { useSavingsAnchors } from '@/hooks/use-savings-anchors';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useTransactions } from '@/hooks/use-transactions';
 import { today, formatLongDate, formatCents, parseCentsFromInput } from '@/lib/utils';
-import { loadDemoDataToStorage } from '@/lib/demo-data';
 import { debug } from '@/lib/debug';
-import { LandingPage } from '@/components/landing-page';
+
+const LandingPage = lazy(() =>
+  import('@/components/landing-page').then((m) => ({ default: m.LandingPage })),
+);
 
 // ─────────────────────────────────────────────────────────────
 // Types & Constants
@@ -1072,8 +1078,10 @@ function SetupWizard() {
       </div>
 
       {/* Import/entry dialogs (rendered as portals) */}
-      <CsvImportDialog open={csvImportOpen} onOpenChange={setCsvImportOpen} />
-      <UpImportDialog open={upImportOpen} onOpenChange={setUpImportOpen} />
+      <Suspense fallback={null}>
+        <CsvImportDialog open={csvImportOpen} onOpenChange={setCsvImportOpen} />
+        <UpImportDialog open={upImportOpen} onOpenChange={setUpImportOpen} />
+      </Suspense>
       <TransactionDialog
         open={transactionDialogOpen}
         onOpenChange={setTransactionDialogOpen}
@@ -1099,6 +1107,7 @@ export function FirstRunWizard() {
   const isSetup = searchParams.get('setup') === '1';
 
   const handleStartDemo = async () => {
+    const { loadDemoDataToStorage } = await import('@/lib/demo-data');
     await loadDemoDataToStorage();
     window.location.href = '/';
   };
@@ -1107,5 +1116,9 @@ export function FirstRunWizard() {
     return <SetupWizard />;
   }
 
-  return <LandingPage onViewDemo={handleStartDemo} />;
+  return (
+    <Suspense fallback={null}>
+      <LandingPage onViewDemo={handleStartDemo} />
+    </Suspense>
+  );
 }
