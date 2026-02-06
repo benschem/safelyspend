@@ -20,7 +20,7 @@ export function RootLayout() {
 
   if (!isInitialized) {
     // Preserve query params when redirecting to landing
-    return <Navigate to={`/landing${location.search}`} replace />;
+    return <Navigate to={`/${location.search}`} replace />;
   }
 
   // Show nothing while loading scenarios after initialisation

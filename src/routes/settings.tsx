@@ -226,7 +226,7 @@ export function SettingsPage() {
 
     try {
       await fullReset();
-      navigate('/landing');
+      navigate('/');
     } catch (error) {
       debug.error('db', 'Delete failed', error);
       showMessage('error', 'Delete failed. Please try again.');

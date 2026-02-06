@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { Navigate, useNavigate, useSearchParams } from 'react-router';
 import {
   ArrowLeft,
   ArrowLeftRight,
@@ -906,7 +906,7 @@ function SetupWizard() {
   }, [navigate]);
 
   const handleExit = useCallback(() => {
-    navigate('/landing', { replace: true });
+    navigate('/', { replace: true });
   }, [navigate]);
 
   const handleAddGoal = useCallback((goal: WizardSavingsGoal) => {
@@ -1105,12 +1105,22 @@ function SetupWizard() {
 export function FirstRunWizard() {
   const [searchParams] = useSearchParams();
   const isSetup = searchParams.get('setup') === '1';
+  const { isInitialized, isLoading } = useAppConfig();
 
   const handleStartDemo = async () => {
     const { loadDemoDataToStorage } = await import('@/lib/demo-data');
     await loadDemoDataToStorage();
-    window.location.href = '/';
+    window.location.href = '/cash-flow';
   };
+
+  if (isLoading) {
+    return null;
+  }
+
+  // Initialized users landing on / get redirected to the app
+  if (isInitialized && !isSetup) {
+    return <Navigate to="/cash-flow" replace />;
+  }
 
   if (isSetup) {
     return <SetupWizard />;

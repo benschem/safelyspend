@@ -20,12 +20,17 @@ const devOnlyRoutes = import.meta.env.DEV
   : [];
 
 const router = createBrowserRouter([
-  // Landing page (outside of RootLayout - no sidebar/header)
+  // Landing page / setup wizard at root
   {
-    path: '/landing',
+    path: '/',
     lazy: () =>
       import('@/components/first-run-wizard').then((m) => ({ Component: m.FirstRunWizard })),
     errorElement: <ErrorBoundary />,
+  },
+  // Legacy redirect
+  {
+    path: '/landing',
+    element: <Navigate to="/" replace />,
   },
   // Check-in wizard (outside of RootLayout - full screen)
   {
@@ -34,13 +39,11 @@ const router = createBrowserRouter([
       import('@/components/check-in-wizard').then((m) => ({ Component: m.CheckInWizard })),
     errorElement: <ErrorBoundary />,
   },
+  // App routes (pathless layout route with RootLayout)
   {
-    path: '/',
     element: <RootLayout />,
     errorElement: <ErrorBoundary />,
     children: [
-      // Redirect root to cash flow
-      { index: true, element: <Navigate to="/cash-flow" replace /> },
 
       // Cash Flow (monthly overview)
       {
