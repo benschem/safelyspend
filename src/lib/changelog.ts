@@ -21,6 +21,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.32.1',
+    date: '2026-02-06',
+    changes: [
+      'Pages now load faster with route-based code splitting',
+      'Improved browser caching by splitting vendor dependencies into separate files',
+      'Added page description for better search engine results',
+    ],
+  },
+  {
     version: '0.32.0',
     date: '2026-02-06',
     changes: [

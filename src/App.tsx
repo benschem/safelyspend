@@ -6,20 +6,6 @@ import { FirstRunWizard } from '@/components/first-run-wizard';
 import { CheckInWizard } from '@/components/check-in-wizard';
 import { ErrorBoundary } from '@/components/error-boundary';
 
-// Route components
-import { NetWealthPage } from '@/routes/net-wealth';
-import { CashFlowPage } from '@/routes/cash-flow/index';
-import { BudgetPage } from '@/routes/budget';
-import { TransactionsPage } from '@/routes/transactions/index';
-import { TransactionNewPage } from '@/routes/transactions/new';
-import { CategoryDetailPage } from '@/routes/categories/detail';
-import { CategoryImportRulesPage } from '@/routes/categories/import-rules';
-import { SavingsIndexPage } from '@/routes/savings/index';
-import { InsightsPage } from '@/routes/insights';
-import { ScenariosIndexPage } from '@/routes/scenarios/index';
-import { SettingsPage } from '@/routes/settings';
-import { ChangelogPage } from '@/routes/changelog';
-
 // Dev-only: style guide and error preview not bundled in production
 const devOnlyRoutes = import.meta.env.DEV
   ? [
@@ -49,16 +35,30 @@ const router = createBrowserRouter([
       { index: true, element: <Navigate to="/cash-flow" replace /> },
 
       // Cash Flow (monthly overview)
-      { path: 'cash-flow', element: <CashFlowPage /> },
+      {
+        path: 'cash-flow',
+        lazy: () =>
+          import('@/routes/cash-flow/index').then((m) => ({ Component: m.CashFlowPage })),
+      },
 
       // Budget (plan tab only)
-      { path: 'budget', element: <BudgetPage /> },
+      {
+        path: 'budget',
+        lazy: () => import('@/routes/budget').then((m) => ({ Component: m.BudgetPage })),
+      },
 
       // Transactions (standalone page)
-      { path: 'transactions', element: <TransactionsPage /> },
+      {
+        path: 'transactions',
+        lazy: () =>
+          import('@/routes/transactions/index').then((m) => ({ Component: m.TransactionsPage })),
+      },
 
       // Net Wealth (balances overview)
-      { path: 'net-wealth', element: <NetWealthPage /> },
+      {
+        path: 'net-wealth',
+        lazy: () => import('@/routes/net-wealth').then((m) => ({ Component: m.NetWealthPage })),
+      },
 
       // Legacy redirects
       { path: 'snapshot', element: <Navigate to="/cash-flow" replace /> },
@@ -74,25 +74,56 @@ const router = createBrowserRouter([
       { path: 'recurring', element: <Navigate to="/budget?tab=plan" replace /> },
 
       // Transactions new page (still needed for direct navigation)
-      { path: 'transactions/new', element: <TransactionNewPage /> },
+      {
+        path: 'transactions/new',
+        lazy: () =>
+          import('@/routes/transactions/new').then((m) => ({ Component: m.TransactionNewPage })),
+      },
 
       // Categories - redirect to budget, keep detail page
       { path: 'categories', element: <Navigate to="/budget" replace /> },
-      { path: 'categories/:id', element: <CategoryDetailPage /> },
-      { path: 'categories/import-rules', element: <CategoryImportRulesPage /> },
+      {
+        path: 'categories/:id',
+        lazy: () =>
+          import('@/routes/categories/detail').then((m) => ({ Component: m.CategoryDetailPage })),
+      },
+      {
+        path: 'categories/import-rules',
+        lazy: () =>
+          import('@/routes/categories/import-rules').then((m) => ({
+            Component: m.CategoryImportRulesPage,
+          })),
+      },
 
       // Savings (track)
-      { path: 'savings', element: <SavingsIndexPage /> },
+      {
+        path: 'savings',
+        lazy: () =>
+          import('@/routes/savings/index').then((m) => ({ Component: m.SavingsIndexPage })),
+      },
 
       // Insights (track)
-      { path: 'insights', element: <InsightsPage /> },
+      {
+        path: 'insights',
+        lazy: () => import('@/routes/insights').then((m) => ({ Component: m.InsightsPage })),
+      },
 
       // Scenarios (plan)
-      { path: 'scenarios', element: <ScenariosIndexPage /> },
+      {
+        path: 'scenarios',
+        lazy: () =>
+          import('@/routes/scenarios/index').then((m) => ({ Component: m.ScenariosIndexPage })),
+      },
 
       // Settings
-      { path: 'settings', element: <SettingsPage /> },
-      { path: 'changelog', element: <ChangelogPage /> },
+      {
+        path: 'settings',
+        lazy: () => import('@/routes/settings').then((m) => ({ Component: m.SettingsPage })),
+      },
+      {
+        path: 'changelog',
+        lazy: () => import('@/routes/changelog').then((m) => ({ Component: m.ChangelogPage })),
+      },
 
       // Dev-only routes
       ...devOnlyRoutes,
