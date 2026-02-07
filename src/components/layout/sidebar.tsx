@@ -145,10 +145,6 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 export function Sidebar() {
   return (
     <aside className="hidden md:flex h-full w-56 flex-col border-r border-sidebar-border bg-sidebar-background">
-      <div className="flex h-14 items-center border-b border-sidebar-border px-6">
-        <span className="text-lg font-semibold">SafelySpend</span>
-      </div>
-
       <div className="flex flex-1 flex-col overflow-y-auto py-2">
         <SidebarNav />
       </div>

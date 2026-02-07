@@ -1,12 +1,11 @@
 import { Outlet, Navigate, useLocation } from 'react-router';
 import { Sidebar } from './sidebar';
-import { Header } from './header';
+import { AppHeader } from './app-header';
 import { DemoBanner } from '@/components/demo-banner';
 import { PageErrorBoundary } from '@/components/page-error-boundary';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useAppConfig } from '@/hooks/use-app-config';
 import { WhatIfProvider } from '@/contexts/what-if-context';
-import { WhatIfBanner } from '@/components/what-if-banner';
 
 export function RootLayout() {
   const location = useLocation();
@@ -39,11 +38,10 @@ export function RootLayout() {
           Skip to main content
         </a>
         {isDemo && <DemoBanner />}
-        <WhatIfBanner />
+        <AppHeader />
         <div className="flex flex-1 overflow-hidden">
           <Sidebar />
           <div className="flex flex-1 flex-col overflow-hidden">
-            <Header />
             <main id="main-content" className="flex-1 overflow-y-auto p-4 sm:p-6">
               <PageErrorBoundary>
                 <Outlet context={{ activeScenarioId }} />

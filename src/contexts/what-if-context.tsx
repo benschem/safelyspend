@@ -13,7 +13,6 @@ import { generateId, now } from '@/lib/utils';
 import type { BudgetRule, ForecastRule, Scenario } from '@/lib/types';
 
 const USER_ID = 'local';
-const COLLAPSED_KEY = 'budget:whatIfBannerCollapsed';
 
 /**
  * Adjustments are stored as ruleId/categoryId -> cents mappings
@@ -56,11 +55,6 @@ interface WhatIfContextValue {
   isWhatIfMode: boolean;
   /** Original values for comparison (from current scenario) */
   baselineValues: WhatIfAdjustments;
-
-  /** Whether the banner is collapsed into the sidebar */
-  isBannerCollapsed: boolean;
-  /** Set banner collapsed state */
-  setBannerCollapsed: (collapsed: boolean) => void;
 
   /** Set adjustment for an income forecast rule */
   setIncomeAdjustment: (ruleId: string, cents: number) => void;
@@ -109,19 +103,6 @@ interface WhatIfProviderProps {
 
 export function WhatIfProvider({ children, activeScenarioId }: WhatIfProviderProps) {
   const [adjustments, setAdjustments] = useState<WhatIfAdjustments>(emptyAdjustments);
-  const [isBannerCollapsed, setIsBannerCollapsed] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem(COLLAPSED_KEY) === 'true';
-  });
-
-  // Persist collapsed state
-  useEffect(() => {
-    localStorage.setItem(COLLAPSED_KEY, String(isBannerCollapsed));
-  }, [isBannerCollapsed]);
-
-  const setBannerCollapsed = useCallback((collapsed: boolean) => {
-    setIsBannerCollapsed(collapsed);
-  }, []);
 
   // Fetch current scenario data for baseline
   const budgetRules = useLiveQuery(
@@ -523,8 +504,6 @@ export function WhatIfProvider({ children, activeScenarioId }: WhatIfProviderPro
       adjustments,
       isWhatIfMode,
       baselineValues,
-      isBannerCollapsed,
-      setBannerCollapsed,
       setIncomeAdjustment,
       setBudgetAdjustment,
       setFixedExpenseAdjustment,
@@ -540,8 +519,6 @@ export function WhatIfProvider({ children, activeScenarioId }: WhatIfProviderPro
       adjustments,
       isWhatIfMode,
       baselineValues,
-      isBannerCollapsed,
-      setBannerCollapsed,
       setIncomeAdjustment,
       setBudgetAdjustment,
       setFixedExpenseAdjustment,
