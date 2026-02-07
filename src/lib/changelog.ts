@@ -21,6 +21,21 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.34.0',
+    date: '2026-02-07',
+    changes: [
+      'Dollar amounts that differ from your default plan now turn purple, making it easy to see what changed when comparing scenarios or using what-if adjustments',
+    ],
+  },
+  {
+    version: '0.33.0',
+    date: '2026-02-06',
+    changes: [
+      'Cash flow breakdown now color-codes expenses in red and savings in blue for easier scanning',
+      'Added a "Savings growth" summary row to highlight how much you\'re building in savings each month',
+    ],
+  },
+  {
     version: '0.32.2',
     date: '2026-02-06',
     changes: [
