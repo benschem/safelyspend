@@ -10,14 +10,16 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  History,
+  ArrowDownUp,
   Pin,
   Tag,
   Sparkles,
-  Gauge,
-  Wallet,
   ClipboardCheck,
   X,
+  Clock,
+  Target,
+  MapPin,
+  CircleCheck,
 } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
@@ -30,6 +32,7 @@ import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useTransactions } from '@/hooks/use-transactions';
 
 import { useBudgetPeriodData } from '@/hooks/use-budget-period-data';
+import { useSavingsAnchors } from '@/hooks/use-savings-anchors';
 import { useCashSurplus } from '@/hooks/use-cash-surplus';
 import { useWhatIf } from '@/contexts/what-if-context';
 import { BurnRateChart } from '@/components/charts/burn-rate-chart';
@@ -149,12 +152,13 @@ interface CashFlowContentProps {
 
 function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
   const { activeScenario } = useScenarios();
-  const { isViewingDefault, defaultBudgetByCategoryMonthly, defaultTotals } = useScenarioDiff();
+  const { isViewingDefault, defaultBudgetByCategoryMonthly, defaultTotals, defaultScenarioName } = useScenarioDiff();
   const { isWhatIfMode } = useWhatIf();
   const { budgetRules } = useBudgetRules(activeScenarioId);
   const { categories } = useCategories();
   const { savingsGoals } = useSavingsGoals();
   const { allTransactions } = useTransactions();
+  const { getActiveAnchor } = useSavingsAnchors();
   // Selected period state - defaults to current month
   const [selectedMonth, setSelectedMonth] = useState(() => new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -349,8 +353,13 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
       }
     }
 
-    // Sort: non-fixed items first, then fixed-only items
-    return result.sort((a, b) => Number(a.isFixedOnly) - Number(b.isFixedOnly));
+    // Sort: non-fixed items first, then fixed-only items, then unplanned at bottom
+    return result.sort((a, b) => {
+      const aUnplanned = a.id === 'uncategorized' ? 1 : 0;
+      const bUnplanned = b.id === 'uncategorized' ? 1 : 0;
+      if (aUnplanned !== bUnplanned) return aUnplanned - bUnplanned;
+      return Number(a.isFixedOnly) - Number(b.isFixedOnly);
+    });
   }, [
     isFuturePeriod,
     forecastExpenses,
@@ -541,10 +550,22 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
 
   // Current pace projection (current period only)
   const projectedVariable = isCurrentPeriod ? periodCashFlow.projection.projectedVariable : null;
+  // Projected savings: if already saved more than planned, use actual
+  const projectedSavings = isCurrentPeriod
+    ? Math.max(savingsExpected, periodCashFlow.savings.actual)
+    : savingsExpected;
   const paceEnd = isCurrentPeriod && hasAnchor
-    ? (startingBalance as number) + income - fixed - (projectedVariable ?? variable) - savingsExpected
+    ? (startingBalance as number) + income - fixed - (projectedVariable ?? variable) - projectedSavings
     : null;
-  const pacesDiffer = projectedVariable !== null && Math.abs(projectedVariable - variable) >= 100;
+  // Paces differ when projected variable spending is meaningfully different from planned
+  // Use 10% of variable budget as tolerance, with a $50 floor
+  const paceTolerance = Math.max(5000, Math.round(variable * 0.1));
+  const pacesDiffer = projectedVariable !== null && Math.abs(projectedVariable - variable) >= paceTolerance;
+
+  // Projected net change (uses projectedVariable and projectedSavings)
+  const projectedNetChange = projectedVariable !== null
+    ? income - fixed - projectedVariable - projectedSavings
+    : netChange;
 
   // Past period specifics
   const pastActualEnd = isPastPeriod ? cashSurplusData.cashSurplus : null;
@@ -562,15 +583,32 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
   const savingsDelta = showDeltas ? periodCashFlow.savings.expected - defaultTotals.savings : 0;
   const endDelta = showDeltas ? incomeDelta - fixedDelta - variableDelta - savingsDelta : 0;
 
+  // Total savings balance across all goals (anchor + transactions after anchor)
+  const totalSavingsBalance = useMemo(() => {
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    let total = 0;
+    for (const goal of savingsGoals) {
+      const anchor = getActiveAnchor(goal.id, todayStr);
+      if (anchor) {
+        const txAfter = allTransactions
+          .filter((t) => t.type === 'savings' && t.savingsGoalId === goal.id && t.date > anchor.date)
+          .reduce((sum, t) => sum + t.amountCents, 0);
+        total += anchor.balanceCents + txAfter;
+      } else {
+        total += allTransactions
+          .filter((t) => t.type === 'savings' && t.savingsGoalId === goal.id)
+          .reduce((sum, t) => sum + t.amountCents, 0);
+      }
+    }
+    return total;
+  }, [savingsGoals, allTransactions, getActiveAnchor]);
+
   if (isLoading) {
     return null;
   }
 
-  // Whether the selected month is the current month (can't go further forward)
   const now = new Date();
-  const isAtCurrentMonth =
-    selectedMonth.getFullYear() === now.getFullYear() &&
-    selectedMonth.getMonth() === now.getMonth();
 
   return (
     <div className="page-shell space-y-6">
@@ -601,7 +639,6 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
             size="icon"
             onClick={goToNext}
             className="h-9 w-9"
-            disabled={isAtCurrentMonth}
             aria-label="Next month"
           >
             <ChevronRight className="h-4 w-4" />
@@ -640,7 +677,6 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                   size="icon"
                   className="h-7 w-7"
                   onClick={() => setPickerYear((y) => y + 1)}
-                  disabled={pickerYear >= now.getFullYear()}
                   aria-label="Next year"
                 >
                   <ChevronRight className="h-4 w-4" />
@@ -653,15 +689,11 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                     pickerYear === selectedYear && index === selectedMonthIndex;
                   const isCurrent =
                     pickerYear === now.getFullYear() && index === now.getMonth();
-                  const isFutureMonth =
-                    pickerYear > now.getFullYear() ||
-                    (pickerYear === now.getFullYear() && index > now.getMonth());
                   return (
                     <Button
                       key={month}
                       variant={isSelected ? 'default' : 'ghost'}
                       size="sm"
-                      disabled={isFutureMonth}
                       className={cn(
                         'h-8 text-xs',
                         isCurrent && !isSelected && 'border border-primary',
@@ -684,24 +716,9 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
       {/* Check-in nudge */}
       <CheckInNudge />
 
-      {/* Summary + Breakdown side by side */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <CashFlowSummary
-          periodLabel={periodLabel}
-          isCurrentPeriod={isCurrentPeriod}
-          isPastPeriod={isPastPeriod}
-          isFuturePeriod={isFuturePeriod}
-          hasAnchor={hasAnchor}
-          plannedEnd={plannedEnd}
-          paceEnd={paceEnd}
-          pacesDiffer={pacesDiffer}
-          currentBalance={cashSurplusData.currentBalance}
-          pastActualEnd={pastActualEnd}
-          endDelta={endDelta}
-          showDeltas={showDeltas}
-        />
-
-        <CashFlowBreakdown
+      {/* Summary cards */}
+      <div className="grid gap-6 sm:grid-cols-2">
+        <CashBalanceCard
           periodLabel={periodLabel}
           isCurrentPeriod={isCurrentPeriod}
           isPastPeriod={isPastPeriod}
@@ -709,6 +726,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
           startingBalance={startingBalance}
           periodCashFlow={periodCashFlow}
           netChange={netChange}
+          actualNetChange={periodCashFlow.income.actual - periodCashFlow.expenses.actual - periodCashFlow.savings.actual}
           pastActualFixed={pastActualFixed}
           pastActualNetChange={pastActualNetChange}
           showDeltas={showDeltas}
@@ -717,23 +735,65 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
           variableDelta={variableDelta}
           savingsDelta={savingsDelta}
           endDelta={endDelta}
+          pacesDiffer={pacesDiffer}
+          projectedVariable={projectedVariable}
+          projectedNetChange={projectedNetChange}
+          projectedSavings={projectedSavings}
+          defaultScenarioName={defaultScenarioName}
+          plannedEnd={plannedEnd}
+          paceEnd={paceEnd}
+          pastActualEnd={pastActualEnd}
+        />
+
+        <SavingsGrowthCard
+          periodLabel={periodLabel}
+          isCurrentPeriod={isCurrentPeriod}
+          isPastPeriod={isPastPeriod}
+          hasAnchor={hasAnchor}
+          startingBalance={startingBalance}
+          periodCashFlow={periodCashFlow}
+          netChange={netChange}
+          actualNetChange={periodCashFlow.income.actual - periodCashFlow.expenses.actual - periodCashFlow.savings.actual}
+          pastActualFixed={pastActualFixed}
+          pastActualNetChange={pastActualNetChange}
+          showDeltas={showDeltas}
+          incomeDelta={incomeDelta}
+          fixedDelta={fixedDelta}
+          variableDelta={variableDelta}
+          savingsDelta={savingsDelta}
+          endDelta={endDelta}
+          pacesDiffer={pacesDiffer}
+          projectedVariable={projectedVariable}
+          projectedNetChange={projectedNetChange}
+          projectedSavings={projectedSavings}
+          defaultScenarioName={defaultScenarioName}
+          totalSavingsBalance={totalSavingsBalance}
         />
       </div>
 
-      {/* Burn rate chart (current period only) */}
+      {/* Spending Pace */}
       {isCurrentPeriod && budgetStatus?.hasBudget && burnRateData.totalBudget > 0 && (
         <div className={cn('rounded-xl border bg-card p-6', showDeltas && 'border-violet-500/30')}>
-          <div className="mb-4 flex items-center gap-2">
-            <Gauge className="h-5 w-5 text-muted-foreground" />
-            <h3 className="text-lg font-semibold">Spending Pace</h3>
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500/10"><BanknoteArrowDown className="h-4 w-4 text-amber-600 dark:text-amber-400" /></span>
+              <h3 className="text-lg font-semibold">Spending Pace</h3>
+            </div>
+            {(() => {
+              const isFaster = pacesDiffer && projectedVariable !== null && projectedVariable > variable;
+              const isSlower = pacesDiffer && projectedVariable !== null && projectedVariable < variable;
+              return (
+                <span className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+                  isFaster
+                    ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400'
+                    : 'bg-green-500/10 text-green-600 dark:text-green-400',
+                )}>
+                  {isFaster ? 'Faster than planned' : isSlower ? 'Less than planned' : 'On track'}
+                </span>
+              );
+            })()}
           </div>
-          <p
-            className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
-          >
-            {isWhatIfMode && isViewingDefault
-              ? 'Based on your adjustments'
-              : `Based on "${activeScenario?.name ?? 'scenario'}"`}
-          </p>
           <BurnRateChart
             dailySpending={burnRateData.dailySpending}
             totalBudget={burnRateData.totalBudget}
@@ -741,7 +801,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
             periodEnd={burnRateData.periodEnd}
             periodLabel={burnRateData.periodLabel}
             viewMode="month"
-            surplusAmount={hasSurplusBuffer ? surplus : undefined}
+            income={income}
             fixedExpenseSchedule={burnRateData.fixedExpenseSchedule}
             variableBudget={burnRateData.variableBudget}
             fixedExpensesTotal={burnRateData.fixedExpensesTotal}
@@ -755,7 +815,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
       >
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <BanknoteArrowDown className="h-5 w-5 text-muted-foreground" />
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-rose-500/10"><BanknoteArrowDown className="h-4 w-4 text-rose-600 dark:text-rose-400" /></span>
             <h3 className="text-lg font-semibold">
               Spending over {periodLabel}
               {isCurrentPeriod && ' to date'}
@@ -824,7 +884,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                       <div className="flex items-center gap-2">
                         <Tag className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">{item.name}</span>
-                        <span className="flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-600 dark:text-amber-400">
+                        <span className="flex items-center gap-1 rounded bg-orange-500/10 px-1.5 py-0.5 text-xs text-orange-600 dark:text-orange-400">
                           <Pin className="h-3 w-3" />
                           Fixed
                         </span>
@@ -894,7 +954,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger>
-                              <span className="flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-600 dark:text-amber-400">
+                              <span className="flex items-center gap-1 rounded bg-orange-500/10 px-1.5 py-0.5 text-xs text-orange-600 dark:text-orange-400">
                                 <Pin className="h-3 w-3" />
                                 {formatCents(item.fixedAmount)} fixed
                               </span>
@@ -928,7 +988,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                         isOverBudget
                           ? 'text-red-500'
                           : isWarning
-                            ? 'text-amber-600 dark:text-amber-400'
+                            ? 'text-orange-600 dark:text-orange-400'
                             : 'text-muted-foreground',
                       )}
                     >
@@ -968,7 +1028,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                       <div
                         className={cn(
                           'absolute h-2 rounded-full',
-                          isOverBudget ? 'bg-red-500' : isWarning ? 'bg-amber-500' : '',
+                          isOverBudget ? 'bg-red-500' : isWarning ? 'bg-orange-500' : '',
                         )}
                         style={{
                           width: `${Math.min(percentage, 100)}%`,
@@ -1067,159 +1127,186 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
   );
 }
 
-// --- Cash Flow Summary (Hero Card) ---
+// --- Cash Balance Card (combined End of Month + Cash Change) ---
 
-interface CashFlowSummaryProps {
-  periodLabel: string;
-  isCurrentPeriod: boolean;
-  isPastPeriod: boolean;
-  isFuturePeriod: boolean;
-  hasAnchor: boolean;
-  plannedEnd: number | null;
-  paceEnd: number | null;
-  pacesDiffer: boolean;
-  currentBalance: number | null;
-  pastActualEnd: number | null;
-  endDelta: number;
-  showDeltas: boolean;
-}
+function CashBalanceCard(props: CashBalanceCardProps) {
+  const {
+    isCurrentPeriod,
+    isPastPeriod,
+    hasAnchor,
+    startingBalance,
+    netChange,
+    actualNetChange,
+    pastActualNetChange,
+    showDeltas,
+    endDelta,
+    pacesDiffer,
+    projectedNetChange,
+    plannedEnd,
+    paceEnd,
+    pastActualEnd,
+  } = props;
 
-function CashFlowSummary({
-  periodLabel,
-  isCurrentPeriod,
-  isPastPeriod,
-  isFuturePeriod,
-  hasAnchor,
-  plannedEnd,
-  paceEnd,
-  pacesDiffer,
-  currentBalance,
-  pastActualEnd,
-  endDelta,
-  showDeltas,
-}: CashFlowSummaryProps) {
-  const colorForAmount = (amount: number) =>
+  const [flipped, setFlipped] = useState(false);
+
+  const fmtChange = (amount: number) => {
+    const sign = amount >= 0 ? '+' : '−';
+    return `${sign}${formatCents(Math.abs(amount))}`;
+  };
+
+  const fmtBalance = (amount: number) => {
+    if (amount < 0) return `−${formatCents(Math.abs(amount))}`;
+    return formatCents(amount);
+  };
+
+  const colorForChange = (amount: number) =>
     amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400';
 
-  // No anchor: show CTA
+  const flipButton = (
+    <button
+      type="button"
+      onClick={() => setFlipped(!flipped)}
+      className="ml-auto cursor-pointer rounded p-1 text-muted-foreground hover:text-foreground"
+      aria-label={flipped ? 'Show summary' : 'Show breakdown'}
+    >
+      <ArrowDownUp className="h-4 w-4" />
+    </button>
+  );
+
   if (!hasAnchor) {
     return (
       <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
-        <SummaryHeader periodLabel={periodLabel} isCurrentPeriod={isCurrentPeriod} isPastPeriod={isPastPeriod} />
-        <p className="mt-4 text-center text-sm text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/10"><Banknote className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /></span>
+          <h3 className="text-lg font-semibold">Cash Balance</h3>
+        </div>
+        <p className="mt-4 text-sm text-muted-foreground">
           Set initial cash balance in{' '}
           <Link to="/settings" className="underline">Settings</Link>{' '}
-          to see your projected end-of-month balance.
+          to see your balance projection.
         </p>
       </div>
     );
   }
 
-  // --- Past period: 2 metrics ---
-  if (isPastPeriod) {
-    const diff = pastActualEnd !== null && plannedEnd !== null ? pastActualEnd - plannedEnd : null;
+  if (flipped) {
     return (
       <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
-        <SummaryHeader periodLabel={periodLabel} isCurrentPeriod={false} isPastPeriod />
-        <div className="mt-5 grid gap-6 sm:grid-cols-2">
-          <div>
-            <SummaryMetric label="Planned end" value={plannedEnd !== null ? formatCents(plannedEnd) : '—'} color={plannedEnd !== null ? colorForAmount(plannedEnd) : undefined} />
-            <p className="invisible mt-1 text-xs">&nbsp;</p>
-          </div>
-          <div>
-            <SummaryMetric label="Actual end" value={pastActualEnd !== null ? formatCents(pastActualEnd) : '—'} color={pastActualEnd !== null ? colorForAmount(pastActualEnd) : undefined} align="right" />
-            <p className="invisible mt-1 text-xs">&nbsp;</p>
-          </div>
+        <div className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/10"><Banknote className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /></span>
+          <h3 className="text-lg font-semibold">Cash Balance</h3>
+          {flipButton}
         </div>
-        {diff !== null && Math.abs(diff) >= 100 && (
-          <div className={cn('mt-4 rounded-lg bg-muted px-3 py-2 text-center text-sm', diff > 0 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400')}>
-            {diff > 0 ? `Ended ${formatCents(diff)} ahead of plan` : `Spent ${formatCents(Math.abs(diff))} more than planned`}
-          </div>
-        )}
-        {/* Invisible spacer matching current period's "Cash balance right now" section */}
-        <div className="invisible mt-4 border-t border-border pt-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm">&nbsp;</span>
-            <span className="text-lg font-semibold">&nbsp;</span>
-          </div>
+        <div className="mt-3">
+          <BreakdownTable {...props} />
         </div>
       </div>
     );
   }
 
-  // --- Future period: single centered metric ---
-  if (isFuturePeriod) {
-    return (
-      <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
-        <SummaryHeader periodLabel={periodLabel} isCurrentPeriod={false} isPastPeriod={false} />
-        <div className="mt-5 text-center">
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">End of month</p>
-          <p className={cn('mt-1 text-4xl font-bold tracking-tight tabular-nums', plannedEnd !== null ? colorForAmount(plannedEnd) : '')}>
-            {plannedEnd !== null ? formatCents(plannedEnd) : '—'}
-          </p>
-          <p className={cn('mt-1 text-xs', showDeltas && endDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'invisible')}>
-            {showDeltas && endDelta !== 0 ? `(${endDelta > 0 ? '+' : ''}${formatCents(endDelta)} vs default)` : '\u00A0'}
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const showPace = isCurrentPeriod && pacesDiffer && paceEnd !== null;
+  const currentBalance = (startingBalance as number) + actualNetChange;
 
-  // --- Current period: projected metrics + separated "right now" ---
-  const showPace = pacesDiffer && paceEnd !== null;
-  const diff = showPace && plannedEnd !== null ? plannedEnd - paceEnd : null;
+  // 2x2 grid cell values
+  const nowValue = isPastPeriod ? pastActualEnd : isCurrentPeriod ? currentBalance : null;
+  const nowChange = isPastPeriod ? pastActualNetChange : isCurrentPeriod ? actualNetChange : null;
+  const nowLabel = isPastPeriod ? 'Actual end' : 'Now';
+
+  const projEndValue = showPace ? paceEnd : null;
+  const projEndChange = showPace ? projectedNetChange : null;
+
+  const plannedEndChange = netChange;
+
+
+  // "above/below plan" annotation for actual/projected vs planned
+  const aboveBelowPlan = (val: number) => {
+    if (plannedEnd === null) return null;
+    const diff = val - plannedEnd;
+    if (Math.abs(diff) < 100) return null;
+    return (
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        {formatCents(Math.abs(diff))} {diff >= 0 ? 'above' : 'below'} plan
+      </p>
+    );
+  };
 
   return (
     <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
-      <SummaryHeader periodLabel={periodLabel} isCurrentPeriod isPastPeriod={false} />
-      {/* Projected metrics */}
-      <div className={cn('mt-5 grid gap-6', showPace ? 'sm:grid-cols-2' : 'sm:grid-cols-1')}>
+      <div className="flex items-center gap-2">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/10"><Banknote className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /></span>
+        <h3 className="text-lg font-semibold">Cash Balance</h3>
+        {flipButton}
+      </div>
+
+      <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-4">
+        {/* Top-left: Started with */}
         <div>
-          <SummaryMetric
-            label={showPace ? 'End of month (plan)' : 'End of month'}
-            value={plannedEnd !== null ? formatCents(plannedEnd) : '—'}
-            color={plannedEnd !== null ? colorForAmount(plannedEnd) : undefined}
-          />
-          <p className={cn('mt-1 text-xs', showDeltas && endDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'invisible')}>
-            {showDeltas && endDelta !== 0 ? `(${endDelta > 0 ? '+' : ''}${formatCents(endDelta)} vs default)` : '\u00A0'}
+          <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground"><Clock className="h-3 w-3" />Started with</p>
+          <p className="mt-0.5 text-xl font-semibold tabular-nums">
+            {fmtBalance(startingBalance as number)}
           </p>
         </div>
-        {showPace && (
-          <SummaryMetric label="At current pace" value={formatCents(paceEnd)} color={colorForAmount(paceEnd)} align="right" />
+
+        {/* Top-right: Now / Actual end */}
+        {nowValue !== null && nowChange !== null && (
+          <div>
+            <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">{isPastPeriod ? <CircleCheck className="h-3 w-3" /> : <MapPin className="h-3 w-3" />}{nowLabel}</p>
+            <div className="mt-0.5 flex items-baseline gap-1.5">
+              <p className="text-xl font-semibold tabular-nums">
+                {fmtBalance(nowValue)}
+              </p>
+              <span className={cn('text-xs font-semibold tabular-nums', colorForChange(nowChange))}>
+                {fmtChange(nowChange)}
+              </span>
+            </div>
+            {isPastPeriod && nowValue !== null && aboveBelowPlan(nowValue)}
+          </div>
         )}
-      </div>
-      {diff !== null && Math.abs(diff) >= 100 && (
-        <div className={cn('mt-4 rounded-lg bg-muted px-3 py-2 text-center text-sm', diff > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400')}>
-          {diff > 0 ? `Spending ${formatCents(diff)} faster than planned` : `Spending ${formatCents(Math.abs(diff))} less than planned`}
-        </div>
-      )}
-      {/* Current balance — separated from projections */}
-      {currentBalance !== null && (
-        <div className="mt-4 border-t border-border pt-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Cash balance right now</span>
-            <span className="text-lg font-semibold tabular-nums">{formatCents(currentBalance)}</span>
+
+        {/* Bottom-left: Planned end */}
+        <div className={cn(isPastPeriod && 'opacity-50')}>
+          <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground"><Target className="h-3 w-3" />Planned end</p>
+          <div className="mt-0.5 flex items-baseline gap-1.5">
+            <p className={cn(
+              'text-xl font-semibold tabular-nums',
+              showDeltas && endDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : '',
+            )}>
+              {plannedEnd !== null ? fmtBalance(plannedEnd) : '—'}
+            </p>
+            {plannedEnd !== null && (
+              <span className={cn(
+                'text-xs font-semibold tabular-nums',
+                showDeltas && endDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : colorForChange(plannedEndChange),
+              )}>
+                {fmtChange(plannedEndChange)}
+              </span>
+            )}
           </div>
         </div>
-      )}
+
+        {/* Bottom-right: Projected end */}
+        {projEndValue !== null && projEndChange !== null && (
+          <div className="-m-2 rounded-lg border border-violet-500/30 bg-violet-500/5 p-2">
+            <p className="flex items-center gap-1 text-xs font-medium text-violet-600 dark:text-violet-400"><Sparkles className="h-3 w-3" />Projected end</p>
+            <div className="mt-0.5 flex items-baseline gap-1.5">
+              <p className="text-xl font-semibold tabular-nums">
+                {fmtBalance(projEndValue)}
+              </p>
+              <span className={cn('text-xs font-semibold tabular-nums', colorForChange(projEndChange))}>
+                {fmtChange(projEndChange)}
+              </span>
+            </div>
+            {aboveBelowPlan(projEndValue)}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function SummaryMetric({ label, value, color, align = 'left' }: { label: string; value: string; color?: string | undefined; align?: 'left' | 'right' }) {
-  return (
-    <div className={cn('text-center', align === 'right' ? 'sm:text-right' : 'sm:text-left')}>
-      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className={cn('mt-1 text-3xl font-bold tracking-tight tabular-nums', color)}>
-        {value}
-      </p>
-    </div>
-  );
-}
+// --- Shared props for summary cards ---
 
-// --- Cash Flow Breakdown Card ---
-
-interface CashFlowBreakdownProps {
+interface SummaryCardProps {
   periodLabel: string;
   isCurrentPeriod: boolean;
   isPastPeriod: boolean;
@@ -1233,6 +1320,7 @@ interface CashFlowBreakdownProps {
     projection: { variableActual: number; projectedVariable: number; projectedTotal: number };
   };
   netChange: number;
+  actualNetChange: number;
   pastActualFixed: number;
   pastActualNetChange: number;
   showDeltas: boolean;
@@ -1241,25 +1329,189 @@ interface CashFlowBreakdownProps {
   variableDelta: number;
   savingsDelta: number;
   endDelta: number;
+  pacesDiffer: boolean;
+  projectedVariable: number | null;
+  projectedNetChange: number;
+  projectedSavings: number;
+  defaultScenarioName: string;
 }
 
-function CashFlowBreakdown({
+interface CashBalanceCardProps extends SummaryCardProps {
+  plannedEnd: number | null;
+  paceEnd: number | null;
+  pastActualEnd: number | null;
+}
+
+interface SavingsGrowthCardProps extends SummaryCardProps {
+  totalSavingsBalance: number;
+}
+
+// --- Savings Card (2x2 layout matching Cash Balance) ---
+
+function SavingsGrowthCard(props: SavingsGrowthCardProps) {
+  const {
+    isCurrentPeriod,
+    isPastPeriod,
+    periodCashFlow,
+    showDeltas,
+    savingsDelta,
+    pacesDiffer,
+    projectedSavings,
+    totalSavingsBalance,
+  } = props;
+
+  const [flipped, setFlipped] = useState(false);
+
+  const savings = periodCashFlow.savings.expected;
+  const isFuturePeriod = !isCurrentPeriod && !isPastPeriod;
+  const showPace = isCurrentPeriod && pacesDiffer && projectedSavings !== savings;
+
+  const fmtBalance = (amount: number) => {
+    if (amount < 0) return `−${formatCents(Math.abs(amount))}`;
+    return formatCents(amount);
+  };
+
+  const fmtChange = (amount: number) => {
+    const sign = amount >= 0 ? '+' : '−';
+    return `${sign}${formatCents(Math.abs(amount))}`;
+  };
+
+  const colorForChange = () => 'text-blue-600 dark:text-blue-400';
+
+  const flipButton = (
+    <button
+      type="button"
+      onClick={() => setFlipped(!flipped)}
+      className="ml-auto cursor-pointer rounded p-1 text-muted-foreground hover:text-foreground"
+      aria-label={flipped ? 'Show summary' : 'Show breakdown'}
+    >
+      <ArrowDownUp className="h-4 w-4" />
+    </button>
+  );
+
+  if (flipped) {
+    return (
+      <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
+        <div className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/10"><PiggyBank className="h-4 w-4 text-blue-600 dark:text-blue-400" /></span>
+          <h3 className="text-lg font-semibold">Savings</h3>
+          {flipButton}
+        </div>
+        <div className="mt-3">
+          <BreakdownTable {...props} />
+        </div>
+      </div>
+    );
+  }
+
+  // For current period: compute absolute savings balances
+  const savingsNow = totalSavingsBalance;
+  const savingsStarted = savingsNow - periodCashFlow.savings.actual;
+  const savingsPlannedEnd = savingsStarted + savings;
+  const savingsProjectedEnd = showPace ? savingsStarted + projectedSavings : null;
+
+  // Growth annotations
+  const plannedGrowth = savings;
+  const actualGrowth = periodCashFlow.savings.actual;
+  const projectedGrowth = showPace ? projectedSavings : null;
+
+
+
+  return (
+    <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
+      <div className="flex items-center gap-2">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/10"><PiggyBank className="h-4 w-4 text-blue-600 dark:text-blue-400" /></span>
+        <h3 className="text-lg font-semibold">Savings</h3>
+        {flipButton}
+      </div>
+
+      <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-4">
+        {/* Top-left: Started with / Current total */}
+        <div>
+          <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+            <Clock className="h-3 w-3" />{isFuturePeriod ? 'Current total' : 'Started with'}
+          </p>
+          <p className="mt-0.5 text-xl font-semibold tabular-nums">
+            {fmtBalance(isFuturePeriod ? savingsNow : savingsStarted)}
+          </p>
+        </div>
+
+        {/* Top-right: Now / Actual end */}
+        {!isFuturePeriod && (
+          <div>
+            <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+              {isPastPeriod ? <><CircleCheck className="h-3 w-3" />Actual end</> : <><MapPin className="h-3 w-3" />Now</>}
+            </p>
+            <div className="mt-0.5 flex items-baseline gap-1.5">
+              <p className="text-xl font-semibold tabular-nums">
+                {fmtBalance(isPastPeriod ? savingsStarted + actualGrowth : savingsNow)}
+              </p>
+              <span className={cn('text-xs font-semibold tabular-nums', colorForChange())}>
+                {fmtChange(actualGrowth)}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Bottom-left: Planned end */}
+        <div className={cn(isPastPeriod && 'opacity-50')}>
+          <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground"><Target className="h-3 w-3" />Planned end</p>
+          <div className="mt-0.5 flex items-baseline gap-1.5">
+            <p className={cn(
+              'text-xl font-semibold tabular-nums',
+              showDeltas && savingsDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : '',
+            )}>
+              {fmtBalance(isFuturePeriod ? savingsNow + savings : savingsPlannedEnd)}
+            </p>
+            <span className={cn(
+              'text-xs font-semibold tabular-nums',
+              showDeltas && savingsDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : colorForChange(),
+            )}>
+              {fmtChange(plannedGrowth)}
+            </span>
+          </div>
+        </div>
+
+        {/* Bottom-right: Projected end */}
+        {savingsProjectedEnd !== null && projectedGrowth !== null && (
+          <div className="-m-2 rounded-lg border border-violet-500/30 bg-violet-500/5 p-2">
+            <p className="flex items-center gap-1 text-xs font-medium text-violet-600 dark:text-violet-400"><Sparkles className="h-3 w-3" />Projected end</p>
+            <div className="mt-0.5 flex items-baseline gap-1.5">
+              <p className="text-xl font-semibold tabular-nums">
+                {fmtBalance(savingsProjectedEnd)}
+              </p>
+              <span className={cn('text-xs font-semibold tabular-nums', colorForChange())}>
+                {fmtChange(projectedGrowth)}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// --- Breakdown Table (shared by CashChangeCard and SavingsGrowthCard on their back) ---
+
+function BreakdownTable({
   isCurrentPeriod,
   isPastPeriod,
   hasAnchor,
   startingBalance,
   periodCashFlow,
-  netChange,
-  pastActualFixed,
-  pastActualNetChange,
   showDeltas,
   incomeDelta,
   fixedDelta,
   variableDelta,
   savingsDelta,
-  endDelta,
-}: CashFlowBreakdownProps) {
-  const [mobileColumn, setMobileColumn] = useState<'left' | 'right'>('left');
+  pacesDiffer,
+  projectedVariable,
+  projectedSavings,
+}: SummaryCardProps) {
+  // Default mobile tab to actual/now (left column = actual in the new order)
+  const [mobileColumn, setMobileColumn] = useState<'left' | 'middle' | 'right'>('left');
+
+  const fmtSigned = (amount: number, prefix: string) => `${prefix}${formatCents(Math.abs(amount))}`;
 
   const renderDelta = (delta: number) => {
     if (!showDeltas || delta === 0) return null;
@@ -1270,178 +1522,111 @@ function CashFlowBreakdown({
     );
   };
 
-  const fmtSigned = (amount: number, prefix: string) => `${prefix}${formatCents(Math.abs(amount))}`;
-
   const income = periodCashFlow.income.expected;
   const fixed = periodCashFlow.expenses.expected;
   const variable = periodCashFlow.budgeted.expected;
   const savings = periodCashFlow.savings.expected;
+  const pastActualFixed = isPastPeriod
+    ? Math.max(0, periodCashFlow.expenses.actual - periodCashFlow.projection.variableActual)
+    : 0;
 
-  // --- Past period: two-column breakdown ---
+  // Column labels based on period type
+  const actualLabel = isPastPeriod ? 'Actual' : 'Now';
+
+  // --- Past period: two-column (Actual | Planned) ---
   if (isPastPeriod) {
     return (
-      <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
-        <div className="flex items-center gap-2">
-          <Wallet className="h-5 w-5 text-muted-foreground" />
-          <h3 className="text-lg font-semibold">Monthly Breakdown</h3>
+      <div>
+        <div className="mb-2 flex gap-1 sm:hidden">
+          <button type="button" onClick={() => setMobileColumn('left')} className={cn('cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors', mobileColumn === 'left' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80')}>{actualLabel}</button>
+          <button type="button" onClick={() => setMobileColumn('right')} className={cn('cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors', mobileColumn === 'right' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80')}>Planned</button>
         </div>
-
-        {/* Mobile tabs */}
-        <div className="mt-4 flex gap-1 sm:hidden">
-          <button
-            type="button"
-            onClick={() => setMobileColumn('left')}
-            className={cn(
-              'cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
-              mobileColumn === 'left'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80',
-            )}
-          >
-            Planned
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobileColumn('right')}
-            className={cn(
-              'cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
-              mobileColumn === 'right'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80',
-            )}
-          >
-            Actual
-          </button>
+        <div className="mb-2 hidden sm:grid sm:grid-cols-[1fr_auto_auto] sm:gap-x-4">
+          <div />
+          <div className="w-28 text-right text-xs font-medium text-muted-foreground">{actualLabel}</div>
+          <div className="w-28 text-right text-xs font-medium text-muted-foreground">Planned</div>
         </div>
-
-        <div className="mt-4">
-          {/* Column headers (desktop) */}
-          <div className="mb-2 hidden sm:grid sm:grid-cols-[1fr_auto_auto] sm:gap-x-4">
-            <div />
-            <div className="w-28 text-right text-xs font-medium text-muted-foreground">Planned</div>
-            <div className="w-28 text-right text-xs font-medium text-muted-foreground">Actual</div>
-          </div>
-
-          <TwoColRow label="Starting cash" left={hasAnchor ? formatCents(startingBalance as number) : '—'} right={hasAnchor ? formatCents(startingBalance as number) : '—'} leftHref="/settings" mobileColumn={mobileColumn} />
-          <TwoColRow label="+ Income" left={fmtSigned(income, '+')} right={fmtSigned(periodCashFlow.income.actual, '+')} leftHref="/budget?section=income" mobileColumn={mobileColumn} className="text-green-600 dark:text-green-400" />
-          <TwoColRow label="− Fixed expenses" left={fixed > 0 ? fmtSigned(fixed, '−') : '—'} right={pastActualFixed > 0 ? fmtSigned(pastActualFixed, '−') : '—'} leftHref="/budget?section=fixed" mobileColumn={mobileColumn} />
-          <TwoColRow label="− Variable spending" left={variable > 0 ? fmtSigned(variable, '−') : '—'} right={periodCashFlow.projection.variableActual > 0 ? fmtSigned(periodCashFlow.projection.variableActual, '−') : '—'} leftHref="/budget?section=variable" mobileColumn={mobileColumn} />
-          <TwoColRow label="− Savings" left={savings > 0 ? fmtSigned(savings, '−') : '—'} right={periodCashFlow.savings.actual > 0 ? fmtSigned(periodCashFlow.savings.actual, '−') : '—'} leftHref="/budget?section=savings" mobileColumn={mobileColumn} />
-
-          {/* Divider */}
-          <div className="my-2 border-t border-border" />
-
-          <TwoColRow
-            label="Net change"
-            left={fmtSigned(netChange, netChange >= 0 ? '+' : '−')}
-            right={fmtSigned(pastActualNetChange, pastActualNetChange >= 0 ? '+' : '−')}
-            leftColor={netChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}
-            rightColor={pastActualNetChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}
-            mobileColumn={mobileColumn}
-            isBold
-          />
+        <div className="border-t border-border pt-2">
+          <TwoColRow label="Started with" left={hasAnchor ? formatCents(startingBalance as number) : '—'} right="" mobileColumn={mobileColumn} />
+          <TwoColRow label="+ Income" left={fmtSigned(periodCashFlow.income.actual, '+')} right={fmtSigned(income, '+')} mobileColumn={mobileColumn} className="text-green-600 dark:text-green-400" dimRight />
+          <TwoColRow label="− Fixed expenses" left={pastActualFixed > 0 ? fmtSigned(pastActualFixed, '−') : '—'} right={fixed > 0 ? fmtSigned(fixed, '−') : '—'} mobileColumn={mobileColumn} className="text-red-600 dark:text-red-400" dimRight />
+          <TwoColRow label="− Variable spending" left={periodCashFlow.projection.variableActual > 0 ? fmtSigned(periodCashFlow.projection.variableActual, '−') : '—'} right={variable > 0 ? fmtSigned(variable, '−') : '—'} mobileColumn={mobileColumn} className="text-red-600 dark:text-red-400" dimRight />
+          <TwoColRow label="− Saving" left={fmtSigned(periodCashFlow.savings.actual, '−')} right={fmtSigned(savings, '−')} mobileColumn={mobileColumn} className="text-blue-600 dark:text-blue-400" dimRight />
         </div>
       </div>
     );
   }
 
-  // --- Current / Future period: single-column breakdown ---
-  return (
-    <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
-      <div className="flex items-center gap-2">
-        <Wallet className="h-5 w-5 text-muted-foreground" />
-        <h3 className="text-lg font-semibold">Monthly Breakdown</h3>
-      </div>
-
-      <div className="mt-4">
-        {isCurrentPeriod && (
-          <div className="mb-2 grid grid-cols-[1fr_auto_auto] gap-x-4">
-            <div />
-            <div className="w-20 text-right text-xs font-medium text-muted-foreground sm:w-28">Planned</div>
-            <div className="w-16 text-right text-xs font-medium text-muted-foreground sm:w-28">Current</div>
+  // --- Current period with divergent pace: three-column (Now | Projected | Planned) ---
+  if (isCurrentPeriod && pacesDiffer) {
+    const pv = projectedVariable ?? variable;
+    return (
+      <div>
+        <div className="mb-2 flex gap-1 sm:hidden">
+          {(['left', 'middle', 'right'] as const).map((col) => (
+            <button key={col} type="button" onClick={() => setMobileColumn(col)} className={cn('cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors', mobileColumn === col ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80')}>
+              {col === 'left' ? actualLabel : col === 'middle' ? 'Projected' : 'Planned'}
+            </button>
+          ))}
+        </div>
+        <div className="mb-2 hidden sm:grid sm:grid-cols-[1fr_auto_auto_auto] sm:gap-x-4">
+          <div />
+          <div className="w-28 text-right text-xs font-medium text-muted-foreground">{actualLabel}</div>
+          <div className="w-28 text-right text-xs font-medium text-violet-600 dark:text-violet-400">
+            <span className="inline-flex items-center gap-1"><Sparkles className="h-3 w-3" />Projected</span>
           </div>
-        )}
-        <SingleRow label="Starting cash" value={hasAnchor ? formatCents(startingBalance as number) : '—'} href="/settings" />
+          <div className="w-28 text-right text-xs font-medium text-muted-foreground">Planned</div>
+        </div>
+        <div className="border-t border-border pt-2">
+          <ThreeColRow label="Started with" left={hasAnchor ? formatCents(startingBalance as number) : '—'} middle={hasAnchor ? formatCents(startingBalance as number) : '—'} right={hasAnchor ? formatCents(startingBalance as number) : '—'} mobileColumn={mobileColumn} />
+          <ThreeColRow label="+ Income" left={fmtSigned(periodCashFlow.income.actual, '+')} middle={fmtSigned(income, '+')} right={fmtSigned(income, '+')} leftColor="text-green-600 dark:text-green-400" middleColor="text-green-600 dark:text-green-400" rightColor={showDeltas && incomeDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-green-600 dark:text-green-400'} mobileColumn={mobileColumn} dimMiddle dimRight />
+          <ThreeColRow label="− Fixed expenses" left={periodCashFlow.expenses.dueToDate > 0 ? fmtSigned(periodCashFlow.expenses.dueToDate, '−') : '—'} middle={fixed > 0 ? fmtSigned(fixed, '−') : '—'} right={fixed > 0 ? fmtSigned(fixed, '−') : '—'} leftColor="text-red-600 dark:text-red-400" middleColor="text-red-600 dark:text-red-400" rightColor={showDeltas && fixedDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-red-600 dark:text-red-400'} mobileColumn={mobileColumn} dimMiddle dimRight />
+          <ThreeColRow label="− Variable spending" left={periodCashFlow.projection.variableActual > 0 ? fmtSigned(periodCashFlow.projection.variableActual, '−') : '—'} middle={pv > 0 ? fmtSigned(pv, '−') : '—'} right={variable > 0 ? fmtSigned(variable, '−') : '—'} leftColor="text-red-600 dark:text-red-400" middleColor="text-red-600 dark:text-red-400" rightColor={showDeltas && variableDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-red-600 dark:text-red-400'} mobileColumn={mobileColumn} dimRight />
+          <ThreeColRow label="− Saving" left={fmtSigned(periodCashFlow.savings.actual, '−')} middle={fmtSigned(projectedSavings, '−')} right={fmtSigned(savings, '−')} leftColor="text-blue-600 dark:text-blue-400" middleColor="text-blue-600 dark:text-blue-400" rightColor={showDeltas && savingsDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-blue-600 dark:text-blue-400'} mobileColumn={mobileColumn} dimMiddle={projectedSavings === savings} dimRight />
+        </div>
+      </div>
+    );
+  }
 
-        <SingleRow
-          label="+ Income"
-          value={fmtSigned(income, '+')}
-          delta={renderDelta(incomeDelta)}
-          annotation={isCurrentPeriod ? `${formatCents(periodCashFlow.income.actual)} received` : undefined}
-          className="text-green-600 dark:text-green-400"
-          href="/budget?section=income"
-        />
+  // --- Current period (on track): two-column (Now | Planned) ---
+  if (isCurrentPeriod) {
+    return (
+      <div>
+        <div className="mb-2 flex gap-1 sm:hidden">
+          <button type="button" onClick={() => setMobileColumn('left')} className={cn('cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors', mobileColumn === 'left' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80')}>{actualLabel}</button>
+          <button type="button" onClick={() => setMobileColumn('right')} className={cn('cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors', mobileColumn === 'right' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80')}>Planned</button>
+        </div>
+        <div className="mb-2 hidden sm:grid sm:grid-cols-[1fr_auto_auto] sm:gap-x-4">
+          <div />
+          <div className="w-28 text-right text-xs font-medium text-muted-foreground">{actualLabel}</div>
+          <div className="w-28 text-right text-xs font-medium text-muted-foreground">Planned</div>
+        </div>
+        <div className="border-t border-border pt-2">
+          <TwoColRow label="Started with" left={hasAnchor ? formatCents(startingBalance as number) : '—'} right="" mobileColumn={mobileColumn} />
+          <TwoColRow label="+ Income" left={fmtSigned(periodCashFlow.income.actual, '+')} right={fmtSigned(income, '+')} mobileColumn={mobileColumn} leftColor="text-green-600 dark:text-green-400" rightColor={showDeltas && incomeDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-green-600 dark:text-green-400'} dimRight />
+          <TwoColRow label="− Fixed expenses" left={periodCashFlow.expenses.dueToDate > 0 ? fmtSigned(periodCashFlow.expenses.dueToDate, '−') : '—'} right={fixed > 0 ? fmtSigned(fixed, '−') : '—'} mobileColumn={mobileColumn} leftColor="text-red-600 dark:text-red-400" rightColor={showDeltas && fixedDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-red-600 dark:text-red-400'} dimRight />
+          <TwoColRow label="− Variable spending" left={periodCashFlow.projection.variableActual > 0 ? fmtSigned(periodCashFlow.projection.variableActual, '−') : '—'} right={variable > 0 ? fmtSigned(variable, '−') : '—'} mobileColumn={mobileColumn} leftColor="text-red-600 dark:text-red-400" rightColor={showDeltas && variableDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-red-600 dark:text-red-400'} dimRight />
+          <TwoColRow label="− Saving" left={fmtSigned(periodCashFlow.savings.actual, '−')} right={fmtSigned(savings, '−')} mobileColumn={mobileColumn} leftColor="text-blue-600 dark:text-blue-400" rightColor={showDeltas && savingsDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-blue-600 dark:text-blue-400'} dimRight />
+        </div>
+      </div>
+    );
+  }
 
-        <SingleRow
-          label="− Fixed expenses"
-          value={fixed > 0 ? fmtSigned(fixed, '−') : '—'}
-          delta={renderDelta(-fixedDelta)}
-          annotation={isCurrentPeriod ? `${formatCents(periodCashFlow.expenses.dueToDate)} due` : undefined}
-          href="/budget?section=fixed"
-        />
-
-        <SingleRow
-          label="− Variable spending"
-          value={variable > 0 ? fmtSigned(variable, '−') : '—'}
-          delta={renderDelta(-variableDelta)}
-          annotation={isCurrentPeriod ? `${formatCents(periodCashFlow.projection.variableActual)} spent` : undefined}
-          href="/budget?section=variable"
-        />
-
-        <SingleRow
-          label="− Savings"
-          value={savings > 0 ? fmtSigned(savings, '−') : '—'}
-          delta={renderDelta(-savingsDelta)}
-          annotation={isCurrentPeriod ? `${formatCents(periodCashFlow.savings.actual)} saved` : undefined}
-          href="/budget?section=savings"
-        />
-
-        {/* Divider */}
-        <div className="my-2 border-t border-border" />
-
-        <SingleRow
-          label="Net change"
-          value={fmtSigned(netChange, netChange >= 0 ? '+' : '−')}
-          delta={renderDelta(endDelta)}
-          valueColor={netChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}
-          isBold
-        />
-
-        {!hasAnchor && (
-          <p className="mt-3 text-center text-xs text-muted-foreground">
-            Set initial cash balance in{' '}
-            <Link to="/settings" className="underline">Settings</Link>
-          </p>
-        )}
+  // --- Future period: single-column ---
+  return (
+    <div>
+      <div className="border-t border-border pt-2">
+        <SingleRow label="Started with" value={hasAnchor ? formatCents(startingBalance as number) : '—'} {...(hasAnchor ? { href: '/settings' } : {})} />
+        <SingleRow label="+ Income" value={fmtSigned(income, '+')} delta={renderDelta(incomeDelta)} className="text-green-600 dark:text-green-400" valueColor={showDeltas && incomeDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : undefined} href="/budget?section=income" />
+        <SingleRow label="− Fixed expenses" value={fixed > 0 ? fmtSigned(fixed, '−') : '—'} delta={renderDelta(-fixedDelta)} className="text-red-600 dark:text-red-400" valueColor={showDeltas && fixedDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : undefined} href="/budget?section=fixed" />
+        <SingleRow label="− Variable spending" value={variable > 0 ? fmtSigned(variable, '−') : '—'} delta={renderDelta(-variableDelta)} className="text-red-600 dark:text-red-400" valueColor={showDeltas && variableDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : undefined} href="/budget?section=variable" />
+        <SingleRow label="− Saving" value={fmtSigned(savings, '−')} delta={renderDelta(-savingsDelta)} className="text-blue-600 dark:text-blue-400" valueColor={showDeltas && savingsDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : undefined} href="/budget?section=savings" />
       </div>
     </div>
   );
 }
 
 // --- Shared sub-components ---
-
-function SummaryHeader({ periodLabel, isCurrentPeriod, isPastPeriod }: { periodLabel: string; isCurrentPeriod: boolean; isPastPeriod: boolean }) {
-  return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <Banknote className="h-5 w-5 text-muted-foreground" />
-        <h3 className="text-lg font-semibold">{periodLabel}</h3>
-      </div>
-      {isCurrentPeriod && (
-        <span className="flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-0.5 text-xs font-medium text-violet-600 dark:text-violet-400">
-          <Sparkles className="h-3 w-3" />
-          Projected
-        </span>
-      )}
-      {isPastPeriod && (
-        <span className="flex items-center gap-1 rounded-full bg-slate-500/10 px-2 py-0.5 text-xs text-slate-600 dark:text-slate-400">
-          <History className="h-3 w-3" />
-          Historical
-        </span>
-      )}
-    </div>
-  );
-}
 
 /** Single-column ledger row (current + future periods) */
 function SingleRow({
@@ -1453,8 +1638,10 @@ function SingleRow({
   className,
   href,
   isBold = false,
+  dimValue = false,
+  annotationColor,
 }: {
-  label: string;
+  label: React.ReactNode;
   value: string;
   delta?: React.ReactNode;
   annotation?: string | undefined;
@@ -1462,13 +1649,16 @@ function SingleRow({
   className?: string;
   href?: string;
   isBold?: boolean;
+  dimValue?: boolean;
+  annotationColor?: string | undefined;
 }) {
+  const dimCls = dimValue ? 'opacity-50' : '';
   const valContent = href ? (
-    <Link to={href} className={cn('w-20 text-right font-mono text-sm tabular-nums hover:underline sm:w-28', isBold && 'font-semibold', className, valueColor)}>
+    <Link to={href} className={cn('w-20 text-right font-mono text-sm tabular-nums hover:underline sm:w-28', isBold && 'font-semibold', className, valueColor, dimCls)}>
       {value}
     </Link>
   ) : (
-    <span className={cn('w-20 text-right font-mono text-sm tabular-nums sm:w-28', isBold && 'font-semibold', className, valueColor)}>
+    <span className={cn('w-20 text-right font-mono text-sm tabular-nums sm:w-28', isBold && 'font-semibold', className, valueColor, dimCls)}>
       {value}
     </span>
   );
@@ -1480,7 +1670,7 @@ function SingleRow({
         {delta}
       </span>
       {valContent}
-      <span className="w-16 text-right text-xs text-muted-foreground self-center sm:w-28">
+      <span className={cn('w-16 text-right text-xs self-center sm:w-28', annotationColor ? `text-sm font-semibold font-mono tabular-nums ${annotationColor}` : 'text-muted-foreground')}>
         {annotation ?? ''}
       </span>
     </div>
@@ -1498,26 +1688,34 @@ function TwoColRow({
   leftHref,
   mobileColumn,
   isBold = false,
+  dimLeft = false,
+  dimRight = false,
 }: {
-  label: string;
+  label: React.ReactNode;
   left: string;
   right: string;
   leftColor?: string | undefined;
   rightColor?: string | undefined;
   className?: string;
   leftHref?: string;
-  mobileColumn: 'left' | 'right';
+  mobileColumn: 'left' | 'middle' | 'right';
   isBold?: boolean;
+  dimLeft?: boolean;
+  dimRight?: boolean;
 }) {
   const valCls = cn('w-28 text-right font-mono text-sm tabular-nums', isBold && 'font-semibold', className);
+  const dimLeftCls = dimLeft ? 'opacity-50' : '';
+  const dimRightCls = dimRight ? 'opacity-50' : '';
+  // In two-column mode, 'middle' falls back to 'left'
+  const effectiveMobileCol = mobileColumn === 'middle' ? 'left' : mobileColumn;
 
   const leftContent = leftHref ? (
-    <Link to={leftHref} className={cn(valCls, leftColor, 'hover:underline')}>{left}</Link>
+    <Link to={leftHref} className={cn(valCls, leftColor, dimLeftCls, 'hover:underline')}>{left}</Link>
   ) : (
-    <span className={cn(valCls, leftColor)}>{left}</span>
+    <span className={cn(valCls, leftColor, dimLeftCls)}>{left}</span>
   );
 
-  const rightContent = <span className={cn(valCls, rightColor)}>{right}</span>;
+  const rightContent = <span className={cn(valCls, rightColor, dimRightCls)}>{right}</span>;
 
   return (
     <>
@@ -1530,15 +1728,86 @@ function TwoColRow({
       {/* Mobile */}
       <div className="grid grid-cols-[1fr_auto] gap-x-4 py-0.5 sm:hidden">
         <span className={cn('text-sm text-muted-foreground', isBold && 'font-semibold text-foreground')}>{label}</span>
-        {mobileColumn === 'left' ? (
+        {effectiveMobileCol === 'left' ? (
           leftHref ? (
-            <Link to={leftHref} className={cn(valCls, leftColor, 'hover:underline')}>{left}</Link>
+            <Link to={leftHref} className={cn(valCls, leftColor, dimLeftCls, 'hover:underline')}>{left}</Link>
           ) : (
-            <span className={cn(valCls, leftColor)}>{left}</span>
+            <span className={cn(valCls, leftColor, dimLeftCls)}>{left}</span>
           )
         ) : (
-          <span className={cn(valCls, rightColor)}>{right}</span>
+          <span className={cn(valCls, rightColor, dimRightCls)}>{right}</span>
         )}
+      </div>
+    </>
+  );
+}
+
+/** Three-column ledger row (current period with divergent pace: Planned / Projected / Actual) */
+function ThreeColRow({
+  label,
+  left,
+  middle,
+  right,
+  leftColor,
+  middleColor,
+  rightColor,
+  leftHref,
+  mobileColumn,
+  isBold = false,
+  dimLeft = false,
+  dimMiddle = false,
+  dimRight = false,
+}: {
+  label: React.ReactNode;
+  left: string;
+  middle: string;
+  right: string;
+  leftColor?: string | undefined;
+  middleColor?: string | undefined;
+  rightColor?: string | undefined;
+  leftHref?: string;
+  mobileColumn: 'left' | 'middle' | 'right';
+  isBold?: boolean;
+  dimLeft?: boolean;
+  dimMiddle?: boolean;
+  dimRight?: boolean;
+}) {
+  const valCls = cn('w-28 text-right font-mono text-sm tabular-nums', isBold && 'font-semibold');
+  const dimLeftCls = dimLeft ? 'opacity-50' : '';
+  const dimMiddleCls = dimMiddle ? 'opacity-50' : '';
+  const dimRightCls = dimRight ? 'opacity-50' : '';
+
+  const leftContent = leftHref ? (
+    <Link to={leftHref} className={cn(valCls, leftColor, dimLeftCls, 'hover:underline')}>{left}</Link>
+  ) : (
+    <span className={cn(valCls, leftColor, dimLeftCls)}>{left}</span>
+  );
+
+  const middleContent = <span className={cn(valCls, middleColor, dimMiddleCls)}>{middle}</span>;
+  const rightContent = <span className={cn(valCls, rightColor, dimRightCls)}>{right}</span>;
+
+  // Mobile: pick one column based on tab
+  const mobileValue = mobileColumn === 'left'
+    ? (leftHref
+        ? <Link to={leftHref} className={cn(valCls, leftColor, dimLeftCls, 'hover:underline')}>{left}</Link>
+        : <span className={cn(valCls, leftColor, dimLeftCls)}>{left}</span>)
+    : mobileColumn === 'middle'
+      ? <span className={cn(valCls, middleColor, dimMiddleCls)}>{middle}</span>
+      : <span className={cn(valCls, rightColor, dimRightCls)}>{right}</span>;
+
+  return (
+    <>
+      {/* Desktop */}
+      <div className="hidden sm:grid sm:grid-cols-[1fr_auto_auto_auto] sm:gap-x-4 sm:py-0.5">
+        <span className={cn('text-sm text-muted-foreground', isBold && 'font-semibold text-foreground')}>{label}</span>
+        {leftContent}
+        {middleContent}
+        {rightContent}
+      </div>
+      {/* Mobile */}
+      <div className="grid grid-cols-[1fr_auto] gap-x-4 py-0.5 sm:hidden">
+        <span className={cn('text-sm text-muted-foreground', isBold && 'font-semibold text-foreground')}>{label}</span>
+        {mobileValue}
       </div>
     </>
   );
