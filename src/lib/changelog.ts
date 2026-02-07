@@ -21,6 +21,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.35.0',
+    date: '2026-02-07',
+    changes: [
+      'Redesigned cash flow summary into two cards with a 2x2 layout showing Started with, Now, Planned end, and Projected end',
+      'Savings card now shows your total savings balance across all goals including emergency fund',
+      'Each summary card flips to reveal a detailed income and expense breakdown',
+      'You can now view future months on the cash flow page to preview your plan',
+      'Improved warning colors for better visual clarity in spending breakdowns',
+    ],
+  },
+  {
     version: '0.34.0',
     date: '2026-02-07',
     changes: [
