@@ -9,11 +9,13 @@ interface ScenarioDeltaProps {
   className?: string;
   /** Whether to show the delta (when false, reserves space but hides content) */
   show?: boolean;
+  /** Name of the scenario being compared to */
+  comparedToName?: string;
 }
 
 /**
- * Displays a delta value comparing current scenario to the default "Current Plan".
- * Shows "+$500 per month more than current plan" in purple.
+ * Displays a delta value comparing current scenario to the default scenario.
+ * Shows "$500 per month more than [Scenario Name]" in purple.
  * Always renders to reserve space (invisible when delta is 0 or show is false).
  */
 export function ScenarioDelta({
@@ -21,6 +23,7 @@ export function ScenarioDelta({
   periodLabel = ' per month',
   className = '',
   show = true,
+  comparedToName = 'Default',
 }: ScenarioDeltaProps) {
   const absDelta = formatCents(Math.abs(delta));
   const direction = delta > 0 ? 'more' : 'less';
@@ -31,7 +34,7 @@ export function ScenarioDelta({
       className={`text-xs ${isVisible ? 'text-violet-600 dark:text-violet-400' : 'invisible'} ${className}`}
     >
       {absDelta}
-      {periodLabel} {direction} than current plan
+      {periodLabel} {direction} than {comparedToName}
     </p>
   );
 }

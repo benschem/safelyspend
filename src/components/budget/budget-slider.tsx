@@ -42,8 +42,10 @@ interface BudgetSliderProps {
   debounceMs?: number;
   /** Whether this value differs from the default scenario */
   differsFromDefault?: boolean;
-  /** Current Plan's value (for showing delta from current plan when viewing non-default scenario) */
+  /** Default scenario's value (for showing delta when viewing non-default scenario) */
   defaultValue?: number | undefined;
+  /** Name of the default scenario for comparison text */
+  defaultScenarioName?: string;
   /** Optional action buttons rendered in the label row */
   actions?: ReactNode;
   /** Optional link destination for the label */
@@ -82,6 +84,7 @@ export function BudgetSlider({
   debounceMs = 100,
   differsFromDefault = false,
   defaultValue,
+  defaultScenarioName = 'Default',
   actions,
   labelHref,
 }: BudgetSliderProps) {
@@ -194,7 +197,7 @@ export function BudgetSlider({
       percentChange !== 0 ? ` (${percentChange > 0 ? '+' : ''}${percentChange}%)` : '';
 
     // Suffix changes based on whether comparing to plan or local adjustments
-    const suffix = isComparingToPlan ? ' than current plan' : ` ${perLabel}`;
+    const suffix = isComparingToPlan ? ` than ${defaultScenarioName}` : ` ${perLabel}`;
 
     if (variant === 'income') {
       // Income: green when earning more, red when earning less
@@ -266,7 +269,7 @@ export function BudgetSlider({
                 onClick={openCustomInput}
                 className={cn(
                   'cursor-pointer rounded px-1 font-semibold tabular-nums transition-colors hover:bg-muted',
-                  styles.text,
+                  differsFromDefault ? 'text-violet-600 dark:text-violet-400' : styles.text,
                 )}
                 title="Click to enter custom value"
               >

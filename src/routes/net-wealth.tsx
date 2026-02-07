@@ -215,7 +215,7 @@ export function NetWealthPage() {
               <p className="mt-1 text-xl font-semibold text-muted-foreground">—</p>
             )}
             <div className="mt-3 mb-2 h-px bg-border" />
-            <p className="text-sm text-muted-foreground">In your everyday account</p>
+            <p className="text-sm text-muted-foreground">In your everyday accounts</p>
           </Link>
 
           {/* Dedicated Savings */}
@@ -254,12 +254,12 @@ export function NetWealthPage() {
             <p className="text-sm text-muted-foreground">For life&apos;s surprises</p>
           </Link>
 
-          {/* Super - Coming Soon */}
+          {/* Superannuation - Coming Soon */}
           <div className="rounded-xl border bg-card p-5 opacity-50">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500/10">
               <Building2 className="h-5 w-5 text-orange-500" />
             </div>
-            <p className="mt-4 text-sm text-muted-foreground">Super</p>
+            <p className="mt-4 text-sm text-muted-foreground">Superannuation</p>
             <p className="mt-1 text-xl font-semibold text-muted-foreground">—</p>
             <div className="mt-3 mb-2 h-px bg-border" />
             <p className="text-sm text-muted-foreground">Coming soon</p>

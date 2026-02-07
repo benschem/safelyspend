@@ -14,7 +14,7 @@ import {
   Tag,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { formatCents, type CadenceType } from '@/lib/utils';
+import { cn, formatCents, type CadenceType } from '@/lib/utils';
 import { BudgetSlider, getSliderRange, getIncomeSliderRange } from './budget-slider';
 import { useWhatIf } from '@/contexts/what-if-context';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
@@ -88,7 +88,7 @@ export function IncomeSliderSection({
   monthlyDelta,
 }: IncomeSectionProps) {
   const { adjustments, baselineValues, setIncomeAdjustment } = useWhatIf();
-  const { isIncomeDifferent, defaultIncomeByDescription } = useScenarioDiff();
+  const { isIncomeDifferent, defaultIncomeByDescription, defaultScenarioName } = useScenarioDiff();
 
   return (
     <Collapsible open={isOpen} onOpenChange={onOpenChange} className="mb-4">
@@ -99,7 +99,7 @@ export function IncomeSliderSection({
             <BanknoteArrowUp className="h-4 w-4 text-green-500" />
             <span className="font-medium">Income</span>
             <span className="text-sm text-muted-foreground">
-              {formatCents(periodTotal)} {periodLabel}
+              <span className={cn(monthlyDelta !== undefined && monthlyDelta !== 0 && 'text-violet-600 dark:text-violet-400')}>{formatCents(periodTotal)}</span> {periodLabel}
               <span
                 className={`ml-1 inline-block min-w-[4.5rem] ${monthlyDelta !== undefined && monthlyDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
               >
@@ -154,6 +154,7 @@ export function IncomeSliderSection({
                     variant="income"
                     differsFromDefault={differsFromDefault}
                     defaultValue={defaultValue}
+                    defaultScenarioName={defaultScenarioName}
                     actions={
                       <SliderActions
                         onEdit={() => onEditRule(rule)}
@@ -198,7 +199,7 @@ export function FixedExpenseSliderSection({
   monthlyDelta,
 }: FixedExpenseSectionProps) {
   const { adjustments, baselineValues, setFixedExpenseAdjustment } = useWhatIf();
-  const { isExpenseDifferent, defaultExpenseByDescription } = useScenarioDiff();
+  const { isExpenseDifferent, defaultExpenseByDescription, defaultScenarioName } = useScenarioDiff();
 
   // Group rules by category
   const groupedRules = useMemo(() => {
@@ -228,7 +229,7 @@ export function FixedExpenseSliderSection({
             <BanknoteArrowDown className="h-4 w-4 text-rose-500" />
             <span className="font-medium">Fixed Expenses</span>
             <span className="text-sm text-muted-foreground">
-              {formatCents(periodTotal)} {periodLabel}
+              <span className={cn(monthlyDelta !== undefined && monthlyDelta !== 0 && 'text-violet-600 dark:text-violet-400')}>{formatCents(periodTotal)}</span> {periodLabel}
               <span
                 className={`ml-1 inline-block min-w-[4.5rem] ${monthlyDelta !== undefined && monthlyDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
               >
@@ -297,6 +298,7 @@ export function FixedExpenseSliderSection({
                           variant="expense"
                           differsFromDefault={differsFromDefault}
                           defaultValue={defaultValue}
+                          defaultScenarioName={defaultScenarioName}
                           actions={
                             <SliderActions
                               onEdit={() => onEditRule(rule)}
@@ -344,7 +346,7 @@ export function BudgetedSpendingSliderSection({
   monthlyDelta,
 }: BudgetedSpendingSectionProps) {
   const { adjustments, baselineValues, setBudgetAdjustment } = useWhatIf();
-  const { isBudgetDifferent, defaultBudgetByCategory } = useScenarioDiff();
+  const { isBudgetDifferent, defaultBudgetByCategory, defaultScenarioName } = useScenarioDiff();
 
   // Create a map of categoryId to category for quick lookup
   const categoryMap = useMemo(() => {
@@ -370,7 +372,7 @@ export function BudgetedSpendingSliderSection({
             <BanknoteArrowDown className="h-4 w-4 text-rose-500" />
             <span className="font-medium">Budgeted Spending</span>
             <span className="text-sm text-muted-foreground">
-              {formatCents(periodTotal)} {periodLabel}
+              <span className={cn(monthlyDelta !== undefined && monthlyDelta !== 0 && 'text-violet-600 dark:text-violet-400')}>{formatCents(periodTotal)}</span> {periodLabel}
               <span
                 className={`ml-1 inline-block min-w-[4.5rem] ${monthlyDelta !== undefined && monthlyDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
               >
@@ -430,6 +432,7 @@ export function BudgetedSpendingSliderSection({
                     variant="expense"
                     differsFromDefault={differsFromDefault}
                     defaultValue={defaultValue}
+                    defaultScenarioName={defaultScenarioName}
                     actions={
                       <SliderActions
                         onEdit={() => onEditBudget(rule)}
@@ -474,7 +477,7 @@ export function SavingsSliderSection({
   monthlyDelta,
 }: SavingsSectionProps) {
   const { adjustments, baselineValues, setSavingsAdjustment } = useWhatIf();
-  const { isSavingsDifferent, defaultSavingsByDescription } = useScenarioDiff();
+  const { isSavingsDifferent, defaultSavingsByDescription, defaultScenarioName } = useScenarioDiff();
 
   const getGoalName = (id: string | null) =>
     id ? (savingsGoals.find((g) => g.id === id)?.name ?? 'Unknown') : 'Savings';
@@ -488,7 +491,7 @@ export function SavingsSliderSection({
             <PiggyBank className="h-4 w-4 text-blue-500" />
             <span className="font-medium">Savings</span>
             <span className="text-sm text-muted-foreground">
-              {formatCents(periodTotal)} {periodLabel}
+              <span className={cn(monthlyDelta !== undefined && monthlyDelta !== 0 && 'text-violet-600 dark:text-violet-400')}>{formatCents(periodTotal)}</span> {periodLabel}
               <span
                 className={`ml-1 inline-block min-w-[4.5rem] ${monthlyDelta !== undefined && monthlyDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
               >
@@ -545,6 +548,7 @@ export function SavingsSliderSection({
                     variant="savings"
                     differsFromDefault={differsFromDefault}
                     defaultValue={defaultValue}
+                    defaultScenarioName={defaultScenarioName}
                     actions={
                       <SliderActions
                         onEdit={() => onEditRule(rule)}

@@ -116,7 +116,7 @@
 
   /* Page header - title area with icon and description */
   .page-header {
-    @apply mb-8;
+    @apply mb-2;
   }
 
   /* Page title - the big heading with optional icon */

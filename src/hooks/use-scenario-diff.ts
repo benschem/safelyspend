@@ -198,6 +198,7 @@ export function useScenarioDiff() {
 
   return {
     isViewingDefault,
+    defaultScenarioName: defaultScenario?.name ?? 'Default',
     isBudgetDifferent,
     isIncomeDifferent,
     isExpenseDifferent,

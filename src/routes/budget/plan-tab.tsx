@@ -76,8 +76,9 @@ interface PlanTabProps {
 export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
   const { activeScenario } = useScenarios();
   const { isWhatIfMode } = useWhatIf();
-  const { getTotalDelta, isViewingDefault } = useScenarioDiff();
+  const { getTotalDelta, isViewingDefault, defaultScenarioName, defaultTotals } = useScenarioDiff();
   const showDeltas = !isViewingDefault || isWhatIfMode;
+  const comparedToName = defaultScenarioName;
   const {
     categories,
     activeCategories,
@@ -576,6 +577,14 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     return null;
   }
 
+  // Compute deltas directly (bypass getTotalDelta which short-circuits when isViewingDefault,
+  // blocking what-if mode detection)
+  const incomeDelta = showDeltas ? totals.monthlyIncome - defaultTotals.income : 0;
+  const fixedDelta = showDeltas ? totals.monthlyFixed - defaultTotals.fixedExpenses : 0;
+  const budgetDelta = showDeltas ? totals.monthlyVariable - defaultTotals.budgetedExpenses : 0;
+  const savingsDelta = showDeltas ? totals.monthlySavings - defaultTotals.savings : 0;
+  const surplusDelta = showDeltas ? totals.monthlySurplus - defaultTotals.surplus : 0;
+
   // Use a tolerance to account for rounding when converting between periods
   const roundingToleranceByPeriod: Record<BudgetPeriod, number> = {
     weekly: 100,
@@ -608,7 +617,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
                 <CreditCard className="h-4 w-4" />
                 Planned Shortfall
               </p>
-              <p className="mt-2 text-5xl font-bold tracking-tight text-amber-500">
+              <p className={cn('mt-2 text-5xl font-bold tracking-tight', surplusDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-amber-500')}>
                 {formatCents(Math.abs(totals.unallocated))}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -620,6 +629,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
               <ScenarioDelta
                 delta={getTotalDelta('surplus', totals.monthlySurplus)}
                 show={showDeltas}
+                comparedToName={comparedToName}
               />
             </div>
           ) : isFullyAllocated ? (
@@ -638,6 +648,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
               <ScenarioDelta
                 delta={getTotalDelta('surplus', totals.monthlySurplus)}
                 show={showDeltas}
+                comparedToName={comparedToName}
               />
             </div>
           ) : hasAvailable ? (
@@ -646,7 +657,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
                 <Banknote className="h-4 w-4" />
                 Planned Surplus
               </p>
-              <p className="mt-2 text-5xl font-bold tracking-tight text-green-500">
+              <p className={cn('mt-2 text-5xl font-bold tracking-tight', surplusDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-green-500')}>
                 {formatCents(totals.unallocated)}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -656,6 +667,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
               <ScenarioDelta
                 delta={getTotalDelta('surplus', totals.monthlySurplus)}
                 show={showDeltas}
+                comparedToName={comparedToName}
               />
             </div>
           ) : null}
@@ -676,7 +688,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
             </div>
             <span className="text-sm text-muted-foreground">Income</span>
           </div>
-          <p className="mt-2 text-2xl font-bold">
+          <p className={cn('mt-2 text-2xl font-bold', incomeDelta !== 0 && 'text-violet-600 dark:text-violet-400')}>
             {totals.income > 0 ? formatCents(totals.income) : '—'}
           </p>
           {totals.income > 0 && (
@@ -684,7 +696,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
               {incomeRules.length} source{incomeRules.length !== 1 ? 's' : ''}
             </p>
           )}
-          <ScenarioDelta delta={getTotalDelta('income', totals.monthlyIncome)} show={showDeltas} />
+          <ScenarioDelta delta={getTotalDelta('income', totals.monthlyIncome)} show={showDeltas} comparedToName={comparedToName} />
         </button>
 
         {/* Fixed Expenses Card */}
@@ -699,7 +711,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
             </div>
             <span className="text-sm text-muted-foreground">Fixed Expenses</span>
           </div>
-          <p className="mt-2 text-2xl font-bold">
+          <p className={cn('mt-2 text-2xl font-bold', fixedDelta !== 0 && 'text-violet-600 dark:text-violet-400')}>
             {totals.fixed > 0 ? formatCents(totals.fixed) : '—'}
           </p>
           {totals.income > 0 && totals.fixed > 0 && (
@@ -707,7 +719,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
               {Math.round((totals.fixed / totals.income) * 100)}% of income
             </p>
           )}
-          <ScenarioDelta delta={getTotalDelta('fixed', totals.monthlyFixed)} show={showDeltas} />
+          <ScenarioDelta delta={getTotalDelta('fixed', totals.monthlyFixed)} show={showDeltas} comparedToName={comparedToName} />
         </button>
 
         {/* Budgeted Expenses Card */}
@@ -722,7 +734,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
             </div>
             <span className="text-sm text-muted-foreground">Budgeted Expenses</span>
           </div>
-          <p className="mt-2 text-2xl font-bold">
+          <p className={cn('mt-2 text-2xl font-bold', budgetDelta !== 0 && 'text-violet-600 dark:text-violet-400')}>
             {totals.variable > 0 ? formatCents(totals.variable) : '—'}
           </p>
           {totals.income > 0 && totals.variable > 0 && (
@@ -733,6 +745,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           <ScenarioDelta
             delta={getTotalDelta('budget', totals.monthlyVariable)}
             show={showDeltas}
+            comparedToName={comparedToName}
           />
         </button>
 
@@ -748,8 +761,8 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
             </div>
             <span className="text-sm text-muted-foreground">Savings</span>
           </div>
-          <p className="mt-2 text-2xl font-bold">
-            {totals.savings > 0 ? formatCents(totals.savings) : '—'}
+          <p className={cn('mt-2 text-2xl font-bold', savingsDelta !== 0 && 'text-violet-600 dark:text-violet-400')}>
+            {formatCents(totals.savings)}
           </p>
           {totals.income > 0 && totals.savings > 0 && (
             <p className="text-sm text-muted-foreground">
@@ -759,6 +772,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           <ScenarioDelta
             delta={getTotalDelta('savings', totals.monthlySavings)}
             show={showDeltas}
+            comparedToName={comparedToName}
           />
         </button>
       </div>
