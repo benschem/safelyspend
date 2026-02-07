@@ -21,14 +21,22 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.36.0',
+    date: '2026-02-07',
+    changes: [
+      'New unified header bar with scenario selector always visible at the top of the app',
+      'Net Wealth card headers now display inline with icons for a cleaner look',
+      'Wealth percentile comparison now includes a tooltip explaining the data source',
+    ],
+  },
+  {
     version: '0.35.0',
     date: '2026-02-07',
     changes: [
-      'Redesigned cash flow summary into two cards with a 2x2 layout showing Started with, Now, Planned end, and Projected end',
-      'Savings card now shows your total savings balance across all goals including emergency fund',
-      'Each summary card flips to reveal a detailed income and expense breakdown',
+      'Cash flow cards now show the right value for each period: actual for past months, projected for current, and planned for future',
+      'Current month shows an "ahead" or "behind" indicator comparing your projected pace to your plan',
+      'Cash flow breakdown table headers show your scenario name and columns are reordered for clarity',
       'You can now view future months on the cash flow page to preview your plan',
-      'Improved warning colors for better visual clarity in spending breakdowns',
     ],
   },
   {
