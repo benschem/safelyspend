@@ -7,19 +7,17 @@ import {
   PiggyBank,
   Banknote,
   BanknoteArrowDown,
+  CalendarCheck,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  ArrowDownUp,
+  ChevronUp,
   Pin,
   Tag,
   Sparkles,
   ClipboardCheck,
   X,
-  Clock,
   Target,
-  MapPin,
-  CircleCheck,
 } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
@@ -540,7 +538,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
   const variable = periodCashFlow.budgeted.expected;
   const savingsExpected = periodCashFlow.savings.expected;
 
-  // Planned end of month (absolute)
+  // Planned month end of month (absolute)
   const plannedEnd = hasAnchor
     ? (startingBalance as number) + income - fixed - variable - savingsExpected
     : null;
@@ -716,6 +714,11 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
       {/* Check-in nudge */}
       <CheckInNudge />
 
+      {/* Month heading */}
+      <div className="text-center">
+        <p className="text-3xl font-bold tracking-tight">{periodLabel}</p>
+      </div>
+
       {/* Summary cards */}
       <div className="grid gap-6 sm:grid-cols-2">
         <CashBalanceCard
@@ -740,6 +743,8 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
           projectedNetChange={projectedNetChange}
           projectedSavings={projectedSavings}
           defaultScenarioName={defaultScenarioName}
+          scenarioName={activeScenario?.name ?? 'Scenario'}
+          isDefaultScenario={isViewingDefault}
           plannedEnd={plannedEnd}
           paceEnd={paceEnd}
           pastActualEnd={pastActualEnd}
@@ -767,6 +772,8 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
           projectedNetChange={projectedNetChange}
           projectedSavings={projectedSavings}
           defaultScenarioName={defaultScenarioName}
+          scenarioName={activeScenario?.name ?? 'Scenario'}
+          isDefaultScenario={isViewingDefault}
           totalSavingsBalance={totalSavingsBalance}
         />
       </div>
@@ -808,6 +815,39 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
           />
         </div>
       )}
+
+      {/* Cash Flow Breakdown */}
+      <div className={cn('rounded-xl border bg-card p-6', showDeltas && 'border-violet-500/30')}>
+        <div className="mb-4 flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/10"><Banknote className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /></span>
+          <h3 className="text-lg font-semibold">Cash Flow Breakdown</h3>
+        </div>
+        <BreakdownTable
+          periodLabel={periodLabel}
+          isCurrentPeriod={isCurrentPeriod}
+          isPastPeriod={isPastPeriod}
+          hasAnchor={hasAnchor}
+          startingBalance={startingBalance}
+          periodCashFlow={periodCashFlow}
+          netChange={netChange}
+          actualNetChange={periodCashFlow.income.actual - periodCashFlow.expenses.actual - periodCashFlow.savings.actual}
+          pastActualFixed={pastActualFixed}
+          pastActualNetChange={pastActualNetChange}
+          showDeltas={showDeltas}
+          incomeDelta={incomeDelta}
+          fixedDelta={fixedDelta}
+          variableDelta={variableDelta}
+          savingsDelta={savingsDelta}
+          endDelta={endDelta}
+          pacesDiffer={pacesDiffer}
+          projectedVariable={projectedVariable}
+          projectedNetChange={projectedNetChange}
+          projectedSavings={projectedSavings}
+          defaultScenarioName={defaultScenarioName}
+          scenarioName={activeScenario?.name ?? 'Scenario'}
+          isDefaultScenario={isViewingDefault}
+        />
+      </div>
 
       {/* Expenses & Savings Breakdown */}
       <div
@@ -974,8 +1014,8 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                             const delta = currentBudget - defaultBudget;
                             if (!showDeltas || delta === 0) return null;
                             return (
-                              <span className="ml-1 text-violet-600 dark:text-violet-400">
-                                ({delta > 0 ? '+' : ''}{formatCents(delta)})
+                              <span className="ml-1 inline-flex items-center text-violet-600 dark:text-violet-400">
+                                ({delta > 0 ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}{formatCents(Math.abs(delta))})
                               </span>
                             );
                           })()}
@@ -1134,25 +1174,14 @@ function CashBalanceCard(props: CashBalanceCardProps) {
     isCurrentPeriod,
     isPastPeriod,
     hasAnchor,
-    startingBalance,
-    netChange,
-    actualNetChange,
-    pastActualNetChange,
     showDeltas,
-    endDelta,
-    pacesDiffer,
+    netChange,
     projectedNetChange,
+    pastActualNetChange,
     plannedEnd,
     paceEnd,
     pastActualEnd,
   } = props;
-
-  const [flipped, setFlipped] = useState(false);
-
-  const fmtChange = (amount: number) => {
-    const sign = amount >= 0 ? '+' : '−';
-    return `${sign}${formatCents(Math.abs(amount))}`;
-  };
 
   const fmtBalance = (amount: number) => {
     if (amount < 0) return `−${formatCents(Math.abs(amount))}`;
@@ -1161,17 +1190,6 @@ function CashBalanceCard(props: CashBalanceCardProps) {
 
   const colorForChange = (amount: number) =>
     amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400';
-
-  const flipButton = (
-    <button
-      type="button"
-      onClick={() => setFlipped(!flipped)}
-      className="ml-auto cursor-pointer rounded p-1 text-muted-foreground hover:text-foreground"
-      aria-label={flipped ? 'Show summary' : 'Show breakdown'}
-    >
-      <ArrowDownUp className="h-4 w-4" />
-    </button>
-  );
 
   if (!hasAnchor) {
     return (
@@ -1189,117 +1207,72 @@ function CashBalanceCard(props: CashBalanceCardProps) {
     );
   }
 
-  if (flipped) {
-    return (
-      <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
-        <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/10"><Banknote className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /></span>
-          <h3 className="text-lg font-semibold">Cash Balance</h3>
-          {flipButton}
-        </div>
-        <div className="mt-3">
-          <BreakdownTable {...props} />
-        </div>
-      </div>
-    );
+  // Determine which value/label/change to show based on period
+  const isFuture = !isCurrentPeriod && !isPastPeriod;
+  let endValue: number | null;
+  let endChange: number;
+  let endLabel: string;
+  let endIcon: React.ReactNode;
+
+  if (isPastPeriod) {
+    endValue = pastActualEnd ?? null;
+    endChange = pastActualNetChange;
+    endLabel = 'Actual month end';
+    endIcon = <CalendarCheck className="h-3 w-3" />;
+  } else if (isCurrentPeriod) {
+    endValue = paceEnd !== null ? paceEnd : plannedEnd;
+    endChange = projectedNetChange;
+    endLabel = 'Projected month end';
+    endIcon = <Sparkles className="h-3 w-3" />;
+  } else {
+    endValue = plannedEnd;
+    endChange = netChange;
+    endLabel = 'Planned month end';
+    endIcon = <Target className="h-3 w-3" />;
   }
 
-  const showPace = isCurrentPeriod && pacesDiffer && paceEnd !== null;
-  const currentBalance = (startingBalance as number) + actualNetChange;
-
-  // 2x2 grid cell values
-  const nowValue = isPastPeriod ? pastActualEnd : isCurrentPeriod ? currentBalance : null;
-  const nowChange = isPastPeriod ? pastActualNetChange : isCurrentPeriod ? actualNetChange : null;
-  const nowLabel = isPastPeriod ? 'Actual end' : 'Now';
-
-  const projEndValue = showPace ? paceEnd : null;
-  const projEndChange = showPace ? projectedNetChange : null;
-
-  const plannedEndChange = netChange;
-
-
-  // "above/below plan" annotation for actual/projected vs planned
-  const aboveBelowPlan = (val: number) => {
-    if (plannedEnd === null) return null;
-    const diff = val - plannedEnd;
+  // "ahead/behind plan" pill (only for current period)
+  const aboveBelowPill = isCurrentPeriod && endValue !== null && plannedEnd !== null && (() => {
+    const diff = endValue! - plannedEnd;
     if (Math.abs(diff) < 100) return null;
+    const isAhead = diff >= 0;
     return (
-      <p className="mt-0.5 text-xs text-muted-foreground">
-        {formatCents(Math.abs(diff))} {diff >= 0 ? 'above' : 'below'} plan
-      </p>
+      <span className={cn(
+        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+        isAhead ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+      )}>
+        {formatCents(Math.abs(diff))} {isAhead ? 'ahead' : 'behind'}
+      </span>
     );
-  };
+  })();
+
+  const labelClass = isCurrentPeriod
+    ? 'text-violet-600 dark:text-violet-400'
+    : 'text-muted-foreground';
 
   return (
     <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
-      <div className="flex items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/10"><Banknote className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /></span>
-        <h3 className="text-lg font-semibold">Cash Balance</h3>
-        {flipButton}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/10"><Banknote className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /></span>
+          <h3 className="text-lg font-semibold">Cash</h3>
+        </div>
+        {aboveBelowPill}
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-4">
-        {/* Top-left: Started with */}
-        <div>
-          <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground"><Clock className="h-3 w-3" />Started with</p>
-          <p className="mt-0.5 text-xl font-semibold tabular-nums">
-            {fmtBalance(startingBalance as number)}
-          </p>
-        </div>
-
-        {/* Top-right: Now / Actual end */}
-        {nowValue !== null && nowChange !== null && (
-          <div>
-            <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">{isPastPeriod ? <CircleCheck className="h-3 w-3" /> : <MapPin className="h-3 w-3" />}{nowLabel}</p>
-            <div className="mt-0.5 flex items-baseline gap-1.5">
-              <p className="text-xl font-semibold tabular-nums">
-                {fmtBalance(nowValue)}
-              </p>
-              <span className={cn('text-xs font-semibold tabular-nums', colorForChange(nowChange))}>
-                {fmtChange(nowChange)}
-              </span>
-            </div>
-            {isPastPeriod && nowValue !== null && aboveBelowPlan(nowValue)}
-          </div>
-        )}
-
-        {/* Bottom-left: Planned end */}
-        <div className={cn(isPastPeriod && 'opacity-50')}>
-          <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground"><Target className="h-3 w-3" />Planned end</p>
+      {endValue !== null && (
+        <div className="mt-6">
+          <p className={cn('flex items-center gap-1 text-xs font-medium', labelClass)}>{endIcon}{endLabel}</p>
           <div className="mt-0.5 flex items-baseline gap-1.5">
-            <p className={cn(
-              'text-xl font-semibold tabular-nums',
-              showDeltas && endDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : '',
-            )}>
-              {plannedEnd !== null ? fmtBalance(plannedEnd) : '—'}
+            <p className={cn('text-3xl font-semibold tabular-nums', showDeltas && isFuture && 'text-violet-600 dark:text-violet-400')}>
+              {fmtBalance(endValue)}
             </p>
-            {plannedEnd !== null && (
-              <span className={cn(
-                'text-xs font-semibold tabular-nums',
-                showDeltas && endDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : colorForChange(plannedEndChange),
-              )}>
-                {fmtChange(plannedEndChange)}
-              </span>
-            )}
+            <span className={cn('inline-flex items-center text-xs font-semibold tabular-nums', colorForChange(endChange))}>
+              {endChange >= 0 ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}{formatCents(Math.abs(endChange))}
+            </span>
           </div>
         </div>
-
-        {/* Bottom-right: Projected end */}
-        {projEndValue !== null && projEndChange !== null && (
-          <div className="-m-2 rounded-lg border border-violet-500/30 bg-violet-500/5 p-2">
-            <p className="flex items-center gap-1 text-xs font-medium text-violet-600 dark:text-violet-400"><Sparkles className="h-3 w-3" />Projected end</p>
-            <div className="mt-0.5 flex items-baseline gap-1.5">
-              <p className="text-xl font-semibold tabular-nums">
-                {fmtBalance(projEndValue)}
-              </p>
-              <span className={cn('text-xs font-semibold tabular-nums', colorForChange(projEndChange))}>
-                {fmtChange(projEndChange)}
-              </span>
-            </div>
-            {aboveBelowPlan(projEndValue)}
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
@@ -1334,6 +1307,8 @@ interface SummaryCardProps {
   projectedNetChange: number;
   projectedSavings: number;
   defaultScenarioName: string;
+  scenarioName: string;
+  isDefaultScenario: boolean;
 }
 
 interface CashBalanceCardProps extends SummaryCardProps {
@@ -1360,8 +1335,6 @@ function SavingsGrowthCard(props: SavingsGrowthCardProps) {
     totalSavingsBalance,
   } = props;
 
-  const [flipped, setFlipped] = useState(false);
-
   const savings = periodCashFlow.savings.expected;
   const isFuturePeriod = !isCurrentPeriod && !isPastPeriod;
   const showPace = isCurrentPeriod && pacesDiffer && projectedSavings !== savings;
@@ -1371,38 +1344,7 @@ function SavingsGrowthCard(props: SavingsGrowthCardProps) {
     return formatCents(amount);
   };
 
-  const fmtChange = (amount: number) => {
-    const sign = amount >= 0 ? '+' : '−';
-    return `${sign}${formatCents(Math.abs(amount))}`;
-  };
-
   const colorForChange = () => 'text-blue-600 dark:text-blue-400';
-
-  const flipButton = (
-    <button
-      type="button"
-      onClick={() => setFlipped(!flipped)}
-      className="ml-auto cursor-pointer rounded p-1 text-muted-foreground hover:text-foreground"
-      aria-label={flipped ? 'Show summary' : 'Show breakdown'}
-    >
-      <ArrowDownUp className="h-4 w-4" />
-    </button>
-  );
-
-  if (flipped) {
-    return (
-      <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
-        <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/10"><PiggyBank className="h-4 w-4 text-blue-600 dark:text-blue-400" /></span>
-          <h3 className="text-lg font-semibold">Savings</h3>
-          {flipButton}
-        </div>
-        <div className="mt-3">
-          <BreakdownTable {...props} />
-        </div>
-      </div>
-    );
-  }
 
   // For current period: compute absolute savings balances
   const savingsNow = totalSavingsBalance;
@@ -1412,7 +1354,6 @@ function SavingsGrowthCard(props: SavingsGrowthCardProps) {
 
   // Growth annotations
   const plannedGrowth = savings;
-  const actualGrowth = periodCashFlow.savings.actual;
   const projectedGrowth = showPace ? projectedSavings : null;
 
 
@@ -1422,66 +1363,55 @@ function SavingsGrowthCard(props: SavingsGrowthCardProps) {
       <div className="flex items-center gap-2">
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/10"><PiggyBank className="h-4 w-4 text-blue-600 dark:text-blue-400" /></span>
         <h3 className="text-lg font-semibold">Savings</h3>
-        {flipButton}
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-4">
-        {/* Top-left: Started with / Current total */}
-        <div>
-          <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-            <Clock className="h-3 w-3" />{isFuturePeriod ? 'Current total' : 'Started with'}
-          </p>
-          <p className="mt-0.5 text-xl font-semibold tabular-nums">
-            {fmtBalance(isFuturePeriod ? savingsNow : savingsStarted)}
-          </p>
-        </div>
-
-        {/* Top-right: Now / Actual end */}
-        {!isFuturePeriod && (
+      <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-4 items-end">
+        {/* Past: Actual month end */}
+        {isPastPeriod && (
           <div>
-            <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-              {isPastPeriod ? <><CircleCheck className="h-3 w-3" />Actual end</> : <><MapPin className="h-3 w-3" />Now</>}
-            </p>
+            <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground"><CalendarCheck className="h-3 w-3" />Actual month end</p>
             <div className="mt-0.5 flex items-baseline gap-1.5">
-              <p className="text-xl font-semibold tabular-nums">
-                {fmtBalance(isPastPeriod ? savingsStarted + actualGrowth : savingsNow)}
+              <p className="text-3xl font-semibold tabular-nums">
+                {fmtBalance(savingsNow)}
               </p>
-              <span className={cn('text-xs font-semibold tabular-nums', colorForChange())}>
-                {fmtChange(actualGrowth)}
+              <span className={cn('inline-flex items-center text-xs font-semibold tabular-nums', colorForChange())}>
+                {periodCashFlow.savings.actual >= 0 ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}{formatCents(Math.abs(periodCashFlow.savings.actual))}
               </span>
             </div>
           </div>
         )}
 
-        {/* Bottom-left: Planned end */}
-        <div className={cn(isPastPeriod && 'opacity-50')}>
-          <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground"><Target className="h-3 w-3" />Planned end</p>
+        {/* Current/Future: Planned month end */}
+        {!isPastPeriod && (
+        <div>
+          <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground"><Target className="h-3 w-3" />Planned month end</p>
           <div className="mt-0.5 flex items-baseline gap-1.5">
             <p className={cn(
-              'text-xl font-semibold tabular-nums',
+              'text-3xl font-semibold tabular-nums',
               showDeltas && savingsDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : '',
             )}>
               {fmtBalance(isFuturePeriod ? savingsNow + savings : savingsPlannedEnd)}
             </p>
             <span className={cn(
-              'text-xs font-semibold tabular-nums',
-              showDeltas && savingsDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : colorForChange(),
+              'inline-flex items-center text-xs font-semibold tabular-nums',
+              colorForChange(),
             )}>
-              {fmtChange(plannedGrowth)}
+              {plannedGrowth >= 0 ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}{formatCents(Math.abs(plannedGrowth))}
             </span>
           </div>
         </div>
+        )}
 
-        {/* Bottom-right: Projected end */}
+        {/* Current (divergent): Projected month end */}
         {savingsProjectedEnd !== null && projectedGrowth !== null && (
-          <div className="-m-2 rounded-lg border border-violet-500/30 bg-violet-500/5 p-2">
-            <p className="flex items-center gap-1 text-xs font-medium text-violet-600 dark:text-violet-400"><Sparkles className="h-3 w-3" />Projected end</p>
+          <div>
+            <p className="flex items-center gap-1 text-xs font-medium text-violet-600 dark:text-violet-400"><Sparkles className="h-3 w-3" />Projected month end</p>
             <div className="mt-0.5 flex items-baseline gap-1.5">
-              <p className="text-xl font-semibold tabular-nums">
+              <p className="text-3xl font-semibold tabular-nums">
                 {fmtBalance(savingsProjectedEnd)}
               </p>
-              <span className={cn('text-xs font-semibold tabular-nums', colorForChange())}>
-                {fmtChange(projectedGrowth)}
+              <span className={cn('inline-flex items-center text-xs font-semibold tabular-nums', colorForChange())}>
+                {projectedGrowth >= 0 ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}{formatCents(Math.abs(projectedGrowth))}
               </span>
             </div>
           </div>
@@ -1507,17 +1437,22 @@ function BreakdownTable({
   pacesDiffer,
   projectedVariable,
   projectedSavings,
+  scenarioName,
+  isDefaultScenario,
 }: SummaryCardProps) {
   // Default mobile tab to actual/now (left column = actual in the new order)
   const [mobileColumn, setMobileColumn] = useState<'left' | 'middle' | 'right'>('left');
+
+  const plannedLabel = isDefaultScenario ? 'Planned' : scenarioName;
+  const plannedHeaderClass = isDefaultScenario ? 'text-muted-foreground' : 'text-violet-600 dark:text-violet-400';
 
   const fmtSigned = (amount: number, prefix: string) => `${prefix}${formatCents(Math.abs(amount))}`;
 
   const renderDelta = (delta: number) => {
     if (!showDeltas || delta === 0) return null;
     return (
-      <span className="ml-1.5 text-xs text-violet-600 dark:text-violet-400">
-        ({delta > 0 ? '+' : ''}{formatCents(delta)})
+      <span className="ml-1.5 inline-flex items-center text-xs text-muted-foreground">
+        ({delta > 0 ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}{formatCents(Math.abs(delta))})
       </span>
     );
   };
@@ -1530,6 +1465,9 @@ function BreakdownTable({
     ? Math.max(0, periodCashFlow.expenses.actual - periodCashFlow.projection.variableActual)
     : 0;
 
+  const plannedTotal = income - fixed - variable - savings;
+  const totalDelta = incomeDelta - fixedDelta - variableDelta - savingsDelta;
+  const totalColor = (amount: number) => amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400';
   // Column labels based on period type
   const actualLabel = isPastPeriod ? 'Actual' : 'Now';
 
@@ -1539,12 +1477,12 @@ function BreakdownTable({
       <div>
         <div className="mb-2 flex gap-1 sm:hidden">
           <button type="button" onClick={() => setMobileColumn('left')} className={cn('cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors', mobileColumn === 'left' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80')}>{actualLabel}</button>
-          <button type="button" onClick={() => setMobileColumn('right')} className={cn('cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors', mobileColumn === 'right' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80')}>Planned</button>
+          <button type="button" onClick={() => setMobileColumn('right')} className={cn('cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors', mobileColumn === 'right' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80')}>{plannedLabel}</button>
         </div>
         <div className="mb-2 hidden sm:grid sm:grid-cols-[1fr_auto_auto] sm:gap-x-4">
           <div />
           <div className="w-28 text-right text-xs font-medium text-muted-foreground">{actualLabel}</div>
-          <div className="w-28 text-right text-xs font-medium text-muted-foreground">Planned</div>
+          <div className={cn('w-28 text-right text-xs font-medium', plannedHeaderClass)}>{plannedLabel}</div>
         </div>
         <div className="border-t border-border pt-2">
           <TwoColRow label="Started with" left={hasAnchor ? formatCents(startingBalance as number) : '—'} right="" mobileColumn={mobileColumn} />
@@ -1553,11 +1491,19 @@ function BreakdownTable({
           <TwoColRow label="− Variable spending" left={periodCashFlow.projection.variableActual > 0 ? fmtSigned(periodCashFlow.projection.variableActual, '−') : '—'} right={variable > 0 ? fmtSigned(variable, '−') : '—'} mobileColumn={mobileColumn} className="text-red-600 dark:text-red-400" dimRight />
           <TwoColRow label="− Saving" left={fmtSigned(periodCashFlow.savings.actual, '−')} right={fmtSigned(savings, '−')} mobileColumn={mobileColumn} className="text-blue-600 dark:text-blue-400" dimRight />
         </div>
+        {(() => {
+          const actualTotal = periodCashFlow.income.actual - pastActualFixed - periodCashFlow.projection.variableActual - periodCashFlow.savings.actual;
+          return (
+            <div className="border-t border-border mt-1 pt-1">
+              <TwoColRow label="Net change" left={fmtSigned(actualTotal, actualTotal >= 0 ? '+' : '−')} right={fmtSigned(plannedTotal, plannedTotal >= 0 ? '+' : '−')} mobileColumn={mobileColumn} leftColor={totalColor(actualTotal)} rightColor={totalColor(plannedTotal)} isBold dimRight />
+            </div>
+          );
+        })()}
       </div>
     );
   }
 
-  // --- Current period with divergent pace: three-column (Now | Projected | Planned) ---
+  // --- Current period with divergent pace: three-column (Now | Planned | Projected) ---
   if (isCurrentPeriod && pacesDiffer) {
     const pv = projectedVariable ?? variable;
     return (
@@ -1565,25 +1511,34 @@ function BreakdownTable({
         <div className="mb-2 flex gap-1 sm:hidden">
           {(['left', 'middle', 'right'] as const).map((col) => (
             <button key={col} type="button" onClick={() => setMobileColumn(col)} className={cn('cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors', mobileColumn === col ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80')}>
-              {col === 'left' ? actualLabel : col === 'middle' ? 'Projected' : 'Planned'}
+              {col === 'left' ? actualLabel : col === 'middle' ? plannedLabel : 'Projected'}
             </button>
           ))}
         </div>
         <div className="mb-2 hidden sm:grid sm:grid-cols-[1fr_auto_auto_auto] sm:gap-x-4">
           <div />
           <div className="w-28 text-right text-xs font-medium text-muted-foreground">{actualLabel}</div>
+          <div className={cn('w-28 text-right text-xs font-medium', plannedHeaderClass)}>{plannedLabel}</div>
           <div className="w-28 text-right text-xs font-medium text-violet-600 dark:text-violet-400">
             <span className="inline-flex items-center gap-1"><Sparkles className="h-3 w-3" />Projected</span>
           </div>
-          <div className="w-28 text-right text-xs font-medium text-muted-foreground">Planned</div>
         </div>
         <div className="border-t border-border pt-2">
           <ThreeColRow label="Started with" left={hasAnchor ? formatCents(startingBalance as number) : '—'} middle={hasAnchor ? formatCents(startingBalance as number) : '—'} right={hasAnchor ? formatCents(startingBalance as number) : '—'} mobileColumn={mobileColumn} />
-          <ThreeColRow label="+ Income" left={fmtSigned(periodCashFlow.income.actual, '+')} middle={fmtSigned(income, '+')} right={fmtSigned(income, '+')} leftColor="text-green-600 dark:text-green-400" middleColor="text-green-600 dark:text-green-400" rightColor={showDeltas && incomeDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-green-600 dark:text-green-400'} mobileColumn={mobileColumn} dimMiddle dimRight />
-          <ThreeColRow label="− Fixed expenses" left={periodCashFlow.expenses.dueToDate > 0 ? fmtSigned(periodCashFlow.expenses.dueToDate, '−') : '—'} middle={fixed > 0 ? fmtSigned(fixed, '−') : '—'} right={fixed > 0 ? fmtSigned(fixed, '−') : '—'} leftColor="text-red-600 dark:text-red-400" middleColor="text-red-600 dark:text-red-400" rightColor={showDeltas && fixedDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-red-600 dark:text-red-400'} mobileColumn={mobileColumn} dimMiddle dimRight />
-          <ThreeColRow label="− Variable spending" left={periodCashFlow.projection.variableActual > 0 ? fmtSigned(periodCashFlow.projection.variableActual, '−') : '—'} middle={pv > 0 ? fmtSigned(pv, '−') : '—'} right={variable > 0 ? fmtSigned(variable, '−') : '—'} leftColor="text-red-600 dark:text-red-400" middleColor="text-red-600 dark:text-red-400" rightColor={showDeltas && variableDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-red-600 dark:text-red-400'} mobileColumn={mobileColumn} dimRight />
-          <ThreeColRow label="− Saving" left={fmtSigned(periodCashFlow.savings.actual, '−')} middle={fmtSigned(projectedSavings, '−')} right={fmtSigned(savings, '−')} leftColor="text-blue-600 dark:text-blue-400" middleColor="text-blue-600 dark:text-blue-400" rightColor={showDeltas && savingsDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-blue-600 dark:text-blue-400'} mobileColumn={mobileColumn} dimMiddle={projectedSavings === savings} dimRight />
+          <ThreeColRow label="+ Income" left={fmtSigned(periodCashFlow.income.actual, '+')} middle={fmtSigned(income, '+')} right={fmtSigned(income, '+')} leftColor="text-green-600 dark:text-green-400" middleColor={showDeltas && incomeDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-green-600 dark:text-green-400'} rightColor="text-green-600 dark:text-green-400" mobileColumn={mobileColumn} dimMiddle dimRight />
+          <ThreeColRow label="− Fixed expenses" left={periodCashFlow.expenses.dueToDate > 0 ? fmtSigned(periodCashFlow.expenses.dueToDate, '−') : '—'} middle={fixed > 0 ? fmtSigned(fixed, '−') : '—'} right={fixed > 0 ? fmtSigned(fixed, '−') : '—'} leftColor="text-red-600 dark:text-red-400" middleColor={showDeltas && fixedDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-red-600 dark:text-red-400'} rightColor="text-red-600 dark:text-red-400" mobileColumn={mobileColumn} dimMiddle dimRight />
+          <ThreeColRow label="− Variable spending" left={periodCashFlow.projection.variableActual > 0 ? fmtSigned(periodCashFlow.projection.variableActual, '−') : '—'} middle={variable > 0 ? fmtSigned(variable, '−') : '—'} right={pv > 0 ? fmtSigned(pv, '−') : '—'} leftColor="text-red-600 dark:text-red-400" middleColor={showDeltas && variableDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-red-600 dark:text-red-400'} rightColor="text-red-600 dark:text-red-400" mobileColumn={mobileColumn} dimMiddle />
+          <ThreeColRow label="− Saving" left={fmtSigned(periodCashFlow.savings.actual, '−')} middle={fmtSigned(savings, '−')} right={fmtSigned(projectedSavings, '−')} leftColor="text-blue-600 dark:text-blue-400" middleColor={showDeltas && savingsDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-blue-600 dark:text-blue-400'} rightColor="text-blue-600 dark:text-blue-400" mobileColumn={mobileColumn} dimMiddle={projectedSavings === savings} />
         </div>
+        {(() => {
+          const actualTotal = periodCashFlow.income.actual - periodCashFlow.expenses.dueToDate - periodCashFlow.projection.variableActual - periodCashFlow.savings.actual;
+          const projectedTotal = income - fixed - pv - projectedSavings;
+          return (
+            <div className="border-t border-border mt-1 pt-1">
+              <ThreeColRow label="Net change" left={fmtSigned(actualTotal, actualTotal >= 0 ? '+' : '−')} middle={fmtSigned(plannedTotal, plannedTotal >= 0 ? '+' : '−')} right={fmtSigned(projectedTotal, projectedTotal >= 0 ? '+' : '−')} leftColor={totalColor(actualTotal)} middleColor={showDeltas && totalDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : totalColor(plannedTotal)} rightColor={totalColor(projectedTotal)} mobileColumn={mobileColumn} isBold dimMiddle={projectedTotal === plannedTotal} />
+            </div>
+          );
+        })()}
       </div>
     );
   }
@@ -1594,12 +1549,12 @@ function BreakdownTable({
       <div>
         <div className="mb-2 flex gap-1 sm:hidden">
           <button type="button" onClick={() => setMobileColumn('left')} className={cn('cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors', mobileColumn === 'left' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80')}>{actualLabel}</button>
-          <button type="button" onClick={() => setMobileColumn('right')} className={cn('cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors', mobileColumn === 'right' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80')}>Planned</button>
+          <button type="button" onClick={() => setMobileColumn('right')} className={cn('cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors', mobileColumn === 'right' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80')}>{plannedLabel}</button>
         </div>
         <div className="mb-2 hidden sm:grid sm:grid-cols-[1fr_auto_auto] sm:gap-x-4">
           <div />
           <div className="w-28 text-right text-xs font-medium text-muted-foreground">{actualLabel}</div>
-          <div className="w-28 text-right text-xs font-medium text-muted-foreground">Planned</div>
+          <div className={cn('w-28 text-right text-xs font-medium', plannedHeaderClass)}>{plannedLabel}</div>
         </div>
         <div className="border-t border-border pt-2">
           <TwoColRow label="Started with" left={hasAnchor ? formatCents(startingBalance as number) : '—'} right="" mobileColumn={mobileColumn} />
@@ -1608,19 +1563,35 @@ function BreakdownTable({
           <TwoColRow label="− Variable spending" left={periodCashFlow.projection.variableActual > 0 ? fmtSigned(periodCashFlow.projection.variableActual, '−') : '—'} right={variable > 0 ? fmtSigned(variable, '−') : '—'} mobileColumn={mobileColumn} leftColor="text-red-600 dark:text-red-400" rightColor={showDeltas && variableDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-red-600 dark:text-red-400'} dimRight />
           <TwoColRow label="− Saving" left={fmtSigned(periodCashFlow.savings.actual, '−')} right={fmtSigned(savings, '−')} mobileColumn={mobileColumn} leftColor="text-blue-600 dark:text-blue-400" rightColor={showDeltas && savingsDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-blue-600 dark:text-blue-400'} dimRight />
         </div>
+        {(() => {
+          const actualTotal = periodCashFlow.income.actual - periodCashFlow.expenses.dueToDate - periodCashFlow.projection.variableActual - periodCashFlow.savings.actual;
+          return (
+            <div className="border-t border-border mt-1 pt-1">
+              <TwoColRow label="Net change" left={fmtSigned(actualTotal, actualTotal >= 0 ? '+' : '−')} right={fmtSigned(plannedTotal, plannedTotal >= 0 ? '+' : '−')} mobileColumn={mobileColumn} leftColor={totalColor(actualTotal)} rightColor={showDeltas && totalDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : totalColor(plannedTotal)} isBold dimRight />
+            </div>
+          );
+        })()}
       </div>
     );
   }
 
-  // --- Future period: single-column ---
+  // --- Future period: single right-aligned column with header ---
   return (
     <div>
+      <div className="mb-2 hidden sm:grid sm:grid-cols-[1fr_auto_auto] sm:gap-x-4">
+        <div />
+        <div className={cn('w-28 text-right text-xs font-medium', plannedHeaderClass)}>{plannedLabel}</div>
+        <div className="w-28" />
+      </div>
       <div className="border-t border-border pt-2">
         <SingleRow label="Started with" value={hasAnchor ? formatCents(startingBalance as number) : '—'} {...(hasAnchor ? { href: '/settings' } : {})} />
         <SingleRow label="+ Income" value={fmtSigned(income, '+')} delta={renderDelta(incomeDelta)} className="text-green-600 dark:text-green-400" valueColor={showDeltas && incomeDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : undefined} href="/budget?section=income" />
         <SingleRow label="− Fixed expenses" value={fixed > 0 ? fmtSigned(fixed, '−') : '—'} delta={renderDelta(-fixedDelta)} className="text-red-600 dark:text-red-400" valueColor={showDeltas && fixedDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : undefined} href="/budget?section=fixed" />
         <SingleRow label="− Variable spending" value={variable > 0 ? fmtSigned(variable, '−') : '—'} delta={renderDelta(-variableDelta)} className="text-red-600 dark:text-red-400" valueColor={showDeltas && variableDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : undefined} href="/budget?section=variable" />
         <SingleRow label="− Saving" value={fmtSigned(savings, '−')} delta={renderDelta(-savingsDelta)} className="text-blue-600 dark:text-blue-400" valueColor={showDeltas && savingsDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : undefined} href="/budget?section=savings" />
+      </div>
+      <div className="border-t border-border mt-1 pt-1">
+        <SingleRow label="Net change" value={fmtSigned(plannedTotal, plannedTotal >= 0 ? '+' : '−')} delta={renderDelta(totalDelta)} isBold className={totalColor(plannedTotal)} valueColor={showDeltas && totalDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : undefined} />
       </div>
     </div>
   );
