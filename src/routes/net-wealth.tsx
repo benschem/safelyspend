@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Link, useOutletContext } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   PiggyBank,
   Banknote,
@@ -189,9 +190,18 @@ export function NetWealthPage() {
           {formatCents(Math.abs(netWealth))}
         </p>
         <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
-        <p className="text-sm text-muted-foreground">
-          Wealthier than {getGlobalPercentile(netWealth)}% of the world
-        </p>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <p className="cursor-pointer text-sm text-muted-foreground underline decoration-dotted underline-offset-4">
+                Wealthier than {getGlobalPercentile(netWealth)}% of the world
+              </p>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-64 text-center">
+              <p>Based on Credit Suisse Global Wealth Report estimates.{netWealth >= 0 && getGlobalPercentile(netWealth) >= 30 ? ' About 30% of the world has negative net worth due to debt.' : ''}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       {/* Assets & Liabilities */}
@@ -203,12 +213,14 @@ export function NetWealthPage() {
             className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50"
           >
             <div className="flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/10">
-                <Banknote className="h-5 w-5 text-green-500" />
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-green-500/10">
+                  <Banknote className="h-4 w-4 text-green-500" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground">Cash</p>
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
             </div>
-            <p className="mt-4 text-sm text-muted-foreground">Cash</p>
             {currentBalance !== null ? (
               <p className="mt-1 text-xl font-semibold">{formatCents(currentBalance)}</p>
             ) : (
@@ -224,12 +236,14 @@ export function NetWealthPage() {
             className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50"
           >
             <div className="flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10">
-                <PiggyBank className="h-5 w-5 text-blue-500" />
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/10">
+                  <PiggyBank className="h-4 w-4 text-blue-500" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground">Dedicated Savings</p>
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
             </div>
-            <p className="mt-4 text-sm text-muted-foreground">Dedicated Savings</p>
             <p className="mt-1 text-xl font-semibold">
               {formatCents(totalSavings - (emergencyFundBalance ?? 0))}
             </p>
@@ -243,12 +257,14 @@ export function NetWealthPage() {
             className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50"
           >
             <div className="flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/10">
-                <Ambulance className="h-5 w-5 text-slate-500" />
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-500/10">
+                  <Ambulance className="h-4 w-4 text-slate-500" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground">Emergency Fund</p>
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
             </div>
-            <p className="mt-4 text-sm text-muted-foreground">Emergency Fund</p>
             <p className="mt-1 text-xl font-semibold">{formatCents(emergencyFundBalance ?? 0)}</p>
             <div className="mt-3 mb-2 h-px bg-border" />
             <p className="text-sm text-muted-foreground">For life&apos;s surprises</p>
@@ -256,10 +272,12 @@ export function NetWealthPage() {
 
           {/* Superannuation - Coming Soon */}
           <div className="rounded-xl border bg-card p-5 opacity-50">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500/10">
-              <Building2 className="h-5 w-5 text-orange-500" />
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-orange-500/10">
+                <Building2 className="h-4 w-4 text-orange-500" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">Superannuation</p>
             </div>
-            <p className="mt-4 text-sm text-muted-foreground">Superannuation</p>
             <p className="mt-1 text-xl font-semibold text-muted-foreground">—</p>
             <div className="mt-3 mb-2 h-px bg-border" />
             <p className="text-sm text-muted-foreground">Coming soon</p>
@@ -267,10 +285,12 @@ export function NetWealthPage() {
 
           {/* Investments - Coming Soon */}
           <div className="rounded-xl border bg-card p-5 opacity-50">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-500/10">
-              <Sprout className="h-5 w-5 text-purple-500" />
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-purple-500/10">
+                <Sprout className="h-4 w-4 text-purple-500" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">Investments</p>
             </div>
-            <p className="mt-4 text-sm text-muted-foreground">Investments</p>
             <p className="mt-1 text-xl font-semibold text-muted-foreground">—</p>
             <div className="mt-3 mb-2 h-px bg-border" />
             <p className="text-sm text-muted-foreground">Coming soon</p>
@@ -278,10 +298,12 @@ export function NetWealthPage() {
 
           {/* Debt - Coming Soon */}
           <div className="rounded-xl border bg-card p-5 opacity-50">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
-              <CreditCard className="h-5 w-5 text-red-500" />
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-red-500/10">
+                <CreditCard className="h-4 w-4 text-red-500" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">Debt</p>
             </div>
-            <p className="mt-4 text-sm text-muted-foreground">Debt</p>
             <p className="mt-1 text-xl font-semibold text-muted-foreground">—</p>
             <div className="mt-3 mb-2 h-px bg-border" />
             <p className="text-sm text-muted-foreground">Coming soon</p>
