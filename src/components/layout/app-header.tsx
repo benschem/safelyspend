@@ -252,7 +252,7 @@ export function AppHeader() {
         {hasScenarios && (
           <>
             {/* Center: scenario controls */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-1 items-center justify-center gap-2">
               <Sparkles className={`h-4 w-4 shrink-0 ${iconClass}`} />
               <span className="hidden font-medium sm:inline">Scenario:</span>
               <Select {...selectProps}>
@@ -286,7 +286,7 @@ export function AppHeader() {
             </div>
 
             {/* Right: action buttons */}
-            <div className="ml-auto flex items-center gap-2">
+            <div className="flex items-center gap-2">
               {isWhatIfMode && (
                 <>
                   {/* Full buttons on larger screens */}
