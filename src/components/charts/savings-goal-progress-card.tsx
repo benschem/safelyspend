@@ -285,7 +285,7 @@ export function SavingsGoalProgressCard({
                       timeframeInfo.status === 'early' || timeframeInfo.status === 'on-time'
                         ? 'text-green-600 dark:text-green-400'
                         : timeframeInfo.status === 'slightly-late'
-                          ? 'text-amber-600 dark:text-amber-400'
+                          ? 'text-orange-600 dark:text-orange-400'
                           : 'text-red-600 dark:text-red-400'
                     }`}
                   >

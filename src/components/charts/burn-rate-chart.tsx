@@ -27,8 +27,8 @@ interface BurnRateChartProps {
   compact?: boolean;
   /** View mode affects x-axis: year/quarter show months, month shows days */
   viewMode?: 'year' | 'quarter' | 'month';
-  /** Positive surplus amount (in cents) - shows safe limit line above budget */
-  surplusAmount?: number | undefined;
+  /** Expected income for the period (in cents) — green zone between budget and income, red above */
+  income?: number | undefined;
   /** Fixed expense schedule from forecast rules — enables smart projection */
   fixedExpenseSchedule?: { date: string; amount: number }[];
   /** Variable budget total (budget rules only) */
@@ -62,11 +62,13 @@ function CustomTooltip({
   active,
   payload,
   totalBudget,
+  referenceAmount,
 }: {
   active?: boolean;
   payload?: TooltipPayload[];
   label?: string;
   totalBudget: number;
+  referenceAmount: number;
 }) {
   if (!active || !payload || payload.length === 0) return null;
 
@@ -75,7 +77,7 @@ function CustomTooltip({
 
   // For future days, show projection info
   if (data.isFuture) {
-    const projectedTotal = (totalBudget * (data.projectedPercent ?? 0)) / 100;
+    const projectedTotal = (referenceAmount * (data.projectedPercent ?? 0)) / 100;
     return (
       <div className="rounded-lg border bg-background p-3 shadow-md">
         <p className="mb-2 font-semibold">
@@ -88,13 +90,13 @@ function CustomTooltip({
                 className="h-2.5 w-2.5 rounded-full"
                 style={{ backgroundColor: CHART_COLORS.expense, opacity: 0.5 }}
               />
-              <span>Projected Spending</span>
+              <span>Projected Spending*</span>
             </div>
             <span className="font-mono">{formatCents(projectedTotal)}</span>
           </div>
           <div className="flex items-center justify-between gap-6">
             <div className="flex items-center gap-2">
-              <div className="h-2.5 w-2.5 rounded-full bg-green-600" />
+              <div className="h-2.5 w-2.5 rounded-full bg-orange-600" />
               <span>Budgeted Spending</span>
             </div>
             <span className="font-mono text-muted-foreground">
@@ -103,26 +105,26 @@ function CustomTooltip({
           </div>
         </div>
         <div className="mt-2 border-t pt-2 text-xs text-muted-foreground">
-          Based on current spending pace
+          *Based on current spending pace
         </div>
       </div>
     );
   }
 
-  const actualPercent = data.actualPercent ?? 0;
+  const budgetUsedPercent = totalBudget > 0 ? Math.round(((data.actualCumulative ?? 0) / totalBudget) * 100) : 0;
   const paceStatus =
-    actualPercent > data.expectedPercent + 10
-      ? 'Overspending'
-      : actualPercent < data.expectedPercent - 10
-        ? 'Under pace'
-        : 'On track';
+    budgetUsedPercent > 100
+      ? 'Over budget'
+      : (data.actualCumulative ?? 0) > data.expectedCumulative * 1.1
+        ? 'Overspending'
+        : (data.actualCumulative ?? 0) < data.expectedCumulative * 0.9
+          ? 'Under pace'
+          : 'On track';
 
   const paceColor =
-    actualPercent > data.expectedPercent + 10
-      ? 'text-amber-600'
-      : actualPercent < data.expectedPercent - 10
-        ? 'text-green-600'
-        : 'text-green-600';
+    paceStatus === 'Over budget' || paceStatus === 'Overspending'
+      ? 'text-orange-600'
+      : 'text-green-600';
 
   return (
     <div className="rounded-lg border bg-background p-3 shadow-md">
@@ -140,7 +142,7 @@ function CustomTooltip({
         </div>
         <div className="flex items-center justify-between gap-6">
           <div className="flex items-center gap-2">
-            <div className="h-2.5 w-2.5 rounded-full bg-green-600" />
+            <div className="h-2.5 w-2.5 rounded-full bg-orange-600" />
             <span>Budgeted Spending</span>
           </div>
           <span className="font-mono text-muted-foreground">
@@ -158,7 +160,7 @@ function CustomTooltip({
         <div className="flex justify-between gap-6 text-sm">
           <span>Budget used</span>
           <span className={`font-semibold ${paceColor}`}>
-            {Math.round(actualPercent)}% ({paceStatus})
+            {budgetUsedPercent}% ({paceStatus})
           </span>
         </div>
         <div className="text-xs text-muted-foreground">
@@ -193,7 +195,7 @@ export function BurnRateChart({
   periodLabel: _periodLabel,
   compact = false,
   viewMode = 'month',
-  surplusAmount,
+  income,
   fixedExpenseSchedule,
   variableBudget,
   fixedExpensesTotal,
@@ -201,10 +203,9 @@ export function BurnRateChart({
   void _periodLabel; // Kept for API compatibility
   const hasSmartProjection = fixedExpenseSchedule != null && variableBudget != null && fixedExpensesTotal != null;
 
-  // Calculate safe limit percentage (budget + surplus as % of budget)
-  const surplusPercent =
-    surplusAmount && surplusAmount > 0 && totalBudget > 0 ? (surplusAmount / totalBudget) * 100 : 0;
-  const safeLimitPercent = 100 + surplusPercent;
+  // 100% = income; budget as % of income
+  const referenceAmount = income != null && income > 0 ? income : totalBudget;
+  const budgetPercent = referenceAmount > 0 ? (totalBudget / referenceAmount) * 100 : 100;
   const chartData = useMemo(() => {
     const start = new Date(periodStart);
     const end = new Date(periodEnd);
@@ -252,8 +253,8 @@ export function BurnRateChart({
           cumulativeSpend += monthSpend;
           currentMonthIndex = m + 1;
 
-          const expectedPercent = ((m + 1) / totalMonths) * 100;
-          const actualPercent = totalBudget > 0 ? (cumulativeSpend / totalBudget) * 100 : 0;
+          const expectedPercent = referenceAmount > 0 ? (((m + 1) / totalMonths) * totalBudget / referenceAmount) * 100 : 0;
+          const actualPercent = referenceAmount > 0 ? (cumulativeSpend / referenceAmount) * 100 : 0;
 
           monthlyData.push({
             day: m + 1,
@@ -272,7 +273,7 @@ export function BurnRateChart({
 
       // Calculate monthly burn rate for projection
       const lastActualPercent =
-        currentMonthIndex > 0 && totalBudget > 0 ? (cumulativeSpend / totalBudget) * 100 : 0;
+        currentMonthIndex > 0 && referenceAmount > 0 ? (cumulativeSpend / referenceAmount) * 100 : 0;
       const monthlyBurnRate = currentMonthIndex > 0 ? lastActualPercent / currentMonthIndex : 0;
 
       // Add future months with projection
@@ -281,7 +282,7 @@ export function BurnRateChart({
         const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
         const monthLabel = MONTH_NAMES[monthDate.getMonth()] ?? '';
 
-        const expectedPercent = ((m + 1) / totalMonths) * 100;
+        const expectedPercent = referenceAmount > 0 ? (((m + 1) / totalMonths) * totalBudget / referenceAmount) * 100 : 0;
         const projectedPercent = monthlyBurnRate * (m + 1);
 
         monthlyData.push({
@@ -346,8 +347,8 @@ export function BurnRateChart({
         currentDay = day;
 
         const expectedCumulative = expectedAtDay(day, dateStr);
-        const actualPercent = totalBudget > 0 ? (cumulativeSpend / totalBudget) * 100 : 0;
-        const expectedPercent = totalBudget > 0 ? (expectedCumulative / totalBudget) * 100 : 0;
+        const actualPercent = referenceAmount > 0 ? (cumulativeSpend / referenceAmount) * 100 : 0;
+        const expectedPercent = referenceAmount > 0 ? (expectedCumulative / referenceAmount) * 100 : 0;
 
         data.push({
           day,
@@ -379,7 +380,7 @@ export function BurnRateChart({
 
     // Fallback: naive linear burn rate
     const lastActualPercent =
-      currentDay > 0 && totalBudget > 0 ? (cumulativeSpend / totalBudget) * 100 : 0;
+      currentDay > 0 && referenceAmount > 0 ? (cumulativeSpend / referenceAmount) * 100 : 0;
     const dailyBurnRate = currentDay > 0 ? lastActualPercent / currentDay : 0;
 
     // Second pass: add future days with projection
@@ -390,14 +391,14 @@ export function BurnRateChart({
       const day = i + 1;
 
       const expectedCumulative = expectedAtDay(day, dateStr);
-      const expectedPercent = totalBudget > 0 ? (expectedCumulative / totalBudget) * 100 : 0;
+      const expectedPercent = referenceAmount > 0 ? (expectedCumulative / referenceAmount) * 100 : 0;
 
       let projectedPercent: number;
       if (hasSmartProjection) {
         // Smart: future fixed expenses on schedule + variable at current pace
         const futureCumulativeFixed = cumulativeFixedByDay(dateStr);
         const projectedCumulative = futureCumulativeFixed + variableDailyRate * day;
-        projectedPercent = totalBudget > 0 ? (projectedCumulative / totalBudget) * 100 : 0;
+        projectedPercent = referenceAmount > 0 ? (projectedCumulative / referenceAmount) * 100 : 0;
       } else {
         projectedPercent = dailyBurnRate * day;
       }
@@ -417,18 +418,9 @@ export function BurnRateChart({
     }
 
     return { data, totalDays, currentDay };
-  }, [dailySpending, totalBudget, periodStart, periodEnd, viewMode, hasSmartProjection, fixedExpenseSchedule, variableBudget]);
+  }, [dailySpending, totalBudget, referenceAmount, periodStart, periodEnd, viewMode, hasSmartProjection, fixedExpenseSchedule, variableBudget]);
 
   const currentDay = chartData.currentDay;
-  const lastActualDataPoint = chartData.data.find((d) => !d.isFuture && d.day === currentDay);
-  const burnRate = lastActualDataPoint
-    ? lastActualDataPoint.expectedPercent > 0
-      ? Math.round(
-          ((lastActualDataPoint.actualPercent ?? 0) / lastActualDataPoint.expectedPercent) * 100,
-        )
-      : 0
-    : 0;
-
   if (totalBudget === 0) {
     return (
       <div
@@ -451,8 +443,8 @@ export function BurnRateChart({
 
   // Compact mode: chart with simple axis labels
   if (compact) {
-    // Dynamic color based on burn rate: green (on track), amber (slightly over), red (overspending)
-    const paceColor = burnRate > 100 ? '#d97706' : '#16a34a';
+    // Dynamic color based on burn rate: green (on track), orange (slightly over), red (overspending)
+    const paceColor = '#ea580c';
 
     return (
       <div className="flex h-full w-full flex-col rounded-lg bg-muted/40 px-4 pt-3 pb-2">
@@ -462,7 +454,7 @@ export function BurnRateChart({
         <div className="min-h-0 flex-1">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData.data} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
-              <Tooltip content={<CustomTooltip totalBudget={totalBudget} />} />
+              <Tooltip content={<CustomTooltip totalBudget={totalBudget} referenceAmount={referenceAmount} />} />
               <XAxis hide dataKey="day" type="number" domain={['dataMin', 'dataMax']} />
 
               {/* "Now" line */}
@@ -481,24 +473,23 @@ export function BurnRateChart({
               )}
 
               {(() => {
-                const dangerStart = surplusPercent > 0 ? safeLimitPercent : 100;
                 const dataMax = Math.max(
                   ...chartData.data.map((d) => Math.max(d.actualPercent ?? 0, d.projectedPercent ?? 0, d.expectedPercent)),
                 );
-                const isInTheRed = dataMax > dangerStart;
-                const chartMax = isInTheRed ? dataMax + 10 : dangerStart;
+                const isInTheRed = dataMax > 100;
+                const chartMax = isInTheRed ? dataMax + 10 : 100;
                 return (
                   <>
                     <YAxis hide domain={[0, chartMax]} />
-                    {/* Budget zone (0 to 100%) */}
-                    <ReferenceArea y1={0} y2={100} fill="#f59e0b" fillOpacity={0.2} stroke="none" />
-                    {/* Surplus buffer zone (100% to safe limit) */}
-                    {surplusPercent > 0 && (
-                      <ReferenceArea y1={100} y2={safeLimitPercent} fill="#22c55e" fillOpacity={0.2} stroke="none" />
+                    {/* Budget zone (0 to budget%) */}
+                    <ReferenceArea y1={0} y2={budgetPercent} fill="#f97316" fillOpacity={0.2} stroke="none" />
+                    {/* Income surplus zone (budget% to 100%) */}
+                    {budgetPercent < 100 && (
+                      <ReferenceArea y1={budgetPercent} y2={100} fill="#22c55e" fillOpacity={0.2} stroke="none" />
                     )}
-                    {/* Danger zone - only when projection exceeds safe limit */}
+                    {/* Danger zone - spending exceeds income */}
                     {isInTheRed && (
-                      <ReferenceArea y1={dangerStart} y2={chartMax} fill="#ef4444" fillOpacity={0.2} stroke="none" />
+                      <ReferenceArea y1={100} y2={chartMax} fill="#ef4444" fillOpacity={0.2} stroke="none" />
                     )}
                   </>
                 );
@@ -518,7 +509,7 @@ export function BurnRateChart({
               <Line
                 type="linear"
                 dataKey="expectedPercent"
-                stroke="#16a34a"
+                stroke="#ea580c"
                 strokeWidth={1.5}
                 strokeDasharray="3 3"
                 dot={false}
@@ -558,14 +549,33 @@ export function BurnRateChart({
   }
 
   // Pre-compute danger zone for full chart
-  const dangerStart = surplusPercent > 0 ? safeLimitPercent : 100;
   const dataMax = Math.max(
     ...chartData.data.map((d) => Math.max(d.actualPercent ?? 0, d.projectedPercent ?? 0, d.expectedPercent)),
   );
-  const isInTheRed = dataMax > dangerStart;
+  const isInTheRed = dataMax > 100;
   const chartMax = isInTheRed
     ? Math.ceil((dataMax + 10) / 10) * 10
-    : Math.max(safeLimitPercent, 100);
+    : 100;
+
+  // Y-axis: convert internal percent to dollar amounts
+  const maxDollarValue = (chartMax / 100) * referenceAmount / 100;
+  const formatAxisDollar = (percentValue: number): string => {
+    const dollars = (percentValue / 100) * referenceAmount / 100;
+    if (maxDollarValue >= 1_000_000) {
+      const m = dollars / 1_000_000;
+      return `$${m % 1 === 0 ? m.toFixed(0) : m.toFixed(1)}M`;
+    }
+    if (maxDollarValue >= 10_000) {
+      const k = dollars / 1_000;
+      return `$${k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)}k`;
+    }
+    if (maxDollarValue < 100) {
+      return dollars % 1 === 0 ? `$${dollars.toFixed(0)}` : `$${dollars.toFixed(2)}`;
+    }
+    return `$${Math.round(dollars).toLocaleString()}`;
+  };
+  const maxLabel = formatAxisDollar(chartMax);
+  const yAxisWidth = Math.max(40, maxLabel.length * 8 + 8);
 
   return (
     <div className="w-full">
@@ -573,33 +583,33 @@ export function BurnRateChart({
         <ComposedChart data={chartData.data} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
           <XAxis dataKey="label" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
           <YAxis
-            tickFormatter={(value) => `${Math.round(value)}%`}
+            tickFormatter={formatAxisDollar}
             tick={{ fontSize: 12 }}
             axisLine={false}
             tickLine={false}
-            width={45}
+            width={yAxisWidth}
             domain={[0, chartMax]}
           />
-          <Tooltip content={<CustomTooltip totalBudget={totalBudget} />} />
+          <Tooltip content={<CustomTooltip totalBudget={totalBudget} referenceAmount={referenceAmount} />} />
 
-          {/* Budget zone (0 to 100%) */}
-          <ReferenceArea y1={0} y2={100} fill="#f59e0b" fillOpacity={0.08} stroke="none" />
-          {/* Surplus buffer zone (100% to safe limit) */}
-          {surplusPercent > 0 && (
-            <ReferenceArea y1={100} y2={safeLimitPercent} fill="#22c55e" fillOpacity={0.08} stroke="none" />
+          {/* Budget zone (0 to budget%) */}
+          <ReferenceArea y1={0} y2={budgetPercent} fill="#f97316" fillOpacity={0.08} stroke="none" />
+          {/* Income surplus zone (budget% to 100%) */}
+          {budgetPercent < 100 && (
+            <ReferenceArea y1={budgetPercent} y2={100} fill="#22c55e" fillOpacity={0.08} stroke="none" />
           )}
-          {/* Danger zone — projection exceeds cash surplus */}
+          {/* Danger zone — spending exceeds income */}
           {isInTheRed && (
-            <ReferenceArea y1={dangerStart} y2={chartMax} fill="#ef4444" fillOpacity={0.08} stroke="none" />
+            <ReferenceArea y1={100} y2={chartMax} fill="#ef4444" fillOpacity={0.08} stroke="none" />
           )}
 
-          {/* 100% budget line */}
-          <ReferenceLine y={100} stroke="#f59e0b" strokeDasharray="3 3" />
-
-          {/* Safe limit line (budget + surplus) */}
-          {surplusPercent > 0 && (
-            <ReferenceLine y={safeLimitPercent} stroke="#22c55e" strokeDasharray="6 3" />
+          {/* Budget line */}
+          {budgetPercent < 100 && (
+            <ReferenceLine y={budgetPercent} stroke="#f97316" strokeDasharray="3 3" />
           )}
+
+          {/* 100% income line */}
+          <ReferenceLine y={100} stroke="#22c55e" strokeDasharray="6 3" />
 
           {/* Area under actual spending */}
           <Area
@@ -616,7 +626,7 @@ export function BurnRateChart({
             type="linear"
             dataKey="expectedPercent"
             name="Budgeted Spending"
-            stroke="#16a34a"
+            stroke="#ea580c"
             strokeWidth={2}
             strokeDasharray="5 5"
             dot={false}
@@ -655,7 +665,7 @@ export function BurnRateChart({
           <span>Actual Spending</span>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <div className="h-0.5 w-4 border-t-2 border-dashed border-green-600" />
+          <div className="h-0.5 w-4 border-t-2 border-dashed border-orange-600" />
           <span>Budgeted Spending</span>
         </div>
         {currentDay < chartData.totalDays && (
@@ -667,16 +677,16 @@ export function BurnRateChart({
             <span className="text-muted-foreground">Projected Spending</span>
           </div>
         )}
-        <div className="flex items-center gap-2 text-sm">
-          <div className="h-0.5 w-4 border-t-2 border-dashed border-amber-500" />
-          <span>Budget</span>
-        </div>
-        {surplusPercent > 0 && (
+        {budgetPercent < 100 && (
           <div className="flex items-center gap-2 text-sm">
-            <div className="h-0.5 w-4 border-t-2 border-dashed border-green-500" />
-            <span>Safe Limit</span>
+            <div className="h-0.5 w-4 border-t-2 border-dashed border-orange-500" />
+            <span>Budget</span>
           </div>
         )}
+        <div className="flex items-center gap-2 text-sm">
+          <div className="h-0.5 w-4 border-t-2 border-dashed border-green-500" />
+          <span>Income</span>
+        </div>
       </div>
     </div>
   );

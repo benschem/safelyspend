@@ -888,7 +888,7 @@ function SummaryStep({ onFinish }: { onFinish: () => void }) {
       return { text: `${summary.overCount} budget${summary.overCount !== 1 ? 's' : ''} over`, color: 'text-red-600 dark:text-red-400' };
     }
     if (summary.overspendingCount > 0) {
-      return { text: 'Spending fast in some areas', color: 'text-amber-600 dark:text-amber-400' };
+      return { text: 'Spending fast in some areas', color: 'text-orange-600 dark:text-orange-400' };
     }
     return { text: 'All budgets on track', color: 'text-green-600 dark:text-green-400' };
   }, [summary]);
@@ -976,7 +976,7 @@ function SummaryStep({ onFinish }: { onFinish: () => void }) {
           <div className="rounded-lg border bg-card p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-amber-500" />
+                <Target className="h-4 w-4 text-orange-500" />
                 <span className="text-sm text-muted-foreground">Budget status</span>
               </div>
               <span className={`text-sm font-medium ${budgetStatus.color}`}>

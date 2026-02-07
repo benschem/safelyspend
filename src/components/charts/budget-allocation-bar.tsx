@@ -79,7 +79,7 @@ export function BudgetAllocationBar({
 
       {/* Overallocation warning */}
       {isOverallocated && (
-        <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+        <p className="mt-2 text-xs text-orange-600 dark:text-orange-400">
           Budget exceeds income by {formatCents(totalAllocated - income)} ({overallocationPct - 100}
           %)
         </p>

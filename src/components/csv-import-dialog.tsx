@@ -801,7 +801,7 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
                                   ) : unmatchedCsvCategory ? (
                                     <span className="truncate italic" title={`"${unmatchedCsvCategory}" will be created as a new category`}>{unmatchedCsvCategory}</span>
                                   ) : isUncategorisedExpense ? (
-                                    <span className="text-amber-600 dark:text-amber-400">Uncategorised</span>
+                                    <span className="text-orange-600 dark:text-orange-400">Uncategorised</span>
                                   ) : (
                                     <span className="text-muted-foreground">Uncategorised</span>
                                   )}
@@ -1084,7 +1084,7 @@ function MappingField({
         </p>
       )}
       {!duplicateOf && warning && (
-        <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
+        <p className="mt-1.5 text-xs text-orange-600 dark:text-orange-400">
           {warning}
         </p>
       )}

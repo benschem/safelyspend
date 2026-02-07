@@ -353,7 +353,7 @@ export function CategoryBudgetDialog({
                 );
               } else {
                 return (
-                  <p className="text-xs text-amber-600">
+                  <p className="text-xs text-orange-600">
                     Overcommitting by {formatCents(Math.abs(newUnallocated))}
                   </p>
                 );
