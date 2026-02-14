@@ -44,7 +44,12 @@ app.onError((err, c) => {
     );
   }
 
-  console.error('Unhandled error:', err);
+  console.error(JSON.stringify({
+    event: 'unhandled_error',
+    method: c.req.method,
+    path: c.req.path,
+    error: err instanceof Error ? err.message : 'Unknown error',
+  }));
   return c.json({ error: 'Internal server error', code: 'INTERNAL_ERROR' }, 500);
 });
 

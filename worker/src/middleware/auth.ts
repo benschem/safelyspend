@@ -14,17 +14,20 @@ export const authMiddleware = createMiddleware<HonoEnv>(async (c, next) => {
   const token = getCookie(c, COOKIE_NAME);
 
   if (!token) {
+    console.warn(JSON.stringify({ event: 'auth_failed', reason: 'no_token' }));
     throw unauthorized('Authentication required');
   }
 
   const payload = await jwtVerify(token, c.env.JWT_SECRET);
 
   if (!payload.sid) {
+    console.warn(JSON.stringify({ event: 'auth_failed', reason: 'invalid_session' }));
     throw unauthorized('Invalid session');
   }
 
   const user = await findBySession(c.env.DB, payload.sub, payload.sid);
   if (!user) {
+    console.warn(JSON.stringify({ event: 'auth_failed', reason: 'session_expired' }));
     throw unauthorized('Session expired or invalid');
   }
 
@@ -48,6 +51,7 @@ export const authMiddleware = createMiddleware<HonoEnv>(async (c, next) => {
       path: '/',
       maxAge: COOKIE_MAX_AGE,
     });
+    console.log(JSON.stringify({ event: 'jwt_renewed', userId: user.id }));
   }
 
   await next();

@@ -16,3 +16,11 @@ migrations_dir = "migrations"
 [[r2_buckets]]
 binding = "VAULT_BUCKET"
 bucket_name = "budget-vaults"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1

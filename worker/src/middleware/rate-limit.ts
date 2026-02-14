@@ -29,6 +29,7 @@ export function rateLimit(config: RateLimitConfig): MiddlewareHandler<HonoEnv> {
     if (row && row.reset_at > now && row.count >= config.max) {
       const retryAfter = Math.max(1, row.reset_at - now);
       c.header('Retry-After', String(retryAfter));
+      console.warn(JSON.stringify({ event: 'rate_limited', limiter: config.keyPrefix }));
       throw tooManyRequests('Too many requests. Please try again later.');
     }
 
@@ -47,7 +48,11 @@ export function rateLimit(config: RateLimitConfig): MiddlewareHandler<HonoEnv> {
     if (Math.random() < 0.01) {
       c.executionCtx.waitUntil(
         db.prepare('DELETE FROM rate_limits WHERE reset_at <= ?').bind(now).run()
-          .catch((err) => console.error('Background rate limit cleanup failed:', err)),
+          .catch((err) => console.error(JSON.stringify({
+            event: 'background_task_failed',
+            task: 'rate_limit_cleanup',
+            error: err instanceof Error ? err.message : 'Unknown error',
+          }))),
       );
     }
 

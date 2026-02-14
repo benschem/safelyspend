@@ -78,11 +78,21 @@ auth.post('/login', loginRateLimit, async (c) => {
   // Send email
   await sendAuthCode(c.env.RESEND_API_KEY, c.env.FROM_EMAIL, email, code);
 
+  console.log(JSON.stringify({ event: 'login_code_sent' }));
+
   // Cleanup expired codes and sessions in background
   c.executionCtx.waitUntil(
     Promise.all([
-      cleanupExpiredCodes(c.env.DB).catch((err) => console.error('Background code cleanup failed:', err)),
-      cleanupExpiredSessions(c.env.DB).catch((err) => console.error('Background session cleanup failed:', err)),
+      cleanupExpiredCodes(c.env.DB).catch((err) => console.error(JSON.stringify({
+        event: 'background_task_failed',
+        task: 'code_cleanup',
+        error: err instanceof Error ? err.message : 'Unknown error',
+      }))),
+      cleanupExpiredSessions(c.env.DB).catch((err) => console.error(JSON.stringify({
+        event: 'background_task_failed',
+        task: 'session_cleanup',
+        error: err instanceof Error ? err.message : 'Unknown error',
+      }))),
     ]),
   );
 
@@ -133,6 +143,8 @@ auth.post('/verify', verifyRateLimit, async (c) => {
     maxAge: COOKIE_MAX_AGE,
   });
 
+  console.log(JSON.stringify({ event: 'auth_verified', userId: user.id }));
+
   return c.json({ user: { id: user.id, email: user.email } });
 });
 
@@ -147,6 +159,8 @@ auth.post('/logout', authMiddleware, sessionRateLimit, async (c) => {
     sameSite: 'Strict',
     path: '/',
   });
+
+  console.log(JSON.stringify({ event: 'logout', userId: payload.sub }));
 
   return c.json({ message: 'Logged out' });
 });
@@ -174,6 +188,8 @@ auth.delete('/account', authMiddleware, sessionRateLimit, async (c) => {
     sameSite: 'Strict',
     path: '/',
   });
+
+  console.log(JSON.stringify({ event: 'account_deleted', userId: user.id }));
 
   return c.json({ message: 'Account deleted' });
 });

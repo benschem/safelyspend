@@ -132,15 +132,22 @@ vault.put('/data', uploadRateLimit, async (c) => {
       expectedVersion,
     );
 
+    console.log(JSON.stringify({ event: 'vault_uploaded', userId: user.id, version: result.version, sizeBytes: body.byteLength }));
+
     // Prune old versions in background
     c.executionCtx.waitUntil(
       vaultService.pruneOldVersions(c.env.DB, c.env.VAULT_BUCKET, user.id, KEEP_VERSIONS)
-        .catch((err) => console.error('Background vault prune failed:', err)),
+        .catch((err) => console.error(JSON.stringify({
+          event: 'background_task_failed',
+          task: 'vault_prune',
+          error: err instanceof Error ? err.message : 'Unknown error',
+        }))),
     );
 
     return c.json({ version: result.version, vaultId: result.vaultId });
   } catch (err) {
     if (err instanceof AppError && err.code === 'CONFLICT') {
+      console.warn(JSON.stringify({ event: 'vault_conflict', userId: user.id }));
       return c.json(
         {
           error: 'Version conflict',
