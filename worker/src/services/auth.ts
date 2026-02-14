@@ -84,10 +84,9 @@ export async function verifyAuthCode(
 }
 
 export async function cleanupExpiredCodes(db: D1Database): Promise<void> {
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-
+  // Use SQLite's datetime() for consistent format comparison with created_at
+  // (created_at uses datetime('now') which returns 'YYYY-MM-DD HH:MM:SS')
   await db
-    .prepare('DELETE FROM auth_codes WHERE created_at < ?')
-    .bind(oneHourAgo)
+    .prepare("DELETE FROM auth_codes WHERE created_at < datetime('now', '-1 hour')")
     .run();
 }
