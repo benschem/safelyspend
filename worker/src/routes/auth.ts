@@ -11,7 +11,8 @@ import { deleteAllForUser } from '../services/vault.js';
 import type { HonoEnv } from '../types.js';
 
 const COOKIE_NAME = '__budget_session';
-const JWT_EXPIRY_SECONDS = 30 * 24 * 60 * 60; // 30 days
+const JWT_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 days
+const SESSION_EXPIRY_SECONDS = 30 * 24 * 60 * 60; // 30 days
 const COOKIE_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -102,7 +103,7 @@ auth.post('/verify', verifyRateLimit, async (c) => {
   }
 
   // Create session
-  const sessionExpiresAt = new Date(Date.now() + JWT_EXPIRY_SECONDS * 1000).toISOString();
+  const sessionExpiresAt = new Date(Date.now() + SESSION_EXPIRY_SECONDS * 1000).toISOString();
   const sessionId = await createSession(c.env.DB, user.id, sessionExpiresAt);
 
   // Sign JWT with session ID
