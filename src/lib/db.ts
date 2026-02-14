@@ -278,7 +278,13 @@ export async function fullReset(): Promise<void> {
   await resetDatabase();
 
   // Clear localStorage preferences
-  const keysToRemove = [STORAGE_KEYS.VIEW_STATE, STORAGE_KEYS.THEME, STORAGE_KEYS.CHECKIN_NUDGE_DISMISSED];
+  const keysToRemove = [
+    STORAGE_KEYS.VIEW_STATE,
+    STORAGE_KEYS.THEME,
+    STORAGE_KEYS.CHECKIN_NUDGE_DISMISSED,
+    STORAGE_KEYS.SYNC_LOCAL_VERSION,
+    STORAGE_KEYS.SYNC_LAST_SYNCED_AT,
+  ];
   keysToRemove.forEach((key) => localStorage.removeItem(key));
 }
 

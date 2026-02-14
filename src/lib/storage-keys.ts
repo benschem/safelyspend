@@ -12,6 +12,10 @@ export const STORAGE_KEYS = {
   DEMO_PERSONA: 'budget:demoPersonaId',
   /** Check-in nudge dismissed */
   CHECKIN_NUDGE_DISMISSED: 'budget:checkInNudgeDismissed',
+  /** Cloud sync: local vault version */
+  SYNC_LOCAL_VERSION: 'budget:syncLocalVersion',
+  /** Cloud sync: last synced timestamp */
+  SYNC_LAST_SYNCED_AT: 'budget:syncLastSyncedAt',
 } as const;
 
 /** Event name for cross-tab storage sync */
