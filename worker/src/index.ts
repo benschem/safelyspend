@@ -11,7 +11,7 @@ const app = new Hono<HonoEnv>();
 app.use('*', async (c, next) => {
   const appUrl = c.env.APP_URL;
   const allowedOrigins = [appUrl];
-  if (c.env.ENVIRONMENT !== 'production') {
+  if (c.env.ENVIRONMENT === 'development') {
     allowedOrigins.push('http://localhost:5173');
   }
 

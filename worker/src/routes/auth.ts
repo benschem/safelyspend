@@ -3,8 +3,8 @@ import { setCookie, deleteCookie } from 'hono/cookie';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rate-limit.js';
 import { jwtSign } from '../lib/crypto.js';
-import { badRequest, notFound, unauthorized } from '../lib/errors.js';
-import { findByEmail, create, deleteUser, createSession, deleteSession } from '../services/users.js';
+import { badRequest, unauthorized } from '../lib/errors.js';
+import { findByEmail, create, deleteUser, createSession, deleteSession, cleanupExpiredSessions } from '../services/users.js';
 import { createAuthCode, verifyAuthCode, cleanupExpiredCodes } from '../services/auth.js';
 import { sendAuthCode } from '../services/email.js';
 import { deleteAllForUser } from '../services/vault.js';
@@ -20,7 +20,25 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const loginRateLimit = rateLimit({ max: 5, windowSeconds: 60, keyPrefix: 'auth:login' });
 const verifyRateLimit = rateLimit({ max: 10, windowSeconds: 60, keyPrefix: 'auth:verify' });
 
+const MAX_JSON_SIZE = 1024; // 1KB — sufficient for email + code
+
 const auth = new Hono<HonoEnv>();
+
+// Reject oversized request bodies on auth endpoints
+auth.use('/login', async (c, next) => {
+  const contentLength = parseInt(c.req.header('content-length') ?? '0', 10);
+  if (contentLength > MAX_JSON_SIZE) {
+    throw badRequest('Request body too large');
+  }
+  await next();
+});
+auth.use('/verify', async (c, next) => {
+  const contentLength = parseInt(c.req.header('content-length') ?? '0', 10);
+  if (contentLength > MAX_JSON_SIZE) {
+    throw badRequest('Request body too large');
+  }
+  await next();
+});
 
 // POST /auth/login
 auth.post('/login', loginRateLimit, async (c) => {
@@ -48,8 +66,13 @@ auth.post('/login', loginRateLimit, async (c) => {
   // Send email
   await sendAuthCode(c.env.RESEND_API_KEY, c.env.FROM_EMAIL, email, code);
 
-  // Cleanup expired codes in background
-  c.executionCtx.waitUntil(cleanupExpiredCodes(c.env.DB));
+  // Cleanup expired codes and sessions in background
+  c.executionCtx.waitUntil(
+    Promise.all([
+      cleanupExpiredCodes(c.env.DB),
+      cleanupExpiredSessions(c.env.DB),
+    ]),
+  );
 
   return c.json({ message: 'Code sent' });
 });
@@ -70,12 +93,12 @@ auth.post('/verify', verifyRateLimit, async (c) => {
 
   const user = await findByEmail(c.env.DB, email);
   if (!user) {
-    throw notFound('User not found');
+    throw unauthorized('Invalid email or code');
   }
 
   const valid = await verifyAuthCode(c.env.DB, user.id, code);
   if (!valid) {
-    throw unauthorized('Invalid or expired code');
+    throw unauthorized('Invalid email or code');
   }
 
   // Create session

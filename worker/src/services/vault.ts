@@ -217,7 +217,7 @@ export async function getHistory(
 ): Promise<VaultHistoryEntry[]> {
   const { results } = await db
     .prepare(
-      'SELECT id, version, size_bytes, checksum, created_at FROM vaults WHERE user_id = ? ORDER BY version DESC',
+      'SELECT id, version, size_bytes, checksum, created_at FROM vaults WHERE user_id = ? ORDER BY version DESC LIMIT 100',
     )
     .bind(userId)
     .all<VaultRow>();

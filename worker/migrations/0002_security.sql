@@ -17,3 +17,7 @@ CREATE TABLE sessions (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX idx_sessions_expires_at ON sessions(expires_at);
+
+-- Missing index for vault queries by user
+CREATE INDEX idx_vaults_user_id ON vaults(user_id);

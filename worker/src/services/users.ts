@@ -114,3 +114,9 @@ export async function deleteSession(
     .bind(sessionId)
     .run();
 }
+
+export async function cleanupExpiredSessions(db: D1Database): Promise<void> {
+  await db
+    .prepare("DELETE FROM sessions WHERE expires_at < datetime('now')")
+    .run();
+}
