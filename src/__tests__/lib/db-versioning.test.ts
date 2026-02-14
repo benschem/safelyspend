@@ -23,8 +23,8 @@ describe('data versioning', () => {
       expect(CURRENT_DATA_VERSION).toBeGreaterThan(0);
     });
 
-    it('current version is 2', () => {
-      expect(CURRENT_DATA_VERSION).toBe(2);
+    it('current version is 3', () => {
+      expect(CURRENT_DATA_VERSION).toBe(3);
     });
   });
 
