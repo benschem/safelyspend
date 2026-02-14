@@ -81,8 +81,8 @@ auth.post('/login', loginRateLimit, async (c) => {
   // Cleanup expired codes and sessions in background
   c.executionCtx.waitUntil(
     Promise.all([
-      cleanupExpiredCodes(c.env.DB),
-      cleanupExpiredSessions(c.env.DB),
+      cleanupExpiredCodes(c.env.DB).catch((err) => console.error('Background code cleanup failed:', err)),
+      cleanupExpiredSessions(c.env.DB).catch((err) => console.error('Background session cleanup failed:', err)),
     ]),
   );
 

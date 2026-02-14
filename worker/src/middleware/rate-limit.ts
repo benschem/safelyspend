@@ -46,7 +46,8 @@ export function rateLimit(config: RateLimitConfig): MiddlewareHandler<HonoEnv> {
     // Probabilistic cleanup of expired entries (1% of requests)
     if (Math.random() < 0.01) {
       c.executionCtx.waitUntil(
-        db.prepare('DELETE FROM rate_limits WHERE reset_at <= ?').bind(now).run(),
+        db.prepare('DELETE FROM rate_limits WHERE reset_at <= ?').bind(now).run()
+          .catch((err) => console.error('Background rate limit cleanup failed:', err)),
       );
     }
 
