@@ -273,21 +273,15 @@ export async function deleteAllForUser(
     .bind(userId)
     .all<{ r2_key: string }>();
 
-  // Delete R2 objects
+  // Atomic batch: delete sync_state before vaults due to foreign key
+  await db.batch([
+    db.prepare('DELETE FROM sync_state WHERE user_id = ?').bind(userId),
+    db.prepare('DELETE FROM vaults WHERE user_id = ?').bind(userId),
+  ]);
+
+  // Delete R2 objects (best-effort after DB records are gone)
   if (results.length > 0) {
     const r2Keys = results.map((r) => r.r2_key);
     await bucket.delete(r2Keys);
   }
-
-  // Delete sync_state (before vaults due to foreign key)
-  await db
-    .prepare('DELETE FROM sync_state WHERE user_id = ?')
-    .bind(userId)
-    .run();
-
-  // Delete vault records
-  await db
-    .prepare('DELETE FROM vaults WHERE user_id = ?')
-    .bind(userId)
-    .run();
 }
