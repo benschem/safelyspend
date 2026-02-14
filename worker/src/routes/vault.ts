@@ -56,6 +56,11 @@ vault.get('/data', readRateLimit, async (c) => {
 vault.put('/data', uploadRateLimit, async (c) => {
   const user = c.get('user');
 
+  const contentType = c.req.header('content-type') ?? '';
+  if (!contentType.includes('application/octet-stream')) {
+    throw badRequest('Content-Type must be application/octet-stream');
+  }
+
   const expectedVersionHeader = c.req.header('X-Expected-Version');
   if (!expectedVersionHeader) {
     throw badRequest('X-Expected-Version header is required');

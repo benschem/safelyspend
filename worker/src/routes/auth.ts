@@ -8,7 +8,7 @@ import { findByEmail, create, deleteUser, createSession, deleteSession, cleanupE
 import { createAuthCode, verifyAuthCode, cleanupExpiredCodes } from '../services/auth.js';
 import { sendAuthCode } from '../services/email.js';
 import { deleteAllForUser } from '../services/vault.js';
-import type { HonoEnv } from '../types.js';
+import type { HonoEnv, AppContext } from '../types.js';
 
 const COOKIE_NAME = '__budget_session';
 const JWT_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 days
@@ -26,25 +26,35 @@ const MAX_JSON_SIZE = 1024; // 1KB — sufficient for email + code
 
 const auth = new Hono<HonoEnv>();
 
-// Reject oversized request bodies on auth endpoints
-auth.use('/login', async (c, next) => {
+// Validate Content-Type and body size for JSON endpoints
+async function parseJsonBody<T>(c: AppContext): Promise<T> {
+  const contentType = c.req.header('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    throw badRequest('Content-Type must be application/json');
+  }
+
+  // Fast reject via Content-Length header
   const contentLength = parseInt(c.req.header('content-length') ?? '0', 10);
   if (contentLength > MAX_JSON_SIZE) {
     throw badRequest('Request body too large');
   }
-  await next();
-});
-auth.use('/verify', async (c, next) => {
-  const contentLength = parseInt(c.req.header('content-length') ?? '0', 10);
-  if (contentLength > MAX_JSON_SIZE) {
+
+  // Defense in depth: check actual body size
+  const text = await c.req.text();
+  if (text.length > MAX_JSON_SIZE) {
     throw badRequest('Request body too large');
   }
-  await next();
-});
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw badRequest('Invalid JSON');
+  }
+}
 
 // POST /auth/login
 auth.post('/login', loginRateLimit, async (c) => {
-  const body = await c.req.json<{ email?: string }>();
+  const body = await parseJsonBody<{ email?: string }>(c);
 
   if (!body.email || typeof body.email !== 'string') {
     throw badRequest('Email is required');
@@ -81,7 +91,7 @@ auth.post('/login', loginRateLimit, async (c) => {
 
 // POST /auth/verify
 auth.post('/verify', verifyRateLimit, async (c) => {
-  const body = await c.req.json<{ email?: string; code?: string }>();
+  const body = await parseJsonBody<{ email?: string; code?: string }>(c);
 
   if (!body.email || typeof body.email !== 'string') {
     throw badRequest('Email is required');
