@@ -19,7 +19,7 @@ export async function createAuthCode(
 
   await db
     .prepare(
-      'INSERT INTO auth_codes (id, user_id, code_hash, expires_at, created_at) VALUES (?, ?, ?, ?, datetime(\'now\'))',
+      'INSERT INTO auth_codes (id, user_id, code_hash, expires_at, attempt_count, created_at) VALUES (?, ?, ?, ?, 0, datetime(\'now\'))',
     )
     .bind(id, userId, codeHash, expiresAt)
     .run();
@@ -32,24 +32,21 @@ export async function verifyAuthCode(
   userId: string,
   code: string,
 ): Promise<boolean> {
-  // Brute-force protection: count recent attempts (last 10 minutes)
-  const tenMinutesAgo = new Date(
-    Date.now() - AUTH_CODE_EXPIRY_MINUTES * 60 * 1000,
-  ).toISOString();
+  const now = new Date().toISOString();
 
-  const attempts = await db
+  // Brute-force protection: check if any active code has too many attempts
+  const maxAttempts = await db
     .prepare(
-      'SELECT COUNT(*) as count FROM auth_codes WHERE user_id = ? AND used_at IS NOT NULL AND used_at > ?',
+      'SELECT MAX(attempt_count) as max_attempts FROM auth_codes WHERE user_id = ? AND expires_at > ? AND used_at IS NULL',
     )
-    .bind(userId, tenMinutesAgo)
-    .first<{ count: number }>();
+    .bind(userId, now)
+    .first<{ max_attempts: number | null }>();
 
-  if (attempts && attempts.count >= MAX_ATTEMPTS) {
+  if (maxAttempts && maxAttempts.max_attempts !== null && maxAttempts.max_attempts >= MAX_ATTEMPTS) {
     throw tooManyRequests('Too many verification attempts. Please request a new code.');
   }
 
   const codeHash = await sha256(code);
-  const now = new Date().toISOString();
 
   // Find matching unexpired, unused code
   const row = await db
@@ -60,16 +57,28 @@ export async function verifyAuthCode(
     .first<{ id: string }>();
 
   if (!row) {
-    // Mark a failed attempt by creating a "used" record for tracking
-    // We do this by updating any unexpired code for this user to track attempt
+    // Increment attempt_count on all active codes for this user
+    await db
+      .prepare(
+        'UPDATE auth_codes SET attempt_count = attempt_count + 1 WHERE user_id = ? AND expires_at > ? AND used_at IS NULL',
+      )
+      .bind(userId, now)
+      .run();
+
     return false;
   }
 
-  // Mark as used
-  await db
-    .prepare('UPDATE auth_codes SET used_at = ? WHERE id = ?')
-    .bind(now, row.id)
-    .run();
+  // Mark matched code as used and invalidate all other active codes
+  await db.batch([
+    db
+      .prepare('UPDATE auth_codes SET used_at = ? WHERE id = ?')
+      .bind(now, row.id),
+    db
+      .prepare(
+        'UPDATE auth_codes SET used_at = ? WHERE user_id = ? AND id != ? AND expires_at > ? AND used_at IS NULL',
+      )
+      .bind(now, userId, row.id, now),
+  ]);
 
   return true;
 }

@@ -70,3 +70,47 @@ export async function deleteUser(
     .bind(id)
     .run();
 }
+
+export async function findBySession(
+  db: D1Database,
+  userId: string,
+  sessionId: string,
+): Promise<User | null> {
+  const row = await db
+    .prepare(
+      `SELECT u.id, u.email, u.created_at, u.updated_at
+       FROM sessions s JOIN users u ON u.id = s.user_id
+       WHERE s.id = ? AND u.id = ? AND s.expires_at > datetime('now')`,
+    )
+    .bind(sessionId, userId)
+    .first<UserRow>();
+
+  return row ? rowToUser(row) : null;
+}
+
+export async function createSession(
+  db: D1Database,
+  userId: string,
+  expiresAt: string,
+): Promise<string> {
+  const id = generateId();
+
+  await db
+    .prepare(
+      'INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)',
+    )
+    .bind(id, userId, expiresAt)
+    .run();
+
+  return id;
+}
+
+export async function deleteSession(
+  db: D1Database,
+  sessionId: string,
+): Promise<void> {
+  await db
+    .prepare('DELETE FROM sessions WHERE id = ?')
+    .bind(sessionId)
+    .run();
+}

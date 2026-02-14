@@ -139,7 +139,7 @@ export async function putData(
   data: ArrayBuffer,
   expectedVersion: number,
 ): Promise<{ version: number; vaultId: string }> {
-  // Check current version for conflict detection
+  // Pre-check current version (fast reject for stale clients before R2 upload)
   const syncState = await db
     .prepare('SELECT current_version, current_vault_id FROM sync_state WHERE user_id = ?')
     .bind(userId)
@@ -158,32 +158,54 @@ export async function putData(
   const sizeBytes = data.byteLength;
   const now = new Date().toISOString();
 
-  // Upload to R2
+  // Upload to R2 (idempotent; orphan cleaned up on conflict)
   await bucket.put(r2Key, data);
 
-  // Insert vault record
-  await db
-    .prepare(
-      'INSERT INTO vaults (id, user_id, version, r2_key, size_bytes, checksum, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    )
-    .bind(vaultId, userId, newVersion, r2Key, sizeBytes, checksum, now)
-    .run();
+  // Atomic D1 batch: INSERT vault + UPDATE sync_state with optimistic lock
+  try {
+    const batchResults = await db.batch([
+      db
+        .prepare(
+          'INSERT INTO vaults (id, user_id, version, r2_key, size_bytes, checksum, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        )
+        .bind(vaultId, userId, newVersion, r2Key, sizeBytes, checksum, now),
+      syncState
+        ? db
+            .prepare(
+              'UPDATE sync_state SET current_version = ?, current_vault_id = ?, updated_at = ? WHERE user_id = ? AND current_version = ?',
+            )
+            .bind(newVersion, vaultId, now, userId, expectedVersion)
+        : db
+            .prepare(
+              'INSERT INTO sync_state (user_id, current_version, current_vault_id, updated_at) VALUES (?, ?, ?, ?)',
+            )
+            .bind(userId, newVersion, vaultId, now),
+    ]);
 
-  // Upsert sync_state
-  if (syncState) {
-    await db
-      .prepare(
-        'UPDATE sync_state SET current_version = ?, current_vault_id = ?, updated_at = ? WHERE user_id = ?',
-      )
-      .bind(newVersion, vaultId, now, userId)
-      .run();
-  } else {
-    await db
-      .prepare(
-        'INSERT INTO sync_state (user_id, current_version, current_vault_id, updated_at) VALUES (?, ?, ?, ?)',
-      )
-      .bind(userId, newVersion, vaultId, now)
-      .run();
+    // Check if UPDATE affected 0 rows (another request snuck in)
+    if (syncState && batchResults[1].meta.changes === 0) {
+      // Clean up orphan vault record + R2
+      await Promise.all([
+        db.prepare('DELETE FROM vaults WHERE id = ?').bind(vaultId).run(),
+        bucket.delete(r2Key),
+      ]);
+      const latest = await db
+        .prepare('SELECT current_version FROM sync_state WHERE user_id = ?')
+        .bind(userId)
+        .first<{ current_version: number }>();
+      throw conflict('Version conflict', { currentVersion: latest?.current_version ?? currentVersion });
+    }
+  } catch (err) {
+    // Unique constraint violation on vaults(user_id, version) means concurrent write
+    if (err instanceof Error && err.message.includes('UNIQUE constraint failed')) {
+      await bucket.delete(r2Key);
+      const latest = await db
+        .prepare('SELECT current_version FROM sync_state WHERE user_id = ?')
+        .bind(userId)
+        .first<{ current_version: number }>();
+      throw conflict('Version conflict', { currentVersion: latest?.current_version ?? currentVersion });
+    }
+    throw err;
   }
 
   return { version: newVersion, vaultId };

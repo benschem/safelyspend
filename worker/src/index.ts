@@ -10,7 +10,10 @@ const app = new Hono<HonoEnv>();
 // CORS middleware - use dynamic handler to access env
 app.use('*', async (c, next) => {
   const appUrl = c.env.APP_URL;
-  const allowedOrigins = [appUrl, 'http://localhost:5173'];
+  const allowedOrigins = [appUrl];
+  if (c.env.ENVIRONMENT !== 'production') {
+    allowedOrigins.push('http://localhost:5173');
+  }
 
   const corsMiddleware = cors({
     origin: (origin) => {

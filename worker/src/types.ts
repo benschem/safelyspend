@@ -19,6 +19,7 @@ export interface User {
 
 export interface JwtPayload {
   sub: string;
+  sid: string;
   email: string;
   iat: number;
   exp: number;

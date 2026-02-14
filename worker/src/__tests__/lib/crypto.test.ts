@@ -55,7 +55,7 @@ describe('generateAuthCode', () => {
 
 describe('jwtSign and jwtVerify', () => {
   const secret = 'test-secret-key';
-  const payload = { sub: 'user-123', email: 'test@example.com' };
+  const payload = { sub: 'user-123', sid: 'session-456', email: 'test@example.com' };
 
   it('round-trips a payload through sign then verify', async () => {
     const token = await jwtSign(payload, secret, 3600);

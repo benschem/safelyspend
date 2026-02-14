@@ -2,7 +2,7 @@ import { createMiddleware } from 'hono/factory';
 import { getCookie } from 'hono/cookie';
 import { jwtVerify } from '../lib/crypto.js';
 import { unauthorized } from '../lib/errors.js';
-import { findById } from '../services/users.js';
+import { findBySession } from '../services/users.js';
 import type { HonoEnv } from '../types.js';
 
 const COOKIE_NAME = '__budget_session';
@@ -16,9 +16,13 @@ export const authMiddleware = createMiddleware<HonoEnv>(async (c, next) => {
 
   const payload = await jwtVerify(token, c.env.JWT_SECRET);
 
-  const user = await findById(c.env.DB, payload.sub);
+  if (!payload.sid) {
+    throw unauthorized('Invalid session');
+  }
+
+  const user = await findBySession(c.env.DB, payload.sub, payload.sid);
   if (!user) {
-    throw unauthorized('User not found');
+    throw unauthorized('Session expired or invalid');
   }
 
   c.set('user', user);

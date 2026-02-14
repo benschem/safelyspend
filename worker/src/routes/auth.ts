@@ -4,7 +4,7 @@ import { authMiddleware } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rate-limit.js';
 import { jwtSign } from '../lib/crypto.js';
 import { badRequest, notFound, unauthorized } from '../lib/errors.js';
-import { findByEmail, create, deleteUser } from '../services/users.js';
+import { findByEmail, create, deleteUser, createSession, deleteSession } from '../services/users.js';
 import { createAuthCode, verifyAuthCode, cleanupExpiredCodes } from '../services/auth.js';
 import { sendAuthCode } from '../services/email.js';
 import { deleteAllForUser } from '../services/vault.js';
@@ -78,9 +78,13 @@ auth.post('/verify', verifyRateLimit, async (c) => {
     throw unauthorized('Invalid or expired code');
   }
 
-  // Sign JWT
+  // Create session
+  const sessionExpiresAt = new Date(Date.now() + JWT_EXPIRY_SECONDS * 1000).toISOString();
+  const sessionId = await createSession(c.env.DB, user.id, sessionExpiresAt);
+
+  // Sign JWT with session ID
   const token = await jwtSign(
-    { sub: user.id, email: user.email },
+    { sub: user.id, sid: sessionId, email: user.email },
     c.env.JWT_SECRET,
     JWT_EXPIRY_SECONDS,
   );
@@ -99,6 +103,9 @@ auth.post('/verify', verifyRateLimit, async (c) => {
 
 // POST /auth/logout (requires auth)
 auth.post('/logout', authMiddleware, async (c) => {
+  const payload = c.get('jwtPayload');
+  await deleteSession(c.env.DB, payload.sid);
+
   deleteCookie(c, COOKIE_NAME, {
     httpOnly: true,
     secure: true,

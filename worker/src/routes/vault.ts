@@ -6,6 +6,7 @@ import * as vaultService from '../services/vault.js';
 import type { HonoEnv } from '../types.js';
 
 const KEEP_VERSIONS = 10;
+const MAX_VAULT_SIZE = 10 * 1024 * 1024; // 10MB
 
 // Rate limiter for vault uploads (30 per minute per IP)
 const uploadRateLimit = rateLimit({ max: 30, windowSeconds: 60, keyPrefix: 'vault:upload' });
@@ -64,10 +65,21 @@ vault.put('/data', uploadRateLimit, async (c) => {
     throw badRequest('X-Expected-Version must be a non-negative integer');
   }
 
+  // Check Content-Length header before reading body (fast reject)
+  const contentLength = parseInt(c.req.header('content-length') ?? '0', 10);
+  if (contentLength > MAX_VAULT_SIZE) {
+    throw badRequest(`Vault data exceeds maximum size of ${MAX_VAULT_SIZE} bytes`);
+  }
+
   const body = await c.req.arrayBuffer();
 
   if (body.byteLength === 0) {
     throw badRequest('Request body is required');
+  }
+
+  // Defense in depth: headers can lie
+  if (body.byteLength > MAX_VAULT_SIZE) {
+    throw badRequest(`Vault data exceeds maximum size of ${MAX_VAULT_SIZE} bytes`);
   }
 
   try {
