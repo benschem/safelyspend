@@ -70,7 +70,7 @@ describe('encrypt and decrypt', { timeout: 30_000 }, () => {
 
     // Flip a byte in the ciphertext region (after version + salt + IV = 29 bytes)
     const corrupted = new Uint8Array(encrypted);
-    corrupted[30] ^= 0xff;
+    corrupted[30]! ^= 0xff;
 
     await expect(
       decrypt(corrupted.buffer, 'my-passphrase'),

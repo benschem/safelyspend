@@ -25,7 +25,7 @@ describe('sha256', () => {
 describe('sha256ArrayBuffer', () => {
   it('produces hex hash for binary data', async () => {
     const encoder = new TextEncoder();
-    const buffer = encoder.encode('hello').buffer;
+    const buffer = encoder.encode('hello').buffer as ArrayBuffer;
     const hash = await sha256ArrayBuffer(buffer);
     // Same input as sha256('hello') should produce same hash
     expect(hash).toBe(
