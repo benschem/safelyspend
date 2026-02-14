@@ -257,8 +257,8 @@ export async function pruneOldVersions(
   const ids = results.map((r) => r.id);
   const placeholders = ids.map(() => '?').join(', ');
   await db
-    .prepare(`DELETE FROM vaults WHERE id IN (${placeholders})`)
-    .bind(...ids)
+    .prepare(`DELETE FROM vaults WHERE id IN (${placeholders}) AND user_id = ?`)
+    .bind(...ids, userId)
     .run();
 }
 
