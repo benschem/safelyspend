@@ -1,0 +1,23 @@
+{
+  "name": "budget-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "db:migrate:local": "wrangler d1 migrations apply budget-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply budget-db --remote"
+  },
+  "dependencies": {
+    "hono": "^4.7.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250214.0",
+    "typescript": "^5.9.2",
+    "vitest": "^4.0.18",
+    "wrangler": "^4.0.0"
+  }
+}
