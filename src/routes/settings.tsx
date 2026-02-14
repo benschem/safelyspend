@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { z } from 'zod';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -15,6 +16,16 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog';
+import {
   Pencil,
   Trash2,
   Plus,
@@ -28,7 +39,16 @@ import {
   Sparkles,
   PiggyBank,
   ClipboardCheck,
+  Cloud,
+  CloudOff,
+  Lock,
+  LockOpen,
+  Loader2,
 } from 'lucide-react';
+import { PassphraseDialog } from '@/components/dialogs/passphrase-dialog';
+import { useAuth } from '@/hooks/use-auth';
+import { useSync } from '@/hooks/use-sync';
+import { ApiError } from '@/lib/api-client';
 import { Switch } from '@/components/ui/switch';
 import {
   Select,
@@ -107,12 +127,153 @@ export function SettingsPage() {
   // Check-in preferences
   const { checkInCadence, lastCheckInDate, daysSinceLastCheckIn, setCheckInCadence } = useAppConfig();
 
+  // Cloud sync state
+  const { user, isAuthenticated, logout, deleteAccount } = useAuth();
+  const {
+    hasPassphrase,
+    setPassphrase,
+    clearPassphrase,
+    syncStatus,
+    conflict,
+    clearConflict,
+    lastSyncedAt,
+    push,
+    pull,
+  } = useSync();
+  const [passphraseDialogOpen, setPassphraseDialogOpen] = useState(false);
+  const [passphraseDialogMode, setPassphraseDialogMode] = useState<'create' | 'unlock'>('unlock');
+  const [passphraseError, setPassphraseError] = useState<string | null>(null);
+  const [passphraseLoading, setPassphraseLoading] = useState(false);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [overwriteConfirmOpen, setOverwriteConfirmOpen] = useState(false);
+
   // Debug mode state - initialize from current debug setting
   const [debugEnabled, setDebugEnabled] = useState(() => debug.isEnabled());
 
   const handleDebugToggle = (enabled: boolean) => {
     debug.setEnabled(enabled);
     setDebugEnabled(enabled);
+  };
+
+  // Cloud sync handlers
+  const handleOpenPassphraseDialog = (mode: 'create' | 'unlock') => {
+    setPassphraseDialogMode(mode);
+    setPassphraseError(null);
+    setPassphraseDialogOpen(true);
+  };
+
+  const handlePassphraseSubmit = async (passphrase: string) => {
+    setPassphraseError(null);
+    setPassphraseLoading(true);
+
+    try {
+      setPassphrase(passphrase);
+      setPassphraseDialogOpen(false);
+
+      if (passphraseDialogMode === 'create') {
+        // First push
+        const result = await push();
+        toast.success('Pushed to cloud', {
+          description: `Version ${result.version} saved`,
+        });
+      }
+    } catch (err) {
+      clearPassphrase();
+      if (err instanceof Error && err.message.includes('Wrong passphrase')) {
+        setPassphraseError('Wrong passphrase. Please try again.');
+        setPassphraseDialogOpen(true);
+      } else {
+        const msg = err instanceof Error ? err.message : 'Failed to sync';
+        toast.error('Sync failed', { description: msg });
+        setPassphraseDialogOpen(false);
+      }
+    } finally {
+      setPassphraseLoading(false);
+    }
+  };
+
+  const handlePush = async () => {
+    try {
+      const result = await push();
+      toast.success('Pushed to cloud', {
+        description: `Version ${result.version} saved`,
+      });
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        // Conflict handled by useSync - conflict state is set
+        return;
+      }
+      const msg = err instanceof Error ? err.message : 'Push failed';
+      toast.error('Push failed', { description: msg });
+    }
+  };
+
+  const handlePull = async () => {
+    try {
+      await pull();
+      toast.success('Pulled from cloud', {
+        description: 'Local data updated',
+      });
+      // Reload to reflect imported data
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Pull failed';
+      toast.error('Pull failed', { description: msg });
+    }
+  };
+
+  const handleOverwriteCloud = async () => {
+    setOverwriteConfirmOpen(false);
+    try {
+      const result = await push(true);
+      clearConflict();
+      toast.success('Cloud data overwritten', {
+        description: `Version ${result.version} saved`,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Overwrite failed';
+      toast.error('Overwrite failed', { description: msg });
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      clearPassphrase();
+      toast('Logged out');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Logout failed';
+      toast.error('Logout failed', { description: msg });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      await deleteAccount();
+      clearPassphrase();
+      setDeleteAccountOpen(false);
+      setDeleteConfirmText('');
+      toast('Account deleted');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Delete failed';
+      toast.error('Delete failed', { description: msg });
+    }
+  };
+
+  const formatRelativeTime = (isoString: string): string => {
+    const now = Date.now();
+    const then = new Date(isoString).getTime();
+    const diffMs = now - then;
+    const diffMin = Math.floor(diffMs / 60_000);
+    const diffHr = Math.floor(diffMs / 3_600_000);
+    const diffDay = Math.floor(diffMs / 86_400_000);
+
+    if (diffMin < 1) return 'just now';
+    if (diffMin < 60) return `${diffMin} minute${diffMin !== 1 ? 's' : ''} ago`;
+    if (diffHr < 24) return `${diffHr} hour${diffHr !== 1 ? 's' : ''} ago`;
+    if (diffDay === 1) return 'yesterday';
+    return `${diffDay} day${diffDay !== 1 ? 's' : ''} ago`;
   };
 
   const showMessage = (type: 'success' | 'error', text: string) => {
@@ -609,6 +770,183 @@ export function SettingsPage() {
 
         <Separator />
 
+        {/* Cloud Sync Section */}
+        <section className="section">
+          <div className="section-header">
+            <h2>Cloud Sync</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Sync your budget across devices with end-to-end encryption.
+            </p>
+          </div>
+          <div className="section-content space-y-3">
+            {!isAuthenticated ? (
+              /* State A: Not signed in */
+              <div className="panel">
+                <div className="flex flex-col items-center gap-3 p-6 text-center">
+                  <CloudOff className="h-8 w-8 text-muted-foreground" />
+                  <div>
+                    <h3 className="font-medium">Not connected</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Your data is stored locally on this device only.
+                    </p>
+                  </div>
+                  <Link to="/login">
+                    <Button className="cursor-pointer">Set Up Cloud Sync</Button>
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="panel">
+                  <div className="p-4">
+                    <div className="flex items-start gap-3">
+                      <Cloud className="mt-0.5 h-5 w-5 text-blue-500" />
+                      <div className="flex-1">
+                        <p className="font-medium">Connected as {user?.email}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {lastSyncedAt
+                            ? `Last synced: ${formatRelativeTime(lastSyncedAt)}`
+                            : 'Never synced'}
+                        </p>
+                        {hasPassphrase && (
+                          <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+                            <LockOpen className="h-3.5 w-3.5" />
+                            Vault unlocked
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Conflict alert */}
+                    {conflict && (
+                      <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/50">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                          <div className="flex-1">
+                            <p className="text-sm text-amber-800 dark:text-amber-200">
+                              Your cloud vault has been updated from another device (version{' '}
+                              {conflict.remoteVersion}). You have version {conflict.localVersion}.
+                            </p>
+                            <div className="mt-3 flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handlePull}
+                                disabled={syncStatus !== 'idle'}
+                                className="cursor-pointer"
+                              >
+                                Pull Latest
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => setOverwriteConfirmOpen(true)}
+                                disabled={syncStatus !== 'idle'}
+                                className="cursor-pointer"
+                              >
+                                Overwrite Cloud
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Push/Pull buttons or Unlock */}
+                    {!conflict && (
+                      <div className="mt-4">
+                        {hasPassphrase ? (
+                          <div className="flex gap-3">
+                            <Button
+                              variant="outline"
+                              onClick={handlePush}
+                              disabled={syncStatus !== 'idle'}
+                              className="flex-1 cursor-pointer"
+                            >
+                              {syncStatus === 'pushing' ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Pushing...
+                                </>
+                              ) : (
+                                <>
+                                  <Upload className="h-4 w-4" />
+                                  Push
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={handlePull}
+                              disabled={syncStatus !== 'idle'}
+                              className="flex-1 cursor-pointer"
+                            >
+                              {syncStatus === 'pulling' ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Pulling...
+                                </>
+                              ) : (
+                                <>
+                                  <Download className="h-4 w-4" />
+                                  Pull
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/50">
+                              <div className="flex items-start gap-2">
+                                <Lock className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                                <p className="text-sm text-blue-800 dark:text-blue-200">
+                                  Enter your passphrase to enable push and pull.
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="outline"
+                              onClick={() => handleOpenPassphraseDialog('unlock')}
+                              className="cursor-pointer"
+                            >
+                              Unlock Vault
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Account panel */}
+                <div className="panel">
+                  <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <h3>Account</h3>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={handleLogout}
+                        className="cursor-pointer"
+                      >
+                        Log Out
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => setDeleteAccountOpen(true)}
+                        className="cursor-pointer"
+                      >
+                        Delete Account
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+
+        <Separator />
+
         {/* Data Management Section */}
         <section className="section">
           <div className="section-header">
@@ -1097,6 +1435,82 @@ export function SettingsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Passphrase Dialog */}
+      <PassphraseDialog
+        open={passphraseDialogOpen}
+        onOpenChange={setPassphraseDialogOpen}
+        mode={passphraseDialogMode}
+        onSubmit={handlePassphraseSubmit}
+        error={passphraseError}
+        loading={passphraseLoading}
+      />
+
+      {/* Delete Account Dialog */}
+      <AlertDialog open={deleteAccountOpen} onOpenChange={setDeleteAccountOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>This will permanently delete:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Your account ({user?.email})</li>
+                  <li>All cloud backups</li>
+                </ul>
+                <p>
+                  Your local data will NOT be deleted. You can continue using the app without cloud
+                  sync.
+                </p>
+                <div className="pt-2">
+                  <label htmlFor="delete-confirm" className="text-sm font-medium text-foreground">
+                    Type &quot;delete&quot; to confirm:
+                  </label>
+                  <Input
+                    id="delete-confirm"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    className="mt-1"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteConfirmText('')}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAccount}
+              disabled={deleteConfirmText !== 'delete'}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Account
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Overwrite Cloud Confirmation */}
+      <AlertDialog open={overwriteConfirmOpen} onOpenChange={setOverwriteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Overwrite cloud data?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will replace your cloud backup (version {conflict?.remoteVersion}) with your
+              local data. The previous version will be kept in history.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleOverwriteCloud}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Overwrite
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

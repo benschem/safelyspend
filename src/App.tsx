@@ -39,6 +39,12 @@ const router = createBrowserRouter([
       import('@/components/check-in-wizard').then((m) => ({ Component: m.CheckInWizard })),
     errorElement: <ErrorBoundary />,
   },
+  // Login page (outside of RootLayout - full screen)
+  {
+    path: '/login',
+    lazy: () => import('@/routes/login').then((m) => ({ Component: m.LoginPage })),
+    errorElement: <ErrorBoundary />,
+  },
   // App routes (pathless layout route with RootLayout)
   {
     element: <RootLayout />,

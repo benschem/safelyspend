@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useEffect, useState } from 'react';
 import { useAppConfig } from '@/hooks/use-app-config';
+import { useAuth } from '@/hooks/use-auth';
+import { useSync } from '@/hooks/use-sync';
+import { SyncStatus } from '@/components/sync-status';
 
 interface NavItemProps {
   to: string;
@@ -85,6 +88,20 @@ function CheckInButton({ onNavigate }: { onNavigate?: (() => void) | undefined }
   );
 }
 
+function SidebarSyncStatus({ onNavigate }: { onNavigate?: (() => void) | undefined }) {
+  const { user } = useAuth();
+  const { syncStatus, lastSyncedAt } = useSync();
+
+  return (
+    <SyncStatus
+      user={user}
+      syncStatus={syncStatus}
+      lastSyncedAt={lastSyncedAt}
+      onNavigate={onNavigate}
+    />
+  );
+}
+
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
@@ -130,6 +147,8 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       <div className="flex-1" />
 
       <CheckInButton onNavigate={onNavigate} />
+
+      <SidebarSyncStatus onNavigate={onNavigate} />
 
       <Separator />
 
