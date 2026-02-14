@@ -1,0 +1,271 @@
+import { generateId } from '../lib/id.js';
+import { sha256ArrayBuffer } from '../lib/crypto.js';
+import { conflict } from '../lib/errors.js';
+
+interface VaultMetadataRow {
+  current_version: number;
+  size_bytes: number;
+  checksum: string;
+  updated_at: string;
+}
+
+interface VaultRow {
+  id: string;
+  user_id: string;
+  version: number;
+  r2_key: string;
+  size_bytes: number;
+  checksum: string;
+  created_at: string;
+}
+
+interface SyncStateRow {
+  current_version: number;
+  current_vault_id: string | null;
+}
+
+export interface VaultMetadata {
+  version: number;
+  sizeBytes: number;
+  checksum: string;
+  updatedAt: string;
+}
+
+export interface VaultData {
+  body: ReadableStream;
+  version: number;
+  sizeBytes: number;
+  checksum: string;
+}
+
+export interface VaultHistoryEntry {
+  id: string;
+  version: number;
+  sizeBytes: number;
+  checksum: string;
+  createdAt: string;
+}
+
+export async function getMetadata(
+  db: D1Database,
+  userId: string,
+): Promise<VaultMetadata | null> {
+  const row = await db
+    .prepare(
+      `SELECT s.current_version, v.size_bytes, v.checksum, s.updated_at
+       FROM sync_state s
+       LEFT JOIN vaults v ON v.id = s.current_vault_id
+       WHERE s.user_id = ?`,
+    )
+    .bind(userId)
+    .first<VaultMetadataRow>();
+
+  if (!row || row.current_version === 0) {
+    return null;
+  }
+
+  return {
+    version: row.current_version,
+    sizeBytes: row.size_bytes,
+    checksum: row.checksum,
+    updatedAt: row.updated_at,
+  };
+}
+
+export async function getData(
+  db: D1Database,
+  bucket: R2Bucket,
+  userId: string,
+): Promise<VaultData | null> {
+  const vault = await db
+    .prepare(
+      `SELECT v.r2_key, v.version, v.size_bytes, v.checksum
+       FROM sync_state s
+       JOIN vaults v ON v.id = s.current_vault_id
+       WHERE s.user_id = ?`,
+    )
+    .bind(userId)
+    .first<{ r2_key: string; version: number; size_bytes: number; checksum: string }>();
+
+  if (!vault) {
+    return null;
+  }
+
+  const object = await bucket.get(vault.r2_key);
+  if (!object) {
+    return null;
+  }
+
+  return {
+    body: object.body,
+    version: vault.version,
+    sizeBytes: vault.size_bytes,
+    checksum: vault.checksum,
+  };
+}
+
+export async function getDataByVaultId(
+  db: D1Database,
+  bucket: R2Bucket,
+  userId: string,
+  vaultId: string,
+): Promise<{ body: ReadableStream; version: number } | null> {
+  const vault = await db
+    .prepare(
+      'SELECT r2_key, version FROM vaults WHERE id = ? AND user_id = ?',
+    )
+    .bind(vaultId, userId)
+    .first<{ r2_key: string; version: number }>();
+
+  if (!vault) {
+    return null;
+  }
+
+  const object = await bucket.get(vault.r2_key);
+  if (!object) {
+    return null;
+  }
+
+  return {
+    body: object.body,
+    version: vault.version,
+  };
+}
+
+export async function putData(
+  db: D1Database,
+  bucket: R2Bucket,
+  userId: string,
+  data: ArrayBuffer,
+  expectedVersion: number,
+): Promise<{ version: number; vaultId: string }> {
+  // Check current version for conflict detection
+  const syncState = await db
+    .prepare('SELECT current_version, current_vault_id FROM sync_state WHERE user_id = ?')
+    .bind(userId)
+    .first<SyncStateRow>();
+
+  const currentVersion = syncState?.current_version ?? 0;
+
+  if (currentVersion !== expectedVersion) {
+    throw conflict('Version conflict', { currentVersion });
+  }
+
+  const newVersion = currentVersion + 1;
+  const vaultId = generateId();
+  const r2Key = `${userId}/${vaultId}`;
+  const checksum = await sha256ArrayBuffer(data);
+  const sizeBytes = data.byteLength;
+  const now = new Date().toISOString();
+
+  // Upload to R2
+  await bucket.put(r2Key, data);
+
+  // Insert vault record
+  await db
+    .prepare(
+      'INSERT INTO vaults (id, user_id, version, r2_key, size_bytes, checksum, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    )
+    .bind(vaultId, userId, newVersion, r2Key, sizeBytes, checksum, now)
+    .run();
+
+  // Upsert sync_state
+  if (syncState) {
+    await db
+      .prepare(
+        'UPDATE sync_state SET current_version = ?, current_vault_id = ?, updated_at = ? WHERE user_id = ?',
+      )
+      .bind(newVersion, vaultId, now, userId)
+      .run();
+  } else {
+    await db
+      .prepare(
+        'INSERT INTO sync_state (user_id, current_version, current_vault_id, updated_at) VALUES (?, ?, ?, ?)',
+      )
+      .bind(userId, newVersion, vaultId, now)
+      .run();
+  }
+
+  return { version: newVersion, vaultId };
+}
+
+export async function getHistory(
+  db: D1Database,
+  userId: string,
+): Promise<VaultHistoryEntry[]> {
+  const { results } = await db
+    .prepare(
+      'SELECT id, version, size_bytes, checksum, created_at FROM vaults WHERE user_id = ? ORDER BY version DESC',
+    )
+    .bind(userId)
+    .all<VaultRow>();
+
+  return results.map((row) => ({
+    id: row.id,
+    version: row.version,
+    sizeBytes: row.size_bytes,
+    checksum: row.checksum,
+    createdAt: row.created_at,
+  }));
+}
+
+export async function pruneOldVersions(
+  db: D1Database,
+  bucket: R2Bucket,
+  userId: string,
+  keepCount: number,
+): Promise<void> {
+  // Get all vaults ordered by version desc, skip the first `keepCount`
+  const { results } = await db
+    .prepare(
+      'SELECT id, r2_key FROM vaults WHERE user_id = ? ORDER BY version DESC LIMIT -1 OFFSET ?',
+    )
+    .bind(userId, keepCount)
+    .all<{ id: string; r2_key: string }>();
+
+  if (results.length === 0) {
+    return;
+  }
+
+  // Delete R2 objects
+  const r2Keys = results.map((r) => r.r2_key);
+  await bucket.delete(r2Keys);
+
+  // Delete vault records
+  const ids = results.map((r) => r.id);
+  const placeholders = ids.map(() => '?').join(', ');
+  await db
+    .prepare(`DELETE FROM vaults WHERE id IN (${placeholders})`)
+    .bind(...ids)
+    .run();
+}
+
+export async function deleteAllForUser(
+  db: D1Database,
+  bucket: R2Bucket,
+  userId: string,
+): Promise<void> {
+  // Get all R2 keys for this user
+  const { results } = await db
+    .prepare('SELECT r2_key FROM vaults WHERE user_id = ?')
+    .bind(userId)
+    .all<{ r2_key: string }>();
+
+  // Delete R2 objects
+  if (results.length > 0) {
+    const r2Keys = results.map((r) => r.r2_key);
+    await bucket.delete(r2Keys);
+  }
+
+  // Delete sync_state (before vaults due to foreign key)
+  await db
+    .prepare('DELETE FROM sync_state WHERE user_id = ?')
+    .bind(userId)
+    .run();
+
+  // Delete vault records
+  await db
+    .prepare('DELETE FROM vaults WHERE user_id = ?')
+    .bind(userId)
+    .run();
+}
