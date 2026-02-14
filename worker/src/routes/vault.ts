@@ -8,7 +8,8 @@ import type { HonoEnv } from '../types.js';
 const KEEP_VERSIONS = 10;
 const MAX_VAULT_SIZE = 10 * 1024 * 1024; // 10MB
 
-// Rate limiter for vault uploads (30 per minute per IP)
+// Rate limiters
+const readRateLimit = rateLimit({ max: 60, windowSeconds: 60, keyPrefix: 'vault:read' });
 const uploadRateLimit = rateLimit({ max: 30, windowSeconds: 60, keyPrefix: 'vault:upload' });
 
 const vault = new Hono<HonoEnv>();
@@ -17,7 +18,7 @@ const vault = new Hono<HonoEnv>();
 vault.use('*', authMiddleware);
 
 // GET /vault - Get vault metadata
-vault.get('/', async (c) => {
+vault.get('/', readRateLimit, async (c) => {
   const user = c.get('user');
   const metadata = await vaultService.getMetadata(c.env.DB, user.id);
 
@@ -34,7 +35,7 @@ vault.get('/', async (c) => {
 });
 
 // GET /vault/data - Stream current encrypted blob
-vault.get('/data', async (c) => {
+vault.get('/data', readRateLimit, async (c) => {
   const user = c.get('user');
   const data = await vaultService.getData(c.env.DB, c.env.VAULT_BUCKET, user.id);
 
@@ -112,14 +113,14 @@ vault.put('/data', uploadRateLimit, async (c) => {
 });
 
 // GET /vault/history - List all vault versions
-vault.get('/history', async (c) => {
+vault.get('/history', readRateLimit, async (c) => {
   const user = c.get('user');
   const history = await vaultService.getHistory(c.env.DB, user.id);
   return c.json({ versions: history });
 });
 
 // GET /vault/data/:vaultId - Stream specific historical version
-vault.get('/data/:vaultId', async (c) => {
+vault.get('/data/:vaultId', readRateLimit, async (c) => {
   const user = c.get('user');
   const vaultId = c.req.param('vaultId');
 

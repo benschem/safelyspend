@@ -19,7 +19,20 @@ export function rateLimit(config: RateLimitConfig): MiddlewareHandler<HonoEnv> {
     const now = Math.floor(Date.now() / 1000);
     const resetAt = now + config.windowSeconds;
 
-    // Upsert: if key exists and window expired, reset; else increment
+    // Check current count before incrementing
+    const row = await db
+      .prepare('SELECT count, reset_at FROM rate_limits WHERE key = ?')
+      .bind(key)
+      .first<{ count: number; reset_at: number }>();
+
+    // Reject if at or over limit and window still active
+    if (row && row.reset_at > now && row.count >= config.max) {
+      const retryAfter = Math.max(1, row.reset_at - now);
+      c.header('Retry-After', String(retryAfter));
+      throw tooManyRequests('Too many requests. Please try again later.');
+    }
+
+    // Increment only if request is allowed
     await db
       .prepare(
         `INSERT INTO rate_limits (key, count, reset_at) VALUES (?, 1, ?)
@@ -29,17 +42,6 @@ export function rateLimit(config: RateLimitConfig): MiddlewareHandler<HonoEnv> {
       )
       .bind(key, resetAt, now, now, resetAt)
       .run();
-
-    const row = await db
-      .prepare('SELECT count, reset_at FROM rate_limits WHERE key = ?')
-      .bind(key)
-      .first<{ count: number; reset_at: number }>();
-
-    if (row && row.count > config.max) {
-      const retryAfter = Math.max(1, row.reset_at - now);
-      c.header('Retry-After', String(retryAfter));
-      throw tooManyRequests('Too many requests. Please try again later.');
-    }
 
     // Probabilistic cleanup of expired entries (1% of requests)
     if (Math.random() < 0.01) {

@@ -20,6 +20,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Rate limiters
 const loginRateLimit = rateLimit({ max: 5, windowSeconds: 60, keyPrefix: 'auth:login' });
 const verifyRateLimit = rateLimit({ max: 10, windowSeconds: 60, keyPrefix: 'auth:verify' });
+const sessionRateLimit = rateLimit({ max: 30, windowSeconds: 60, keyPrefix: 'auth:session' });
 
 const MAX_JSON_SIZE = 1024; // 1KB — sufficient for email + code
 
@@ -126,7 +127,7 @@ auth.post('/verify', verifyRateLimit, async (c) => {
 });
 
 // POST /auth/logout (requires auth)
-auth.post('/logout', authMiddleware, async (c) => {
+auth.post('/logout', authMiddleware, sessionRateLimit, async (c) => {
   const payload = c.get('jwtPayload');
   await deleteSession(c.env.DB, payload.sid);
 
@@ -141,13 +142,13 @@ auth.post('/logout', authMiddleware, async (c) => {
 });
 
 // GET /auth/me (requires auth)
-auth.get('/me', authMiddleware, async (c) => {
+auth.get('/me', authMiddleware, sessionRateLimit, async (c) => {
   const user = c.get('user');
   return c.json({ user: { id: user.id, email: user.email } });
 });
 
 // DELETE /auth/account (requires auth)
-auth.delete('/account', authMiddleware, async (c) => {
+auth.delete('/account', authMiddleware, sessionRateLimit, async (c) => {
   const user = c.get('user');
 
   // Delete all vaults + R2 objects
