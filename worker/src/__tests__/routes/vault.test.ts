@@ -279,6 +279,76 @@ describe('PUT /vault/data (idempotency)', () => {
   });
 });
 
+describe('vault owner isolation', () => {
+  it('user A cannot read user B vault metadata', async () => {
+    const { cookie: cookieA } = await createAuthenticatedUser(env.DB);
+    const { cookie: cookieB } = await createAuthenticatedUser(env.DB);
+
+    // User B uploads a vault
+    const data = new TextEncoder().encode('user-b-secret');
+    await appFetch(uploadRequest(cookieB, data, 0));
+
+    // User A sees version 0 (no vault) — not user B's vault
+    const res = await appFetch(
+      new Request('http://localhost/vault', { headers: { Cookie: cookieA } }),
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ version: 0 });
+  });
+
+  it('user A cannot download user B vault data', async () => {
+    const { cookie: cookieA } = await createAuthenticatedUser(env.DB);
+    const { cookie: cookieB } = await createAuthenticatedUser(env.DB);
+
+    // User B uploads a vault
+    const data = new TextEncoder().encode('user-b-secret');
+    await appFetch(uploadRequest(cookieB, data, 0));
+
+    // User A gets 404 — no vault for them
+    const res = await appFetch(
+      new Request('http://localhost/vault/data', { headers: { Cookie: cookieA } }),
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it('user A cannot access user B vault by ID', async () => {
+    const { cookie: cookieA } = await createAuthenticatedUser(env.DB);
+    const { cookie: cookieB } = await createAuthenticatedUser(env.DB);
+
+    // User B uploads a vault
+    const data = new TextEncoder().encode('user-b-secret');
+    const uploadRes = await appFetch(uploadRequest(cookieB, data, 0));
+    const { vaultId } = await uploadRes.json() as { vaultId: string };
+
+    // User A tries to access user B's vault by ID
+    const res = await appFetch(
+      new Request(`http://localhost/vault/data/${vaultId}`, {
+        headers: { Cookie: cookieA },
+      }),
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it('user A cannot see user B vault history', async () => {
+    const { cookie: cookieA } = await createAuthenticatedUser(env.DB);
+    const { cookie: cookieB } = await createAuthenticatedUser(env.DB);
+
+    // User B uploads two versions
+    const data1 = new TextEncoder().encode('v1');
+    const data2 = new TextEncoder().encode('v2');
+    await appFetch(uploadRequest(cookieB, data1, 0));
+    await appFetch(uploadRequest(cookieB, data2, 1));
+
+    // User A sees empty history
+    const res = await appFetch(
+      new Request('http://localhost/vault/history', { headers: { Cookie: cookieA } }),
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json() as { versions: unknown[] };
+    expect(body.versions).toHaveLength(0);
+  });
+});
+
 describe('vault routes without auth', () => {
   it.each(['/vault', '/vault/data', '/vault/history', '/vault/data/some-id'])(
     'GET %s returns 401',

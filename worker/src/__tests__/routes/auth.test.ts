@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, vi, beforeEach } from 'vitest';
 import { env } from 'cloudflare:test';
-import { applyMigrations, createAuthenticatedUser, jsonRequest, appFetch } from '../helpers/setup.js';
+import { applyMigrations, createAuthenticatedUser, jsonRequest, appFetch, COOKIE_NAME } from '../helpers/setup.js';
 import { generateId } from '../../lib/id.js';
+import { jwtSign } from '../../lib/crypto.js';
 import { sendAuthCode } from '../../services/email.js';
 
 const mockSendAuthCode = vi.mocked(sendAuthCode);
@@ -401,6 +402,74 @@ describe('DELETE /auth/sessions/:id', () => {
   it('returns 401 without auth', async () => {
     const res = await appFetch(
       new Request(`http://localhost/auth/sessions/${generateId()}`, { method: 'DELETE' }),
+    );
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('auth bypass attempts', () => {
+  it('rejects a JWT signed with the wrong secret', async () => {
+    const { user, sessionId } = await createAuthenticatedUser(env.DB);
+    const forgedToken = await jwtSign(
+      { sub: user.id, sid: sessionId, email: user.email },
+      'wrong-secret-key',
+      7 * 24 * 60 * 60,
+    );
+
+    const res = await appFetch(
+      new Request('http://localhost/auth/me', {
+        headers: { Cookie: `${COOKIE_NAME}=${forgedToken}` },
+      }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects a tampered JWT payload', async () => {
+    const { cookie } = await createAuthenticatedUser(env.DB);
+    // Corrupt the payload section (second part) of the JWT
+    const token = cookie.split('=')[1];
+    const parts = token.split('.');
+    parts[1] = parts[1].slice(0, -3) + 'xxx';
+    const tamperedCookie = `${COOKIE_NAME}=${parts.join('.')}`;
+
+    const res = await appFetch(
+      new Request('http://localhost/auth/me', {
+        headers: { Cookie: tamperedCookie },
+      }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects an expired JWT', async () => {
+    const { cookie } = await createAuthenticatedUser(env.DB, {
+      jwtExpiry: -1, // already expired
+    });
+
+    const res = await appFetch(
+      new Request('http://localhost/auth/me', {
+        headers: { Cookie: cookie },
+      }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects a JWT with a valid signature but nonexistent session', async () => {
+    const userId = generateId();
+    const email = `nosession-${userId.slice(0, 8)}@example.com`;
+    const now = new Date().toISOString();
+    await env.DB.prepare('INSERT INTO users (id, email, created_at, updated_at) VALUES (?, ?, ?, ?)')
+      .bind(userId, email, now, now).run();
+
+    const token = await jwtSign(
+      { sub: userId, sid: generateId(), email },
+      env.JWT_SECRET,
+      7 * 24 * 60 * 60,
+    );
+
+    const res = await appFetch(
+      new Request('http://localhost/auth/me', {
+        headers: { Cookie: `${COOKIE_NAME}=${token}` },
+      }),
     );
     expect(res.status).toBe(401);
   });
