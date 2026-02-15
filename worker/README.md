@@ -195,6 +195,80 @@ All vault routes require authentication.
 | GET | `/vault/history` | Yes | List all vault versions |
 | GET | `/vault/data/:vaultId` | Yes | Download a specific historical version |
 
+## Disaster Recovery
+
+### Data layout
+
+D1 and R2 are complementary — neither is sufficient on its own.
+
+| Store | Contains | Recoverable without it? |
+|-------|----------|------------------------|
+| **D1** | Users, sessions, auth codes, vault metadata (versions, checksums, R2 key paths), sync state | No — R2 objects are opaque blobs; without D1 you can't identify which version is current or who owns what |
+| **R2** | Encrypted vault data (the actual user data blobs) | No — D1 only stores metadata; the encrypted payload lives solely in R2 |
+
+R2 keys follow the pattern `{userId}/{vaultId}`. D1's `vaults.r2_key` column is the sole mapping between metadata and blobs.
+
+### D1 backups (Time Travel)
+
+D1 supports [point-in-time recovery](https://developers.cloudflare.com/d1/reference/time-travel/) (30 days on Workers Paid plan). Verify it's active:
+
+```bash
+# Check database status — Time Travel is enabled by default on paid plans
+wrangler d1 info budget-db
+```
+
+To restore D1 to a point in time:
+
+```bash
+# List available bookmarks
+wrangler d1 time-travel info budget-db
+
+# Restore to a specific timestamp
+wrangler d1 time-travel restore budget-db --timestamp=2026-02-15T00:00:00Z
+```
+
+### R2 lifecycle rules
+
+Add a lifecycle rule in the Cloudflare dashboard (Storage & Databases > R2 > `budget-vaults` > Settings > Object lifecycle rules) to clean up orphaned objects that escape `pruneOldVersions`:
+
+- **Rule name:** Expire old vault versions
+- **Action:** Delete objects after 90 days
+- **Scope:** All objects in the bucket (or prefix filter if using multiple apps)
+
+The app keeps the last 10 versions per user and prunes older ones on each upload. The lifecycle rule is a safety net for orphans caused by failed prune operations or account deletions where R2 cleanup failed.
+
+### Recovery procedures
+
+**D1 lost, R2 intact:**
+
+1. Restore D1 from Time Travel to the most recent bookmark before the incident
+2. Verify with: `wrangler d1 execute budget-db --remote --command="SELECT COUNT(*) FROM users"`
+3. Redeploy the worker: `npm run deploy`
+4. Users can log in and access their vaults immediately — R2 data is intact
+
+If Time Travel is unavailable, D1 data is unrecoverable. R2 objects can be listed by user prefix (`wrangler r2 object list budget-vaults --prefix={userId}/`) but there's no way to reconstruct version ordering, user accounts, or sessions.
+
+**R2 lost, D1 intact:**
+
+1. D1 metadata remains valid but all vault downloads will return 404
+2. Users will see sync errors when they try to download
+3. Each user's local device still has their data in IndexedDB — they can re-upload via the sync UI
+4. No server-side recovery is possible; R2 is the sole copy of encrypted vault data
+
+**Both lost:**
+
+1. All server-side data is gone
+2. Users still have local data in their browser's IndexedDB
+3. Recreate infrastructure from scratch (D1 database, R2 bucket, migrations, secrets)
+4. Users re-register and re-upload from their local data
+
+### Recommendations
+
+- **Verify D1 Time Travel is active** on a Workers Paid plan (free plan has no Time Travel)
+- **Add the R2 lifecycle rule** described above as an orphan safety net
+- **Monitor R2 object count** — a sudden drop indicates accidental deletion
+- **Periodically export D1** as an additional backup: `wrangler d1 export budget-db --remote --output=backup.sql`
+
 ## Project Structure
 
 ```
