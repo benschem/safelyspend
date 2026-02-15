@@ -119,6 +119,78 @@ Then redeploy with `npm run deploy`.
 | `FROM_EMAIL` | `wrangler.toml` [vars] | Sender address for auth code emails |
 | `APP_URL` | `wrangler.toml` [vars] | Frontend URL (used in CORS and email links) |
 
+## Database Migrations
+
+D1 migrations live in `migrations/` as numbered SQL files. Wrangler applies them in filename order and tracks which have run in an internal `d1_migrations` table — each migration only runs once.
+
+### Current migrations
+
+| File | Description |
+|------|-------------|
+| `0001_initial.sql` | Users, auth_codes, vaults, sync_state tables |
+| `0002_security.sql` | Sessions, rate_limits tables; brute-force tracking on auth_codes |
+| `0003_cleanup_indexes.sql` | Indexes for rate_limits and auth_codes cleanup queries |
+| `0004_idempotency.sql` | Idempotency key column on vaults |
+
+### Applying migrations
+
+```bash
+# Local development (SQLite emulation)
+npm run db:migrate:local
+
+# Remote production database
+npm run db:migrate:remote
+```
+
+Wrangler automatically detects which migrations are new and applies only those. Safe to run repeatedly.
+
+### Writing new migrations
+
+1. Create a new file in `migrations/` with the next sequence number:
+
+   ```
+   migrations/0005_description.sql
+   ```
+
+2. Write forward-only SQL. D1 migrations have no "down" — use only additive changes:
+   - `CREATE TABLE` / `CREATE INDEX` — always safe
+   - `ALTER TABLE ... ADD COLUMN` — safe, column is nullable or has a default
+   - `DROP TABLE` / `DROP INDEX` — safe if nothing references it
+   - Renaming or removing columns — **not safe**, SQLite doesn't support `ALTER TABLE ... DROP COLUMN` reliably
+
+3. Test locally first:
+
+   ```bash
+   npm run db:migrate:local
+   npm run test:run
+   ```
+
+4. Apply to production:
+
+   ```bash
+   npm run db:migrate:remote
+   ```
+
+### Rollback
+
+D1 migrations are forward-only — there are no down migrations. If a migration causes issues:
+
+1. **Additive migrations** (new tables, columns, indexes) — write a follow-up migration to reverse the change (e.g. `DROP INDEX`, `DROP TABLE`)
+
+2. **Destructive migrations** (data loss, broken schema) — restore from D1 Time Travel:
+
+   ```bash
+   # Find a bookmark before the migration
+   wrangler d1 time-travel info budget-db
+
+   # Restore to that point
+   wrangler d1 time-travel restore budget-db --timestamp=2026-02-15T00:00:00Z
+   ```
+
+   Then re-apply only the migrations you want: `npm run db:migrate:remote`
+
+3. **Always test locally** before applying to production. `npm run db:migrate:local && npm run test:run` catches most issues.
+
 ## Rotating the JWT Secret
 
 The worker supports zero-downtime JWT secret rotation. Without this, changing `JWT_SECRET` would immediately invalidate all active sessions and force every user to re-login.
