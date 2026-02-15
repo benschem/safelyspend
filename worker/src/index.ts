@@ -13,6 +13,14 @@ app.use('*', async (c, next) => {
   await next();
 });
 
+// Security headers
+app.use('*', async (c, next) => {
+  await next();
+  c.res.headers.set('X-Content-Type-Options', 'nosniff');
+  c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  c.res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+});
+
 // CORS middleware - use dynamic handler to access env
 app.use('*', async (c, next) => {
   const appUrl = c.env.APP_URL;
