@@ -113,10 +113,52 @@ Then redeploy with `npm run deploy`.
 | `DB` | D1 binding | SQLite database for users, sessions, auth codes, vault metadata |
 | `VAULT_BUCKET` | R2 binding | Blob storage for encrypted vault data |
 | `JWT_SECRET` | `wrangler secret` | Signs/verifies session JWTs |
+| `JWT_SECRET_PREVIOUS` | `wrangler secret` | (Optional) Previous JWT secret, used during key rotation |
 | `RESEND_API_KEY` | `wrangler secret` | Resend API key for sending auth code emails |
 | `ENVIRONMENT` | `wrangler.toml` [vars] | `"production"` or `"development"` |
 | `FROM_EMAIL` | `wrangler.toml` [vars] | Sender address for auth code emails |
 | `APP_URL` | `wrangler.toml` [vars] | Frontend URL (used in CORS and email links) |
+
+## Rotating the JWT Secret
+
+The worker supports zero-downtime JWT secret rotation. Without this, changing `JWT_SECRET` would immediately invalidate all active sessions and force every user to re-login.
+
+### Steps
+
+1. **Set the old secret as the fallback:**
+
+   ```bash
+   wrangler secret put JWT_SECRET_PREVIOUS
+   # Paste the CURRENT value of JWT_SECRET
+   ```
+
+2. **Set the new secret:**
+
+   ```bash
+   wrangler secret put JWT_SECRET
+   # Paste a new random string: openssl rand -base64 32
+   ```
+
+3. **Deploy** (if not already deployed with the dual-key code):
+
+   ```bash
+   npm run deploy
+   ```
+
+4. **Wait 7 days** for all old JWTs to expire naturally. During this window:
+   - New JWTs (login, verify, renewal) are signed with the new secret
+   - Existing JWTs signed with the old secret still verify via the fallback
+   - Users are passively migrated to the new secret when their JWT renews (after ~3.5 days)
+
+5. **Remove the fallback:**
+
+   ```bash
+   wrangler secret delete JWT_SECRET_PREVIOUS
+   ```
+
+### How it works
+
+The auth middleware tries to verify each JWT with `JWT_SECRET` first. If verification fails and `JWT_SECRET_PREVIOUS` is set, it retries with the previous secret. All new JWTs are always signed with the current `JWT_SECRET`, so users gradually migrate as their tokens renew.
 
 ## Project Structure
 

@@ -4,6 +4,7 @@ export interface Env {
   DB: D1Database;
   VAULT_BUCKET: R2Bucket;
   JWT_SECRET: string;
+  JWT_SECRET_PREVIOUS?: string;
   RESEND_API_KEY: string;
   ENVIRONMENT: string;
   FROM_EMAIL: string;

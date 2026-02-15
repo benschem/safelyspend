@@ -18,7 +18,17 @@ export const authMiddleware = createMiddleware<HonoEnv>(async (c, next) => {
     throw unauthorized('Authentication required');
   }
 
-  const payload = await jwtVerify(token, c.env.JWT_SECRET);
+  let payload;
+  try {
+    payload = await jwtVerify(token, c.env.JWT_SECRET);
+  } catch (err) {
+    // Fall back to previous secret during key rotation
+    if (c.env.JWT_SECRET_PREVIOUS) {
+      payload = await jwtVerify(token, c.env.JWT_SECRET_PREVIOUS);
+    } else {
+      throw err;
+    }
+  }
 
   if (!payload.sid) {
     console.warn(JSON.stringify({ event: 'auth_failed', requestId, reason: 'invalid_session' }));
