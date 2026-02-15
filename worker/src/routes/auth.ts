@@ -3,7 +3,7 @@ import { setCookie, deleteCookie } from 'hono/cookie';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimit, checkRateLimit } from '../middleware/rate-limit.js';
 import { jwtSign } from '../lib/crypto.js';
-import { badRequest, notFound, tooManyRequests, unauthorized } from '../lib/errors.js';
+import { AppError, badRequest, internal, notFound, tooManyRequests, unauthorized } from '../lib/errors.js';
 import {
   findByEmail,
   create,
@@ -77,10 +77,19 @@ auth.post('/login', loginRateLimit, async (c) => {
   }
 
   // Per-email rate limit: 3 code requests per 15 minutes
-  const emailResult = await checkRateLimit(c.env.DB, `auth:login:email:${email}`, 3, 900);
-  if (!emailResult.allowed) {
-    c.header('Retry-After', String(emailResult.retryAfter));
-    throw tooManyRequests('Too many login requests. Please try again later.');
+  try {
+    const emailResult = await checkRateLimit(c.env.DB, `auth:login:email:${email}`, 3, 900);
+    if (!emailResult.allowed) {
+      c.header('Retry-After', String(emailResult.retryAfter));
+      throw tooManyRequests('Too many login requests. Please try again later.');
+    }
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+    console.error(JSON.stringify({
+      event: 'rate_limit_degraded', requestId: c.get('requestId'),
+      limiter: 'auth:login:email',
+      error: err instanceof Error ? err.message : 'Unknown error',
+    }));
   }
 
   // Find or create user
@@ -100,7 +109,15 @@ auth.post('/login', loginRateLimit, async (c) => {
   const code = await createAuthCode(c.env.DB, user.id);
 
   // Send email
-  await sendAuthCode(c.env.RESEND_API_KEY, c.env.FROM_EMAIL, email, code);
+  try {
+    await sendAuthCode(c.env.RESEND_API_KEY, c.env.FROM_EMAIL, email, code);
+  } catch (err) {
+    console.error(JSON.stringify({
+      event: 'email_send_failed', requestId: c.get('requestId'),
+      error: err instanceof Error ? err.message : 'Unknown error',
+    }));
+    throw internal('Unable to send login code. Please try again later.');
+  }
 
   console.log(JSON.stringify({ event: 'login_code_sent', requestId: c.get('requestId') }));
 
@@ -146,10 +163,19 @@ auth.post('/verify', verifyRateLimit, async (c) => {
   }
 
   // Per-user verification rate limit: 10 attempts per 15 minutes
-  const verifyResult = await checkRateLimit(c.env.DB, `auth:verify:user:${user.id}`, 10, 900);
-  if (!verifyResult.allowed) {
-    c.header('Retry-After', String(verifyResult.retryAfter));
-    throw tooManyRequests('Too many verification attempts. Please try again later.');
+  try {
+    const verifyResult = await checkRateLimit(c.env.DB, `auth:verify:user:${user.id}`, 10, 900);
+    if (!verifyResult.allowed) {
+      c.header('Retry-After', String(verifyResult.retryAfter));
+      throw tooManyRequests('Too many verification attempts. Please try again later.');
+    }
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+    console.error(JSON.stringify({
+      event: 'rate_limit_degraded', requestId: c.get('requestId'),
+      limiter: 'auth:verify:user',
+      error: err instanceof Error ? err.message : 'Unknown error',
+    }));
   }
 
   const valid = await verifyAuthCode(c.env.DB, user.id, code);
