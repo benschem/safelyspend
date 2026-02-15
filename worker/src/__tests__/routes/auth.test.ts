@@ -24,7 +24,7 @@ function getCapturedCode(): string {
 
 describe('POST /auth/login', () => {
   it('sends a 6-digit auth code for valid email', async () => {
-    const res = await appFetch(jsonRequest('/auth/login', { email: 'user@example.com' }));
+    const res = await appFetch(jsonRequest('/v1/auth/login', { email: 'user@example.com' }));
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ message: 'Code sent' });
@@ -33,7 +33,7 @@ describe('POST /auth/login', () => {
   });
 
   it('rejects invalid email format', async () => {
-    const res = await appFetch(jsonRequest('/auth/login', { email: 'not-an-email' }));
+    const res = await appFetch(jsonRequest('/v1/auth/login', { email: 'not-an-email' }));
 
     expect(res.status).toBe(400);
     const body = await res.json() as { code: string };
@@ -41,7 +41,7 @@ describe('POST /auth/login', () => {
   });
 
   it('rejects missing email', async () => {
-    const res = await appFetch(jsonRequest('/auth/login', {}));
+    const res = await appFetch(jsonRequest('/v1/auth/login', {}));
 
     expect(res.status).toBe(400);
     const body = await res.json() as { code: string };
@@ -50,7 +50,7 @@ describe('POST /auth/login', () => {
 
   it('rejects wrong content-type', async () => {
     const res = await appFetch(
-      new Request('http://localhost/auth/login', {
+      new Request('http://localhost/v1/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: 'email=user@example.com',
@@ -66,10 +66,10 @@ describe('POST /auth/login', () => {
 describe('POST /auth/verify', () => {
   it('verifies correct code and returns user with Set-Cookie', async () => {
     const email = 'verify-ok@example.com';
-    await appFetch(jsonRequest('/auth/login', { email }));
+    await appFetch(jsonRequest('/v1/auth/login', { email }));
     const code = getCapturedCode();
 
-    const res = await appFetch(jsonRequest('/auth/verify', { email, code }));
+    const res = await appFetch(jsonRequest('/v1/auth/verify', { email, code }));
 
     expect(res.status).toBe(200);
     const body = await res.json() as { user: { id: string; email: string } };
@@ -80,9 +80,9 @@ describe('POST /auth/verify', () => {
 
   it('rejects wrong code', async () => {
     const email = 'verify-bad@example.com';
-    await appFetch(jsonRequest('/auth/login', { email }));
+    await appFetch(jsonRequest('/v1/auth/login', { email }));
 
-    const res = await appFetch(jsonRequest('/auth/verify', { email, code: '000000' }));
+    const res = await appFetch(jsonRequest('/v1/auth/verify', { email, code: '000000' }));
 
     expect(res.status).toBe(401);
     const body = await res.json() as { code: string };
@@ -90,12 +90,12 @@ describe('POST /auth/verify', () => {
   });
 
   it('rejects missing code', async () => {
-    const res = await appFetch(jsonRequest('/auth/verify', { email: 'a@b.com' }));
+    const res = await appFetch(jsonRequest('/v1/auth/verify', { email: 'a@b.com' }));
     expect(res.status).toBe(400);
   });
 
   it('rejects missing email', async () => {
-    const res = await appFetch(jsonRequest('/auth/verify', { code: '123456' }));
+    const res = await appFetch(jsonRequest('/v1/auth/verify', { code: '123456' }));
     expect(res.status).toBe(400);
   });
 });
@@ -104,7 +104,7 @@ describe('GET /auth/me', () => {
   it('returns user when authenticated', async () => {
     const { user, cookie } = await createAuthenticatedUser(env.DB);
     const res = await appFetch(
-      new Request('http://localhost/auth/me', { headers: { Cookie: cookie } }),
+      new Request('http://localhost/v1/auth/me', { headers: { Cookie: cookie } }),
     );
 
     expect(res.status).toBe(200);
@@ -114,7 +114,7 @@ describe('GET /auth/me', () => {
   });
 
   it('returns 401 without auth', async () => {
-    const res = await appFetch(new Request('http://localhost/auth/me'));
+    const res = await appFetch(new Request('http://localhost/v1/auth/me'));
 
     expect(res.status).toBe(401);
     const body = await res.json() as { code: string };
@@ -127,7 +127,7 @@ describe('POST /auth/logout', () => {
     const { sessionId, cookie } = await createAuthenticatedUser(env.DB);
 
     const res = await appFetch(
-      new Request('http://localhost/auth/logout', {
+      new Request('http://localhost/v1/auth/logout', {
         method: 'POST',
         headers: { Cookie: cookie },
       }),
@@ -149,7 +149,7 @@ describe('DELETE /auth/account', () => {
     const { user, cookie } = await createAuthenticatedUser(env.DB);
 
     const res = await appFetch(
-      new Request('http://localhost/auth/account', {
+      new Request('http://localhost/v1/auth/account', {
         method: 'DELETE',
         headers: { Cookie: cookie },
       }),
@@ -171,18 +171,18 @@ describe('full auth flow', () => {
     const email = 'fullflow@example.com';
 
     // Login
-    const loginRes = await appFetch(jsonRequest('/auth/login', { email }));
+    const loginRes = await appFetch(jsonRequest('/v1/auth/login', { email }));
     expect(loginRes.status).toBe(200);
     const code = getCapturedCode();
 
     // Verify
-    const verifyRes = await appFetch(jsonRequest('/auth/verify', { email, code }));
+    const verifyRes = await appFetch(jsonRequest('/v1/auth/verify', { email, code }));
     expect(verifyRes.status).toBe(200);
     const cookie = verifyRes.headers.get('set-cookie')!.split(';')[0];
 
     // Me
     const meRes = await appFetch(
-      new Request('http://localhost/auth/me', { headers: { Cookie: cookie } }),
+      new Request('http://localhost/v1/auth/me', { headers: { Cookie: cookie } }),
     );
     expect(meRes.status).toBe(200);
     const meBody = await meRes.json() as { user: { email: string } };
@@ -190,7 +190,7 @@ describe('full auth flow', () => {
 
     // Logout
     const logoutRes = await appFetch(
-      new Request('http://localhost/auth/logout', {
+      new Request('http://localhost/v1/auth/logout', {
         method: 'POST',
         headers: { Cookie: cookie },
       }),
@@ -199,7 +199,7 @@ describe('full auth flow', () => {
 
     // Me after logout should fail
     const meAfterRes = await appFetch(
-      new Request('http://localhost/auth/me', { headers: { Cookie: cookie } }),
+      new Request('http://localhost/v1/auth/me', { headers: { Cookie: cookie } }),
     );
     expect(meAfterRes.status).toBe(401);
   });
@@ -208,10 +208,10 @@ describe('full auth flow', () => {
 describe('POST /auth/verify (rememberMe)', () => {
   it('default verify sets 7-day cookie maxAge', async () => {
     const email = 'remember-default@example.com';
-    await appFetch(jsonRequest('/auth/login', { email }));
+    await appFetch(jsonRequest('/v1/auth/login', { email }));
     const code = getCapturedCode();
 
-    const res = await appFetch(jsonRequest('/auth/verify', { email, code }));
+    const res = await appFetch(jsonRequest('/v1/auth/verify', { email, code }));
     expect(res.status).toBe(200);
 
     const setCookieHeader = res.headers.get('set-cookie')!;
@@ -220,10 +220,10 @@ describe('POST /auth/verify (rememberMe)', () => {
 
   it('rememberMe=true sets 30-day cookie maxAge', async () => {
     const email = 'remember-true@example.com';
-    await appFetch(jsonRequest('/auth/login', { email }));
+    await appFetch(jsonRequest('/v1/auth/login', { email }));
     const code = getCapturedCode();
 
-    const res = await appFetch(jsonRequest('/auth/verify', { email, code, rememberMe: true }));
+    const res = await appFetch(jsonRequest('/v1/auth/verify', { email, code, rememberMe: true }));
     expect(res.status).toBe(200);
 
     const setCookieHeader = res.headers.get('set-cookie')!;
@@ -245,7 +245,7 @@ describe('POST /auth/revoke-all-sessions', () => {
       .bind(extra2, user.id, expiresAt).run();
 
     const res = await appFetch(
-      new Request('http://localhost/auth/revoke-all-sessions', {
+      new Request('http://localhost/v1/auth/revoke-all-sessions', {
         method: 'POST',
         headers: { Cookie: cookie },
       }),
@@ -271,7 +271,7 @@ describe('POST /auth/revoke-all-sessions', () => {
     const { cookie } = await createAuthenticatedUser(env.DB);
 
     const res = await appFetch(
-      new Request('http://localhost/auth/revoke-all-sessions', {
+      new Request('http://localhost/v1/auth/revoke-all-sessions', {
         method: 'POST',
         headers: { Cookie: cookie },
       }),
@@ -284,7 +284,7 @@ describe('POST /auth/revoke-all-sessions', () => {
 
   it('returns 401 without auth', async () => {
     const res = await appFetch(
-      new Request('http://localhost/auth/revoke-all-sessions', { method: 'POST' }),
+      new Request('http://localhost/v1/auth/revoke-all-sessions', { method: 'POST' }),
     );
     expect(res.status).toBe(401);
   });
@@ -301,7 +301,7 @@ describe('GET /auth/sessions', () => {
       .bind(extra, user.id, expiresAt).run();
 
     const res = await appFetch(
-      new Request('http://localhost/auth/sessions', { headers: { Cookie: cookie } }),
+      new Request('http://localhost/v1/auth/sessions', { headers: { Cookie: cookie } }),
     );
 
     expect(res.status).toBe(200);
@@ -319,7 +319,7 @@ describe('GET /auth/sessions', () => {
     const { sessionId: otherSessionId } = await createAuthenticatedUser(env.DB);
 
     const res = await appFetch(
-      new Request('http://localhost/auth/sessions', { headers: { Cookie: cookie } }),
+      new Request('http://localhost/v1/auth/sessions', { headers: { Cookie: cookie } }),
     );
 
     expect(res.status).toBe(200);
@@ -329,7 +329,7 @@ describe('GET /auth/sessions', () => {
   });
 
   it('returns 401 without auth', async () => {
-    const res = await appFetch(new Request('http://localhost/auth/sessions'));
+    const res = await appFetch(new Request('http://localhost/v1/auth/sessions'));
     expect(res.status).toBe(401);
   });
 });
@@ -344,7 +344,7 @@ describe('DELETE /auth/sessions/:id', () => {
       .bind(extra, user.id, expiresAt).run();
 
     const res = await appFetch(
-      new Request(`http://localhost/auth/sessions/${extra}`, {
+      new Request(`http://localhost/v1/auth/sessions/${extra}`, {
         method: 'DELETE',
         headers: { Cookie: cookie },
       }),
@@ -361,7 +361,7 @@ describe('DELETE /auth/sessions/:id', () => {
     const { sessionId, cookie } = await createAuthenticatedUser(env.DB);
 
     const res = await appFetch(
-      new Request(`http://localhost/auth/sessions/${sessionId}`, {
+      new Request(`http://localhost/v1/auth/sessions/${sessionId}`, {
         method: 'DELETE',
         headers: { Cookie: cookie },
       }),
@@ -376,7 +376,7 @@ describe('DELETE /auth/sessions/:id', () => {
     const { cookie } = await createAuthenticatedUser(env.DB);
 
     const res = await appFetch(
-      new Request(`http://localhost/auth/sessions/${generateId()}`, {
+      new Request(`http://localhost/v1/auth/sessions/${generateId()}`, {
         method: 'DELETE',
         headers: { Cookie: cookie },
       }),
@@ -390,7 +390,7 @@ describe('DELETE /auth/sessions/:id', () => {
     const { sessionId: otherSessionId } = await createAuthenticatedUser(env.DB);
 
     const res = await appFetch(
-      new Request(`http://localhost/auth/sessions/${otherSessionId}`, {
+      new Request(`http://localhost/v1/auth/sessions/${otherSessionId}`, {
         method: 'DELETE',
         headers: { Cookie: cookie },
       }),
@@ -401,7 +401,7 @@ describe('DELETE /auth/sessions/:id', () => {
 
   it('returns 401 without auth', async () => {
     const res = await appFetch(
-      new Request(`http://localhost/auth/sessions/${generateId()}`, { method: 'DELETE' }),
+      new Request(`http://localhost/v1/auth/sessions/${generateId()}`, { method: 'DELETE' }),
     );
     expect(res.status).toBe(401);
   });
@@ -417,7 +417,7 @@ describe('auth bypass attempts', () => {
     );
 
     const res = await appFetch(
-      new Request('http://localhost/auth/me', {
+      new Request('http://localhost/v1/auth/me', {
         headers: { Cookie: `${COOKIE_NAME}=${forgedToken}` },
       }),
     );
@@ -433,7 +433,7 @@ describe('auth bypass attempts', () => {
     const tamperedCookie = `${COOKIE_NAME}=${parts.join('.')}`;
 
     const res = await appFetch(
-      new Request('http://localhost/auth/me', {
+      new Request('http://localhost/v1/auth/me', {
         headers: { Cookie: tamperedCookie },
       }),
     );
@@ -446,7 +446,7 @@ describe('auth bypass attempts', () => {
     });
 
     const res = await appFetch(
-      new Request('http://localhost/auth/me', {
+      new Request('http://localhost/v1/auth/me', {
         headers: { Cookie: cookie },
       }),
     );
@@ -467,7 +467,7 @@ describe('auth bypass attempts', () => {
     );
 
     const res = await appFetch(
-      new Request('http://localhost/auth/me', {
+      new Request('http://localhost/v1/auth/me', {
         headers: { Cookie: `${COOKIE_NAME}=${token}` },
       }),
     );
@@ -483,7 +483,7 @@ describe('session rotation on JWT renewal', () => {
     });
 
     const res = await appFetch(
-      new Request('http://localhost/auth/me', { headers: { Cookie: cookie } }),
+      new Request('http://localhost/v1/auth/me', { headers: { Cookie: cookie } }),
     );
 
     expect(res.status).toBe(200);

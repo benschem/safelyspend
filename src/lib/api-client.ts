@@ -78,31 +78,31 @@ export interface AuthUser {
 export const api = {
   auth: {
     login(email: string) {
-      return request<{ message: string }>('/auth/login', {
+      return request<{ message: string }>('/v1/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email }),
       });
     },
 
     verify(email: string, code: string, rememberMe?: boolean) {
-      return request<{ user: AuthUser }>('/auth/verify', {
+      return request<{ user: AuthUser }>('/v1/auth/verify', {
         method: 'POST',
         body: JSON.stringify({ email, code, rememberMe }),
       });
     },
 
     logout() {
-      return request<{ message: string }>('/auth/logout', {
+      return request<{ message: string }>('/v1/auth/logout', {
         method: 'POST',
       });
     },
 
     me() {
-      return request<{ user: AuthUser }>('/auth/me');
+      return request<{ user: AuthUser }>('/v1/auth/me');
     },
 
     deleteAccount() {
-      return request<{ message: string }>('/auth/account', {
+      return request<{ message: string }>('/v1/auth/account', {
         method: 'DELETE',
       });
     },
@@ -110,17 +110,17 @@ export const api = {
     sessions() {
       return request<{
         sessions: Array<{ id: string; createdAt: string; isCurrent: boolean }>;
-      }>('/auth/sessions');
+      }>('/v1/auth/sessions');
     },
 
     revokeSession(sessionId: string) {
-      return request<{ message: string }>(`/auth/sessions/${sessionId}`, {
+      return request<{ message: string }>(`/v1/auth/sessions/${sessionId}`, {
         method: 'DELETE',
       });
     },
 
     revokeAllSessions() {
-      return request<{ revoked: number }>('/auth/revoke-all-sessions', {
+      return request<{ revoked: number }>('/v1/auth/revoke-all-sessions', {
         method: 'POST',
       });
     },
@@ -133,11 +133,11 @@ export const api = {
         sizeBytes?: number;
         checksum?: string;
         updatedAt?: string;
-      }>('/vault');
+      }>('/v1/vault');
     },
 
     async getData(): Promise<{ data: ArrayBuffer; version: number }> {
-      const response = await requestRaw('/vault/data');
+      const response = await requestRaw('/v1/vault/data');
       const version = parseInt(response.headers.get('X-Vault-Version') ?? '0', 10);
       const data = await response.arrayBuffer();
       return { data, version };
@@ -147,7 +147,7 @@ export const api = {
       data: ArrayBuffer,
       expectedVersion: number,
     ): Promise<{ version: number; vaultId: string }> {
-      const response = await fetch(`${API_URL}/vault/data`, {
+      const response = await fetch(`${API_URL}/v1/vault/data`, {
         method: 'PUT',
         credentials: 'include',
         headers: {
@@ -179,11 +179,11 @@ export const api = {
           checksum: string;
           createdAt: string;
         }>
-      >('/vault/history');
+      >('/v1/vault/history');
     },
 
     async getDataByVaultId(vaultId: string): Promise<{ data: ArrayBuffer; version: number }> {
-      const response = await requestRaw(`/vault/data/${vaultId}`);
+      const response = await requestRaw(`/v1/vault/data/${vaultId}`);
       const version = parseInt(response.headers.get('X-Vault-Version') ?? '0', 10);
       const data = await response.arrayBuffer();
       return { data, version };

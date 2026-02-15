@@ -21,7 +21,7 @@ function uploadRequest(
   if (idempotencyKey) {
     headers['X-Idempotency-Key'] = idempotencyKey;
   }
-  return new Request('http://localhost/vault/data', {
+  return new Request('http://localhost/v1/vault/data', {
     method: 'PUT',
     headers,
     body: data,
@@ -47,7 +47,7 @@ describe('GET /vault (metadata)', () => {
   it('returns version 0 when no vault exists', async () => {
     const { cookie } = await createAuthenticatedUser(env.DB);
     const res = await appFetch(
-      new Request('http://localhost/vault', { headers: { Cookie: cookie } }),
+      new Request('http://localhost/v1/vault', { headers: { Cookie: cookie } }),
     );
 
     expect(res.status).toBe(200);
@@ -57,7 +57,7 @@ describe('GET /vault (metadata)', () => {
   it('returns version, size, and checksum after upload', async () => {
     const { cookie, versions } = await setupVault(1);
     const res = await appFetch(
-      new Request('http://localhost/vault', { headers: { Cookie: cookie } }),
+      new Request('http://localhost/v1/vault', { headers: { Cookie: cookie } }),
     );
 
     expect(res.status).toBe(200);
@@ -101,7 +101,7 @@ describe('PUT /vault/data (upload)', () => {
   it('rejects missing X-Expected-Version header', async () => {
     const { cookie } = await createAuthenticatedUser(env.DB);
     const res = await appFetch(
-      new Request('http://localhost/vault/data', {
+      new Request('http://localhost/v1/vault/data', {
         method: 'PUT',
         headers: { Cookie: cookie, 'Content-Type': 'application/octet-stream' },
         body: new Uint8Array([1, 2, 3]),
@@ -116,7 +116,7 @@ describe('PUT /vault/data (upload)', () => {
   it('rejects wrong content-type', async () => {
     const { cookie } = await createAuthenticatedUser(env.DB);
     const res = await appFetch(
-      new Request('http://localhost/vault/data', {
+      new Request('http://localhost/v1/vault/data', {
         method: 'PUT',
         headers: {
           Cookie: cookie,
@@ -148,7 +148,7 @@ describe('GET /vault/data (download)', () => {
   it('returns 404 when no vault exists', async () => {
     const { cookie } = await createAuthenticatedUser(env.DB);
     const res = await appFetch(
-      new Request('http://localhost/vault/data', { headers: { Cookie: cookie } }),
+      new Request('http://localhost/v1/vault/data', { headers: { Cookie: cookie } }),
     );
 
     expect(res.status).toBe(404);
@@ -159,7 +159,7 @@ describe('GET /vault/data (download)', () => {
   it('returns the uploaded data with version and checksum headers', async () => {
     const { cookie, versions } = await setupVault(1);
     const res = await appFetch(
-      new Request('http://localhost/vault/data', { headers: { Cookie: cookie } }),
+      new Request('http://localhost/v1/vault/data', { headers: { Cookie: cookie } }),
     );
 
     expect(res.status).toBe(200);
@@ -174,7 +174,7 @@ describe('GET /vault/history', () => {
   it('lists versions in descending order', async () => {
     const { cookie } = await setupVault(2);
     const res = await appFetch(
-      new Request('http://localhost/vault/history', { headers: { Cookie: cookie } }),
+      new Request('http://localhost/v1/vault/history', { headers: { Cookie: cookie } }),
     );
 
     expect(res.status).toBe(200);
@@ -192,7 +192,7 @@ describe('GET /vault/data/:vaultId', () => {
     const { cookie, versions } = await setupVault(2);
 
     const res = await appFetch(
-      new Request(`http://localhost/vault/data/${versions[0].vaultId}`, {
+      new Request(`http://localhost/v1/vault/data/${versions[0].vaultId}`, {
         headers: { Cookie: cookie },
       }),
     );
@@ -206,7 +206,7 @@ describe('GET /vault/data/:vaultId', () => {
   it('returns 404 for nonexistent vault ID', async () => {
     const { cookie } = await createAuthenticatedUser(env.DB);
     const res = await appFetch(
-      new Request('http://localhost/vault/data/nonexistent-id', {
+      new Request('http://localhost/v1/vault/data/nonexistent-id', {
         headers: { Cookie: cookie },
       }),
     );
@@ -290,7 +290,7 @@ describe('vault owner isolation', () => {
 
     // User A sees version 0 (no vault) — not user B's vault
     const res = await appFetch(
-      new Request('http://localhost/vault', { headers: { Cookie: cookieA } }),
+      new Request('http://localhost/v1/vault', { headers: { Cookie: cookieA } }),
     );
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ version: 0 });
@@ -306,7 +306,7 @@ describe('vault owner isolation', () => {
 
     // User A gets 404 — no vault for them
     const res = await appFetch(
-      new Request('http://localhost/vault/data', { headers: { Cookie: cookieA } }),
+      new Request('http://localhost/v1/vault/data', { headers: { Cookie: cookieA } }),
     );
     expect(res.status).toBe(404);
   });
@@ -322,7 +322,7 @@ describe('vault owner isolation', () => {
 
     // User A tries to access user B's vault by ID
     const res = await appFetch(
-      new Request(`http://localhost/vault/data/${vaultId}`, {
+      new Request(`http://localhost/v1/vault/data/${vaultId}`, {
         headers: { Cookie: cookieA },
       }),
     );
@@ -341,7 +341,7 @@ describe('vault owner isolation', () => {
 
     // User A sees empty history
     const res = await appFetch(
-      new Request('http://localhost/vault/history', { headers: { Cookie: cookieA } }),
+      new Request('http://localhost/v1/vault/history', { headers: { Cookie: cookieA } }),
     );
     expect(res.status).toBe(200);
     const body = await res.json() as { versions: unknown[] };
@@ -350,7 +350,7 @@ describe('vault owner isolation', () => {
 });
 
 describe('vault routes without auth', () => {
-  it.each(['/vault', '/vault/data', '/vault/history', '/vault/data/some-id'])(
+  it.each(['/v1/vault', '/v1/vault/data', '/v1/vault/history', '/v1/vault/data/some-id'])(
     'GET %s returns 401',
     async (path) => {
       const res = await appFetch(new Request(`http://localhost${path}`));
@@ -360,7 +360,7 @@ describe('vault routes without auth', () => {
 
   it('PUT /vault/data returns 401', async () => {
     const res = await appFetch(
-      new Request('http://localhost/vault/data', {
+      new Request('http://localhost/v1/vault/data', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/octet-stream', 'X-Expected-Version': '0' },
         body: new Uint8Array([1]),

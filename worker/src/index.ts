@@ -81,8 +81,8 @@ app.get('/health', (c) => {
 });
 
 // Mount routes
-app.route('/auth', authRoutes);
-app.route('/vault', vaultRoutes);
+app.route('/v1/auth', authRoutes);
+app.route('/v1/vault', vaultRoutes);
 
 // 404 fallback
 app.notFound((c) => {
