@@ -21,6 +21,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.37.0',
+    date: '2026-02-15',
+    changes: [
+      'Cloud sync lets you back up and restore your data across devices with end-to-end encryption',
+      'Set a passphrase to protect your synced data — only you can read it',
+      'View and manage your active login sessions from Settings',
+      'Revoke individual sessions or log out of all other devices at once',
+      'Improved reliability and performance of the sync backend',
+    ],
+  },
+  {
     version: '0.36.0',
     date: '2026-02-07',
     changes: [
