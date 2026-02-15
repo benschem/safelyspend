@@ -160,6 +160,41 @@ The worker supports zero-downtime JWT secret rotation. Without this, changing `J
 
 The auth middleware tries to verify each JWT with `JWT_SECRET` first. If verification fails and `JWT_SECRET_PREVIOUS` is set, it retries with the previous secret. All new JWTs are always signed with the current `JWT_SECRET`, so users gradually migrate as their tokens renew.
 
+## API Endpoints
+
+All endpoints return JSON. Authenticated routes require a `__budget_session` cookie (set automatically by the login flow).
+
+### Health
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/health` | No | Returns `{ ok: true }` |
+
+### Auth (`/auth`)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/auth/login` | No | Send a 6-digit login code to an email address |
+| POST | `/auth/verify` | No | Verify a login code, returns a session cookie |
+| POST | `/auth/logout` | Yes | Delete the current session |
+| GET | `/auth/me` | Yes | Return the current user |
+| DELETE | `/auth/account` | Yes | Delete the user account and all associated data |
+| GET | `/auth/sessions` | Yes | List active sessions |
+| DELETE | `/auth/sessions/:id` | Yes | Revoke a specific session |
+| POST | `/auth/revoke-all-sessions` | Yes | Revoke all sessions except the current one |
+
+### Vault (`/vault`)
+
+All vault routes require authentication.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/vault` | Yes | Get vault metadata (version, size, checksum) |
+| GET | `/vault/data` | Yes | Download the current encrypted blob |
+| PUT | `/vault/data` | Yes | Upload an encrypted blob (requires `X-Expected-Version` header) |
+| GET | `/vault/history` | Yes | List all vault versions |
+| GET | `/vault/data/:vaultId` | Yes | Download a specific historical version |
+
 ## Project Structure
 
 ```
