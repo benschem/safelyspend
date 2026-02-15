@@ -3,7 +3,8 @@ import { cors } from 'hono/cors';
 import { AppError } from './lib/errors.js';
 import authRoutes from './routes/auth.js';
 import vaultRoutes from './routes/vault.js';
-import type { HonoEnv, JwtPayload } from './types.js';
+import * as vaultService from './services/vault.js';
+import type { Env, HonoEnv, JwtPayload } from './types.js';
 
 const app = new Hono<HonoEnv>();
 
@@ -89,4 +90,16 @@ app.notFound((c) => {
   return c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404);
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(
+      vaultService.cleanupOrphanedR2Objects(env.DB, env.VAULT_BUCKET)
+        .catch((err) => console.error(JSON.stringify({
+          event: 'scheduled_task_failed',
+          task: 'orphan_cleanup',
+          error: err instanceof Error ? err.message : 'Unknown error',
+        }))),
+    );
+  },
+};

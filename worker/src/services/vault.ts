@@ -283,6 +283,74 @@ export async function pruneOldVersions(
     .run();
 }
 
+export interface StorageSummary {
+  totalBytes: number;
+  versionCount: number;
+}
+
+export async function getTotalStorage(
+  db: D1Database,
+  userId: string,
+): Promise<StorageSummary> {
+  const row = await db
+    .prepare(
+      'SELECT COALESCE(SUM(size_bytes), 0) as total_bytes, COUNT(*) as version_count FROM vaults WHERE user_id = ?',
+    )
+    .bind(userId)
+    .first<{ total_bytes: number; version_count: number }>();
+
+  return {
+    totalBytes: row?.total_bytes ?? 0,
+    versionCount: row?.version_count ?? 0,
+  };
+}
+
+export async function cleanupOrphanedR2Objects(
+  db: D1Database,
+  bucket: R2Bucket,
+): Promise<void> {
+  let scanned = 0;
+  let deleted = 0;
+  let cursor: string | undefined;
+
+  do {
+    const listed = await bucket.list({ cursor, limit: 1000 });
+    const keys = listed.objects.map((obj) => obj.key);
+    scanned += keys.length;
+
+    if (keys.length > 0) {
+      // Extract vault IDs from R2 keys (format: {userId}/{vaultId})
+      const vaultIds = keys.map((key) => key.split('/')[1]).filter(Boolean);
+
+      if (vaultIds.length > 0) {
+        // Batch-check which vault IDs exist in the DB
+        const placeholders = vaultIds.map(() => '?').join(', ');
+        const { results } = await db
+          .prepare(`SELECT id FROM vaults WHERE id IN (${placeholders})`)
+          .bind(...vaultIds)
+          .all<{ id: string }>();
+
+        const existingIds = new Set(results.map((r) => r.id));
+
+        // Find orphaned keys (R2 objects with no matching DB record)
+        const orphanedKeys = keys.filter((key) => {
+          const vaultId = key.split('/')[1];
+          return vaultId && !existingIds.has(vaultId);
+        });
+
+        if (orphanedKeys.length > 0) {
+          await bucket.delete(orphanedKeys);
+          deleted += orphanedKeys.length;
+        }
+      }
+    }
+
+    cursor = listed.truncated ? listed.cursor : undefined;
+  } while (cursor);
+
+  console.log(JSON.stringify({ event: 'orphan_cleanup', scanned, deleted }));
+}
+
 export async function deleteAllForUser(
   db: D1Database,
   bucket: R2Bucket,

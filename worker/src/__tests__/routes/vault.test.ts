@@ -349,6 +349,37 @@ describe('vault owner isolation', () => {
   });
 });
 
+describe('PUT /vault/data (storage quota)', () => {
+  it('rejects upload when storage quota would be exceeded', async () => {
+    const { cookie } = await createAuthenticatedUser(env.DB);
+    // 50 MB quota. Upload 6 versions of ~9 MB each to exceed the 50 MB total.
+    // Each version is under the 10 MB per-upload limit but aggregate exceeds 50 MB.
+    const ninetyPctMax = 9 * 1024 * 1024; // 9 MB
+    const largeData = new Uint8Array(ninetyPctMax);
+
+    for (let i = 0; i < 5; i++) {
+      const res = await appFetch(uploadRequest(cookie, largeData, i));
+      expect(res.status).toBe(200);
+    }
+
+    // 6th upload should push total to ~54 MB, exceeding 50 MB quota
+    const res = await appFetch(uploadRequest(cookie, largeData, 5));
+    expect(res.status).toBe(413);
+    const body = await res.json() as { error: string; code: string; data: { currentBytes: number; maxBytes: number } };
+    expect(body.code).toBe('QUOTA_EXCEEDED');
+    expect(body.data.currentBytes).toBe(5 * ninetyPctMax);
+    expect(body.data.maxBytes).toBe(50 * 1024 * 1024);
+  });
+
+  it('allows upload when under quota', async () => {
+    const { cookie } = await createAuthenticatedUser(env.DB);
+    const data = new Uint8Array(1024); // 1 KB — well under quota
+
+    const res = await appFetch(uploadRequest(cookie, data, 0));
+    expect(res.status).toBe(200);
+  });
+});
+
 describe('vault routes without auth', () => {
   it.each(['/v1/vault', '/v1/vault/data', '/v1/vault/history', '/v1/vault/data/some-id'])(
     'GET %s returns 401',

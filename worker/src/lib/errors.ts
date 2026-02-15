@@ -37,6 +37,10 @@ export function conflict(message: string, data?: unknown): AppError {
   return new AppError(message, 409, 'CONFLICT', data);
 }
 
+export function payloadTooLarge(message: string, data?: unknown): AppError {
+  return new AppError(message, 413, 'QUOTA_EXCEEDED', data);
+}
+
 export function tooManyRequests(message: string): AppError {
   return new AppError(message, 429, 'TOO_MANY_REQUESTS');
 }

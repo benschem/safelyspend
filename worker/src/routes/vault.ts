@@ -1,12 +1,13 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimit, userRateLimit } from '../middleware/rate-limit.js';
-import { AppError, badRequest, notFound } from '../lib/errors.js';
+import { AppError, badRequest, notFound, payloadTooLarge } from '../lib/errors.js';
 import * as vaultService from '../services/vault.js';
 import type { HonoEnv } from '../types.js';
 
 const KEEP_VERSIONS = 10;
 const MAX_VAULT_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_USER_STORAGE = 50 * 1024 * 1024; // 50MB
 
 /** Read request body as stream with early abort if size exceeds limit. */
 async function readBodyWithLimit(req: Request, maxSize: number): Promise<ArrayBuffer> {
@@ -127,6 +128,15 @@ vault.put('/data', uploadRateLimit, userUploadLimit, async (c) => {
   // rather than buffering the entire request before checking
   const body = await readBodyWithLimit(c.req.raw, MAX_VAULT_SIZE);
 
+  // Check per-user storage quota before uploading
+  const storage = await vaultService.getTotalStorage(c.env.DB, user.id);
+  if (storage.totalBytes + body.byteLength > MAX_USER_STORAGE) {
+    throw payloadTooLarge('Storage quota exceeded', {
+      currentBytes: storage.totalBytes,
+      maxBytes: MAX_USER_STORAGE,
+    });
+  }
+
   const idempotencyKey = c.req.header('X-Idempotency-Key') || undefined;
 
   try {
@@ -142,15 +152,31 @@ vault.put('/data', uploadRateLimit, userUploadLimit, async (c) => {
     const requestId = c.get('requestId');
     console.log(JSON.stringify({ event: 'vault_uploaded', requestId, userId: user.id, version: result.version, sizeBytes: body.byteLength }));
 
-    // Prune old versions in background
+    // Background tasks: prune old versions + log storage summary
     c.executionCtx.waitUntil(
-      vaultService.pruneOldVersions(c.env.DB, c.env.VAULT_BUCKET, user.id, KEEP_VERSIONS)
-        .catch((err) => console.error(JSON.stringify({
-          event: 'background_task_failed',
-          requestId,
-          task: 'vault_prune',
-          error: err instanceof Error ? err.message : 'Unknown error',
-        }))),
+      Promise.all([
+        vaultService.pruneOldVersions(c.env.DB, c.env.VAULT_BUCKET, user.id, KEEP_VERSIONS)
+          .catch((err) => console.error(JSON.stringify({
+            event: 'background_task_failed',
+            requestId,
+            task: 'vault_prune',
+            error: err instanceof Error ? err.message : 'Unknown error',
+          }))),
+        vaultService.getTotalStorage(c.env.DB, user.id)
+          .then((summary) => console.log(JSON.stringify({
+            event: 'vault_storage_summary',
+            requestId,
+            userId: user.id,
+            totalBytes: summary.totalBytes,
+            versionCount: summary.versionCount,
+          })))
+          .catch((err) => console.error(JSON.stringify({
+            event: 'background_task_failed',
+            requestId,
+            task: 'vault_storage_summary',
+            error: err instanceof Error ? err.message : 'Unknown error',
+          }))),
+      ]),
     );
 
     return c.json({ version: result.version, vaultId: result.vaultId });
