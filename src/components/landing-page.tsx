@@ -1,17 +1,21 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   ArrowRight,
   Banknote,
   Briefcase,
   Building2,
   CircleCheck,
+  CloudOff,
+  FileSpreadsheet,
   GraduationCap,
+  History,
   Lock,
   Package,
+  Shield,
   SlidersHorizontal,
   Sparkles,
   Star,
@@ -69,22 +73,12 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
     <div className="flex min-h-screen flex-col bg-background">
       <header className="flex items-center justify-between border-b px-4 py-3 sm:px-6">
         <span className="text-lg font-semibold">SafelySpend</span>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                disabled
-                className="inline-flex h-8 cursor-not-allowed items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium opacity-50 shadow-sm"
-              >
-                Log in
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Accounts coming soon</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Link
+          to="/login"
+          className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+        >
+          Log in
+        </Link>
       </header>
 
       <main className="flex flex-1 flex-col">
@@ -596,17 +590,138 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
           </div>
         </section>
 
-        {/* 8. Privacy & Trust */}
-        <section className="px-4 py-12 bg-muted/30">
+        {/* Cloud Sync */}
+        <section className="px-4 py-16">
+          <div className="mx-auto max-w-4xl">
+            <div className="grid items-center gap-8 lg:grid-cols-2">
+              <div>
+                <h2 className="text-2xl font-semibold">Sync across devices. Trust no one.</h2>
+                <p className="mt-4 text-muted-foreground">
+                  Cloud sync is completely optional. When enabled, your data is end-to-end encrypted
+                  before it ever leaves your device. The server stores only ciphertext — it can never
+                  read your budget, transactions, or goals.
+                </p>
+                <p className="mt-3 text-muted-foreground">
+                  Version history lets you roll back to any previous snapshot, so you&apos;re never
+                  locked into a bad edit.
+                </p>
+              </div>
+              <div className="rounded-xl border bg-card p-5">
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-500/10">
+                      <CloudOff className="h-4 w-4 text-green-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Local-first</p>
+                      <p className="text-sm text-muted-foreground">
+                        Works offline. Your data lives on your device by default.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500/10">
+                      <Shield className="h-4 w-4 text-blue-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Zero-knowledge server</p>
+                      <p className="text-sm text-muted-foreground">
+                        Encrypted on your device. The server never sees your data.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-violet-500/10">
+                      <History className="h-4 w-4 text-violet-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Version history</p>
+                      <p className="text-sm text-muted-foreground">
+                        Roll back to any previous snapshot if something goes wrong.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CSV Import */}
+        <section className="px-4 py-16 bg-muted/30">
+          <div className="mx-auto max-w-4xl">
+            <div className="grid items-center gap-8 lg:grid-cols-2">
+              <div className="order-2 lg:order-1">
+                <div className="rounded-xl border bg-card p-5">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10">
+                      <FileSpreadsheet className="h-4 w-4 text-emerald-500" />
+                    </div>
+                    <span className="text-sm font-medium">3 transactions imported</span>
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <div>
+                        <p className="font-medium">Woolworths</p>
+                        <p className="text-xs text-muted-foreground">14 Feb 2026</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">Groceries</Badge>
+                        <span className="font-mono tabular-nums">-{formatCents(8450)}</span>
+                      </div>
+                    </div>
+                    <div className="border-t" />
+                    <div className="flex items-center justify-between text-sm">
+                      <div>
+                        <p className="font-medium">Netflix</p>
+                        <p className="text-xs text-muted-foreground">13 Feb 2026</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">Entertainment</Badge>
+                        <span className="font-mono tabular-nums">-{formatCents(1699)}</span>
+                      </div>
+                    </div>
+                    <div className="border-t" />
+                    <div className="flex items-center justify-between text-sm">
+                      <div>
+                        <p className="font-medium">Shell Coles Express</p>
+                        <p className="text-xs text-muted-foreground">12 Feb 2026</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">Transport</Badge>
+                        <span className="font-mono tabular-nums">-{formatCents(6520)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="order-1 lg:order-2">
+                <h2 className="text-2xl font-semibold">Import your bank transactions in seconds</h2>
+                <p className="mt-4 text-muted-foreground">
+                  Drop a CSV export from your bank and the app auto-detects the format. Duplicate
+                  transactions are flagged so nothing gets counted twice.
+                </p>
+                <p className="mt-3 text-muted-foreground">
+                  Set up import rules to auto-categorise transactions — Woolworths goes to Groceries,
+                  Netflix to Entertainment. Once configured, imports just work.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Privacy & Trust */}
+        <section className="px-4 py-12">
           <div className="mx-auto flex max-w-xl items-center gap-4 rounded-xl border bg-card p-6">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-green-500/10">
               <Lock className="h-6 w-6 text-green-500" />
             </div>
             <div>
-              <p className="font-medium">Your data never leaves your browser</p>
+              <p className="font-medium">Private by default. Encrypted if you sync.</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                No accounts. No servers. No tracking. Everything is stored locally. Export your data
-                anytime. Delete it anytime.
+                Everything runs locally on your device. If you enable cloud sync, your data is
+                end-to-end encrypted — the server never sees it. No tracking. Export or delete your
+                data anytime.
               </p>
             </div>
           </div>
