@@ -88,18 +88,21 @@ auth.post('/login', loginRateLimit, async (c) => {
   // Send email
   await sendAuthCode(c.env.RESEND_API_KEY, c.env.FROM_EMAIL, email, code);
 
-  console.log(JSON.stringify({ event: 'login_code_sent' }));
+  console.log(JSON.stringify({ event: 'login_code_sent', requestId: c.get('requestId') }));
 
   // Cleanup expired codes and sessions in background
+  const requestId = c.get('requestId');
   c.executionCtx.waitUntil(
     Promise.all([
       cleanupExpiredCodes(c.env.DB).catch((err) => console.error(JSON.stringify({
         event: 'background_task_failed',
+        requestId,
         task: 'code_cleanup',
         error: err instanceof Error ? err.message : 'Unknown error',
       }))),
       cleanupExpiredSessions(c.env.DB).catch((err) => console.error(JSON.stringify({
         event: 'background_task_failed',
+        requestId,
         task: 'session_cleanup',
         error: err instanceof Error ? err.message : 'Unknown error',
       }))),
@@ -154,7 +157,7 @@ auth.post('/verify', verifyRateLimit, async (c) => {
     maxAge: sessionExpiry,
   });
 
-  console.log(JSON.stringify({ event: 'auth_verified', userId: user.id }));
+  console.log(JSON.stringify({ event: 'auth_verified', requestId: c.get('requestId'), userId: user.id }));
 
   return c.json({ user: { id: user.id, email: user.email } });
 });
@@ -171,7 +174,7 @@ auth.post('/logout', authMiddleware, sessionRateLimit, async (c) => {
     path: '/',
   });
 
-  console.log(JSON.stringify({ event: 'logout', userId: payload.sub }));
+  console.log(JSON.stringify({ event: 'logout', requestId: c.get('requestId'), userId: payload.sub }));
 
   return c.json({ message: 'Logged out' });
 });
@@ -200,7 +203,7 @@ auth.delete('/account', authMiddleware, sessionRateLimit, async (c) => {
     path: '/',
   });
 
-  console.log(JSON.stringify({ event: 'account_deleted', userId: user.id }));
+  console.log(JSON.stringify({ event: 'account_deleted', requestId: c.get('requestId'), userId: user.id }));
 
   return c.json({ message: 'Account deleted' });
 });
@@ -210,7 +213,7 @@ auth.post('/revoke-all-sessions', authMiddleware, sessionRateLimit, async (c) =>
   const payload = c.get('jwtPayload');
   const revoked = await deleteAllSessionsExcept(c.env.DB, payload.sub, payload.sid);
 
-  console.log(JSON.stringify({ event: 'sessions_revoked', userId: payload.sub, count: revoked }));
+  console.log(JSON.stringify({ event: 'sessions_revoked', requestId: c.get('requestId'), userId: payload.sub, count: revoked }));
 
   return c.json({ revoked });
 });
@@ -243,7 +246,7 @@ auth.delete('/sessions/:id', authMiddleware, sessionRateLimit, async (c) => {
     throw notFound('Session not found');
   }
 
-  console.log(JSON.stringify({ event: 'session_revoked', userId: payload.sub, sessionId }));
+  console.log(JSON.stringify({ event: 'session_revoked', requestId: c.get('requestId'), userId: payload.sub, sessionId }));
 
   return c.json({ message: 'Session revoked' });
 });

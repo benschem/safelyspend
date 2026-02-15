@@ -219,7 +219,13 @@ export async function putData(
       throw conflict('Version conflict', { currentVersion: latest?.current_version ?? currentVersion });
     }
     // Clean up orphaned R2 object before re-throwing
-    await bucket.delete(r2Key).catch(() => {});
+    await bucket.delete(r2Key).catch((deleteErr) =>
+      console.error(JSON.stringify({
+        event: 'r2_cleanup_failed',
+        r2Key,
+        error: deleteErr instanceof Error ? deleteErr.message : 'Unknown error',
+      })),
+    );
     throw err;
   }
 

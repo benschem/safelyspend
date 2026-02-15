@@ -1,6 +1,6 @@
 import type { MiddlewareHandler } from 'hono';
 import { tooManyRequests } from '../lib/errors.js';
-import type { HonoEnv } from '../types.js';
+import type { HonoEnv, User } from '../types.js';
 
 interface RateLimitConfig {
   /** Maximum number of requests in the window */
@@ -29,7 +29,9 @@ export function rateLimit(config: RateLimitConfig): MiddlewareHandler<HonoEnv> {
     if (row && row.reset_at > now && row.count >= config.max) {
       const retryAfter = Math.max(1, row.reset_at - now);
       c.header('Retry-After', String(retryAfter));
-      console.warn(JSON.stringify({ event: 'rate_limited', limiter: config.keyPrefix }));
+      const requestId = c.get('requestId');
+      const userId = (c.get('user') as User | undefined)?.id;
+      console.warn(JSON.stringify({ event: 'rate_limited', requestId, userId, limiter: config.keyPrefix }));
       throw tooManyRequests('Too many requests. Please try again later.');
     }
 

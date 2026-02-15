@@ -3,9 +3,15 @@ import { cors } from 'hono/cors';
 import { AppError } from './lib/errors.js';
 import authRoutes from './routes/auth.js';
 import vaultRoutes from './routes/vault.js';
-import type { HonoEnv } from './types.js';
+import type { HonoEnv, JwtPayload } from './types.js';
 
 const app = new Hono<HonoEnv>();
+
+// Request ID middleware — must be first
+app.use('*', async (c, next) => {
+  c.set('requestId', crypto.randomUUID());
+  await next();
+});
 
 // CORS middleware - use dynamic handler to access env
 app.use('*', async (c, next) => {
@@ -33,6 +39,8 @@ app.use('*', async (c, next) => {
 
 // Global error handler
 app.onError((err, c) => {
+  const requestId = c.get('requestId');
+
   if (err instanceof AppError) {
     return c.json(
       {
@@ -44,11 +52,17 @@ app.onError((err, c) => {
     );
   }
 
+  // userId is only available after authMiddleware has run
+  const userId = (c.get('jwtPayload') as JwtPayload | undefined)?.sub;
+
   console.error(JSON.stringify({
     event: 'unhandled_error',
+    requestId,
+    userId,
     method: c.req.method,
     path: c.req.path,
     error: err instanceof Error ? err.message : 'Unknown error',
+    stack: err instanceof Error ? err.stack : undefined,
   }));
   return c.json({ error: 'Internal server error', code: 'INTERNAL_ERROR' }, 500);
 });

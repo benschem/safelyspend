@@ -28,6 +28,7 @@ export interface JwtPayload {
 export type HonoEnv = {
   Bindings: Env;
   Variables: {
+    requestId: string;
     user: User;
     jwtPayload: JwtPayload;
   };

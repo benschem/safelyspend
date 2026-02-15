@@ -10,23 +10,24 @@ const JWT_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 days
 const JWT_RENEWAL_THRESHOLD = JWT_EXPIRY_SECONDS / 2; // 3.5 days
 
 export const authMiddleware = createMiddleware<HonoEnv>(async (c, next) => {
+  const requestId = c.get('requestId');
   const token = getCookie(c, COOKIE_NAME);
 
   if (!token) {
-    console.warn(JSON.stringify({ event: 'auth_failed', reason: 'no_token' }));
+    console.warn(JSON.stringify({ event: 'auth_failed', requestId, reason: 'no_token' }));
     throw unauthorized('Authentication required');
   }
 
   const payload = await jwtVerify(token, c.env.JWT_SECRET);
 
   if (!payload.sid) {
-    console.warn(JSON.stringify({ event: 'auth_failed', reason: 'invalid_session' }));
+    console.warn(JSON.stringify({ event: 'auth_failed', requestId, reason: 'invalid_session' }));
     throw unauthorized('Invalid session');
   }
 
   const user = await findBySession(c.env.DB, payload.sub, payload.sid);
   if (!user) {
-    console.warn(JSON.stringify({ event: 'auth_failed', reason: 'session_expired' }));
+    console.warn(JSON.stringify({ event: 'auth_failed', requestId, userId: payload.sub, reason: 'session_expired' }));
     throw unauthorized('Session expired or invalid');
   }
 
@@ -60,7 +61,7 @@ export const authMiddleware = createMiddleware<HonoEnv>(async (c, next) => {
       // Update context so downstream handlers see the new session ID
       c.set('jwtPayload', { ...payload, sid: newSessionId });
 
-      console.log(JSON.stringify({ event: 'session_rotated', userId: user.id }));
+      console.log(JSON.stringify({ event: 'session_rotated', requestId, userId: user.id }));
     }
   }
 
