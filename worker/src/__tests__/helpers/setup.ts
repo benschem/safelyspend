@@ -24,11 +24,14 @@ export async function applyMigrations(db: D1Database): Promise<void> {
   await execStatements(db, migration0003);
 }
 
-const COOKIE_NAME = '__budget_session';
-const JWT_EXPIRY_SECONDS = 7 * 24 * 60 * 60;
+export const COOKIE_NAME = '__budget_session';
+export const JWT_EXPIRY_SECONDS = 7 * 24 * 60 * 60;
 const SESSION_EXPIRY_SECONDS = 30 * 24 * 60 * 60;
 
-export async function createAuthenticatedUser(db: D1Database): Promise<{
+export async function createAuthenticatedUser(
+  db: D1Database,
+  options?: { jwtExpiry?: number },
+): Promise<{
   user: { id: string; email: string };
   sessionId: string;
   cookie: string;
@@ -52,7 +55,7 @@ export async function createAuthenticatedUser(db: D1Database): Promise<{
   const token = await jwtSign(
     { sub: userId, sid: sessionId, email },
     env.JWT_SECRET,
-    JWT_EXPIRY_SECONDS,
+    options?.jwtExpiry ?? JWT_EXPIRY_SECONDS,
   );
 
   return {

@@ -115,6 +115,78 @@ export async function deleteSession(
     .run();
 }
 
+export async function deleteAllSessionsExcept(
+  db: D1Database,
+  userId: string,
+  currentSessionId: string,
+): Promise<number> {
+  const result = await db
+    .prepare('DELETE FROM sessions WHERE user_id = ? AND id != ?')
+    .bind(userId, currentSessionId)
+    .run();
+  return result.meta.changes ?? 0;
+}
+
+export async function getSessionExpiresAt(
+  db: D1Database,
+  sessionId: string,
+): Promise<string | null> {
+  const row = await db
+    .prepare('SELECT expires_at FROM sessions WHERE id = ?')
+    .bind(sessionId)
+    .first<{ expires_at: string }>();
+  return row?.expires_at ?? null;
+}
+
+export async function rotateSession(
+  db: D1Database,
+  oldSessionId: string,
+  userId: string,
+  expiresAt: string,
+): Promise<string> {
+  const newId = generateId();
+  // Create first, then delete — if delete fails, user still has a session
+  await db
+    .prepare('INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)')
+    .bind(newId, userId, expiresAt)
+    .run();
+  await db
+    .prepare('DELETE FROM sessions WHERE id = ? AND user_id = ?')
+    .bind(oldSessionId, userId)
+    .run();
+  return newId;
+}
+
+export interface SessionInfo {
+  id: string;
+  createdAt: string;
+}
+
+export async function listSessions(
+  db: D1Database,
+  userId: string,
+): Promise<SessionInfo[]> {
+  const rows = await db
+    .prepare(
+      "SELECT id, created_at FROM sessions WHERE user_id = ? AND expires_at > datetime('now') ORDER BY created_at DESC",
+    )
+    .bind(userId)
+    .all<{ id: string; created_at: string }>();
+  return rows.results.map((r) => ({ id: r.id, createdAt: r.created_at }));
+}
+
+export async function deleteSessionForUser(
+  db: D1Database,
+  sessionId: string,
+  userId: string,
+): Promise<boolean> {
+  const result = await db
+    .prepare('DELETE FROM sessions WHERE id = ? AND user_id = ?')
+    .bind(sessionId, userId)
+    .run();
+  return (result.meta.changes ?? 0) > 0;
+}
+
 export async function cleanupExpiredSessions(db: D1Database): Promise<void> {
   await db
     .prepare("DELETE FROM sessions WHERE expires_at < datetime('now')")

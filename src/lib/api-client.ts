@@ -84,10 +84,10 @@ export const api = {
       });
     },
 
-    verify(email: string, code: string) {
+    verify(email: string, code: string, rememberMe?: boolean) {
       return request<{ user: AuthUser }>('/auth/verify', {
         method: 'POST',
-        body: JSON.stringify({ email, code }),
+        body: JSON.stringify({ email, code, rememberMe }),
       });
     },
 
@@ -104,6 +104,24 @@ export const api = {
     deleteAccount() {
       return request<{ message: string }>('/auth/account', {
         method: 'DELETE',
+      });
+    },
+
+    sessions() {
+      return request<{
+        sessions: Array<{ id: string; createdAt: string; isCurrent: boolean }>;
+      }>('/auth/sessions');
+    },
+
+    revokeSession(sessionId: string) {
+      return request<{ message: string }>(`/auth/sessions/${sessionId}`, {
+        method: 'DELETE',
+      });
+    },
+
+    revokeAllSessions() {
+      return request<{ revoked: number }>('/auth/revoke-all-sessions', {
+        method: 'POST',
       });
     },
   },

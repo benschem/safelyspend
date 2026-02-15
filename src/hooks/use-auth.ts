@@ -9,7 +9,7 @@ interface UseAuthReturn {
   status: AuthStatus;
   isAuthenticated: boolean;
   login: (email: string) => Promise<void>;
-  verify: (email: string, code: string) => Promise<{ isNewUser: boolean }>;
+  verify: (email: string, code: string, rememberMe?: boolean) => Promise<{ isNewUser: boolean }>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   checkAuth: () => Promise<void>;
@@ -38,9 +38,9 @@ export function useAuth(): UseAuthReturn {
     await api.auth.login(email);
   }, []);
 
-  const verify = useCallback(async (email: string, code: string) => {
+  const verify = useCallback(async (email: string, code: string, rememberMe?: boolean) => {
     // Check if vault exists before verifying to determine new vs returning user
-    const { user: authUser } = await api.auth.verify(email, code);
+    const { user: authUser } = await api.auth.verify(email, code, rememberMe);
     setUser(authUser);
     setStatus('authenticated');
 

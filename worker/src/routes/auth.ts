@@ -3,8 +3,18 @@ import { setCookie, deleteCookie } from 'hono/cookie';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rate-limit.js';
 import { jwtSign } from '../lib/crypto.js';
-import { badRequest, unauthorized } from '../lib/errors.js';
-import { findByEmail, create, deleteUser, createSession, deleteSession, cleanupExpiredSessions } from '../services/users.js';
+import { badRequest, notFound, unauthorized } from '../lib/errors.js';
+import {
+  findByEmail,
+  create,
+  deleteUser,
+  createSession,
+  deleteSession,
+  deleteAllSessionsExcept,
+  listSessions,
+  deleteSessionForUser,
+  cleanupExpiredSessions,
+} from '../services/users.js';
 import { createAuthCode, verifyAuthCode, cleanupExpiredCodes } from '../services/auth.js';
 import { sendAuthCode } from '../services/email.js';
 import { deleteAllForUser } from '../services/vault.js';
@@ -12,8 +22,8 @@ import type { HonoEnv, AppContext } from '../types.js';
 
 const COOKIE_NAME = '__budget_session';
 const JWT_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 days
-const SESSION_EXPIRY_SECONDS = 30 * 24 * 60 * 60; // 30 days
-const COOKIE_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
+const SESSION_EXPIRY_DEFAULT = 7 * 24 * 60 * 60; // 7 days
+const SESSION_EXPIRY_REMEMBER = 30 * 24 * 60 * 60; // 30 days
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -101,7 +111,7 @@ auth.post('/login', loginRateLimit, async (c) => {
 
 // POST /auth/verify
 auth.post('/verify', verifyRateLimit, async (c) => {
-  const body = await parseJsonBody<{ email?: string; code?: string }>(c);
+  const body = await parseJsonBody<{ email?: string; code?: string; rememberMe?: boolean }>(c);
 
   if (!body.email || typeof body.email !== 'string') {
     throw badRequest('Email is required');
@@ -124,7 +134,8 @@ auth.post('/verify', verifyRateLimit, async (c) => {
   }
 
   // Create session
-  const sessionExpiresAt = new Date(Date.now() + SESSION_EXPIRY_SECONDS * 1000).toISOString();
+  const sessionExpiry = body.rememberMe ? SESSION_EXPIRY_REMEMBER : SESSION_EXPIRY_DEFAULT;
+  const sessionExpiresAt = new Date(Date.now() + sessionExpiry * 1000).toISOString();
   const sessionId = await createSession(c.env.DB, user.id, sessionExpiresAt);
 
   // Sign JWT with session ID
@@ -140,7 +151,7 @@ auth.post('/verify', verifyRateLimit, async (c) => {
     secure: true,
     sameSite: 'Strict',
     path: '/',
-    maxAge: COOKIE_MAX_AGE,
+    maxAge: sessionExpiry,
   });
 
   console.log(JSON.stringify({ event: 'auth_verified', userId: user.id }));
@@ -192,6 +203,49 @@ auth.delete('/account', authMiddleware, sessionRateLimit, async (c) => {
   console.log(JSON.stringify({ event: 'account_deleted', userId: user.id }));
 
   return c.json({ message: 'Account deleted' });
+});
+
+// POST /auth/revoke-all-sessions (requires auth)
+auth.post('/revoke-all-sessions', authMiddleware, sessionRateLimit, async (c) => {
+  const payload = c.get('jwtPayload');
+  const revoked = await deleteAllSessionsExcept(c.env.DB, payload.sub, payload.sid);
+
+  console.log(JSON.stringify({ event: 'sessions_revoked', userId: payload.sub, count: revoked }));
+
+  return c.json({ revoked });
+});
+
+// GET /auth/sessions (requires auth)
+auth.get('/sessions', authMiddleware, sessionRateLimit, async (c) => {
+  const payload = c.get('jwtPayload');
+  const sessions = await listSessions(c.env.DB, payload.sub);
+
+  return c.json({
+    sessions: sessions.map((s) => ({
+      id: s.id,
+      createdAt: s.createdAt,
+      isCurrent: s.id === payload.sid,
+    })),
+  });
+});
+
+// DELETE /auth/sessions/:id (requires auth)
+auth.delete('/sessions/:id', authMiddleware, sessionRateLimit, async (c) => {
+  const payload = c.get('jwtPayload');
+  const sessionId = c.req.param('id');
+
+  if (sessionId === payload.sid) {
+    throw badRequest('Cannot revoke current session. Use logout instead.');
+  }
+
+  const deleted = await deleteSessionForUser(c.env.DB, sessionId, payload.sub);
+  if (!deleted) {
+    throw notFound('Session not found');
+  }
+
+  console.log(JSON.stringify({ event: 'session_revoked', userId: payload.sub, sessionId }));
+
+  return c.json({ message: 'Session revoked' });
 });
 
 export default auth;

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { z } from 'zod';
 import { toast } from 'sonner';
@@ -48,7 +48,8 @@ import {
 import { PassphraseDialog } from '@/components/dialogs/passphrase-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { useSync } from '@/hooks/use-sync';
-import { ApiError } from '@/lib/api-client';
+import { api, ApiError } from '@/lib/api-client';
+import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import {
   Select,
@@ -148,6 +149,22 @@ export function SettingsPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [overwriteConfirmOpen, setOverwriteConfirmOpen] = useState(false);
 
+  // Active sessions state
+  const [sessions, setSessions] = useState<Array<{ id: string; createdAt: string; isCurrent: boolean }>>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
+  const [revokingAll, setRevokingAll] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    setSessionsLoading(true);
+    api.auth
+      .sessions()
+      .then((res) => setSessions(res.sessions))
+      .catch(() => {})
+      .finally(() => setSessionsLoading(false));
+  }, [isAuthenticated]);
+
   // Debug mode state - initialize from current debug setting
   const [debugEnabled, setDebugEnabled] = useState(() => debug.isEnabled());
 
@@ -245,6 +262,34 @@ export function SettingsPage() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Logout failed';
       toast.error('Logout failed', { description: msg });
+    }
+  };
+
+  const handleRevokeSession = async (sessionId: string) => {
+    setRevokingSessionId(sessionId);
+    try {
+      await api.auth.revokeSession(sessionId);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      toast('Session revoked');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to revoke session';
+      toast.error('Revoke failed', { description: msg });
+    } finally {
+      setRevokingSessionId(null);
+    }
+  };
+
+  const handleRevokeAllSessions = async () => {
+    setRevokingAll(true);
+    try {
+      const { revoked } = await api.auth.revokeAllSessions();
+      setSessions((prev) => prev.filter((s) => s.isCurrent));
+      toast(`Revoked ${revoked} session${revoked !== 1 ? 's' : ''}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to revoke sessions';
+      toast.error('Revoke failed', { description: msg });
+    } finally {
+      setRevokingAll(false);
     }
   };
 
@@ -916,6 +961,67 @@ export function SettingsPage() {
                       </div>
                     )}
                   </div>
+                </div>
+
+                {/* Active Sessions panel */}
+                <div className="panel">
+                  <div className="panel-header">
+                    <h3>Active Sessions</h3>
+                    {sessions.filter((s) => !s.isCurrent).length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRevokeAllSessions}
+                        disabled={revokingAll}
+                        className="cursor-pointer"
+                      >
+                        {revokingAll ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Revoking...
+                          </>
+                        ) : (
+                          'Revoke All Others'
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                  {sessionsLoading ? (
+                    <div className="flex items-center justify-center p-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : sessions.length === 0 ? (
+                    <p className="p-4 text-sm text-muted-foreground">No active sessions.</p>
+                  ) : (
+                    <div className="divide-y">
+                      {sessions.map((session) => (
+                        <div key={session.id} className="flex items-center justify-between p-4">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-sm">{session.id.slice(0, 8)}</span>
+                            {session.isCurrent && <Badge variant="success">Current</Badge>}
+                            <span className="text-sm text-muted-foreground">
+                              {formatRelativeTime(session.createdAt)}
+                            </span>
+                          </div>
+                          {!session.isCurrent && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRevokeSession(session.id)}
+                              disabled={revokingSessionId === session.id}
+                              className="cursor-pointer"
+                            >
+                              {revokingSessionId === session.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                'Revoke'
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Account panel */}

@@ -4,6 +4,7 @@ import { Cloud, Mail, ArrowRight, ArrowLeft, Info, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
 
 export function LoginPage() {
@@ -19,6 +20,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const codeInputRef = useRef<HTMLInputElement>(null);
 
@@ -79,7 +81,7 @@ export function LoginPage() {
 
     setLoading(true);
     try {
-      await verify(emailParam, trimmedCode);
+      await verify(emailParam, trimmedCode, rememberMe);
       navigate('/settings', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid code. Please try again.');
@@ -143,6 +145,17 @@ export function LoginPage() {
                   className="text-center text-lg tracking-widest"
                   autoComplete="one-time-code"
                 />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="remember-me"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked === true)}
+                />
+                <label htmlFor="remember-me" className="cursor-pointer text-sm text-muted-foreground">
+                  Remember me for 30 days
+                </label>
               </div>
 
               {error && (
