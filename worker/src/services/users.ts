@@ -1,6 +1,8 @@
 import { generateId } from '../lib/id.js';
 import type { User } from '../types.js';
 
+const MAX_SESSIONS_PER_USER = 10;
+
 interface UserRow {
   id: string;
   email: string;
@@ -94,6 +96,25 @@ export async function createSession(
   expiresAt: string,
 ): Promise<string> {
   const id = generateId();
+
+  // Enforce session cap — delete oldest active sessions if at limit
+  const countRow = await db
+    .prepare("SELECT COUNT(*) as count FROM sessions WHERE user_id = ? AND expires_at > datetime('now')")
+    .bind(userId)
+    .first<{ count: number }>();
+
+  if ((countRow?.count ?? 0) >= MAX_SESSIONS_PER_USER) {
+    const toDelete = (countRow?.count ?? 0) - MAX_SESSIONS_PER_USER + 1;
+    await db
+      .prepare(
+        `DELETE FROM sessions WHERE id IN (
+          SELECT id FROM sessions WHERE user_id = ? AND expires_at > datetime('now')
+          ORDER BY created_at ASC LIMIT ?
+        )`,
+      )
+      .bind(userId, toDelete)
+      .run();
+  }
 
   await db
     .prepare(

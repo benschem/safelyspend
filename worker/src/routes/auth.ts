@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
 import { setCookie, deleteCookie } from 'hono/cookie';
 import { authMiddleware } from '../middleware/auth.js';
-import { rateLimit } from '../middleware/rate-limit.js';
+import { rateLimit, checkRateLimit } from '../middleware/rate-limit.js';
 import { jwtSign } from '../lib/crypto.js';
-import { badRequest, notFound, unauthorized } from '../lib/errors.js';
+import { badRequest, notFound, tooManyRequests, unauthorized } from '../lib/errors.js';
 import {
   findByEmail,
   create,
@@ -15,7 +15,7 @@ import {
   deleteSessionForUser,
   cleanupExpiredSessions,
 } from '../services/users.js';
-import { createAuthCode, verifyAuthCode, cleanupExpiredCodes } from '../services/auth.js';
+import { createAuthCode, verifyAuthCode, cleanupExpiredCodes, isUserLockedOut } from '../services/auth.js';
 import { sendAuthCode } from '../services/email.js';
 import { deleteAllForUser } from '../services/vault.js';
 import type { HonoEnv, AppContext } from '../types.js';
@@ -76,10 +76,24 @@ auth.post('/login', loginRateLimit, async (c) => {
     throw badRequest('Invalid email format');
   }
 
+  // Per-email rate limit: 3 code requests per 15 minutes
+  const emailResult = await checkRateLimit(c.env.DB, `auth:login:email:${email}`, 3, 900);
+  if (!emailResult.allowed) {
+    c.header('Retry-After', String(emailResult.retryAfter));
+    throw tooManyRequests('Too many login requests. Please try again later.');
+  }
+
   // Find or create user
   let user = await findByEmail(c.env.DB, email);
   if (!user) {
     user = await create(c.env.DB, email);
+  }
+
+  // Check lockout — return 200 silently to prevent email enumeration
+  const lockedOut = await isUserLockedOut(c.env.DB, user.id);
+  if (lockedOut) {
+    console.warn(JSON.stringify({ event: 'user_locked_out', requestId: c.get('requestId'), userId: user.id }));
+    return c.json({ message: 'Code sent' });
   }
 
   // Create auth code
@@ -129,6 +143,13 @@ auth.post('/verify', verifyRateLimit, async (c) => {
   const user = await findByEmail(c.env.DB, email);
   if (!user) {
     throw unauthorized('Invalid email or code');
+  }
+
+  // Per-user verification rate limit: 10 attempts per 15 minutes
+  const verifyResult = await checkRateLimit(c.env.DB, `auth:verify:user:${user.id}`, 10, 900);
+  if (!verifyResult.allowed) {
+    c.header('Retry-After', String(verifyResult.retryAfter));
+    throw tooManyRequests('Too many verification attempts. Please try again later.');
   }
 
   const valid = await verifyAuthCode(c.env.DB, user.id, code);

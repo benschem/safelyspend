@@ -4,6 +4,7 @@ import { tooManyRequests } from '../lib/errors.js';
 
 const AUTH_CODE_EXPIRY_MINUTES = 10;
 const MAX_ATTEMPTS = 5;
+const MAX_DAILY_FAILED_ATTEMPTS = 15;
 
 export async function createAuthCode(
   db: D1Database,
@@ -81,6 +82,18 @@ export async function verifyAuthCode(
   ]);
 
   return true;
+}
+
+export async function isUserLockedOut(db: D1Database, userId: string): Promise<boolean> {
+  const row = await db
+    .prepare(
+      `SELECT COALESCE(SUM(attempt_count), 0) as total
+       FROM auth_codes
+       WHERE user_id = ? AND created_at > datetime('now', '-1 day') AND used_at IS NULL`,
+    )
+    .bind(userId)
+    .first<{ total: number }>();
+  return (row?.total ?? 0) >= MAX_DAILY_FAILED_ATTEMPTS;
 }
 
 export async function cleanupExpiredCodes(db: D1Database): Promise<void> {

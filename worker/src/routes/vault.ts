@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth.js';
-import { rateLimit } from '../middleware/rate-limit.js';
+import { rateLimit, userRateLimit } from '../middleware/rate-limit.js';
 import { AppError, badRequest, notFound } from '../lib/errors.js';
 import * as vaultService from '../services/vault.js';
 import type { HonoEnv } from '../types.js';
@@ -50,9 +50,13 @@ async function readBodyWithLimit(req: Request, maxSize: number): Promise<ArrayBu
   return combined.buffer as ArrayBuffer;
 }
 
-// Rate limiters
+// Rate limiters — IP-based
 const readRateLimit = rateLimit({ max: 60, windowSeconds: 60, keyPrefix: 'vault:read' });
 const uploadRateLimit = rateLimit({ max: 30, windowSeconds: 60, keyPrefix: 'vault:upload' });
+
+// Rate limiters — per-user (runs after authMiddleware)
+const userReadLimit = userRateLimit({ max: 120, windowSeconds: 60, keyPrefix: 'vault:read' });
+const userUploadLimit = userRateLimit({ max: 60, windowSeconds: 60, keyPrefix: 'vault:upload' });
 
 const vault = new Hono<HonoEnv>();
 
@@ -60,7 +64,7 @@ const vault = new Hono<HonoEnv>();
 vault.use('*', authMiddleware);
 
 // GET /vault - Get vault metadata
-vault.get('/', readRateLimit, async (c) => {
+vault.get('/', readRateLimit, userReadLimit, async (c) => {
   const user = c.get('user');
   const metadata = await vaultService.getMetadata(c.env.DB, user.id);
 
@@ -77,7 +81,7 @@ vault.get('/', readRateLimit, async (c) => {
 });
 
 // GET /vault/data - Stream current encrypted blob
-vault.get('/data', readRateLimit, async (c) => {
+vault.get('/data', readRateLimit, userReadLimit, async (c) => {
   const user = c.get('user');
   const data = await vaultService.getData(c.env.DB, c.env.VAULT_BUCKET, user.id);
 
@@ -95,7 +99,7 @@ vault.get('/data', readRateLimit, async (c) => {
 });
 
 // PUT /vault/data - Upload encrypted blob
-vault.put('/data', uploadRateLimit, async (c) => {
+vault.put('/data', uploadRateLimit, userUploadLimit, async (c) => {
   const user = c.get('user');
 
   const contentType = c.req.header('content-type') ?? '';
@@ -166,14 +170,14 @@ vault.put('/data', uploadRateLimit, async (c) => {
 });
 
 // GET /vault/history - List all vault versions
-vault.get('/history', readRateLimit, async (c) => {
+vault.get('/history', readRateLimit, userReadLimit, async (c) => {
   const user = c.get('user');
   const history = await vaultService.getHistory(c.env.DB, user.id);
   return c.json({ versions: history });
 });
 
 // GET /vault/data/:vaultId - Stream specific historical version
-vault.get('/data/:vaultId', readRateLimit, async (c) => {
+vault.get('/data/:vaultId', readRateLimit, userReadLimit, async (c) => {
   const user = c.get('user');
   const vaultId = c.req.param('vaultId');
 
