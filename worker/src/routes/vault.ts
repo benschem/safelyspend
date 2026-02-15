@@ -123,6 +123,8 @@ vault.put('/data', uploadRateLimit, async (c) => {
   // rather than buffering the entire request before checking
   const body = await readBodyWithLimit(c.req.raw, MAX_VAULT_SIZE);
 
+  const idempotencyKey = c.req.header('X-Idempotency-Key') || undefined;
+
   try {
     const result = await vaultService.putData(
       c.env.DB,
@@ -130,6 +132,7 @@ vault.put('/data', uploadRateLimit, async (c) => {
       user.id,
       body,
       expectedVersion,
+      idempotencyKey,
     );
 
     console.log(JSON.stringify({ event: 'vault_uploaded', userId: user.id, version: result.version, sizeBytes: body.byteLength }));

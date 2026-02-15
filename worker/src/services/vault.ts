@@ -138,7 +138,20 @@ export async function putData(
   userId: string,
   data: ArrayBuffer,
   expectedVersion: number,
+  idempotencyKey?: string,
 ): Promise<{ version: number; vaultId: string }> {
+  // If idempotency key provided, check for a previous upload with the same key
+  if (idempotencyKey) {
+    const existing = await db
+      .prepare('SELECT id, version FROM vaults WHERE user_id = ? AND idempotency_key = ?')
+      .bind(userId, idempotencyKey)
+      .first<{ id: string; version: number }>();
+
+    if (existing) {
+      return { version: existing.version, vaultId: existing.id };
+    }
+  }
+
   // Pre-check current version (fast reject for stale clients before R2 upload)
   const syncState = await db
     .prepare('SELECT current_version, current_vault_id FROM sync_state WHERE user_id = ?')
@@ -166,9 +179,9 @@ export async function putData(
     const batchResults = await db.batch([
       db
         .prepare(
-          'INSERT INTO vaults (id, user_id, version, r2_key, size_bytes, checksum, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          'INSERT INTO vaults (id, user_id, version, r2_key, size_bytes, checksum, created_at, idempotency_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         )
-        .bind(vaultId, userId, newVersion, r2Key, sizeBytes, checksum, now),
+        .bind(vaultId, userId, newVersion, r2Key, sizeBytes, checksum, now, idempotencyKey ?? null),
       syncState
         ? db
             .prepare(
@@ -205,6 +218,8 @@ export async function putData(
         .first<{ current_version: number }>();
       throw conflict('Version conflict', { currentVersion: latest?.current_version ?? currentVersion });
     }
+    // Clean up orphaned R2 object before re-throwing
+    await bucket.delete(r2Key).catch(() => {});
     throw err;
   }
 

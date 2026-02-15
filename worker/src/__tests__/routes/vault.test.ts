@@ -6,15 +6,24 @@ beforeAll(async () => {
   await applyMigrations(env.DB);
 });
 
-function uploadRequest(cookie: string, data: Uint8Array, expectedVersion: number): Request {
+function uploadRequest(
+  cookie: string,
+  data: Uint8Array,
+  expectedVersion: number,
+  idempotencyKey?: string,
+): Request {
+  const headers: Record<string, string> = {
+    Cookie: cookie,
+    'Content-Type': 'application/octet-stream',
+    'X-Expected-Version': String(expectedVersion),
+    'Content-Length': String(data.byteLength),
+  };
+  if (idempotencyKey) {
+    headers['X-Idempotency-Key'] = idempotencyKey;
+  }
   return new Request('http://localhost/vault/data', {
     method: 'PUT',
-    headers: {
-      Cookie: cookie,
-      'Content-Type': 'application/octet-stream',
-      'X-Expected-Version': String(expectedVersion),
-      'Content-Length': String(data.byteLength),
-    },
+    headers,
     body: data,
   });
 }
@@ -205,6 +214,68 @@ describe('GET /vault/data/:vaultId', () => {
     expect(res.status).toBe(404);
     const body = await res.json() as { code: string };
     expect(body.code).toBe('NOT_FOUND');
+  });
+});
+
+describe('PUT /vault/data (idempotency)', () => {
+  it('upload with idempotency key succeeds', async () => {
+    const { cookie } = await createAuthenticatedUser(env.DB);
+    const data = new TextEncoder().encode('idempotent-upload');
+
+    const res = await appFetch(uploadRequest(cookie, data, 0, 'idem-key-1'));
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as { version: number; vaultId: string };
+    expect(body.version).toBe(1);
+    expect(body.vaultId).toBeTruthy();
+  });
+
+  it('retry with same idempotency key returns original result', async () => {
+    const { cookie } = await createAuthenticatedUser(env.DB);
+    const data = new TextEncoder().encode('idempotent-retry');
+    const key = 'idem-retry-key';
+
+    // First upload
+    const res1 = await appFetch(uploadRequest(cookie, data, 0, key));
+    expect(res1.status).toBe(200);
+    const body1 = await res1.json() as { version: number; vaultId: string };
+
+    // Retry with same key and same expected version — should return original result
+    const res2 = await appFetch(uploadRequest(cookie, data, 0, key));
+    expect(res2.status).toBe(200);
+    const body2 = await res2.json() as { version: number; vaultId: string };
+
+    expect(body2.version).toBe(body1.version);
+    expect(body2.vaultId).toBe(body1.vaultId);
+  });
+
+  it('different idempotency key creates new version', async () => {
+    const { cookie } = await createAuthenticatedUser(env.DB);
+    const data1 = new TextEncoder().encode('first-upload');
+    const data2 = new TextEncoder().encode('second-upload');
+
+    const res1 = await appFetch(uploadRequest(cookie, data1, 0, 'key-a'));
+    expect(res1.status).toBe(200);
+    const body1 = await res1.json() as { version: number; vaultId: string };
+    expect(body1.version).toBe(1);
+
+    const res2 = await appFetch(uploadRequest(cookie, data2, 1, 'key-b'));
+    expect(res2.status).toBe(200);
+    const body2 = await res2.json() as { version: number; vaultId: string };
+    expect(body2.version).toBe(2);
+    expect(body2.vaultId).not.toBe(body1.vaultId);
+  });
+
+  it('upload without idempotency key still works', async () => {
+    const { cookie } = await createAuthenticatedUser(env.DB);
+    const data = new TextEncoder().encode('no-idem-key');
+
+    const res = await appFetch(uploadRequest(cookie, data, 0));
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as { version: number; vaultId: string };
+    expect(body.version).toBe(1);
+    expect(body.vaultId).toBeTruthy();
   });
 });
 

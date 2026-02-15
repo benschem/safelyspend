@@ -5,6 +5,7 @@ import app from '../../index.js';
 import migration0001 from '../../../migrations/0001_initial.sql?raw';
 import migration0002 from '../../../migrations/0002_security.sql?raw';
 import migration0003 from '../../../migrations/0003_cleanup_indexes.sql?raw';
+import migration0004 from '../../../migrations/0004_idempotency.sql?raw';
 
 /** Split multi-statement SQL and execute each statement individually.
  *  D1's exec() has observability bugs in the test runtime, so we use prepare().run(). */
@@ -22,6 +23,7 @@ export async function applyMigrations(db: D1Database): Promise<void> {
   await execStatements(db, migration0001);
   await execStatements(db, migration0002);
   await execStatements(db, migration0003);
+  await execStatements(db, migration0004);
 }
 
 export const COOKIE_NAME = '__budget_session';
