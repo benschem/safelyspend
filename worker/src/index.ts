@@ -30,8 +30,8 @@ app.use('*', async (c, next) => {
     },
     credentials: true,
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'X-Expected-Version'],
-    exposeHeaders: ['X-Vault-Version', 'X-Vault-Checksum'],
+    allowHeaders: ['Content-Type', 'X-Expected-Version', 'X-Idempotency-Key'],
+    exposeHeaders: ['X-Vault-Version', 'X-Vault-Checksum', 'Retry-After'],
   });
 
   return corsMiddleware(c, next);
