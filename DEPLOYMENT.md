@@ -16,7 +16,8 @@ Cloudflare Workers custom domains require the domain to be on Cloudflare DNS. Us
 
 1. In the Cloudflare dashboard, add `safelyspend.app` as a site
 2. Update your domain registrar's nameservers to the ones Cloudflare provides
-3. Wait for nameserver propagation (can take up to 24 hours, usually minutes)
+3. If you have existing DNS records at your current provider (e.g. for email, a current site, etc.), **copy them into Cloudflare first** before switching nameservers — Cloudflare will attempt to auto-import them, but verify nothing is missing
+4. Wait for nameserver propagation (can take up to 24 hours, usually minutes)
 
 DNS records are configured in later steps after creating the Netlify site and Cloudflare Worker.
 
@@ -55,24 +56,52 @@ database_id = "<paste-your-database-id>"
 npm run db:migrate:remote
 ```
 
-### Set secrets
+### Deploy the worker (first deploy)
 
-```bash
-# Generate and set a JWT signing secret
-npx wrangler secret put JWT_SECRET
-# Paste output of: openssl rand -base64 48
-
-# Set your Resend API key (from https://resend.com/api-keys)
-npx wrangler secret put RESEND_API_KEY
-```
-
-### Deploy the worker
+Deploy once before setting secrets — Cloudflare needs the worker to exist first.
 
 ```bash
 npm run deploy
 ```
 
-This deploys to `https://budget-api.<your-subdomain>.workers.dev`.
+On first deploy you'll be prompted to register a `workers.dev` subdomain — say **Y** and choose a subdomain name. This is a one-time setup for your Cloudflare account.
+
+The worker will be uploaded but will fail at runtime (missing secrets). That's expected — it creates the worker resource that secrets attach to.
+
+### Set secrets
+
+Each `wrangler secret put` command will prompt you to enter the value — paste it and press Enter.
+
+```bash
+# 1. Generate a JWT signing secret
+openssl rand -base64 48
+# Copy the output
+
+# 2. Store it in Cloudflare
+npx wrangler secret put JWT_SECRET
+# Paste the value from step 1 when prompted
+
+# 3. Get your Resend API key from https://resend.com/api-keys
+#    (create one if you haven't — it starts with "re_")
+
+# 4. Store it in Cloudflare
+npx wrangler secret put RESEND_API_KEY
+# Paste your Resend API key when prompted
+```
+
+Verify both are set:
+
+```bash
+npx wrangler secret list
+```
+
+### Redeploy with secrets
+
+```bash
+npm run deploy
+```
+
+Now the worker is fully functional at `https://budget-api.<your-subdomain>.workers.dev`.
 
 ### Add custom domain
 
@@ -100,16 +129,8 @@ curl https://api.safelyspend.app/health
 ### Add custom domain
 
 1. In Netlify: Site settings > Domain management > Add custom domain > `safelyspend.app`
-2. Netlify will show you a DNS target (e.g. `your-site.netlify.app`)
-3. In Cloudflare DNS, add these records:
-
-| Type  | Name | Target                     | Proxy |
-|-------|------|----------------------------|-------|
-| CNAME | `@`  | `<your-site>.netlify.app`  | DNS only (grey cloud) |
-| CNAME | `www`| `<your-site>.netlify.app`  | DNS only (grey cloud) |
-
-**Important:** Set Cloudflare proxy to **DNS only** (grey cloud icon) for Netlify records. Netlify needs to terminate TLS itself to serve the site and provision its SSL certificate. Orange cloud (proxied) will break Netlify's SSL.
-
+2. When Cloudflare is added as DNS provider (step 1), it will auto-import existing DNS records from your domain registrar — verify the A records pointing to Netlify's IPs were imported correctly
+3. These records can stay **Proxied** (orange cloud) — Cloudflare handles TLS in front of Netlify
 4. In Netlify: Domain management > HTTPS > Verify DNS and provision certificate
 
 ## 4. Email (Resend)
@@ -167,8 +188,7 @@ For login emails to send from `auth@safelyspend.app`, you need to verify the dom
 
 | Type  | Name              | Target / Value                    | Proxy     |
 |-------|-------------------|-----------------------------------|-----------|
-| CNAME | `@`               | `<your-site>.netlify.app`         | DNS only  |
-| CNAME | `www`             | `<your-site>.netlify.app`         | DNS only  |
+| A     | `@`               | (Netlify IPs, auto-imported)      | Proxied   |
 | CNAME | `api`             | (auto-created by Workers)         | Proxied   |
 | TXT   | `_dmarc`          | (from Resend)                     | DNS only  |
 | CNAME | `resend._domainkey`| (from Resend)                    | DNS only  |
