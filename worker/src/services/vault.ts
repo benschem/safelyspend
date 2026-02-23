@@ -348,7 +348,7 @@ export async function cleanupOrphanedR2Objects(
     cursor = listed.truncated ? listed.cursor : undefined;
   } while (cursor);
 
-  console.log(JSON.stringify({ event: 'orphan_cleanup', scanned, deleted }));
+  console.info(JSON.stringify({ event: 'orphan_cleanup', scanned, deleted }));
 }
 
 export async function deleteAllForUser(

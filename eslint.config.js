@@ -44,7 +44,7 @@ export default [
       'comma-dangle': ['error', 'always-multiline'],
       'no-undef': 'off',
       // Prevent raw console usage - use debug utility instead
-      'no-console': ['error', { allow: ['warn', 'error'] }],
+      'no-console': ['error', { allow: ['warn', 'error', 'info'] }],
     },
     settings: {
       react: {

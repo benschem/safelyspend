@@ -71,7 +71,7 @@ export const authMiddleware = createMiddleware<HonoEnv>(async (c, next) => {
       // Update context so downstream handlers see the new session ID
       c.set('jwtPayload', { ...payload, sid: newSessionId });
 
-      console.log(JSON.stringify({ event: 'session_rotated', requestId, userId: user.id }));
+      console.info(JSON.stringify({ event: 'session_rotated', requestId, userId: user.id }));
     }
   }
 

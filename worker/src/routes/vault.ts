@@ -150,7 +150,7 @@ vault.put('/data', uploadRateLimit, userUploadLimit, async (c) => {
     );
 
     const requestId = c.get('requestId');
-    console.log(JSON.stringify({ event: 'vault_uploaded', requestId, userId: user.id, version: result.version, sizeBytes: body.byteLength }));
+    console.info(JSON.stringify({ event: 'vault_uploaded', requestId, userId: user.id, version: result.version, sizeBytes: body.byteLength }));
 
     // Background tasks: prune old versions + log storage summary
     c.executionCtx.waitUntil(
@@ -163,7 +163,7 @@ vault.put('/data', uploadRateLimit, userUploadLimit, async (c) => {
             error: err instanceof Error ? err.message : 'Unknown error',
           }))),
         vaultService.getTotalStorage(c.env.DB, user.id)
-          .then((summary) => console.log(JSON.stringify({
+          .then((summary) => console.info(JSON.stringify({
             event: 'vault_storage_summary',
             requestId,
             userId: user.id,

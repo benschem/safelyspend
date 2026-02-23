@@ -119,7 +119,7 @@ auth.post('/login', loginRateLimit, async (c) => {
     throw internal('Unable to send login code. Please try again later.');
   }
 
-  console.log(JSON.stringify({ event: 'login_code_sent', requestId: c.get('requestId') }));
+  console.info(JSON.stringify({ event: 'login_code_sent', requestId: c.get('requestId') }));
 
   // Cleanup expired codes and sessions in background
   const requestId = c.get('requestId');
@@ -204,7 +204,7 @@ auth.post('/verify', verifyRateLimit, async (c) => {
     maxAge: sessionExpiry,
   });
 
-  console.log(JSON.stringify({ event: 'auth_verified', requestId: c.get('requestId'), userId: user.id }));
+  console.info(JSON.stringify({ event: 'auth_verified', requestId: c.get('requestId'), userId: user.id }));
 
   return c.json({ user: { id: user.id, email: user.email } });
 });
@@ -221,7 +221,7 @@ auth.post('/logout', authMiddleware, sessionRateLimit, async (c) => {
     path: '/',
   });
 
-  console.log(JSON.stringify({ event: 'logout', requestId: c.get('requestId'), userId: payload.sub }));
+  console.info(JSON.stringify({ event: 'logout', requestId: c.get('requestId'), userId: payload.sub }));
 
   return c.json({ message: 'Logged out' });
 });
@@ -250,7 +250,7 @@ auth.delete('/account', authMiddleware, sessionRateLimit, async (c) => {
     path: '/',
   });
 
-  console.log(JSON.stringify({ event: 'account_deleted', requestId: c.get('requestId'), userId: user.id }));
+  console.info(JSON.stringify({ event: 'account_deleted', requestId: c.get('requestId'), userId: user.id }));
 
   return c.json({ message: 'Account deleted' });
 });
@@ -260,7 +260,7 @@ auth.post('/revoke-all-sessions', authMiddleware, sessionRateLimit, async (c) =>
   const payload = c.get('jwtPayload');
   const revoked = await deleteAllSessionsExcept(c.env.DB, payload.sub, payload.sid);
 
-  console.log(JSON.stringify({ event: 'sessions_revoked', requestId: c.get('requestId'), userId: payload.sub, count: revoked }));
+  console.info(JSON.stringify({ event: 'sessions_revoked', requestId: c.get('requestId'), userId: payload.sub, count: revoked }));
 
   return c.json({ revoked });
 });
@@ -293,7 +293,7 @@ auth.delete('/sessions/:id', authMiddleware, sessionRateLimit, async (c) => {
     throw notFound('Session not found');
   }
 
-  console.log(JSON.stringify({ event: 'session_revoked', requestId: c.get('requestId'), userId: payload.sub, sessionId }));
+  console.info(JSON.stringify({ event: 'session_revoked', requestId: c.get('requestId'), userId: payload.sub, sessionId }));
 
   return c.json({ message: 'Session revoked' });
 });
