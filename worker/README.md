@@ -299,15 +299,14 @@ wrangler d1 time-travel info budget-db
 wrangler d1 time-travel restore budget-db --timestamp=2026-02-15T00:00:00Z
 ```
 
-### R2 lifecycle rules
+### R2 backups
 
-Add a lifecycle rule in the Cloudflare dashboard (Storage & Databases > R2 > `budget-vaults` > Settings > Object lifecycle rules) to clean up orphaned objects that escape `pruneOldVersions`:
+R2 has no built-in point-in-time recovery. The encrypted vault blobs are the only copy of user data on the server. However, the primary copy of user data lives in each user's browser (IndexedDB) — the cloud vault is a backup, not the source of truth.
 
-- **Rule name:** Expire old vault versions
-- **Action:** Delete objects after 90 days
-- **Scope:** All objects in the bucket (or prefix filter if using multiple apps)
-
-The app keeps the last 10 versions per user and prunes older ones on each upload. The lifecycle rule is a safety net for orphans caused by failed prune operations or account deletions where R2 cleanup failed.
+Mitigations:
+- The app keeps up to 10 historical versions per user in R2, so accidental overwrites can be recovered from the version history
+- If R2 data is lost, users can re-upload from their local browser data via the sync UI
+- For additional protection, you can periodically copy R2 objects to a separate bucket or external storage using `wrangler r2 object get`
 
 ### Recovery procedures
 
@@ -337,9 +336,27 @@ If Time Travel is unavailable, D1 data is unrecoverable. R2 objects can be liste
 ### Recommendations
 
 - **Verify D1 Time Travel is active** on a Workers Paid plan (free plan has no Time Travel)
-- **Add the R2 lifecycle rule** described above as an orphan safety net
 - **Monitor R2 object count** — a sudden drop indicates accidental deletion
 - **Periodically export D1** as an additional backup: `wrangler d1 export budget-db --remote --output=backup.sql`
+
+## Observability
+
+### Backend (Workers)
+
+Already configured — `[observability]` in `wrangler.toml` enables request traces, error rates, latency, and CPU time in the Cloudflare dashboard at 100% sampling. All application logs are structured JSON with request IDs for tracing. Use `wrangler tail` to stream logs in real time.
+
+### Frontend
+
+Currently no error reporting to an external service. The app has React error boundaries (catch crashes and show fallback UI) and an in-memory debug logger, but errors are only visible client-side.
+
+When you have enough users to justify it, add [Sentry](https://sentry.io) (free tier: 5K errors/month):
+
+1. `npm install @sentry/react`
+2. Initialise in `src/main.tsx` with your Sentry DSN
+3. Wrap the router with `Sentry.wrapCreateBrowserRouterV7`
+4. Sentry auto-captures unhandled exceptions, promise rejections, and React error boundaries
+
+This is a ~15 minute job. Until then, you'll hear about frontend errors when users report them.
 
 ## Project Structure
 
