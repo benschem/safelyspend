@@ -62,3 +62,9 @@ npm run test:run  # run tests once
 ```
 
 See [`worker/README.md`](worker/README.md) for backend commands.
+
+## Documentation
+
+- [DEPLOYMENT.md](DEPLOYMENT.md) — Full deployment guide (Netlify + Cloudflare) and operations handbook (logs, database console, rollbacks)
+- [worker/README.md](worker/README.md) — Backend API endpoints, database migrations, JWT rotation, disaster recovery
+- [CLAUDE.md](CLAUDE.md) — Codebase architecture, domain model, conventions, and development patterns

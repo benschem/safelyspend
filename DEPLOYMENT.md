@@ -213,6 +213,126 @@ npm run db:migrate:remote
 npm run deploy
 ```
 
+## Operations
+
+### Logs
+
+**Real-time log streaming:**
+
+```bash
+cd worker
+npx wrangler tail
+```
+
+This streams all worker logs (requests, errors, console output) to your terminal. All logs are JSON-structured with a `requestId` for tracing.
+
+**Historical logs:** Cloudflare Dashboard > Workers & Pages > `budget-api` > Logs
+
+### Database console
+
+There's no Rails-console equivalent for Workers. The closest thing is `wrangler d1 execute`, which lets you run SQL directly against the remote database.
+
+```bash
+# Run a query
+npx wrangler d1 execute budget-db --remote --command="SQL here"
+```
+
+**Common queries:**
+
+```bash
+# Look up a user
+npx wrangler d1 execute budget-db --remote \
+  --command="SELECT * FROM users WHERE email = 'user@example.com'"
+
+# List active sessions for a user
+npx wrangler d1 execute budget-db --remote \
+  --command="SELECT id, created_at, expires_at FROM sessions WHERE user_id = 'USER_ID' AND expires_at > datetime('now')"
+
+# Check a user's vault storage
+npx wrangler d1 execute budget-db --remote \
+  --command="SELECT COUNT(*) as versions, SUM(size_bytes) as total_bytes FROM vaults WHERE user_id = 'USER_ID'"
+
+# Count all users
+npx wrangler d1 execute budget-db --remote \
+  --command="SELECT COUNT(*) FROM users"
+
+# Delete a specific user (cascades to sessions, auth_codes, sync_state)
+npx wrangler d1 execute budget-db --remote \
+  --command="DELETE FROM users WHERE id = 'USER_ID'"
+```
+
+**Database info:**
+
+```bash
+npx wrangler d1 info budget-db
+```
+
+### R2 storage
+
+```bash
+# List all objects
+npx wrangler r2 object list budget-vaults
+
+# List objects for a specific user
+npx wrangler r2 object list budget-vaults --prefix=USER_ID/
+
+# Download an object
+npx wrangler r2 object get budget-vaults USER_ID/VAULT_ID
+
+# Delete an object
+npx wrangler r2 object delete budget-vaults USER_ID/VAULT_ID
+```
+
+Orphaned R2 objects (no matching DB record) are cleaned up automatically by the daily cron at 03:00 UTC.
+
+### Secrets
+
+Secrets take effect immediately — no redeploy needed.
+
+```bash
+# List secrets (names only, no values)
+npx wrangler secret list
+
+# Update a secret
+npx wrangler secret put RESEND_API_KEY
+
+# Delete a secret
+npx wrangler secret delete JWT_SECRET_PREVIOUS
+```
+
+For JWT secret rotation, see `worker/README.md` — the worker supports zero-downtime rotation via a fallback key.
+
+### Rollbacks
+
+**Worker code:** Cloudflare Dashboard > Workers & Pages > `budget-api` > Deployments > click a previous deployment > Rollback
+
+**Database:** D1 supports point-in-time recovery (30 days, paid plan):
+
+```bash
+# Check available restore points
+npx wrangler d1 time-travel info budget-db
+
+# Restore to a point in time
+npx wrangler d1 time-travel restore budget-db --timestamp=2026-02-23T00:00:00Z
+```
+
+### Metrics
+
+- **Dashboard:** Workers & Pages > `budget-api` > Analytics (requests, errors, CPU time)
+- **Health check:** `curl https://api.safelyspend.app/health`
+- **Database status:** `npx wrangler d1 info budget-db`
+
+### Cron schedule
+
+The orphan cleanup cron is configured in `worker/wrangler.toml`:
+
+```toml
+[triggers]
+crons = ["0 3 * * *"]  # Daily at 03:00 UTC
+```
+
+To change the schedule, edit the cron expression and redeploy.
+
 ## Further Reading
 
 - `worker/README.md` — full backend docs (API endpoints, JWT rotation, disaster recovery, migrations)
