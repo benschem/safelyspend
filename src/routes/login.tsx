@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router';
-import { Cloud, Mail, ArrowRight, ArrowLeft, Info, Loader2 } from 'lucide-react';
+import { Cloud, Mail, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
@@ -253,13 +253,8 @@ export function LoginPage() {
               </Button>
             </form>
 
-            <Alert className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/50">
-              <div className="flex items-start gap-2">
-                <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
-                <p className="text-sm text-blue-800 dark:text-blue-200">
-                  Your financial data is encrypted on your device. We never see your budget.
-                </p>
-              </div>
+            <Alert>
+              Your financial data is encrypted on your device. We never see your budget.
             </Alert>
 
             <div className="text-center">
