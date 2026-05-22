@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.37.1',
+    date: '2026-05-22',
+    changes: [
+      'Fixed an issue that prevented the login email from sending on the Cloud Sync page',
+    ],
+  },
+  {
     version: '0.37.0',
     date: '2026-02-15',
     changes: [
