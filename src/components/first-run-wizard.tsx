@@ -36,6 +36,7 @@ import { useScenarios } from '@/hooks/use-scenarios';
 import { useTransactions } from '@/hooks/use-transactions';
 import { today, formatLongDate, formatCents, parseCentsFromInput } from '@/lib/utils';
 import { debug } from '@/lib/debug';
+import type { PersonaId } from '@/lib/demo-personas';
 
 const LandingPage = lazy(() =>
   import('@/components/landing-page').then((m) => ({ default: m.LandingPage })),
@@ -657,7 +658,9 @@ function TransactionsStep({
             <Upload className="h-5 w-5 text-muted-foreground" />
             <div>
               <p className="font-medium">Import from Up Bank</p>
-              <p className="text-sm text-muted-foreground">Upload an Up Bank transaction export</p>
+              <p className="text-sm text-muted-foreground">
+                Upload an Up Bank transaction export
+              </p>
             </div>
           </div>
         </button>
@@ -1105,9 +1108,9 @@ export function FirstRunWizard() {
   const isSetup = searchParams.get('setup') === '1';
   const { isInitialized, isLoading } = useAppConfig();
 
-  const handleStartDemo = async () => {
+  const handleStartDemo = async (personaId?: PersonaId) => {
     const { loadDemoDataToStorage } = await import('@/lib/demo-data');
-    await loadDemoDataToStorage();
+    await loadDemoDataToStorage(personaId);
     window.location.href = '/cash-flow';
   };
 
