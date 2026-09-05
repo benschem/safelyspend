@@ -21,6 +21,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.39.0',
+    date: '2026-09-05',
+    changes: [
+      'Fixed signing in sending you back to the welcome page instead of into the app',
+      'Signing in on a new device now offers to restore your synced budget',
+      'The SafelySpend name in the top bar takes you back to the welcome page',
+    ],
+  },
+  {
     version: '0.38.0',
     date: '2026-09-05',
     changes: [
