@@ -153,6 +153,15 @@ UI preferences only — never domain data. Keys centralized in `src/lib/storage-
 | `budget:syncLocalVersion` | Cloud sync vault version |
 | `budget:syncLastSyncedAt` | Cloud sync timestamp |
 
+### What leaves the device
+
+Almost nothing, and only when asked:
+
+- **Cloud sync** (opt-in) — an encrypted blob. Encryption happens on the device; the server holds ciphertext it cannot read.
+- **Landing page analytics** — a single pageview for visitors who have not set the app up yet. No domain data, no cookies, nothing identifying. Fires from exactly one place, `src/lib/analytics.ts`, called only by the landing page. Nothing inside the app is measured.
+
+Everything else stays in IndexedDB and localStorage on the device.
+
 ### URL state
 
 Route params only (e.g., `/categories/:id`). No query-string state for filters.

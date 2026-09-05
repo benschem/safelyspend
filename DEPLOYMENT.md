@@ -133,6 +133,40 @@ curl https://api.safelyspend.app/health
 3. These records can stay **Proxied** (orange cloud) — Cloudflare handles TLS in front of Netlify
 4. In Netlify: Domain management > HTTPS > Verify DNS and provision certificate
 
+### Analytics (Plausible)
+
+Landing page visits are counted by the self-hosted Plausible instance at
+`analytics.rocketzip.com.au` (its own runbook lives in the `plausible-server`
+repo — don't duplicate operational detail here).
+
+The tracker is **proxied through a first-party path**. `netlify.toml` reverse-proxies
+`/pa-stats/*` to the analytics host with status 200, so the script and its events are
+same-origin. That defeats adblocker path matching and, more importantly, means the CSP
+needs no third-party exceptions. If you ever find yourself adding the analytics host to
+`script-src` or `connect-src`, the proxy has broken — fix that instead.
+
+Register the site before deploying the tracker. Plausible silently drops events for a
+domain it doesn't know and still returns success, so skipping this looks exactly like a
+broken proxy:
+
+1. Log in to `https://analytics.rocketzip.com.au`
+2. **+ Add a website**
+3. Domain: `safelyspend.app` — bare, no scheme, no `www.`, no trailing slash. It must
+   match the `data-domain` attribute in `index.html` exactly; Plausible does not infer
+   it from the request Host header
+4. Timezone: `Australia/Sydney`
+5. Ignore the install snippet it offers — it points at the analytics host directly, and
+   we use the proxied tag already in `index.html`
+
+Then exclude your own visits, per browser you test from — at current volumes your own
+traffic would otherwise dominate. In the browser console on `safelyspend.app`:
+
+```js
+localStorage.plausible_ignore = 'true';
+```
+
+The tracker script checks that flag itself, so no app code is involved.
+
 ## 4. Email (Resend)
 
 For login emails to send from `auth@safelyspend.app`, you need to verify the domain with Resend.
@@ -158,6 +192,10 @@ For login emails to send from `auth@safelyspend.app`, you need to verify the dom
 - [ ] Cloud sync uploads and downloads successfully
 - [ ] CORS works (no blocked requests in browser console)
 - [ ] CSP doesn't block API calls (check browser console for violations)
+- [ ] `https://safelyspend.app/pa-stats/js/script.manual.js` returns 200 (proxy is live)
+- [ ] Loading the landing page fires one `POST /pa-stats/api/event` returning 202
+- [ ] Navigating into the app fires **no** further events — this is what the privacy page promises
+- [ ] The visit appears in the Plausible dashboard under Realtime
 
 ## Environment Summary
 
@@ -321,6 +359,7 @@ npx wrangler d1 time-travel restore budget-db --timestamp=2026-02-23T00:00:00Z
 - **Dashboard:** Workers & Pages > `budget-api` > Analytics (requests, errors, CPU time)
 - **Health check:** `curl https://api.safelyspend.app/health`
 - **Database status:** `npx wrangler d1 info budget-db`
+- **Landing page traffic:** `https://analytics.rocketzip.com.au` (landing page only — the app itself is not measured)
 
 ### Cron schedule
 

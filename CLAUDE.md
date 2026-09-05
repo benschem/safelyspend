@@ -79,9 +79,11 @@ src/
 │   ├── savings/
 │   ├── manage/scenarios/   # Scenario CRUD, duplicate with rules
 │   ├── manage/rules/       # Forecast rule CRUD
-│   └── settings.tsx
+│   ├── settings.tsx
+│   └── privacy.tsx         # Privacy policy (outside RootLayout)
 ├── lib/
 │   ├── types.ts      # Domain types
+│   ├── analytics.ts  # Landing page pageview - the only tracking call
 │   └── utils.ts      # formatCents, cn, generateId, etc.
 └── App.tsx           # Router configuration
 ```
@@ -108,6 +110,7 @@ const [items, setItems] = useLocalStorage<Type[]>('budget:key', []);
   - Track: Transactions, Categories, Savings
   - Manage: Categories, Scenarios, Forecast Rules
   - Settings
+- Landing page footer: link to `/privacy` (rendered outside RootLayout)
 
 ### First-Run Wizard
 
@@ -272,15 +275,17 @@ Users can view the changelog via Settings > "View Changelog".
 
 ### Git Commit Messages
 
-Prefix all commits with `claude:` followed by a conventional commit type:
+Use a plain conventional commit type. Do **not** prefix with `claude:` — commits up to
+2026-09-05 carry that prefix and are left as they are, but it added nothing and is no
+longer used.
 
 ```
-claude: feat: add new feature
-claude: fix: fix a bug
-claude: chore: maintenance task
-claude: refactor: code refactoring
-claude: docs: documentation changes
-claude: style: formatting changes
+feat: add new feature
+fix: fix a bug
+chore: maintenance task
+refactor: code refactoring
+docs: documentation changes
+style: formatting changes
 ```
 
 When asked to commit changes:

@@ -23,6 +23,8 @@ npm run dev
 
 That's it for frontend development. The app works fully offline with IndexedDB — no backend needed unless you're working on cloud sync.
 
+One expected error in the dev console: the analytics script at `/pa-stats/js/script.manual.js` 404s. The `/pa-stats/*` proxy is a Netlify redirect, so it only exists on a deployed site. Harmless — the app degrades quietly without the tracker, and no analytics are sent from local development. Nothing to fix.
+
 ### Frontend commands
 
 | Command | Purpose |

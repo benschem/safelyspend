@@ -106,3 +106,17 @@ The Cloudflare D1 backend uses raw SQL strings in service functions. D1's API is
 ## Why React Router 7 (not TanStack Router)?
 
 React Router 7 was chosen because the project started with React Router 6 and the upgrade path was smooth. TanStack Router offers better type safety for route params, but wasn't worth a rewrite.
+
+## Why landing-page-only analytics?
+
+**Chosen:** Self-hosted Plausible, proxied first-party, firing on the landing page and nowhere else.
+
+Three parts of this look like needless complexity from the outside. They aren't, and each is easy to "simplify" back into a mistake.
+
+**Why the app itself isn't measured.** This is a budgeting app. Page paths inside it reveal what someone is doing with their money, and the landing page promises nothing you do inside the app is tracked. The acquisition question — is anyone arriving, and from where — is answerable without touching any of that, so it is.
+
+**Why `script.manual.js` and not an exclusion list.** Plausible's exclusions extension takes a `data-exclude` denylist, and each pattern compiles to an anchored regex — `/transactions` would not have covered `/transactions/new`. Worse, it is fail-open: add a route, forget its exclusion, and the app quietly starts measuring people. The manual variant fires no pageviews on its own, so tracking is fail-closed and a new route cannot leak. `src/lib/analytics.ts` holds the only call.
+
+**Why the first-party proxy.** `netlify.toml` proxies `/pa-stats/*` to the analytics host at status 200. Adblockers can't pattern-match it, but the bigger win is that the script and its events stay same-origin, so `script-src 'self'` and `connect-src 'self'` already cover them and the CSP needs no third-party exception. `data-api` in the script tag is load-bearing for this: without it the script posts to `/api/event` on our own origin, which isn't proxied, and every event vanishes into the SPA fallback.
+
+**Why no custom events.** Pageviews answer the questions that currently exist. Plausible's own SaaS guidance is a four-step funnel, not an event catalogue, and the usual reason to ration events (Cloud bills them like pageviews) doesn't apply to a self-hosted instance — the real cost is events nobody reads. Activation and funnel events can come later if pageviews leave a genuine question open.

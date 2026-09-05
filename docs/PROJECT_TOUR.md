@@ -60,6 +60,7 @@ Read these first, in this order:
 │   │   ├── e2e-crypto.ts      # PBKDF2 + AES-256-GCM encryption
 │   │   ├── import-schema.ts   # Zod schemas for import validation + migration
 │   │   ├── changelog.ts       # Version history entries
+│   │   ├── analytics.ts       # Landing page pageview — the ONLY tracking call
 │   │   └── demo/              # Demo persona data generators
 │   └── routes/
 │       ├── cash-flow/         # Monthly cash flow overview
@@ -72,6 +73,7 @@ Read these first, in this order:
 │       ├── scenarios/          # Scenario management
 │       ├── settings.tsx        # App settings + data management
 │       ├── changelog.tsx       # Version history page
+│       ├── privacy.tsx         # Privacy policy (outside RootLayout)
 │       └── login.tsx           # Auth login page
 ├── worker/
 │   └── src/
@@ -170,6 +172,18 @@ The app migrated from localStorage to IndexedDB (Dexie) for domain data. But som
 - **Sync metadata** (version, timestamp) — simple key-value, not worth a Dexie table
 
 If you see `useLocalStorage` in the codebase, it's intentional for these specific cases. All domain data (transactions, rules, etc.) goes through Dexie.
+
+### Analytics is fail-closed on purpose
+
+`src/lib/analytics.ts` has exactly one caller: the landing page. That is not an accident waiting to be tidied up.
+
+The tracker uses Plausible's `manual` script variant, which fires no pageviews by itself, so nothing is measured unless code explicitly asks. Adding a `plausible()` call somewhere else would start measuring what people do inside a budgeting app — which `/privacy` and the landing page footer both promise doesn't happen. If you need in-app measurement, change those promises first. See "Why landing-page-only analytics?" in `DECISIONS.md`.
+
+### Netlify redirect ordering
+
+Redirects in `netlify.toml` are evaluated **before** `public/_redirects`, and the SPA catch-all (`/*` → `/index.html`) matches everything. Any new proxy or redirect rule must go in `netlify.toml` *above* that catch-all, or it will never fire — you'll get the SPA shell with a 200 and no obvious error.
+
+This is why the `/pa-stats/*` analytics proxy lives in `netlify.toml` and why `public/_redirects` was deleted: two sources of redirect truth is what makes the trap invisible.
 
 ### End-of-month cadence edge cases
 
