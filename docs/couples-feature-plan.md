@@ -1,6 +1,21 @@
 # Couples Feature Plan
 
-> Design doc for shared household budgeting. Saved for future implementation.
+> **Superseded (2026-09-06). Read `auth-rewrite/08_household_ui_scope.md` instead.**
+>
+> This is the original February design and it predates the wrapped-key and
+> recovery-phrase decisions. Two parts of it are now known to be wrong:
+>
+> - **Personal spending money is modelled here as a plain budget allowance.** It
+>   is actually an accruing envelope that carries unspent money over. Treating it
+>   as a monthly expense makes the household over-report its savings every time
+>   someone underspends, and the error compounds.
+> - **The sync section weighs a shared vault against separate vaults** as if it
+>   were an open question. It is settled: one household-keyed vault, with the
+>   privacy split enforced in the UI. See `crypto-design.md`.
+>
+> What survives and is still worth reading: the user experience, the privacy
+> model (shared totals, private detail), and the entity shapes for Household,
+> HouseholdMember and HouseholdInvite.
 
 ## Overview
 
