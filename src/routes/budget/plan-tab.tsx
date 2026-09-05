@@ -1,16 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { toast } from 'sonner';
-import {
-  PiggyBank,
-  CreditCard,
-  Scale,
-  Banknote,
-  BanknoteArrowUp,
-  BanknoteArrowDown,
-  ChartPie,
-  Sparkles,
-} from 'lucide-react';
+import { PiggyBank, BanknoteArrowUp, BanknoteArrowDown, ChartPie } from 'lucide-react';
 import { cn, formatCents, toMonthlyCents, type CadenceType } from '@/lib/utils';
 import { CHART_COLORS } from '@/lib/chart-colors';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -32,6 +23,8 @@ import {
 import { CategoryBudgetDialog } from '@/components/dialogs/category-budget-dialog';
 import { ForecastRuleDialog } from '@/components/dialogs/forecast-rule-dialog';
 import { SpendingBreakdownChart } from '@/components/charts/spending-breakdown-chart';
+import { BudgetStatusHero } from '@/components/budget/status-hero';
+import { BudgetSummaryCard } from '@/components/budget/summary-card';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 import {
   IncomeSliderSection,
@@ -41,7 +34,6 @@ import {
 } from '@/components/budget/slider-sections';
 import { useWhatIf } from '@/contexts/what-if-context';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
-import { ScenarioDelta } from '@/components/ui/scenario-delta';
 import type { Cadence, BudgetRule, Category, ForecastRule } from '@/lib/types';
 
 type BudgetPeriod = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly';
@@ -594,6 +586,12 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
   const savingsDelta = showDeltas ? totals.monthlySavings - defaultTotals.savings : 0;
   const surplusDelta = showDeltas ? totals.monthlySurplus - defaultTotals.surplus : 0;
 
+  // Cards only quote a share of income when both figures are present.
+  const shareOfIncome = (amount: number): string | undefined =>
+    totals.income > 0 && amount > 0
+      ? `${Math.round((amount / totals.income) * 100)}% of income`
+      : undefined;
+
   // Use a tolerance to account for rounding when converting between periods
   const roundingToleranceByPeriod: Record<BudgetPeriod, number> = {
     weekly: 100,
@@ -613,215 +611,88 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     <div>
       {/* Budget Status Hero */}
       {(totals.income > 0 || isOvercommitted) && (
-        <div className="mb-4 min-h-28 text-center sm:min-h-32">
-          <div className="flex min-h-8 items-center justify-center">
-            <span className="flex items-center gap-1 rounded-full bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-600 dark:text-violet-400">
-              <Sparkles className="h-3 w-3" />
-              {activeScenario?.name ?? 'Default'}
-            </span>
-          </div>
-          {isOvercommitted ? (
-            <div className="mt-4">
-              <p className="flex items-center justify-center gap-2 text-sm font-medium uppercase tracking-wide text-amber-500">
-                <CreditCard className="h-4 w-4" />
-                Planned Shortfall
-              </p>
-              <p
-                className={cn(
-                  'mt-2 text-5xl font-bold tracking-tight',
-                  surplusDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-amber-500',
-                )}
-              >
-                {formatCents(Math.abs(totals.unallocated))}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {totals.income === 0
-                  ? 'Add income to cover your planned expenses and savings'
-                  : FREQUENCY_PER_LABELS[breakdownPeriod]}
-              </p>
-              <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
-              <ScenarioDelta
-                delta={getTotalDelta('surplus', totals.monthlySurplus)}
-                show={showDeltas}
-                comparedToName={comparedToName}
-              />
-            </div>
-          ) : isFullyAllocated ? (
-            <div className="mt-4">
-              <p className="flex items-center justify-center gap-2 text-sm font-medium uppercase tracking-wide text-green-500">
-                <Scale className="h-4 w-4" />
-                Budget Balanced
-              </p>
-              <p className="mt-2 text-5xl font-bold tracking-tight text-green-500">
-                Every dollar accounted for
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {FREQUENCY_PER_LABELS[breakdownPeriod]}
-              </p>
-              <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
-              <ScenarioDelta
-                delta={getTotalDelta('surplus', totals.monthlySurplus)}
-                show={showDeltas}
-                comparedToName={comparedToName}
-              />
-            </div>
-          ) : hasAvailable ? (
-            <div className="mt-4">
-              <p className="flex items-center justify-center gap-2 text-sm font-medium uppercase tracking-wide text-green-500">
-                <Banknote className="h-4 w-4" />
-                Planned Surplus
-              </p>
-              <p
-                className={cn(
-                  'mt-2 text-5xl font-bold tracking-tight',
-                  surplusDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-green-500',
-                )}
-              >
-                {formatCents(totals.unallocated)}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {FREQUENCY_PER_LABELS[breakdownPeriod]}
-              </p>
-              <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
-              <ScenarioDelta
-                delta={getTotalDelta('surplus', totals.monthlySurplus)}
-                show={showDeltas}
-                comparedToName={comparedToName}
-              />
-            </div>
-          ) : null}
+        <div className="mb-4">
+          <BudgetStatusHero
+            scenarioName={activeScenario?.name ?? 'Default'}
+            status={
+              isOvercommitted
+                ? 'shortfall'
+                : isFullyAllocated
+                  ? 'balanced'
+                  : hasAvailable
+                    ? 'surplus'
+                    : null
+            }
+            amountCents={totals.unallocated}
+            differsFromPlan={surplusDelta !== 0}
+            periodLabel={
+              isOvercommitted && totals.income === 0
+                ? 'Add income to cover your planned expenses and savings'
+                : FREQUENCY_PER_LABELS[breakdownPeriod]
+            }
+            delta={getTotalDelta('surplus', totals.monthlySurplus)}
+            showDelta={showDeltas}
+            comparedToName={comparedToName}
+          />
         </div>
       )}
-
       {/* Summary Cards */}
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Income Card */}
-        <button
-          type="button"
+        <BudgetSummaryCard
+          label="Income"
+          icon={BanknoteArrowUp}
+          tone="income"
+          amountCents={totals.income > 0 ? totals.income : null}
+          differsFromPlan={incomeDelta !== 0}
+          subtitle={
+            totals.income > 0
+              ? `${incomeRules.length} source${incomeRules.length !== 1 ? 's' : ''}`
+              : undefined
+          }
+          delta={getTotalDelta('income', totals.monthlyIncome)}
+          showDelta={showDeltas}
+          comparedToName={comparedToName}
           onClick={() => scrollToSection('income', setIncomeOpen)}
-          className="cursor-pointer rounded-xl border bg-card p-5 text-left transition-colors hover:bg-muted/50"
-        >
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/10">
-              <BanknoteArrowUp className="h-4 w-4 text-green-500" />
-            </div>
-            <span className="text-sm text-muted-foreground">Income</span>
-          </div>
-          <p
-            className={cn(
-              'mt-2 text-2xl font-bold',
-              incomeDelta !== 0 && 'text-violet-600 dark:text-violet-400',
-            )}
-          >
-            {totals.income > 0 ? formatCents(totals.income) : '—'}
-          </p>
-          {totals.income > 0 && (
-            <p className="text-sm text-muted-foreground">
-              {incomeRules.length} source{incomeRules.length !== 1 ? 's' : ''}
-            </p>
-          )}
-          <ScenarioDelta
-            delta={getTotalDelta('income', totals.monthlyIncome)}
-            show={showDeltas}
-            comparedToName={comparedToName}
-          />
-        </button>
+        />
 
-        {/* Fixed Expenses Card */}
-        <button
-          type="button"
+        <BudgetSummaryCard
+          label="Fixed Expenses"
+          icon={BanknoteArrowDown}
+          tone="expense"
+          amountCents={totals.fixed > 0 ? totals.fixed : null}
+          differsFromPlan={fixedDelta !== 0}
+          subtitle={shareOfIncome(totals.fixed)}
+          delta={getTotalDelta('fixed', totals.monthlyFixed)}
+          showDelta={showDeltas}
+          comparedToName={comparedToName}
           onClick={() => scrollToSection('fixed', setFixedExpensesOpen)}
-          className="cursor-pointer rounded-xl border bg-card p-5 text-left transition-colors hover:bg-muted/50"
-        >
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10">
-              <BanknoteArrowDown className="h-4 w-4 text-red-500" />
-            </div>
-            <span className="text-sm text-muted-foreground">Fixed Expenses</span>
-          </div>
-          <p
-            className={cn(
-              'mt-2 text-2xl font-bold',
-              fixedDelta !== 0 && 'text-violet-600 dark:text-violet-400',
-            )}
-          >
-            {totals.fixed > 0 ? formatCents(totals.fixed) : '—'}
-          </p>
-          {totals.income > 0 && totals.fixed > 0 && (
-            <p className="text-sm text-muted-foreground">
-              {Math.round((totals.fixed / totals.income) * 100)}% of income
-            </p>
-          )}
-          <ScenarioDelta
-            delta={getTotalDelta('fixed', totals.monthlyFixed)}
-            show={showDeltas}
-            comparedToName={comparedToName}
-          />
-        </button>
+        />
 
-        {/* Budgeted Expenses Card */}
-        <button
-          type="button"
+        <BudgetSummaryCard
+          label="Budgeted Expenses"
+          icon={BanknoteArrowDown}
+          tone="expense"
+          amountCents={totals.variable > 0 ? totals.variable : null}
+          differsFromPlan={budgetDelta !== 0}
+          subtitle={shareOfIncome(totals.variable)}
+          delta={getTotalDelta('budget', totals.monthlyVariable)}
+          showDelta={showDeltas}
+          comparedToName={comparedToName}
           onClick={() => scrollToSection('variable', setBudgetedExpensesOpen)}
-          className="cursor-pointer rounded-xl border bg-card p-5 text-left transition-colors hover:bg-muted/50"
-        >
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10">
-              <BanknoteArrowDown className="h-4 w-4 text-red-500" />
-            </div>
-            <span className="text-sm text-muted-foreground">Budgeted Expenses</span>
-          </div>
-          <p
-            className={cn(
-              'mt-2 text-2xl font-bold',
-              budgetDelta !== 0 && 'text-violet-600 dark:text-violet-400',
-            )}
-          >
-            {totals.variable > 0 ? formatCents(totals.variable) : '—'}
-          </p>
-          {totals.income > 0 && totals.variable > 0 && (
-            <p className="text-sm text-muted-foreground">
-              {Math.round((totals.variable / totals.income) * 100)}% of income
-            </p>
-          )}
-          <ScenarioDelta
-            delta={getTotalDelta('budget', totals.monthlyVariable)}
-            show={showDeltas}
-            comparedToName={comparedToName}
-          />
-        </button>
+        />
 
-        {/* Savings Card */}
-        <button
-          type="button"
+        <BudgetSummaryCard
+          label="Savings"
+          icon={PiggyBank}
+          tone="savings"
+          amountCents={totals.savings}
+          differsFromPlan={savingsDelta !== 0}
+          subtitle={shareOfIncome(totals.savings)}
+          delta={getTotalDelta('savings', totals.monthlySavings)}
+          showDelta={showDeltas}
+          comparedToName={comparedToName}
           onClick={() => scrollToSection('savings', setSavingsOpen)}
-          className="cursor-pointer rounded-xl border bg-card p-5 text-left transition-colors hover:bg-muted/50"
-        >
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10">
-              <PiggyBank className="h-4 w-4 text-blue-500" />
-            </div>
-            <span className="text-sm text-muted-foreground">Savings</span>
-          </div>
-          <p
-            className={cn(
-              'mt-2 text-2xl font-bold',
-              savingsDelta !== 0 && 'text-violet-600 dark:text-violet-400',
-            )}
-          >
-            {formatCents(totals.savings)}
-          </p>
-          {totals.income > 0 && totals.savings > 0 && (
-            <p className="text-sm text-muted-foreground">
-              {Math.round((totals.savings / totals.income) * 100)}% of income
-            </p>
-          )}
-          <ScenarioDelta
-            delta={getTotalDelta('savings', totals.monthlySavings)}
-            show={showDeltas}
-            comparedToName={comparedToName}
-          />
-        </button>
+        />
       </div>
 
       {/* Breakdown Chart */}
