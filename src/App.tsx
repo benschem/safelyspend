@@ -45,17 +45,22 @@ const router = createBrowserRouter([
     lazy: () => import('@/routes/login').then((m) => ({ Component: m.LoginPage })),
     errorElement: <ErrorBoundary />,
   },
+  // Privacy policy (outside of RootLayout - linked from the landing page footer,
+  // so it must render without app chrome for visitors who aren't set up yet)
+  {
+    path: '/privacy',
+    lazy: () => import('@/routes/privacy').then((m) => ({ Component: m.PrivacyPage })),
+    errorElement: <ErrorBoundary />,
+  },
   // App routes (pathless layout route with RootLayout)
   {
     element: <RootLayout />,
     errorElement: <ErrorBoundary />,
     children: [
-
       // Cash Flow (monthly overview)
       {
         path: 'cash-flow',
-        lazy: () =>
-          import('@/routes/cash-flow/index').then((m) => ({ Component: m.CashFlowPage })),
+        lazy: () => import('@/routes/cash-flow/index').then((m) => ({ Component: m.CashFlowPage })),
       },
 
       // Budget (plan tab only)
