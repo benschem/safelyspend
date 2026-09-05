@@ -36,6 +36,7 @@ import { CHART_COLORS } from '@/lib/chart-colors';
 import { cn, formatCents, toMonthlyCents, type CadenceType } from '@/lib/utils';
 import { SpendingPaceCard } from '@/components/cash-flow/spending-pace-card';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { CategoryProgressBar } from '@/components/cash-flow/category-progress-bar';
 import type { ForecastRule } from '@/lib/types';
 
 const MONTHS = [
@@ -1077,21 +1078,12 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                       />
                     </div>
                   ) : (
-                    <div className="relative h-2 rounded-full bg-muted">
-                      <div
-                        className={cn(
-                          'absolute h-2 rounded-full',
-                          isOverBudget ? 'bg-red-500' : isWarning ? 'bg-orange-500' : '',
-                        )}
-                        style={{
-                          width: `${Math.min(percentage, 100)}%`,
-                          backgroundColor: isOverBudget || isWarning ? undefined : item.color,
-                        }}
-                      />
-                      {isOverBudget && (
-                        <div className="absolute right-0 h-2 w-1 rounded-r-full bg-red-700" />
-                      )}
-                    </div>
+                    <CategoryProgressBar
+                      percentage={percentage}
+                      color={item.color}
+                      isOverBudget={isOverBudget}
+                      isWarning={isWarning}
+                    />
                   )}
                 </Link>
               );
