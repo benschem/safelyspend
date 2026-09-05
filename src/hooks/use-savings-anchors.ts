@@ -65,7 +65,9 @@ export function useSavingsAnchors() {
         (a) => a.savingsGoalId === data.savingsGoalId && a.date === data.date,
       );
       if (existingOnDate) {
-        throw new Error('This savings goal already has a balance set for this date. Edit the existing one or choose a different date.');
+        throw new Error(
+          'This savings goal already has a balance set for this date. Edit the existing one or choose a different date.',
+        );
       }
 
       const timestamp = now();
@@ -94,7 +96,9 @@ export function useSavingsAnchors() {
             (a) => a.savingsGoalId === newGoalId && a.date === newDate && a.id !== id,
           );
           if (existingOnDate) {
-            throw new Error('This savings goal already has a balance set for this date. Edit the existing one or choose a different date.');
+            throw new Error(
+              'This savings goal already has a balance set for this date. Edit the existing one or choose a different date.',
+            );
           }
         }
       }

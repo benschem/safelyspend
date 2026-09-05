@@ -166,7 +166,8 @@ export function BudgetSlider({
 
   // When viewing a non-default scenario, show delta from Current Plan (defaultValue)
   // Otherwise show delta from this scenario's baseline
-  const comparisonValue = differsFromDefault && defaultValue !== undefined ? defaultValue : baseline;
+  const comparisonValue =
+    differsFromDefault && defaultValue !== undefined ? defaultValue : baseline;
   const delta = localValue - comparisonValue;
   // Has adjustment if different from baseline (for reset button) OR different from default (for highlighting)
   const hasSliderAdjustment = localValue !== baseline;
@@ -241,7 +242,7 @@ export function BudgetSlider({
     }
   };
 
-  const deltaDisplay = (hasAdjustment && delta !== 0) ? getDeltaDisplay() : null;
+  const deltaDisplay = hasAdjustment && delta !== 0 ? getDeltaDisplay() : null;
 
   return (
     <div
@@ -255,7 +256,9 @@ export function BudgetSlider({
         <div className="flex items-center gap-2">
           {icon && <span className="text-muted-foreground">{icon}</span>}
           {labelHref ? (
-            <Link to={labelHref} className="font-medium hover:underline">{label}</Link>
+            <Link to={labelHref} className="font-medium hover:underline">
+              {label}
+            </Link>
           ) : (
             <span className="font-medium">{label}</span>
           )}
@@ -278,7 +281,9 @@ export function BudgetSlider({
             </PopoverTrigger>
             <PopoverContent className="w-48 p-3" align="end">
               <div className="space-y-2">
-                <label htmlFor="custom-amount" className="text-sm font-medium">Custom amount</label>
+                <label htmlFor="custom-amount" className="text-sm font-medium">
+                  Custom amount
+                </label>
                 <div className="flex gap-2">
                   <Input
                     id="custom-amount"

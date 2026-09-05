@@ -2,9 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { encrypt, decrypt, isWrongPassphrase } from '@/lib/e2e-crypto';
 import type { BudgetBackup } from '@/lib/db';
 
-function makeBudgetBackup(
-  overrides: Partial<BudgetBackup> = {},
-): BudgetBackup {
+function makeBudgetBackup(overrides: Partial<BudgetBackup> = {}): BudgetBackup {
   return {
     version: 3,
     exportedAt: '2026-02-15T00:00:00.000Z',
@@ -72,9 +70,7 @@ describe('encrypt and decrypt', { timeout: 30_000 }, () => {
     const corrupted = new Uint8Array(encrypted);
     corrupted[30]! ^= 0xff;
 
-    await expect(
-      decrypt(corrupted.buffer, 'my-passphrase'),
-    ).rejects.toThrow();
+    await expect(decrypt(corrupted.buffer, 'my-passphrase')).rejects.toThrow();
   });
 
   it('rejects data with unsupported format version', async () => {

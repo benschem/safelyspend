@@ -478,7 +478,12 @@ export function CategoryBudgetDialog({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button type="button" variant="ghost" size="icon" onClick={handleArchiveToggle}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleArchiveToggle}
+                      >
                         {category.isArchived ? (
                           <ArchiveRestore className="h-4 w-4" />
                         ) : (
@@ -496,12 +501,7 @@ export function CategoryBudgetDialog({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleDelete}
-                      >
+                      <Button type="button" variant="ghost" size="icon" onClick={handleDelete}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>

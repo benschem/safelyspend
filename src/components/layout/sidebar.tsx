@@ -1,5 +1,16 @@
 import { NavLink, useLocation, Link } from 'react-router';
-import { Banknote, HandCoins, Target, PiggyBank, Sparkles, Settings, ChartSpline, Menu, History, ClipboardCheck } from 'lucide-react';
+import {
+  Banknote,
+  HandCoins,
+  Target,
+  PiggyBank,
+  Sparkles,
+  Settings,
+  ChartSpline,
+  Menu,
+  History,
+  ClipboardCheck,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -80,9 +91,7 @@ function CheckInButton({ onNavigate }: { onNavigate?: (() => void) | undefined }
           )}
         </div>
         Check In
-        {isCheckInDue && (
-          <span className="ml-auto text-xs font-normal text-primary">Due</span>
-        )}
+        {isCheckInDue && <span className="ml-auto text-xs font-normal text-primary">Due</span>}
       </Link>
     </div>
   );

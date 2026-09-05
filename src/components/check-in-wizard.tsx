@@ -45,7 +45,14 @@ import type { CheckInCadence } from '@/lib/types';
 
 type CheckInStep = 'welcome' | 'import' | 'savings' | 'savings-confirm' | 'balance' | 'summary';
 
-const STEPS: CheckInStep[] = ['welcome', 'import', 'savings', 'savings-confirm', 'balance', 'summary'];
+const STEPS: CheckInStep[] = [
+  'welcome',
+  'import',
+  'savings',
+  'savings-confirm',
+  'balance',
+  'summary',
+];
 
 // ─────────────────────────────────────────────────────────────
 // Step Progress Dots
@@ -119,7 +126,9 @@ function WelcomeStep({
 
       {isFirstCheckIn && (
         <div className="mt-6 w-full max-w-xs space-y-2">
-          <label htmlFor="checkin-cadence" className="text-sm font-medium">How often do you want to check in?</label>
+          <label htmlFor="checkin-cadence" className="text-sm font-medium">
+            How often do you want to check in?
+          </label>
           <Select
             value={selectedCadence}
             onValueChange={(v) => setSelectedCadence(v as CheckInCadence)}
@@ -228,7 +237,8 @@ function ImportStep({
       )}
 
       <p className="mt-4 text-xs text-muted-foreground">
-        CSV import creates income and expense transactions only. Savings are handled in the next step.
+        CSV import creates income and expense transactions only. Savings are handled in the next
+        step.
       </p>
 
       <div className="mt-8 flex gap-3">
@@ -263,7 +273,12 @@ function SavingsTransactionCard({
   goalId: string;
   goalName: string;
   currentBalance: number;
-  onAddTransaction: (goalId: string, amountCents: number, description: string, date: string) => Promise<void>;
+  onAddTransaction: (
+    goalId: string,
+    amountCents: number,
+    description: string,
+    date: string,
+  ) => Promise<void>;
 }) {
   const [showForm, setShowForm] = useState<'contribute' | 'withdraw' | null>(null);
   const [amount, setAmount] = useState('');
@@ -279,8 +294,7 @@ function SavingsTransactionCard({
       return;
     }
     const finalCents = showForm === 'withdraw' ? -cents : cents;
-    const desc =
-      description || (showForm === 'withdraw' ? 'Withdrawal' : 'Contribution');
+    const desc = description || (showForm === 'withdraw' ? 'Withdrawal' : 'Contribution');
     try {
       await onAddTransaction(goalId, finalCents, desc, date);
       setAmount('');
@@ -329,7 +343,12 @@ function SavingsTransactionCard({
               onChange={(e) => setAmount(e.target.value)}
             />
             <div className="space-y-1">
-              <label htmlFor={`savings-tx-date-${goalId}`} className="text-xs text-muted-foreground">Date</label>
+              <label
+                htmlFor={`savings-tx-date-${goalId}`}
+                className="text-xs text-muted-foreground"
+              >
+                Date
+              </label>
               <Input
                 id={`savings-tx-date-${goalId}`}
                 type="date"
@@ -343,8 +362,20 @@ function SavingsTransactionCard({
               onChange={(e) => setDescription(e.target.value)}
             />
             <div className="flex gap-2">
-              <Button size="sm" onClick={handleSubmit}>Save</Button>
-              <Button size="sm" variant="ghost" onClick={() => { setShowForm(null); setAmount(''); setDate(today()); setDescription(''); setError(null); }}>
+              <Button size="sm" onClick={handleSubmit}>
+                Save
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setShowForm(null);
+                  setAmount('');
+                  setDate(today());
+                  setDescription('');
+                  setError(null);
+                }}
+              >
                 Cancel
               </Button>
             </div>
@@ -370,7 +401,8 @@ function useSavingsGoalsWithBalance() {
         const after = allSavings.filter(
           (t) => t.savingsGoalId === goal.id && t.date > activeAnchor.date,
         );
-        currentBalance = activeAnchor.balanceCents + after.reduce((sum, t) => sum + t.amountCents, 0);
+        currentBalance =
+          activeAnchor.balanceCents + after.reduce((sum, t) => sum + t.amountCents, 0);
       } else {
         currentBalance = allSavings
           .filter((t) => t.savingsGoalId === goal.id)
@@ -399,7 +431,12 @@ function SavingsStep({
   const { savingsGoals, goalsWithBalance } = useSavingsGoalsWithBalance();
   const { addTransaction } = useTransactions();
 
-  const handleAddTransaction = async (goalId: string, amountCents: number, description: string, date: string) => {
+  const handleAddTransaction = async (
+    goalId: string,
+    amountCents: number,
+    description: string,
+    date: string,
+  ) => {
     await addTransaction({
       type: 'savings',
       date,
@@ -528,7 +565,14 @@ function SavingsConfirmCard({
             Does {formatCents(currentBalance)} match your {goalName} saver account?
           </p>
           <div className="mt-2 flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => { setConfirmed(true); onInteract(); }}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setConfirmed(true);
+                onInteract();
+              }}
+            >
               <Check className="mr-1 h-3 w-3" />
               Yes
             </Button>
@@ -543,13 +587,16 @@ function SavingsConfirmCard({
       {showForm && !confirmed && (
         <div className="mt-3 rounded border p-3">
           <p className="text-sm font-medium">Correct balance</p>
-          <p className="text-xs text-muted-foreground">
-            Enter the actual balance from your bank.
-          </p>
+          <p className="text-xs text-muted-foreground">Enter the actual balance from your bank.</p>
           <div className="mt-2 space-y-2">
             {error && <p className="text-xs text-destructive">{error}</p>}
             <div className="space-y-1">
-              <label htmlFor={`savings-balance-${goalId}`} className="text-xs text-muted-foreground">Actual balance ($)</label>
+              <label
+                htmlFor={`savings-balance-${goalId}`}
+                className="text-xs text-muted-foreground"
+              >
+                Actual balance ($)
+              </label>
               <Input
                 id={`savings-balance-${goalId}`}
                 type="number"
@@ -561,7 +608,9 @@ function SavingsConfirmCard({
               />
             </div>
             <div className="space-y-1">
-              <label htmlFor={`savings-date-${goalId}`} className="text-xs text-muted-foreground">As of date</label>
+              <label htmlFor={`savings-date-${goalId}`} className="text-xs text-muted-foreground">
+                As of date
+              </label>
               <Input
                 id={`savings-date-${goalId}`}
                 type="date"
@@ -570,7 +619,9 @@ function SavingsConfirmCard({
               />
             </div>
             <div className="flex gap-2">
-              <Button size="sm" onClick={handleSetAnchor}>Save</Button>
+              <Button size="sm" onClick={handleSetAnchor}>
+                Save
+              </Button>
               <Button size="sm" variant="ghost" onClick={() => setShowForm(false)}>
                 Cancel
               </Button>
@@ -744,9 +795,7 @@ function BalanceStep({
 
       {!confirmed && !showForm && (
         <>
-          <p className="mt-2 text-muted-foreground">
-            Does this match your bank account right now?
-          </p>
+          <p className="mt-2 text-muted-foreground">Does this match your bank account right now?</p>
           <div className="mt-4 rounded-lg border bg-muted/50 px-6 py-3">
             <p className="text-3xl font-bold">{formatCents(currentBalance)}</p>
           </div>
@@ -768,7 +817,9 @@ function BalanceStep({
           <div className="mt-6 w-full max-w-xs space-y-3">
             {error && <p className="text-sm text-destructive">{error}</p>}
             <div className="space-y-1 text-left">
-              <label htmlFor="cash-balance-update" className="text-sm font-medium">Actual balance ($)</label>
+              <label htmlFor="cash-balance-update" className="text-sm font-medium">
+                Actual balance ($)
+              </label>
               <Input
                 id="cash-balance-update"
                 type="number"
@@ -780,7 +831,9 @@ function BalanceStep({
               />
             </div>
             <div className="space-y-1 text-left">
-              <label htmlFor="cash-date-update" className="text-sm font-medium">As of date</label>
+              <label htmlFor="cash-date-update" className="text-sm font-medium">
+                As of date
+              </label>
               <Input
                 id="cash-date-update"
                 type="date"
@@ -885,7 +938,10 @@ function SummaryStep({ onFinish }: { onFinish: () => void }) {
   const budgetStatus = useMemo(() => {
     if (summary.trackedCount === 0) return null;
     if (summary.overCount > 0) {
-      return { text: `${summary.overCount} budget${summary.overCount !== 1 ? 's' : ''} over`, color: 'text-red-600 dark:text-red-400' };
+      return {
+        text: `${summary.overCount} budget${summary.overCount !== 1 ? 's' : ''} over`,
+        color: 'text-red-600 dark:text-red-400',
+      };
     }
     if (summary.overspendingCount > 0) {
       return { text: 'Spending fast in some areas', color: 'text-orange-600 dark:text-orange-400' };
@@ -944,9 +1000,7 @@ function SummaryStep({ onFinish }: { onFinish: () => void }) {
                     <span>
                       {formatCents(goal.balance)}
                       {goal.target > 0 && (
-                        <span className="text-muted-foreground">
-                          {' '}/ {formatCents(goal.target)}
-                        </span>
+                        <span className="text-muted-foreground"> / {formatCents(goal.target)}</span>
                       )}
                     </span>
                   </div>
@@ -1003,16 +1057,14 @@ function SummaryStep({ onFinish }: { onFinish: () => void }) {
                       <span className="font-medium">
                         {formatCents(cat.amount)}
                         {cat.budget > 0 && (
-                          <span className="text-muted-foreground"> / {formatCents(cat.budget)}</span>
+                          <span className="text-muted-foreground">
+                            {' '}
+                            / {formatCents(cat.budget)}
+                          </span>
                         )}
                       </span>
                     </div>
-                    {cat.budget > 0 && (
-                      <Progress
-                        value={percent}
-                        className="mt-1 h-1.5"
-                      />
-                    )}
+                    {cat.budget > 0 && <Progress value={percent} className="mt-1 h-1.5" />}
                   </div>
                 );
               })}
@@ -1170,10 +1222,18 @@ export function CheckInWizard() {
                 onNext={goNext}
               />
             )}
-            {step === 'import' && <ImportStep onNext={goNext} onSkip={goNext} onInteract={handleInteract} />}
-            {step === 'savings' && <SavingsStep onNext={goNext} onSkip={goNext} onInteract={handleInteract} />}
-            {step === 'savings-confirm' && <SavingsConfirmStep onNext={goNext} onSkip={goNext} onInteract={handleInteract} />}
-            {step === 'balance' && <BalanceStep onNext={goNext} onSkip={goNext} onInteract={handleInteract} />}
+            {step === 'import' && (
+              <ImportStep onNext={goNext} onSkip={goNext} onInteract={handleInteract} />
+            )}
+            {step === 'savings' && (
+              <SavingsStep onNext={goNext} onSkip={goNext} onInteract={handleInteract} />
+            )}
+            {step === 'savings-confirm' && (
+              <SavingsConfirmStep onNext={goNext} onSkip={goNext} onInteract={handleInteract} />
+            )}
+            {step === 'balance' && (
+              <BalanceStep onNext={goNext} onSkip={goNext} onInteract={handleInteract} />
+            )}
             {step === 'summary' && <SummaryStep onFinish={handleFinish} />}
           </div>
         </div>

@@ -127,7 +127,8 @@ export function SettingsPage() {
   const [deletingSavingsAnchorId, setDeletingSavingsAnchorId] = useState<string | null>(null);
 
   // Check-in preferences
-  const { checkInCadence, lastCheckInDate, daysSinceLastCheckIn, setCheckInCadence } = useAppConfig();
+  const { checkInCadence, lastCheckInDate, daysSinceLastCheckIn, setCheckInCadence } =
+    useAppConfig();
 
   // Cloud sync state
   const { user, isAuthenticated, logout, deleteAccount } = useAuth();
@@ -151,7 +152,9 @@ export function SettingsPage() {
   const [overwriteConfirmOpen, setOverwriteConfirmOpen] = useState(false);
 
   // Active sessions state
-  const [sessions, setSessions] = useState<Array<{ id: string; createdAt: string; isCurrent: boolean }>>([]);
+  const [sessions, setSessions] = useState<
+    Array<{ id: string; createdAt: string; isCurrent: boolean }>
+  >([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
   const [revokingAll, setRevokingAll] = useState(false);
@@ -505,7 +508,9 @@ export function SettingsPage() {
       }
       setAnchorDialogOpen(false);
     } catch (err) {
-      setAnchorError(err instanceof Error ? err.message : 'Could not save the balance. Please try again.');
+      setAnchorError(
+        err instanceof Error ? err.message : 'Could not save the balance. Please try again.',
+      );
     }
   };
 
@@ -598,7 +603,9 @@ export function SettingsPage() {
       }
       setSavingsAnchorDialogOpen(false);
     } catch (err) {
-      setSavingsAnchorError(err instanceof Error ? err.message : 'Could not save the balance. Please try again.');
+      setSavingsAnchorError(
+        err instanceof Error ? err.message : 'Could not save the balance. Please try again.',
+      );
     }
   };
 
@@ -693,14 +700,21 @@ export function SettingsPage() {
                             Cancel
                           </Button>
                         )}
-                        <Button variant="ghost" size="sm" onClick={() => openEditAnchor(anchor)} aria-label="Edit anchor">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditAnchor(anchor)}
+                          aria-label="Edit anchor"
+                        >
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
                           variant={deletingAnchorId === anchor.id ? 'destructive' : 'ghost'}
                           size="sm"
                           onClick={() => handleDeleteAnchor(anchor.id)}
-                          aria-label={deletingAnchorId === anchor.id ? 'Confirm delete' : 'Delete anchor'}
+                          aria-label={
+                            deletingAnchorId === anchor.id ? 'Confirm delete' : 'Delete anchor'
+                          }
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -796,7 +810,11 @@ export function SettingsPage() {
                                       }
                                       size="sm"
                                       onClick={() => handleDeleteSavingsAnchor(anchor.id)}
-                                      aria-label={deletingSavingsAnchorId === anchor.id ? 'Confirm delete' : 'Delete savings anchor'}
+                                      aria-label={
+                                        deletingSavingsAnchorId === anchor.id
+                                          ? 'Confirm delete'
+                                          : 'Delete savings anchor'
+                                      }
                                     >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
@@ -1030,11 +1048,7 @@ export function SettingsPage() {
                   <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                     <h3>Account</h3>
                     <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={handleLogout}
-                        className="cursor-pointer"
-                      >
+                      <Button variant="outline" onClick={handleLogout} className="cursor-pointer">
                         Log Out
                       </Button>
                       <Button
@@ -1329,7 +1343,10 @@ export function SettingsPage() {
                 step="0.01"
                 placeholder="0.00"
                 value={anchorAmount}
-                onChange={(e) => { setAnchorAmount(e.target.value); setAnchorConfirmZero(false); }}
+                onChange={(e) => {
+                  setAnchorAmount(e.target.value);
+                  setAnchorConfirmZero(false);
+                }}
               />
             </div>
 
@@ -1413,7 +1430,10 @@ export function SettingsPage() {
                 min="0"
                 placeholder="0.00"
                 value={savingsAnchorAmount}
-                onChange={(e) => { setSavingsAnchorAmount(e.target.value); setSavingsAnchorConfirmZero(false); }}
+                onChange={(e) => {
+                  setSavingsAnchorAmount(e.target.value);
+                  setSavingsAnchorConfirmZero(false);
+                }}
               />
             </div>
 

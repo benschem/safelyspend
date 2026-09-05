@@ -28,8 +28,7 @@ export const MONTHLY_INCOME = 590000;
 export const MONTHLY_FIXED = 247000;
 export const MONTHLY_BUDGETED = 173000;
 export const MONTHLY_SAVINGS = 50000;
-export const MONTHLY_SURPLUS =
-  MONTHLY_INCOME - MONTHLY_FIXED - MONTHLY_BUDGETED - MONTHLY_SAVINGS;
+export const MONTHLY_SURPLUS = MONTHLY_INCOME - MONTHLY_FIXED - MONTHLY_BUDGETED - MONTHLY_SAVINGS;
 
 /** Take-home per fortnight, which is what actually lands in the account. */
 const FORTNIGHTLY_PAY = 272300;

@@ -273,7 +273,9 @@ export function ScenariosIndexPage() {
                                 onClick={() =>
                                   setActiveScenarioId(isActive ? defaultScenario!.id : scenario.id)
                                 }
-                                aria-label={isActive ? 'Back to Current Plan' : 'Explore this scenario'}
+                                aria-label={
+                                  isActive ? 'Back to Current Plan' : 'Explore this scenario'
+                                }
                               >
                                 <Play
                                   className={`h-4 w-4 ${isActive ? 'fill-violet-500 text-violet-500' : ''}`}

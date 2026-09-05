@@ -106,9 +106,7 @@ export function SavingsTransactionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {isWithdrawal ? 'Withdraw from Saver' : 'Add Contribution'}
-          </DialogTitle>
+          <DialogTitle>{isWithdrawal ? 'Withdraw from Saver' : 'Add Contribution'}</DialogTitle>
           <DialogDescription>
             {isWithdrawal
               ? 'Record a withdrawal from a savings goal.'
@@ -190,9 +188,7 @@ export function SavingsTransactionDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit">
-              {isWithdrawal ? 'Withdraw' : 'Add Contribution'}
-            </Button>
+            <Button type="submit">{isWithdrawal ? 'Withdraw' : 'Add Contribution'}</Button>
           </div>
         </form>
       </DialogContent>

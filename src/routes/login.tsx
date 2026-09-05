@@ -59,10 +59,7 @@ export function LoginPage() {
       if (cancelled) return;
 
       if (hasVault) {
-        setSearchParams(
-          { step: 'restore', email: user?.email ?? emailParam },
-          { replace: true },
-        );
+        setSearchParams({ step: 'restore', email: user?.email ?? emailParam }, { replace: true });
       } else {
         // Signed in but nothing to restore: send them through first-run setup
         // rather than into the app shell, which would bounce them straight
@@ -242,8 +239,8 @@ export function LoginPage() {
             </form>
 
             <Alert>
-              Your passphrase never leaves this device. Without it, nobody — including us — can
-              read your vault.
+              Your passphrase never leaves this device. Without it, nobody — including us — can read
+              your vault.
             </Alert>
 
             <div className="text-center">
@@ -295,7 +292,10 @@ export function LoginPage() {
                   checked={rememberMe}
                   onCheckedChange={(checked) => setRememberMe(checked === true)}
                 />
-                <label htmlFor="remember-me" className="cursor-pointer text-sm text-muted-foreground">
+                <label
+                  htmlFor="remember-me"
+                  className="cursor-pointer text-sm text-muted-foreground"
+                >
                   Remember me for 30 days
                 </label>
               </div>

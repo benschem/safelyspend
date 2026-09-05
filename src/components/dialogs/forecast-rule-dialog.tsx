@@ -270,8 +270,7 @@ export function ForecastRuleDialog({
           {similarRules.length > 0 && (
             <Alert variant="warning">
               A similar recurring {similarRules[0]!.type} exists: &lsquo;
-              {similarRules[0]!.description}&rsquo; for{' '}
-              {formatCents(similarRules[0]!.amountCents)}{' '}
+              {similarRules[0]!.description}&rsquo; for {formatCents(similarRules[0]!.amountCents)}{' '}
               {CADENCE_PER_LABELS[similarRules[0]!.cadence]}
             </Alert>
           )}

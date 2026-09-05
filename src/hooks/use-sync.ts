@@ -71,51 +71,48 @@ export function useSync(): UseSyncReturn {
     setHasPassphrase(false);
   }, []);
 
-  const push = useCallback(
-    async (force?: boolean): Promise<{ version: number }> => {
-      if (!passphraseRef.current) {
-        throw new Error('Passphrase not set');
+  const push = useCallback(async (force?: boolean): Promise<{ version: number }> => {
+    if (!passphraseRef.current) {
+      throw new Error('Passphrase not set');
+    }
+
+    setSyncStatus('pushing');
+    setConflict(null);
+
+    try {
+      const backup = await exportAllData();
+      const encrypted = await encrypt(backup, passphraseRef.current);
+
+      let expectedVersion = getStoredVersion();
+      if (force) {
+        // Use current remote version as expected version
+        const metadata = await api.vault.getMetadata();
+        expectedVersion = metadata.version;
       }
 
-      setSyncStatus('pushing');
-      setConflict(null);
+      const result = await api.vault.putData(encrypted, expectedVersion);
 
-      try {
-        const backup = await exportAllData();
-        const encrypted = await encrypt(backup, passphraseRef.current);
+      setStoredVersion(result.version);
+      setLocalVersion(result.version);
+      const now = new Date().toISOString();
+      setStoredLastSyncedAt(now);
+      setLastSyncedAt(now);
 
-        let expectedVersion = getStoredVersion();
-        if (force) {
-          // Use current remote version as expected version
-          const metadata = await api.vault.getMetadata();
-          expectedVersion = metadata.version;
-        }
-
-        const result = await api.vault.putData(encrypted, expectedVersion);
-
-        setStoredVersion(result.version);
-        setLocalVersion(result.version);
-        const now = new Date().toISOString();
-        setStoredLastSyncedAt(now);
-        setLastSyncedAt(now);
-
-        return result;
-      } catch (err) {
-        if (err instanceof ApiError && err.status === 409) {
-          const remoteVersion = (err.data as { currentVersion?: number })?.currentVersion ?? 0;
-          setConflict({
-            localVersion: getStoredVersion(),
-            remoteVersion,
-          });
-          throw err;
-        }
+      return result;
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        const remoteVersion = (err.data as { currentVersion?: number })?.currentVersion ?? 0;
+        setConflict({
+          localVersion: getStoredVersion(),
+          remoteVersion,
+        });
         throw err;
-      } finally {
-        setSyncStatus('idle');
       }
-    },
-    [],
-  );
+      throw err;
+    } finally {
+      setSyncStatus('idle');
+    }
+  }, []);
 
   const pull = useCallback(async (): Promise<void> => {
     if (!passphraseRef.current) {

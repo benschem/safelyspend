@@ -63,22 +63,22 @@ export function useSavingsGoals() {
         }
       }
 
-      await db.savingsGoals.where('id').equals(id).modify((goal) => {
-        Object.assign(goal, { ...updates, updatedAt: now() });
-        // Dexie's update() ignores undefined, so explicitly delete cleared optional fields
-        if (updates.deadline === undefined && 'deadline' in updates) delete goal.deadline;
-        if (updates.annualInterestRate === undefined && 'annualInterestRate' in updates)
-          delete goal.annualInterestRate;
-        // Clear schedule if set to empty array or undefined
-        if ('interestRateSchedule' in updates) {
-          if (
-            !updates.interestRateSchedule ||
-            updates.interestRateSchedule.length === 0
-          ) {
-            delete goal.interestRateSchedule;
+      await db.savingsGoals
+        .where('id')
+        .equals(id)
+        .modify((goal) => {
+          Object.assign(goal, { ...updates, updatedAt: now() });
+          // Dexie's update() ignores undefined, so explicitly delete cleared optional fields
+          if (updates.deadline === undefined && 'deadline' in updates) delete goal.deadline;
+          if (updates.annualInterestRate === undefined && 'annualInterestRate' in updates)
+            delete goal.annualInterestRate;
+          // Clear schedule if set to empty array or undefined
+          if ('interestRateSchedule' in updates) {
+            if (!updates.interestRateSchedule || updates.interestRateSchedule.length === 0) {
+              delete goal.interestRateSchedule;
+            }
           }
-        }
-      });
+        });
     },
     [],
   );
@@ -92,19 +92,14 @@ export function useSavingsGoals() {
       .filter((t) => t.type === 'savings' && t.savingsGoalId === id)
       .toArray();
 
-    const anchors = await db.savingsAnchors
-      .where('savingsGoalId')
-      .equals(id)
-      .toArray();
+    const anchors = await db.savingsAnchors.where('savingsGoalId').equals(id).toArray();
     const activeAnchor = anchors
       .filter((a) => a.date <= todayStr)
       .sort((a, b) => b.date.localeCompare(a.date))[0];
 
     let currentBalance: number;
     if (activeAnchor) {
-      const transactionsAfterAnchor = allGoalTransactions.filter(
-        (t) => t.date > activeAnchor.date,
-      );
+      const transactionsAfterAnchor = allGoalTransactions.filter((t) => t.date > activeAnchor.date);
       currentBalance =
         activeAnchor.balanceCents +
         transactionsAfterAnchor.reduce((sum, t) => sum + t.amountCents, 0);

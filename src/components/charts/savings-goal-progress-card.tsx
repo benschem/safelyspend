@@ -276,9 +276,7 @@ export function SavingsGoalProgressCard({
             ) : (
               <div className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400">
                 <CalendarCheck className="h-3.5 w-3.5" />
-                <span className="font-medium">
-                  {formatMonth(expectedCompletion.month)}
-                </span>
+                <span className="font-medium">{formatMonth(expectedCompletion.month)}</span>
                 {timeframeInfo && (
                   <span
                     className={`text-xs font-medium ${

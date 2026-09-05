@@ -18,7 +18,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Upload, AlertCircle, CheckCircle2, FileText, ChevronsUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Upload,
+  AlertCircle,
+  CheckCircle2,
+  FileText,
+  ChevronsUpDown,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import {
   parseCsvHeaders,
   getSampleRows,
@@ -116,7 +124,14 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
     setCsvContent('');
     setHeaders([]);
     setSampleRows([]);
-    setMapping({ date: null, description: null, amount: null, debit: null, credit: null, category: null });
+    setMapping({
+      date: null,
+      description: null,
+      amount: null,
+      debit: null,
+      credit: null,
+      category: null,
+    });
     setAmountMode('single');
     setDateFormat('auto');
     setTransactions([]);
@@ -143,79 +158,75 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
   // Step 1: Upload
   // =========================================================================
 
-  const handleFileSelect = useCallback(
-    async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const files = event.target.files;
-      if (!files || files.length === 0) return;
-      event.target.value = '';
+  const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    event.target.value = '';
 
-      const file = files[0];
-      if (!file) return;
+    const file = files[0];
+    if (!file) return;
 
-      if (file.size > MAX_FILE_SIZE_BYTES) {
-        setParseErrors(['File too large. Maximum file size is 50MB.']);
-        return;
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setParseErrors(['File too large. Maximum file size is 50MB.']);
+      return;
+    }
+
+    const isValidExtension = file.name.toLowerCase().endsWith('.csv');
+    const isValidMimeType =
+      file.type === 'text/csv' || file.type === 'application/vnd.ms-excel' || file.type === '';
+
+    if (!isValidExtension || !isValidMimeType) {
+      setParseErrors(['Invalid file type. Please select a CSV file.']);
+      return;
+    }
+
+    setParseErrors([]);
+
+    try {
+      const content = await file.text();
+      setCsvContent(content);
+      const csvHeaders = parseCsvHeaders(content);
+      setHeaders(csvHeaders);
+
+      const samples = getSampleRows(content, 5);
+      setSampleRows(samples);
+
+      const detectedMapping = autoDetectMapping(csvHeaders);
+      setMapping(detectedMapping);
+
+      // Auto-detect amount mode
+      if (detectedMapping.debit && detectedMapping.credit && !detectedMapping.amount) {
+        setAmountMode('split');
+      } else {
+        setAmountMode('single');
       }
 
-      const isValidExtension = file.name.toLowerCase().endsWith('.csv');
-      const isValidMimeType =
-        file.type === 'text/csv' || file.type === 'application/vnd.ms-excel' || file.type === '';
-
-      if (!isValidExtension || !isValidMimeType) {
-        setParseErrors(['Invalid file type. Please select a CSV file.']);
-        return;
+      // Auto-detect date format
+      if (detectedMapping.date && samples.length > 0) {
+        const dateSamples = samples
+          .map((row) => row[detectedMapping.date!] ?? '')
+          .filter((v) => v.trim());
+        setDateFormat(autoDetectDateFormat(dateSamples));
       }
 
-      setParseErrors([]);
-
-      try {
-        const content = await file.text();
-        setCsvContent(content);
-        const csvHeaders = parseCsvHeaders(content);
-        setHeaders(csvHeaders);
-
-        const samples = getSampleRows(content, 5);
-        setSampleRows(samples);
-
-        const detectedMapping = autoDetectMapping(csvHeaders);
-        setMapping(detectedMapping);
-
-        // Auto-detect amount mode
-        if (detectedMapping.debit && detectedMapping.credit && !detectedMapping.amount) {
-          setAmountMode('split');
-        } else {
-          setAmountMode('single');
-        }
-
-        // Auto-detect date format
-        if (detectedMapping.date && samples.length > 0) {
-          const dateSamples = samples
-            .map((row) => row[detectedMapping.date!] ?? '')
-            .filter((v) => v.trim());
-          setDateFormat(autoDetectDateFormat(dateSamples));
-        }
-
-        setStep('mapping');
-      } catch {
-        setParseErrors(['Could not read the file. Please check it\u2019s a valid CSV and try again.']);
-      }
-    },
-    [],
-  );
+      setStep('mapping');
+    } catch {
+      setParseErrors([
+        'Could not read the file. Please check it\u2019s a valid CSV and try again.',
+      ]);
+    }
+  }, []);
 
   // =========================================================================
   // Step 2: Mapping
   // =========================================================================
 
-  const updateMapping = useCallback(
-    (field: keyof CsvColumnMapping, value: string) => {
-      setMapping((prev) => ({
-        ...prev,
-        [field]: value === '__none__' ? null : value,
-      }));
-    },
-    [],
-  );
+  const updateMapping = useCallback((field: keyof CsvColumnMapping, value: string) => {
+    setMapping((prev) => ({
+      ...prev,
+      [field]: value === '__none__' ? null : value,
+    }));
+  }, []);
 
   // Detect duplicate column assignments
   const duplicateColumns = useMemo(() => {
@@ -273,7 +284,10 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
 
       // Dedup against existing transactions
       const existingFingerprints = await getExistingFingerprints();
-      const { unique, duplicates: dupes } = filterDuplicates(result.transactions, existingFingerprints);
+      const { unique, duplicates: dupes } = filterDuplicates(
+        result.transactions,
+        existingFingerprints,
+      );
 
       // Also dedup within the file itself
       const seenFingerprints = new Set<string>();
@@ -330,7 +344,16 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
     } finally {
       setIsProcessing(false);
     }
-  }, [csvContent, mapping, amountMode, dateFormat, mappingValid, getExistingFingerprints, applyRulesToBatch, activeCategories]);
+  }, [
+    csvContent,
+    mapping,
+    amountMode,
+    dateFormat,
+    mappingValid,
+    getExistingFingerprints,
+    applyRulesToBatch,
+    activeCategories,
+  ]);
 
   // =========================================================================
   // Step 3: Preview
@@ -375,7 +398,12 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
   // Get effective category ID for a row (override > rule > CSV match)
   const getEffectiveCategoryId = useCallback(
     (index: number): string | null => {
-      return categoryOverrides.get(index) ?? ruleCategoryMap.get(index) ?? csvCategoryIdMap.get(index) ?? null;
+      return (
+        categoryOverrides.get(index) ??
+        ruleCategoryMap.get(index) ??
+        csvCategoryIdMap.get(index) ??
+        null
+      );
     },
     [categoryOverrides, ruleCategoryMap, csvCategoryIdMap],
   );
@@ -399,9 +427,7 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
 
     // Filter out skipped transactions
     const toProcess = transactions.filter((_, i) => !skippedIndices.has(i));
-    const toProcessIndices = transactions
-      .map((_, i) => i)
-      .filter((i) => !skippedIndices.has(i));
+    const toProcessIndices = transactions.map((_, i) => i).filter((i) => !skippedIndices.has(i));
 
     // Collect CSV category names that need new categories created
     const categoryNames = new Set<string>();
@@ -409,7 +435,12 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
       const originalIndex = toProcessIndices[j]!;
       const tx = toProcess[j]!;
       // Only collect if no override, rule match, or existing category match
-      if (!categoryOverrides.has(originalIndex) && !ruleCategoryMap.has(originalIndex) && !csvCategoryIdMap.has(originalIndex) && tx.category) {
+      if (
+        !categoryOverrides.has(originalIndex) &&
+        !ruleCategoryMap.has(originalIndex) &&
+        !csvCategoryIdMap.has(originalIndex) &&
+        tx.category
+      ) {
         categoryNames.add(tx.category);
       }
     }
@@ -517,12 +548,7 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
               </p>
               <label className="mt-4 inline-block cursor-pointer">
                 <span className="sr-only">Select CSV file to import</span>
-                <input
-                  type="file"
-                  accept=".csv"
-                  className="hidden"
-                  onChange={handleFileSelect}
-                />
+                <input type="file" accept=".csv" className="hidden" onChange={handleFileSelect} />
                 <Button asChild>
                   <span>Select CSV File</span>
                 </Button>
@@ -539,9 +565,7 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
               </ul>
             </div>
 
-            {parseErrors.length > 0 && (
-              <ErrorBanner errors={parseErrors} />
-            )}
+            {parseErrors.length > 0 && <ErrorBanner errors={parseErrors} />}
           </div>
         )}
 
@@ -642,9 +666,7 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
               />
             </div>
 
-            {parseErrors.length > 0 && (
-              <ErrorBanner errors={parseErrors} />
-            )}
+            {parseErrors.length > 0 && <ErrorBanner errors={parseErrors} />}
 
             <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={resetState} disabled={isProcessing}>
@@ -670,9 +692,7 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
             {/* Stats bar */}
             <div className="flex gap-4">
               <div className="flex-1 rounded-lg border p-4 text-center">
-                <p className="text-2xl font-bold text-green-600">
-                  {importCount.toLocaleString()}
-                </p>
+                <p className="text-2xl font-bold text-green-600">{importCount.toLocaleString()}</p>
                 <p className="text-sm text-muted-foreground">To import</p>
               </div>
               <div className="flex-1 rounded-lg border p-4 text-center">
@@ -691,140 +711,171 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
               )}
             </div>
 
-            {transactions.length > 0 && (() => {
-              const totalPages = Math.ceil(transactions.length / PREVIEW_PAGE_SIZE);
-              const pageStart = previewPage * PREVIEW_PAGE_SIZE;
-              const pageEnd = Math.min(pageStart + PREVIEW_PAGE_SIZE, transactions.length);
-              const pageTransactions = transactions.slice(pageStart, pageEnd);
+            {transactions.length > 0 &&
+              (() => {
+                const totalPages = Math.ceil(transactions.length / PREVIEW_PAGE_SIZE);
+                const pageStart = previewPage * PREVIEW_PAGE_SIZE;
+                const pageEnd = Math.min(pageStart + PREVIEW_PAGE_SIZE, transactions.length);
+                const pageTransactions = transactions.slice(pageStart, pageEnd);
 
-              return (
-                <>
-                  <Separator />
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium">
-                      All transactions ({transactions.length.toLocaleString()})
-                    </p>
-                    {totalPages > 1 && (
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          disabled={previewPage === 0}
-                          onClick={() => { setPreviewPage((p) => p - 1); setEditingCategoryIdx(null); }}
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <span className="text-sm text-muted-foreground">
-                          {pageStart + 1}–{pageEnd} of {transactions.length.toLocaleString()}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          disabled={previewPage >= totalPages - 1}
-                          onClick={() => { setPreviewPage((p) => p + 1); setEditingCategoryIdx(null); }}
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                  <div className="overflow-hidden rounded-lg border">
-                    {/* Header row */}
-                    <div className="flex items-center gap-2 border-b bg-muted/80 px-3 py-2">
-                      <Checkbox
-                        checked={allSelected}
-                        onCheckedChange={() => {
-                          if (allSelected) deselectAll();
-                          else selectAll();
-                        }}
-                        aria-label={allSelected ? 'Deselect all' : 'Select all'}
-                      />
-                      <span className="w-20 shrink-0 text-xs font-medium text-muted-foreground">Date</span>
-                      <span className="min-w-0 flex-1 text-xs font-medium text-muted-foreground">Description</span>
-                      <span className="w-32 shrink-0 text-xs font-medium text-muted-foreground">Category</span>
-                      <span className="w-20 shrink-0 text-right text-xs font-medium text-muted-foreground">Amount</span>
-                    </div>
-
-                    {/* Transaction rows */}
-                    <div className="divide-y">
-                      {pageTransactions.map((tx, pageIdx) => {
-                        const i = pageStart + pageIdx; // Original index for state lookups
-                        const isSkipped = skippedIndices.has(i);
-                        const effectiveCategoryId = getEffectiveCategoryId(i);
-                        const categoryName = effectiveCategoryId
-                          ? categoryNameMap.get(effectiveCategoryId) ?? null
-                          : null;
-                        // CSV category that doesn't match any existing category (will be created on import)
-                        const unmatchedCsvCategory = !categoryName && tx.category ? tx.category : null;
-                        const isUncategorisedExpense = !categoryName && !unmatchedCsvCategory && tx.type === 'expense';
-                        const isEditing = editingCategoryIdx === i;
-
-                        return (
-                          <div
-                            key={i}
-                            className={`flex items-center gap-2 px-3 py-2 ${isSkipped ? 'opacity-40' : ''}`}
+                return (
+                  <>
+                    <Separator />
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium">
+                        All transactions ({transactions.length.toLocaleString()})
+                      </p>
+                      {totalPages > 1 && (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            disabled={previewPage === 0}
+                            onClick={() => {
+                              setPreviewPage((p) => p - 1);
+                              setEditingCategoryIdx(null);
+                            }}
                           >
-                            <Checkbox
-                              checked={!isSkipped}
-                              onCheckedChange={() => toggleSkip(i)}
-                              aria-label={`${isSkipped ? 'Include' : 'Skip'} transaction: ${tx.description}`}
-                            />
-                            <span className="w-20 shrink-0 text-sm text-muted-foreground">{tx.date}</span>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                                <span className="truncate text-sm font-medium">{tx.description}</span>
-                                <Badge variant={tx.type === 'income' ? 'success' : 'destructive'} className="shrink-0">
-                                  {tx.type}
-                                </Badge>
-                              </div>
-                            </div>
-                            <div className="w-32 shrink-0">
-                              {isSkipped ? (
-                                <span className="text-xs text-muted-foreground">Skipped</span>
-                              ) : isEditing ? (
-                                <CategorySelect
-                                  value={effectiveCategoryId ?? ''}
-                                  onChange={(v) => setCategoryForRow(i, v)}
-                                  allowNone
-                                />
-                              ) : (
-                                <button
-                                  type="button"
-                                  className="flex h-10 w-full cursor-pointer items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-left text-sm transition-colors hover:bg-accent"
-                                  onClick={() => setEditingCategoryIdx(i)}
-                                >
-                                  {categoryName ? (
-                                    <span className="truncate">{categoryName}</span>
-                                  ) : unmatchedCsvCategory ? (
-                                    <span className="truncate italic" title={`"${unmatchedCsvCategory}" will be created as a new category`}>{unmatchedCsvCategory}</span>
-                                  ) : isUncategorisedExpense ? (
-                                    <span className="text-orange-600 dark:text-orange-400">Uncategorised</span>
-                                  ) : (
-                                    <span className="text-muted-foreground">Uncategorised</span>
-                                  )}
-                                  <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
-                                </button>
-                              )}
-                            </div>
-                            <span
-                              className={`w-20 shrink-0 text-right font-mono text-sm ${
-                                tx.type === 'income' ? 'text-green-600' : 'text-red-600'
-                              }`}
-                            >
-                              {tx.type === 'income' ? '+' : '-'}
-                              {formatCents(tx.amountCents)}
-                            </span>
-                          </div>
-                        );
-                      })}
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <span className="text-sm text-muted-foreground">
+                            {pageStart + 1}–{pageEnd} of {transactions.length.toLocaleString()}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            disabled={previewPage >= totalPages - 1}
+                            onClick={() => {
+                              setPreviewPage((p) => p + 1);
+                              setEditingCategoryIdx(null);
+                            }}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </>
-              );
-            })()}
+                    <div className="overflow-hidden rounded-lg border">
+                      {/* Header row */}
+                      <div className="flex items-center gap-2 border-b bg-muted/80 px-3 py-2">
+                        <Checkbox
+                          checked={allSelected}
+                          onCheckedChange={() => {
+                            if (allSelected) deselectAll();
+                            else selectAll();
+                          }}
+                          aria-label={allSelected ? 'Deselect all' : 'Select all'}
+                        />
+                        <span className="w-20 shrink-0 text-xs font-medium text-muted-foreground">
+                          Date
+                        </span>
+                        <span className="min-w-0 flex-1 text-xs font-medium text-muted-foreground">
+                          Description
+                        </span>
+                        <span className="w-32 shrink-0 text-xs font-medium text-muted-foreground">
+                          Category
+                        </span>
+                        <span className="w-20 shrink-0 text-right text-xs font-medium text-muted-foreground">
+                          Amount
+                        </span>
+                      </div>
+
+                      {/* Transaction rows */}
+                      <div className="divide-y">
+                        {pageTransactions.map((tx, pageIdx) => {
+                          const i = pageStart + pageIdx; // Original index for state lookups
+                          const isSkipped = skippedIndices.has(i);
+                          const effectiveCategoryId = getEffectiveCategoryId(i);
+                          const categoryName = effectiveCategoryId
+                            ? (categoryNameMap.get(effectiveCategoryId) ?? null)
+                            : null;
+                          // CSV category that doesn't match any existing category (will be created on import)
+                          const unmatchedCsvCategory =
+                            !categoryName && tx.category ? tx.category : null;
+                          const isUncategorisedExpense =
+                            !categoryName && !unmatchedCsvCategory && tx.type === 'expense';
+                          const isEditing = editingCategoryIdx === i;
+
+                          return (
+                            <div
+                              key={i}
+                              className={`flex items-center gap-2 px-3 py-2 ${isSkipped ? 'opacity-40' : ''}`}
+                            >
+                              <Checkbox
+                                checked={!isSkipped}
+                                onCheckedChange={() => toggleSkip(i)}
+                                aria-label={`${isSkipped ? 'Include' : 'Skip'} transaction: ${tx.description}`}
+                              />
+                              <span className="w-20 shrink-0 text-sm text-muted-foreground">
+                                {tx.date}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                  <span className="truncate text-sm font-medium">
+                                    {tx.description}
+                                  </span>
+                                  <Badge
+                                    variant={tx.type === 'income' ? 'success' : 'destructive'}
+                                    className="shrink-0"
+                                  >
+                                    {tx.type}
+                                  </Badge>
+                                </div>
+                              </div>
+                              <div className="w-32 shrink-0">
+                                {isSkipped ? (
+                                  <span className="text-xs text-muted-foreground">Skipped</span>
+                                ) : isEditing ? (
+                                  <CategorySelect
+                                    value={effectiveCategoryId ?? ''}
+                                    onChange={(v) => setCategoryForRow(i, v)}
+                                    allowNone
+                                  />
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="flex h-10 w-full cursor-pointer items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-left text-sm transition-colors hover:bg-accent"
+                                    onClick={() => setEditingCategoryIdx(i)}
+                                  >
+                                    {categoryName ? (
+                                      <span className="truncate">{categoryName}</span>
+                                    ) : unmatchedCsvCategory ? (
+                                      <span
+                                        className="truncate italic"
+                                        title={`"${unmatchedCsvCategory}" will be created as a new category`}
+                                      >
+                                        {unmatchedCsvCategory}
+                                      </span>
+                                    ) : isUncategorisedExpense ? (
+                                      <span className="text-orange-600 dark:text-orange-400">
+                                        Uncategorised
+                                      </span>
+                                    ) : (
+                                      <span className="text-muted-foreground">Uncategorised</span>
+                                    )}
+                                    <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                                  </button>
+                                )}
+                              </div>
+                              <span
+                                className={`w-20 shrink-0 text-right font-mono text-sm ${
+                                  tx.type === 'income' ? 'text-green-600' : 'text-red-600'
+                                }`}
+                              >
+                                {tx.type === 'income' ? '+' : '-'}
+                                {formatCents(tx.amountCents)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
 
             {parseWarnings.length > 0 && (
               <div className="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4 text-yellow-800 dark:text-yellow-200">
@@ -836,9 +887,7 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
                   {parseWarnings.slice(0, 5).map((warning, i) => (
                     <li key={i}>{warning}</li>
                   ))}
-                  {parseWarnings.length > 5 && (
-                    <li>...and {parseWarnings.length - 5} more</li>
-                  )}
+                  {parseWarnings.length > 5 && <li>...and {parseWarnings.length - 5} more</li>}
                 </ul>
               </div>
             )}
@@ -940,7 +989,7 @@ function DateFormatField({
 }) {
   // Get a sample raw date and show what it parses to
   const rawSample = dateColumn
-    ? (sampleRows.find((row) => (row[dateColumn] ?? '').trim()))?.[dateColumn] ?? ''
+    ? (sampleRows.find((row) => (row[dateColumn] ?? '').trim())?.[dateColumn] ?? '')
     : '';
   const parsed = rawSample ? parseDate(rawSample, dateFormat) : '';
 
@@ -1065,7 +1114,8 @@ function MappingField({
   return (
     <div>
       <p className="mb-1 text-sm font-medium">
-        {label}{required ? ' *' : ' (optional)'}
+        {label}
+        {required ? ' *' : ' (optional)'}
       </p>
       <Select value={value ?? '__none__'} onValueChange={onChange}>
         <SelectTrigger>
@@ -1074,19 +1124,17 @@ function MappingField({
         <SelectContent>
           <SelectItem value="__none__">{required ? '— Select —' : 'None'}</SelectItem>
           {headers.map((h) => (
-            <SelectItem key={h} value={h}>{h}</SelectItem>
+            <SelectItem key={h} value={h}>
+              {h}
+            </SelectItem>
           ))}
         </SelectContent>
       </Select>
       {duplicateOf && (
-        <p className="mt-1.5 text-xs text-destructive">
-          Already used for {duplicateOf}
-        </p>
+        <p className="mt-1.5 text-xs text-destructive">Already used for {duplicateOf}</p>
       )}
       {!duplicateOf && warning && (
-        <p className="mt-1.5 text-xs text-orange-600 dark:text-orange-400">
-          {warning}
-        </p>
+        <p className="mt-1.5 text-xs text-orange-600 dark:text-orange-400">{warning}</p>
       )}
       {!duplicateOf && !warning && samples.length > 0 && (
         <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">

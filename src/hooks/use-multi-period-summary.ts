@@ -179,9 +179,7 @@ export function useMultiPeriodSummary({
       // Surplus calculation:
       // Past months: use actuals (transactions capture all real spending)
       // Current/future months: use rule-based planned surplus (matches hero)
-      const surplus = isPast
-        ? incomeActual - expensesActual - savingsActual
-        : plannedSurplus;
+      const surplus = isPast ? incomeActual - expensesActual - savingsActual : plannedSurplus;
 
       const totalBudget = variableBudget; // simplified — fixed expenses handled via rules
 

@@ -111,7 +111,8 @@ function CustomTooltip({
     );
   }
 
-  const budgetUsedPercent = totalBudget > 0 ? Math.round(((data.actualCumulative ?? 0) / totalBudget) * 100) : 0;
+  const budgetUsedPercent =
+    totalBudget > 0 ? Math.round(((data.actualCumulative ?? 0) / totalBudget) * 100) : 0;
   const paceStatus =
     budgetUsedPercent > 100
       ? 'Over budget'
@@ -201,7 +202,8 @@ export function BurnRateChart({
   fixedExpensesTotal,
 }: BurnRateChartProps) {
   void _periodLabel; // Kept for API compatibility
-  const hasSmartProjection = fixedExpenseSchedule != null && variableBudget != null && fixedExpensesTotal != null;
+  const hasSmartProjection =
+    fixedExpenseSchedule != null && variableBudget != null && fixedExpensesTotal != null;
 
   // 100% = income; budget as % of income
   const referenceAmount = income != null && income > 0 ? income : totalBudget;
@@ -253,7 +255,10 @@ export function BurnRateChart({
           cumulativeSpend += monthSpend;
           currentMonthIndex = m + 1;
 
-          const expectedPercent = referenceAmount > 0 ? (((m + 1) / totalMonths) * totalBudget / referenceAmount) * 100 : 0;
+          const expectedPercent =
+            referenceAmount > 0
+              ? ((((m + 1) / totalMonths) * totalBudget) / referenceAmount) * 100
+              : 0;
           const actualPercent = referenceAmount > 0 ? (cumulativeSpend / referenceAmount) * 100 : 0;
 
           monthlyData.push({
@@ -273,7 +278,9 @@ export function BurnRateChart({
 
       // Calculate monthly burn rate for projection
       const lastActualPercent =
-        currentMonthIndex > 0 && referenceAmount > 0 ? (cumulativeSpend / referenceAmount) * 100 : 0;
+        currentMonthIndex > 0 && referenceAmount > 0
+          ? (cumulativeSpend / referenceAmount) * 100
+          : 0;
       const monthlyBurnRate = currentMonthIndex > 0 ? lastActualPercent / currentMonthIndex : 0;
 
       // Add future months with projection
@@ -282,7 +289,10 @@ export function BurnRateChart({
         const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
         const monthLabel = MONTH_NAMES[monthDate.getMonth()] ?? '';
 
-        const expectedPercent = referenceAmount > 0 ? (((m + 1) / totalMonths) * totalBudget / referenceAmount) * 100 : 0;
+        const expectedPercent =
+          referenceAmount > 0
+            ? ((((m + 1) / totalMonths) * totalBudget) / referenceAmount) * 100
+            : 0;
         const projectedPercent = monthlyBurnRate * (m + 1);
 
         monthlyData.push({
@@ -348,7 +358,8 @@ export function BurnRateChart({
 
         const expectedCumulative = expectedAtDay(day, dateStr);
         const actualPercent = referenceAmount > 0 ? (cumulativeSpend / referenceAmount) * 100 : 0;
-        const expectedPercent = referenceAmount > 0 ? (expectedCumulative / referenceAmount) * 100 : 0;
+        const expectedPercent =
+          referenceAmount > 0 ? (expectedCumulative / referenceAmount) * 100 : 0;
 
         data.push({
           day,
@@ -369,9 +380,7 @@ export function BurnRateChart({
     let variableDailyRate: number;
     if (hasSmartProjection && currentDay > 0) {
       // Smart: only project variable spending linearly
-      const fixedDueToDate = cumulativeFixedByDay(
-        data[data.length - 1]?.date ?? periodStart,
-      );
+      const fixedDueToDate = cumulativeFixedByDay(data[data.length - 1]?.date ?? periodStart);
       const variableSpent = Math.max(0, cumulativeSpend - fixedDueToDate);
       variableDailyRate = variableSpent / currentDay;
     } else {
@@ -391,7 +400,8 @@ export function BurnRateChart({
       const day = i + 1;
 
       const expectedCumulative = expectedAtDay(day, dateStr);
-      const expectedPercent = referenceAmount > 0 ? (expectedCumulative / referenceAmount) * 100 : 0;
+      const expectedPercent =
+        referenceAmount > 0 ? (expectedCumulative / referenceAmount) * 100 : 0;
 
       let projectedPercent: number;
       if (hasSmartProjection) {
@@ -418,7 +428,17 @@ export function BurnRateChart({
     }
 
     return { data, totalDays, currentDay };
-  }, [dailySpending, totalBudget, referenceAmount, periodStart, periodEnd, viewMode, hasSmartProjection, fixedExpenseSchedule, variableBudget]);
+  }, [
+    dailySpending,
+    totalBudget,
+    referenceAmount,
+    periodStart,
+    periodEnd,
+    viewMode,
+    hasSmartProjection,
+    fixedExpenseSchedule,
+    variableBudget,
+  ]);
 
   const currentDay = chartData.currentDay;
   if (totalBudget === 0) {
@@ -454,7 +474,11 @@ export function BurnRateChart({
         <div className="min-h-0 flex-1">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData.data} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
-              <Tooltip content={<CustomTooltip totalBudget={totalBudget} referenceAmount={referenceAmount} />} />
+              <Tooltip
+                content={
+                  <CustomTooltip totalBudget={totalBudget} referenceAmount={referenceAmount} />
+                }
+              />
               <XAxis hide dataKey="day" type="number" domain={['dataMin', 'dataMax']} />
 
               {/* "Now" line */}
@@ -474,7 +498,9 @@ export function BurnRateChart({
 
               {(() => {
                 const dataMax = Math.max(
-                  ...chartData.data.map((d) => Math.max(d.actualPercent ?? 0, d.projectedPercent ?? 0, d.expectedPercent)),
+                  ...chartData.data.map((d) =>
+                    Math.max(d.actualPercent ?? 0, d.projectedPercent ?? 0, d.expectedPercent),
+                  ),
                 );
                 const isInTheRed = dataMax > 100;
                 const chartMax = isInTheRed ? dataMax + 10 : 100;
@@ -482,14 +508,32 @@ export function BurnRateChart({
                   <>
                     <YAxis hide domain={[0, chartMax]} />
                     {/* Budget zone (0 to budget%) */}
-                    <ReferenceArea y1={0} y2={budgetPercent} fill="#f97316" fillOpacity={0.2} stroke="none" />
+                    <ReferenceArea
+                      y1={0}
+                      y2={budgetPercent}
+                      fill="#f97316"
+                      fillOpacity={0.2}
+                      stroke="none"
+                    />
                     {/* Income surplus zone (budget% to 100%) */}
                     {budgetPercent < 100 && (
-                      <ReferenceArea y1={budgetPercent} y2={100} fill="#22c55e" fillOpacity={0.2} stroke="none" />
+                      <ReferenceArea
+                        y1={budgetPercent}
+                        y2={100}
+                        fill="#22c55e"
+                        fillOpacity={0.2}
+                        stroke="none"
+                      />
                     )}
                     {/* Danger zone - spending exceeds income */}
                     {isInTheRed && (
-                      <ReferenceArea y1={100} y2={chartMax} fill="#ef4444" fillOpacity={0.2} stroke="none" />
+                      <ReferenceArea
+                        y1={100}
+                        y2={chartMax}
+                        fill="#ef4444"
+                        fillOpacity={0.2}
+                        stroke="none"
+                      />
                     )}
                   </>
                 );
@@ -550,17 +594,17 @@ export function BurnRateChart({
 
   // Pre-compute danger zone for full chart
   const dataMax = Math.max(
-    ...chartData.data.map((d) => Math.max(d.actualPercent ?? 0, d.projectedPercent ?? 0, d.expectedPercent)),
+    ...chartData.data.map((d) =>
+      Math.max(d.actualPercent ?? 0, d.projectedPercent ?? 0, d.expectedPercent),
+    ),
   );
   const isInTheRed = dataMax > 100;
-  const chartMax = isInTheRed
-    ? Math.ceil((dataMax + 10) / 10) * 10
-    : 100;
+  const chartMax = isInTheRed ? Math.ceil((dataMax + 10) / 10) * 10 : 100;
 
   // Y-axis: convert internal percent to dollar amounts
-  const maxDollarValue = (chartMax / 100) * referenceAmount / 100;
+  const maxDollarValue = ((chartMax / 100) * referenceAmount) / 100;
   const formatAxisDollar = (percentValue: number): string => {
-    const dollars = (percentValue / 100) * referenceAmount / 100;
+    const dollars = ((percentValue / 100) * referenceAmount) / 100;
     if (maxDollarValue >= 1_000_000) {
       const m = dollars / 1_000_000;
       return `$${m % 1 === 0 ? m.toFixed(0) : m.toFixed(1)}M`;
@@ -590,13 +634,27 @@ export function BurnRateChart({
             width={yAxisWidth}
             domain={[0, chartMax]}
           />
-          <Tooltip content={<CustomTooltip totalBudget={totalBudget} referenceAmount={referenceAmount} />} />
+          <Tooltip
+            content={<CustomTooltip totalBudget={totalBudget} referenceAmount={referenceAmount} />}
+          />
 
           {/* Budget zone (0 to budget%) */}
-          <ReferenceArea y1={0} y2={budgetPercent} fill="#f97316" fillOpacity={0.08} stroke="none" />
+          <ReferenceArea
+            y1={0}
+            y2={budgetPercent}
+            fill="#f97316"
+            fillOpacity={0.08}
+            stroke="none"
+          />
           {/* Income surplus zone (budget% to 100%) */}
           {budgetPercent < 100 && (
-            <ReferenceArea y1={budgetPercent} y2={100} fill="#22c55e" fillOpacity={0.08} stroke="none" />
+            <ReferenceArea
+              y1={budgetPercent}
+              y2={100}
+              fill="#22c55e"
+              fillOpacity={0.08}
+              stroke="none"
+            />
           )}
           {/* Danger zone — spending exceeds income */}
           {isInTheRed && (

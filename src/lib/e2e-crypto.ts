@@ -44,11 +44,7 @@ export async function encrypt(data: BudgetBackup, passphrase: string): Promise<A
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
   const key = await deriveKey(passphrase, salt);
 
-  const ciphertext = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
-    key,
-    plaintext,
-  );
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plaintext);
 
   // Pack: [version(1)] [salt(16)] [iv(12)] [ciphertext+tag]
   const result = new Uint8Array(1 + SALT_LENGTH + IV_LENGTH + ciphertext.byteLength);
@@ -78,11 +74,7 @@ export async function decrypt(encrypted: ArrayBuffer, passphrase: string): Promi
 
   const key = await deriveKey(passphrase, salt);
 
-  const plaintext = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv },
-    key,
-    ciphertext,
-  );
+  const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
 
   const decoder = new TextDecoder();
   return JSON.parse(decoder.decode(plaintext)) as BudgetBackup;

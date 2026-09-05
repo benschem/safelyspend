@@ -232,7 +232,8 @@ interface SortableHeaderProps {
 export function SortableHeader({ column, children, className }: SortableHeaderProps) {
   const sorted = column.getIsSorted();
   const isRightAligned = className?.includes('justify-end');
-  const sortLabel = sorted === 'asc' ? 'sorted ascending' : sorted === 'desc' ? 'sorted descending' : 'not sorted';
+  const sortLabel =
+    sorted === 'asc' ? 'sorted ascending' : sorted === 'desc' ? 'sorted descending' : 'not sorted';
 
   return (
     <div className={isRightAligned ? 'flex justify-end' : ''}>

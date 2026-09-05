@@ -254,9 +254,8 @@ function calculatePeriodCashFlow(
   // Smart projection: separate fixed vs variable spending
   const periodProgress = dayOfPeriod / daysInPeriod;
   const variableActual = Math.max(0, actualExpenses - expensesDueToDate);
-  const projectedVariable = periodProgress > 0
-    ? Math.round(variableActual / periodProgress)
-    : Math.round(totalBudget);
+  const projectedVariable =
+    periodProgress > 0 ? Math.round(variableActual / periodProgress) : Math.round(totalBudget);
   const projectedTotal = Math.round(expectedExpenses) + projectedVariable;
 
   return {
@@ -266,7 +265,11 @@ function calculatePeriodCashFlow(
     budgeted: { expected: Math.round(totalBudget), actual: actualBudgetedExpenses },
     unbudgeted: { unallocated: Math.max(0, unallocated), actual: actualUnbudgetedExpenses },
     savings: { expected: Math.round(expectedSavings), actual: actualSavings },
-    expenses: { expected: Math.round(expectedExpenses), actual: actualExpenses, dueToDate: Math.round(expensesDueToDate) },
+    expenses: {
+      expected: Math.round(expectedExpenses),
+      actual: actualExpenses,
+      dueToDate: Math.round(expensesDueToDate),
+    },
     net: { projected: projectedNet, forecasted: forecastedNet },
     projection: {
       variableActual,
@@ -507,7 +510,10 @@ function calculateBurnRateData(
     0,
   );
   const expenseForecasts = periodForecasts.filter((f) => f.type === 'expense');
-  const fixedExpenseSchedule = expenseForecasts.map((f) => ({ date: f.date, amount: f.amountCents }));
+  const fixedExpenseSchedule = expenseForecasts.map((f) => ({
+    date: f.date,
+    amount: f.amountCents,
+  }));
   const fixedExpensesTotal = expenseForecasts.reduce((sum, f) => sum + f.amountCents, 0);
 
   return {

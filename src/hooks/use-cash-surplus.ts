@@ -68,5 +68,13 @@ export function useCashSurplus({
       cashSurplus: balance + remainingIncome - remainingExpenses,
       hasAnchor: true,
     };
-  }, [today, isPastPeriod, periodEnd, getActiveAnchor, allTransactions, remainingIncome, remainingExpenses]);
+  }, [
+    today,
+    isPastPeriod,
+    periodEnd,
+    getActiveAnchor,
+    allTransactions,
+    remainingIncome,
+    remainingExpenses,
+  ]);
 }

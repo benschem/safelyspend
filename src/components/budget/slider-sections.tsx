@@ -20,13 +20,7 @@ import { useWhatIf } from '@/contexts/what-if-context';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
 import type { ForecastRule, BudgetRule, Category, SavingsGoal } from '@/lib/types';
 
-function SliderActions({
-  onEdit,
-  onDelete,
-}: {
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
+function SliderActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
   return (
     <span className="flex gap-0.5">
       <TooltipProvider>
@@ -99,7 +93,16 @@ export function IncomeSliderSection({
             <BanknoteArrowUp className="h-4 w-4 text-green-500" />
             <span className="font-medium">Income</span>
             <span className="text-sm text-muted-foreground">
-              <span className={cn(monthlyDelta !== undefined && monthlyDelta !== 0 && 'text-violet-600 dark:text-violet-400')}>{formatCents(periodTotal)}</span> {periodLabel}
+              <span
+                className={cn(
+                  monthlyDelta !== undefined &&
+                    monthlyDelta !== 0 &&
+                    'text-violet-600 dark:text-violet-400',
+                )}
+              >
+                {formatCents(periodTotal)}
+              </span>{' '}
+              {periodLabel}
               <span
                 className={`ml-1 inline-block min-w-[4.5rem] ${monthlyDelta !== undefined && monthlyDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
               >
@@ -199,11 +202,15 @@ export function FixedExpenseSliderSection({
   monthlyDelta,
 }: FixedExpenseSectionProps) {
   const { adjustments, baselineValues, setFixedExpenseAdjustment } = useWhatIf();
-  const { isExpenseDifferent, defaultExpenseByDescription, defaultScenarioName } = useScenarioDiff();
+  const { isExpenseDifferent, defaultExpenseByDescription, defaultScenarioName } =
+    useScenarioDiff();
 
   // Group rules by category
   const groupedRules = useMemo(() => {
-    const groups = new Map<string, { name: string; categoryId: string | null; rules: ForecastRule[] }>();
+    const groups = new Map<
+      string,
+      { name: string; categoryId: string | null; rules: ForecastRule[] }
+    >();
     for (const rule of expenseRules) {
       const key = rule.categoryId ?? '__uncategorized__';
       if (!groups.has(key)) {
@@ -229,7 +236,16 @@ export function FixedExpenseSliderSection({
             <BanknoteArrowDown className="h-4 w-4 text-rose-500" />
             <span className="font-medium">Fixed Expenses</span>
             <span className="text-sm text-muted-foreground">
-              <span className={cn(monthlyDelta !== undefined && monthlyDelta !== 0 && 'text-violet-600 dark:text-violet-400')}>{formatCents(periodTotal)}</span> {periodLabel}
+              <span
+                className={cn(
+                  monthlyDelta !== undefined &&
+                    monthlyDelta !== 0 &&
+                    'text-violet-600 dark:text-violet-400',
+                )}
+              >
+                {formatCents(periodTotal)}
+              </span>{' '}
+              {periodLabel}
               <span
                 className={`ml-1 inline-block min-w-[4.5rem] ${monthlyDelta !== undefined && monthlyDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
               >
@@ -372,7 +388,16 @@ export function BudgetedSpendingSliderSection({
             <BanknoteArrowDown className="h-4 w-4 text-rose-500" />
             <span className="font-medium">Budgeted Spending</span>
             <span className="text-sm text-muted-foreground">
-              <span className={cn(monthlyDelta !== undefined && monthlyDelta !== 0 && 'text-violet-600 dark:text-violet-400')}>{formatCents(periodTotal)}</span> {periodLabel}
+              <span
+                className={cn(
+                  monthlyDelta !== undefined &&
+                    monthlyDelta !== 0 &&
+                    'text-violet-600 dark:text-violet-400',
+                )}
+              >
+                {formatCents(periodTotal)}
+              </span>{' '}
+              {periodLabel}
               <span
                 className={`ml-1 inline-block min-w-[4.5rem] ${monthlyDelta !== undefined && monthlyDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
               >
@@ -477,7 +502,8 @@ export function SavingsSliderSection({
   monthlyDelta,
 }: SavingsSectionProps) {
   const { adjustments, baselineValues, setSavingsAdjustment } = useWhatIf();
-  const { isSavingsDifferent, defaultSavingsByDescription, defaultScenarioName } = useScenarioDiff();
+  const { isSavingsDifferent, defaultSavingsByDescription, defaultScenarioName } =
+    useScenarioDiff();
 
   const getGoalName = (id: string | null) =>
     id ? (savingsGoals.find((g) => g.id === id)?.name ?? 'Unknown') : 'Savings';
@@ -491,7 +517,16 @@ export function SavingsSliderSection({
             <PiggyBank className="h-4 w-4 text-blue-500" />
             <span className="font-medium">Savings</span>
             <span className="text-sm text-muted-foreground">
-              <span className={cn(monthlyDelta !== undefined && monthlyDelta !== 0 && 'text-violet-600 dark:text-violet-400')}>{formatCents(periodTotal)}</span> {periodLabel}
+              <span
+                className={cn(
+                  monthlyDelta !== undefined &&
+                    monthlyDelta !== 0 &&
+                    'text-violet-600 dark:text-violet-400',
+                )}
+              >
+                {formatCents(periodTotal)}
+              </span>{' '}
+              {periodLabel}
               <span
                 className={`ml-1 inline-block min-w-[4.5rem] ${monthlyDelta !== undefined && monthlyDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
               >

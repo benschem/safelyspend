@@ -17,11 +17,7 @@ function jsonResponse(body: unknown, status = 200, headers?: HeadersInit) {
 }
 
 /** Helper to create an error JSON Response. */
-function errorResponse(
-  status: number,
-  error: string,
-  extra?: Record<string, unknown>,
-) {
+function errorResponse(status: number, error: string, extra?: Record<string, unknown>) {
   return new Response(JSON.stringify({ error, ...extra }), {
     status,
     statusText: error,
@@ -36,9 +32,7 @@ function errorResponse(
 describe('api.auth', () => {
   describe('login', () => {
     it('sends POST to /auth/login with email in JSON body', async () => {
-      mockFetch.mockResolvedValue(
-        jsonResponse({ message: 'Code sent' }),
-      );
+      mockFetch.mockResolvedValue(jsonResponse({ message: 'Code sent' }));
 
       await api.auth.login('user@example.com');
 
@@ -59,14 +53,10 @@ describe('api.auth', () => {
     });
 
     it('throws ApiError with status and message on failure', async () => {
-      mockFetch.mockResolvedValue(
-        errorResponse(400, 'Invalid email'),
-      );
+      mockFetch.mockResolvedValue(errorResponse(400, 'Invalid email'));
 
       await expect(api.auth.login('bad')).rejects.toThrow(ApiError);
-      await mockFetch.mockResolvedValue(
-        errorResponse(400, 'Invalid email'),
-      );
+      await mockFetch.mockResolvedValue(errorResponse(400, 'Invalid email'));
       try {
         await api.auth.login('bad');
       } catch (e) {
@@ -88,9 +78,7 @@ describe('api.auth', () => {
 
   describe('verify', () => {
     it('sends POST to /auth/verify with email and code', async () => {
-      mockFetch.mockResolvedValue(
-        jsonResponse({ user: { id: 'u1', email: 'user@example.com' } }),
-      );
+      mockFetch.mockResolvedValue(jsonResponse({ user: { id: 'u1', email: 'user@example.com' } }));
 
       await api.auth.verify('user@example.com', '123456');
 
@@ -112,13 +100,9 @@ describe('api.auth', () => {
     });
 
     it('throws ApiError on 401', async () => {
-      mockFetch.mockResolvedValue(
-        errorResponse(401, 'Invalid code'),
-      );
+      mockFetch.mockResolvedValue(errorResponse(401, 'Invalid code'));
 
-      await expect(
-        api.auth.verify('user@example.com', '000000'),
-      ).rejects.toThrow(ApiError);
+      await expect(api.auth.verify('user@example.com', '000000')).rejects.toThrow(ApiError);
     });
   });
 
@@ -156,9 +140,7 @@ describe('api.auth', () => {
     });
 
     it('throws ApiError on 401', async () => {
-      mockFetch.mockResolvedValue(
-        errorResponse(401, 'Unauthorized'),
-      );
+      mockFetch.mockResolvedValue(errorResponse(401, 'Unauthorized'));
 
       await expect(api.auth.me()).rejects.toThrow(ApiError);
     });
@@ -166,9 +148,7 @@ describe('api.auth', () => {
 
   describe('deleteAccount', () => {
     it('sends DELETE to /auth/account', async () => {
-      mockFetch.mockResolvedValue(
-        jsonResponse({ message: 'Account deleted' }),
-      );
+      mockFetch.mockResolvedValue(jsonResponse({ message: 'Account deleted' }));
 
       await api.auth.deleteAccount();
 
@@ -220,9 +200,7 @@ describe('api.vault', () => {
 
   describe('putData', () => {
     it('sends PUT with ArrayBuffer body and X-Expected-Version header', async () => {
-      mockFetch.mockResolvedValue(
-        jsonResponse({ version: 2, vaultId: 'v1' }),
-      );
+      mockFetch.mockResolvedValue(jsonResponse({ version: 2, vaultId: 'v1' }));
       const data = new Uint8Array([10, 20, 30]).buffer;
 
       await api.vault.putData(data, 1);
@@ -237,9 +215,7 @@ describe('api.vault', () => {
     });
 
     it('returns { version, vaultId } on success', async () => {
-      mockFetch.mockResolvedValue(
-        jsonResponse({ version: 2, vaultId: 'v1' }),
-      );
+      mockFetch.mockResolvedValue(jsonResponse({ version: 2, vaultId: 'v1' }));
       const data = new Uint8Array([10, 20, 30]).buffer;
 
       const result = await api.vault.putData(data, 1);
@@ -247,9 +223,7 @@ describe('api.vault', () => {
     });
 
     it('throws ApiError 409 on version conflict', async () => {
-      mockFetch.mockResolvedValue(
-        errorResponse(409, 'Version conflict', { serverVersion: 3 }),
-      );
+      mockFetch.mockResolvedValue(errorResponse(409, 'Version conflict', { serverVersion: 3 }));
       const data = new Uint8Array([10, 20, 30]).buffer;
 
       try {

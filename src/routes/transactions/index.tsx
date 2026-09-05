@@ -252,16 +252,19 @@ export function TransactionsPage() {
   );
 
   // Transaction handlers
-  const handleImportClick = useCallback((source: 'up' | 'csv') => {
-    if (categoryRules.length === 0) {
-      setPendingImportSource(source);
-      setImportWarningOpen(true);
-    } else if (source === 'csv') {
-      setCsvImportOpen(true);
-    } else {
-      setUpImportOpen(true);
-    }
-  }, [categoryRules.length]);
+  const handleImportClick = useCallback(
+    (source: 'up' | 'csv') => {
+      if (categoryRules.length === 0) {
+        setPendingImportSource(source);
+        setImportWarningOpen(true);
+      } else if (source === 'csv') {
+        setCsvImportOpen(true);
+      } else {
+        setUpImportOpen(true);
+      }
+    },
+    [categoryRules.length],
+  );
 
   const handleSkipWarning = useCallback(() => {
     setImportWarningOpen(false);

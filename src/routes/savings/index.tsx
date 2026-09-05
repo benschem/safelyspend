@@ -161,9 +161,7 @@ export function SavingsIndexPage() {
       for (let i = 0; i < 12; i++) {
         const simDate = new Date(nowDate.getFullYear(), nowDate.getMonth() + i, 28);
         const simDateStr = `${simDate.getFullYear()}-${String(simDate.getMonth() + 1).padStart(2, '0')}-${String(simDate.getDate()).padStart(2, '0')}`;
-        const rate = goalObj
-          ? getEffectiveRate(goalObj, simDateStr)
-          : (g.annualInterestRate ?? 0);
+        const rate = goalObj ? getEffectiveRate(goalObj, simDateStr) : (g.annualInterestRate ?? 0);
         const monthlyInterest = Math.round(balance * (rate / 100 / 12));
         totalInterest += monthlyInterest;
         balance += monthlyInterest;
@@ -262,11 +260,7 @@ export function SavingsIndexPage() {
           <p className="page-description">Track progress toward your savings goals.</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Button
-            variant="outline"
-            className="h-10"
-            onClick={() => setWithdrawalDialogOpen(true)}
-          >
+          <Button variant="outline" className="h-10" onClick={() => setWithdrawalDialogOpen(true)}>
             <Minus className="h-4 w-4" />
             Withdraw
           </Button>
@@ -359,7 +353,9 @@ export function SavingsIndexPage() {
                 {formatCents(Math.abs(summaryStats.actualMonthlyRate))}
               </div>
               <div className="mt-0.5 text-sm text-muted-foreground">
-                <span className="font-mono">{formatCents(Math.abs(summaryStats.plannedMonthlyRate))}</span>{' '}
+                <span className="font-mono">
+                  {formatCents(Math.abs(summaryStats.plannedMonthlyRate))}
+                </span>{' '}
                 planned
               </div>
             </div>
@@ -396,7 +392,9 @@ export function SavingsIndexPage() {
                     currentBalance={goal.currentBalance}
                     deadline={goal.deadline}
                     annualInterestRate={goal.annualInterestRate}
-                    {...(goal.interestRateSchedule ? { interestRateSchedule: goal.interestRateSchedule } : {})}
+                    {...(goal.interestRateSchedule
+                      ? { interestRateSchedule: goal.interestRateSchedule }
+                      : {})}
                     monthlySavings={goal.monthlySavings}
                     isEmergencyFund={savingsGoal?.isEmergencyFund ?? false}
                   />

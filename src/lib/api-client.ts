@@ -1,14 +1,11 @@
-const API_URL = (import.meta.env['VITE_API_URL'] as string | undefined) ?? 'https://api.safelyspend.app';
+const API_URL =
+  (import.meta.env['VITE_API_URL'] as string | undefined) ?? 'https://api.safelyspend.app';
 
 class ApiError extends Error {
   status: number;
   data?: Record<string, unknown>;
 
-  constructor(
-    message: string,
-    status: number,
-    data?: Record<string, unknown>,
-  ) {
+  constructor(message: string, status: number, data?: Record<string, unknown>) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
@@ -16,10 +13,7 @@ class ApiError extends Error {
   }
 }
 
-async function request<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     credentials: 'include',
@@ -46,10 +40,7 @@ async function request<T>(
   return response.json() as Promise<T>;
 }
 
-async function requestRaw(
-  path: string,
-  options: RequestInit = {},
-): Promise<Response> {
+async function requestRaw(path: string, options: RequestInit = {}): Promise<Response> {
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     credentials: 'include',

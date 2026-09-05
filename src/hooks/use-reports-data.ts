@@ -94,10 +94,7 @@ export function useReportsData(scenarioId: string | null, startDate: string, end
     isLoading: budgetLoading,
   } = useAdjustedBudgets(scenarioId, startDate, endDate);
   const { savingsGoals, isLoading: savingsLoading } = useSavingsGoals();
-  const {
-    getActiveAnchor,
-    isLoading: anchorsLoading,
-  } = useSavingsAnchors();
+  const { getActiveAnchor, isLoading: anchorsLoading } = useSavingsAnchors();
   const { categories, activeCategories, isLoading: categoriesLoading } = useCategories();
   const {
     incomeForecasts,

@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  formatISODate,
-  getMonthsBetween,
-  toMonthlyCents,
-  fromMonthlyCents,
-} from '@/lib/utils';
+import { formatISODate, getMonthsBetween, toMonthlyCents, fromMonthlyCents } from '@/lib/utils';
 
 // =============================================================================
 // formatISODate — Must use LOCAL date components, not UTC
@@ -57,11 +52,7 @@ describe('getMonthsBetween', () => {
   });
 
   it('returns multiple months for a range', () => {
-    expect(getMonthsBetween('2026-01-01', '2026-03-31')).toEqual([
-      '2026-01',
-      '2026-02',
-      '2026-03',
-    ]);
+    expect(getMonthsBetween('2026-01-01', '2026-03-31')).toEqual(['2026-01', '2026-02', '2026-03']);
   });
 
   it('handles year boundaries', () => {

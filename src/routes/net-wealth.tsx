@@ -198,7 +198,12 @@ export function NetWealthPage() {
               </p>
             </TooltipTrigger>
             <TooltipContent className="max-w-64 text-center">
-              <p>Based on Credit Suisse Global Wealth Report estimates.{netWealth >= 0 && getGlobalPercentile(netWealth) >= 30 ? ' About 30% of the world has negative net worth due to debt.' : ''}</p>
+              <p>
+                Based on Credit Suisse Global Wealth Report estimates.
+                {netWealth >= 0 && getGlobalPercentile(netWealth) >= 30
+                  ? ' About 30% of the world has negative net worth due to debt.'
+                  : ''}
+              </p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

@@ -34,12 +34,7 @@ import { useScenarios } from '@/hooks/use-scenarios';
 import { MobileNav } from './sidebar';
 
 export function AppHeader() {
-  const {
-    isWhatIfMode,
-    resetAdjustments,
-    saveAsPreset,
-    saveToCurrentScenario,
-  } = useWhatIf();
+  const { isWhatIfMode, resetAdjustments, saveAsPreset, saveToCurrentScenario } = useWhatIf();
   const { scenarios, activeScenarioId, activeScenario, setActiveScenarioId } = useScenarios();
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveCurrentConfirmOpen, setSaveCurrentConfirmOpen] = useState(false);
@@ -241,9 +236,7 @@ export function AppHeader() {
 
   return (
     <>
-      <header
-        className={`flex h-14 shrink-0 items-center gap-3 border-b px-4 ${headerBgClass}`}
-      >
+      <header className={`flex h-14 shrink-0 items-center gap-3 border-b px-4 ${headerBgClass}`}>
         {/* Left: hamburger + branding */}
         <div className="flex items-center gap-2">
           <MobileNav />
@@ -262,7 +255,9 @@ export function AppHeader() {
               <Sparkles className={`h-4 w-4 shrink-0 ${iconClass}`} />
               <span className="hidden font-medium sm:inline">Scenario:</span>
               <Select {...selectProps}>
-                <SelectTrigger className={`h-7 w-auto gap-1 text-sm sm:gap-2 ${selectTriggerClass}`}>
+                <SelectTrigger
+                  className={`h-7 w-auto gap-1 text-sm sm:gap-2 ${selectTriggerClass}`}
+                >
                   <SelectValue placeholder="Select scenario" />
                 </SelectTrigger>
                 <SelectContent>

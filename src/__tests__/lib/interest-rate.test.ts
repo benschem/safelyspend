@@ -6,9 +6,7 @@ import type { SavingsGoal } from '@/lib/types';
 // Helper to build a minimal SavingsGoal for testing
 // =============================================================================
 
-function makeGoal(
-  overrides: Partial<SavingsGoal> = {},
-): SavingsGoal {
+function makeGoal(overrides: Partial<SavingsGoal> = {}): SavingsGoal {
   return {
     id: 'goal-1',
     userId: 'local',
@@ -105,9 +103,7 @@ describe('getEffectiveRate', () => {
   describe('with single schedule entry', () => {
     const goal = makeGoal({
       annualInterestRate: 3.0,
-      interestRateSchedule: [
-        { effectiveDate: '2026-06-01', annualRate: 5.0 },
-      ],
+      interestRateSchedule: [{ effectiveDate: '2026-06-01', annualRate: 5.0 }],
     });
 
     it('returns base rate before the entry', () => {
@@ -127,18 +123,14 @@ describe('getEffectiveRate', () => {
   describe('schedule without base rate', () => {
     it('returns 0 before any entry when base rate is undefined', () => {
       const goal = makeGoal({
-        interestRateSchedule: [
-          { effectiveDate: '2026-06-01', annualRate: 4.0 },
-        ],
+        interestRateSchedule: [{ effectiveDate: '2026-06-01', annualRate: 4.0 }],
       });
       expect(getEffectiveRate(goal, '2026-01-01')).toBe(0);
     });
 
     it('returns scheduled rate after entry when base rate is undefined', () => {
       const goal = makeGoal({
-        interestRateSchedule: [
-          { effectiveDate: '2026-06-01', annualRate: 4.0 },
-        ],
+        interestRateSchedule: [{ effectiveDate: '2026-06-01', annualRate: 4.0 }],
       });
       expect(getEffectiveRate(goal, '2026-06-15')).toBe(4.0);
     });
@@ -146,9 +138,7 @@ describe('getEffectiveRate', () => {
     it('returns 0 before any entry when base rate is 0', () => {
       const goal = makeGoal({
         annualInterestRate: 0,
-        interestRateSchedule: [
-          { effectiveDate: '2026-06-01', annualRate: 4.0 },
-        ],
+        interestRateSchedule: [{ effectiveDate: '2026-06-01', annualRate: 4.0 }],
       });
       expect(getEffectiveRate(goal, '2026-03-01')).toBe(0);
     });
@@ -162,9 +152,7 @@ describe('getEffectiveRate', () => {
     it('handles schedule with rate of 0 (rate drop to zero)', () => {
       const goal = makeGoal({
         annualInterestRate: 4.0,
-        interestRateSchedule: [
-          { effectiveDate: '2026-06-01', annualRate: 0 },
-        ],
+        interestRateSchedule: [{ effectiveDate: '2026-06-01', annualRate: 0 }],
       });
       expect(getEffectiveRate(goal, '2026-05-31')).toBe(4.0);
       expect(getEffectiveRate(goal, '2026-06-01')).toBe(0);
@@ -185,9 +173,7 @@ describe('getEffectiveRate', () => {
     it('uses string comparison for dates (ISO format)', () => {
       const goal = makeGoal({
         annualInterestRate: 3.0,
-        interestRateSchedule: [
-          { effectiveDate: '2026-01-15', annualRate: 4.0 },
-        ],
+        interestRateSchedule: [{ effectiveDate: '2026-01-15', annualRate: 4.0 }],
       });
       // '2026-01-14' < '2026-01-15' in string comparison
       expect(getEffectiveRate(goal, '2026-01-14')).toBe(3.0);
@@ -198,9 +184,7 @@ describe('getEffectiveRate', () => {
     it('handles far-future date correctly', () => {
       const goal = makeGoal({
         annualInterestRate: 3.0,
-        interestRateSchedule: [
-          { effectiveDate: '2026-06-01', annualRate: 5.0 },
-        ],
+        interestRateSchedule: [{ effectiveDate: '2026-06-01', annualRate: 5.0 }],
       });
       expect(getEffectiveRate(goal, '2099-12-31')).toBe(5.0);
     });
@@ -208,9 +192,7 @@ describe('getEffectiveRate', () => {
     it('handles very early date before all entries', () => {
       const goal = makeGoal({
         annualInterestRate: 3.0,
-        interestRateSchedule: [
-          { effectiveDate: '2026-06-01', annualRate: 5.0 },
-        ],
+        interestRateSchedule: [{ effectiveDate: '2026-06-01', annualRate: 5.0 }],
       });
       expect(getEffectiveRate(goal, '2020-01-01')).toBe(3.0);
     });

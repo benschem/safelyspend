@@ -219,9 +219,7 @@ export function AddToBudgetDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit">
-              {existingBudget ? 'Update Budget' : 'Create Budget'}
-            </Button>
+            <Button type="submit">{existingBudget ? 'Update Budget' : 'Create Budget'}</Button>
           </div>
         </form>
       </DialogContent>

@@ -1,6 +1,13 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useOutletContext, useSearchParams } from 'react-router';
-import { ChartSpline, Banknote, BanknoteArrowDown, PiggyBank, ChevronDown, CalendarDays } from 'lucide-react';
+import {
+  ChartSpline,
+  Banknote,
+  BanknoteArrowDown,
+  PiggyBank,
+  ChevronDown,
+  CalendarDays,
+} from 'lucide-react';
 import { PageLoading } from '@/components/page-loading';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
@@ -355,7 +362,10 @@ export function InsightsPage() {
   const categoryColorMap = useMemo(() => buildCategoryColorMap(allCategoryIds), [allCategoryIds]);
 
   // Determine if viewing past period
-  const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
+  const today = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
   const isPastOnly = endDate <= today;
 
   // Calculate starting balance for cash flow chart
@@ -580,10 +590,7 @@ export function InsightsPage() {
       {isLoading ? (
         <PageLoading />
       ) : activeTab === 'spending' ? (
-        <div className={cn(
-          'rounded-xl border bg-card p-5',
-          showDeltas && 'border-violet-500/30',
-        )}>
+        <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
           <div className="mb-4">
             <h2 className="flex items-center gap-1.5 text-lg font-semibold">
               <CalendarDays className="h-4 w-4 text-muted-foreground" />
@@ -632,10 +639,9 @@ export function InsightsPage() {
               </AlertDescription>
             </Alert>
           )}
-          <div className={cn(
-            'rounded-xl border bg-card p-5',
-            showDeltas && 'border-violet-500/30',
-          )}>
+          <div
+            className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}
+          >
             <div className="mb-4">
               <h2 className="flex items-center gap-1.5 text-lg font-semibold">
                 <CalendarDays className="h-4 w-4 text-muted-foreground" />
@@ -676,37 +682,38 @@ export function InsightsPage() {
               </AlertDescription>
             </Alert>
           )}
-          <div className={cn(
-            'rounded-xl border bg-card p-5',
-            showDeltas && 'border-violet-500/30',
-          )}>
+          <div
+            className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}
+          >
             <div className="mb-4">
               <h2 className="flex items-center gap-1.5 text-lg font-semibold">
                 <CalendarDays className="h-4 w-4 text-muted-foreground" />
                 {formatCompactDate(startDate, true)} — {formatCompactDate(endDate, true)}
               </h2>
               <div className="flex min-h-9 items-center justify-between gap-4">
-              <p className="text-sm text-muted-foreground">
-                {isPastOnly
-                  ? 'Cumulative savings contributions'
-                  : 'Saved so far, plus planned contributions'}
-              </p>
-              {savingsByGoal.length > 0 && (
-                <Select value={effectiveSavingsView} onValueChange={handleSavingsViewChange}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="total">Total Savings</SelectItem>
-                    {emergencyFund && <SelectItem value="dedicated">Dedicated Savings</SelectItem>}
-                    {savingsByGoal.map((goal) => (
-                      <SelectItem key={goal.goalId} value={goal.goalId}>
-                        {goal.goalName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+                <p className="text-sm text-muted-foreground">
+                  {isPastOnly
+                    ? 'Cumulative savings contributions'
+                    : 'Saved so far, plus planned contributions'}
+                </p>
+                {savingsByGoal.length > 0 && (
+                  <Select value={effectiveSavingsView} onValueChange={handleSavingsViewChange}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="total">Total Savings</SelectItem>
+                      {emergencyFund && (
+                        <SelectItem value="dedicated">Dedicated Savings</SelectItem>
+                      )}
+                      {savingsByGoal.map((goal) => (
+                        <SelectItem key={goal.goalId} value={goal.goalId}>
+                          {goal.goalName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
             <p

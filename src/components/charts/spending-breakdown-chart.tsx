@@ -239,56 +239,60 @@ export function SpendingBreakdownChart({
 
       {/* Interactive Legend */}
       <div className="mt-3 flex flex-wrap gap-2">
-        {segments.filter((s) => s.amount > 0).map((segment) => {
-          const percentage = ((segment.amount / total) * 100).toFixed(0);
-          const isHidden = hiddenSegments.has(segment.id);
-          const canToggle = !disableToggle || toggleableIds.includes(segment.id);
-          const showDollar = showDollarAmountIds.includes(segment.id);
-          const displayValue = showDollar ? formatCents(segment.amount) : `${percentage}%`;
-          const delta = segmentDeltas?.[segment.id];
-          const hasDelta = delta !== undefined && delta !== 0;
-          return canToggle ? (
-            <button
-              key={segment.id}
-              type="button"
-              onClick={() => toggleSegment(segment.id)}
-              className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-all hover:bg-muted ${
-                isHidden ? 'opacity-40' : ''
-              }`}
-            >
+        {segments
+          .filter((s) => s.amount > 0)
+          .map((segment) => {
+            const percentage = ((segment.amount / total) * 100).toFixed(0);
+            const isHidden = hiddenSegments.has(segment.id);
+            const canToggle = !disableToggle || toggleableIds.includes(segment.id);
+            const showDollar = showDollarAmountIds.includes(segment.id);
+            const displayValue = showDollar ? formatCents(segment.amount) : `${percentage}%`;
+            const delta = segmentDeltas?.[segment.id];
+            const hasDelta = delta !== undefined && delta !== 0;
+            return canToggle ? (
+              <button
+                key={segment.id}
+                type="button"
+                onClick={() => toggleSegment(segment.id)}
+                className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-all hover:bg-muted ${
+                  isHidden ? 'opacity-40' : ''
+                }`}
+              >
+                <div
+                  className="h-2.5 w-2.5 rounded-sm"
+                  style={{ backgroundColor: colorMap[segment.id] ?? CHART_COLORS.uncategorized }}
+                />
+                <span className={isHidden ? 'line-through' : ''}>
+                  {segment.name} ({displayValue})
+                  {hasDelta && (
+                    <span className="ml-1 text-violet-600 dark:text-violet-400">
+                      {delta > 0 ? '+' : ''}
+                      {formatCents(delta)}
+                    </span>
+                  )}
+                </span>
+              </button>
+            ) : (
               <div
-                className="h-2.5 w-2.5 rounded-sm"
-                style={{ backgroundColor: colorMap[segment.id] ?? CHART_COLORS.uncategorized }}
-              />
-              <span className={isHidden ? 'line-through' : ''}>
-                {segment.name} ({displayValue})
-                {hasDelta && (
-                  <span className="ml-1 text-violet-600 dark:text-violet-400">
-                    {delta > 0 ? '+' : ''}{formatCents(delta)}
-                  </span>
-                )}
-              </span>
-            </button>
-          ) : (
-            <div
-              key={segment.id}
-              className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs"
-            >
-              <div
-                className="h-2.5 w-2.5 rounded-sm"
-                style={{ backgroundColor: colorMap[segment.id] ?? CHART_COLORS.uncategorized }}
-              />
-              <span>
-                {segment.name} ({displayValue})
-                {hasDelta && (
-                  <span className="ml-1 text-violet-600 dark:text-violet-400">
-                    {delta > 0 ? '+' : ''}{formatCents(delta)}
-                  </span>
-                )}
-              </span>
-            </div>
-          );
-        })}
+                key={segment.id}
+                className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs"
+              >
+                <div
+                  className="h-2.5 w-2.5 rounded-sm"
+                  style={{ backgroundColor: colorMap[segment.id] ?? CHART_COLORS.uncategorized }}
+                />
+                <span>
+                  {segment.name} ({displayValue})
+                  {hasDelta && (
+                    <span className="ml-1 text-violet-600 dark:text-violet-400">
+                      {delta > 0 ? '+' : ''}
+                      {formatCents(delta)}
+                    </span>
+                  )}
+                </span>
+              </div>
+            );
+          })}
       </div>
     </div>
   );

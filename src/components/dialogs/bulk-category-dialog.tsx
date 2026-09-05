@@ -47,7 +47,11 @@ export function BulkCategoryDialog({
 
         <div className="space-y-4 pt-2">
           <label htmlFor="bulk-create-rule" className="flex cursor-pointer items-center gap-2">
-            <Checkbox id="bulk-create-rule" checked={createRule} onCheckedChange={(v) => setCreateRule(v === true)} />
+            <Checkbox
+              id="bulk-create-rule"
+              checked={createRule}
+              onCheckedChange={(v) => setCreateRule(v === true)}
+            />
             <span className="text-sm">Also create an import rule for future imports</span>
           </label>
 
