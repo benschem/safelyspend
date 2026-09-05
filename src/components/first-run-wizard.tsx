@@ -1109,9 +1109,8 @@ export function FirstRunWizard() {
   const { isInitialized, isLoading } = useAppConfig();
 
   const handleStartDemo = async (personaId?: PersonaId) => {
-    const { loadDemoDataToStorage } = await import('@/lib/demo-data');
-    await loadDemoDataToStorage(personaId);
-    window.location.href = '/cash-flow';
+    const { startDemoSession } = await import('@/lib/demo-data');
+    await startDemoSession(personaId);
   };
 
   if (isLoading) {

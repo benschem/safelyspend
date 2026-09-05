@@ -175,3 +175,15 @@ export async function clearAllData(): Promise<void> {
   localStorage.removeItem(STORAGE_KEYS.DEMO_PERSONA);
   await resetDatabase();
 }
+
+/**
+ * Load demo data and hard-navigate into the app.
+ *
+ * Both entry points to the landing page (the root route and /welcome) start the
+ * demo this way. The full page load is deliberate: it drops every hook's cached
+ * state so the app mounts fresh against the demo database.
+ */
+export async function startDemoSession(personaId?: string): Promise<void> {
+  await loadDemoDataToStorage(personaId);
+  window.location.href = '/cash-flow';
+}
