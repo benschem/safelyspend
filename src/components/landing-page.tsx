@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { trackLandingPageview } from '@/lib/analytics';
+import { useAuth } from '@/hooks/use-auth';
+import { useAppConfig } from '@/hooks/use-app-config';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -110,9 +112,10 @@ const TOTAL_ICONS = {
 } as const;
 
 export function LandingPage({ onViewDemo }: LandingPageProps) {
-  // The only analytics call in the app. This component renders solely for
-  // visitors who have not set up SafelySpend yet, so nothing about anyone's
-  // actual budget is ever measured. See src/lib/analytics.ts.
+  const { isAuthenticated, status: authStatus } = useAuth();
+  const { isInitialized } = useAppConfig();
+
+  // The only analytics call in the app. See src/lib/analytics.ts.
   useEffect(() => {
     trackLandingPageview();
   }, []);
@@ -121,12 +124,26 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
     <div className="flex min-h-screen flex-col bg-background">
       <header className="flex items-center justify-between border-b px-4 py-3 sm:px-6">
         <span className="text-lg font-semibold">SafelySpend</span>
-        <Link
-          to="/login"
-          className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-        >
-          Log in
-        </Link>
+        <div className="flex items-center gap-2">
+          {isInitialized && (
+            <Link
+              to="/cash-flow"
+              className="inline-flex h-8 items-center justify-center gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Back to app
+            </Link>
+          )}
+          {/* Nothing is rendered while the session check is in flight, so the
+              button never flickers from "Log in" to "My account". */}
+          {authStatus !== 'loading' && (
+            <Link
+              to={isAuthenticated ? '/settings' : '/login'}
+              className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              {isAuthenticated ? 'My account' : 'Log in'}
+            </Link>
+          )}
+        </div>
       </header>
 
       <main className="flex flex-1 flex-col">
