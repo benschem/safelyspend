@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
+import { trackLandingPageview } from '@/lib/analytics';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -69,6 +70,13 @@ const PERSONAS = [
 ] as const;
 
 export function LandingPage({ onViewDemo }: LandingPageProps) {
+  // The only analytics call in the app. This component renders solely for
+  // visitors who have not set up SafelySpend yet, so nothing about anyone's
+  // actual budget is ever measured. See src/lib/analytics.ts.
+  useEffect(() => {
+    trackLandingPageview();
+  }, []);
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="flex items-center justify-between border-b px-4 py-3 sm:px-6">

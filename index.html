@@ -11,6 +11,23 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://api.safelyspend.app; base-uri 'self'; form-action 'self';">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta name="referrer" content="strict-origin-when-cross-origin">
+
+    <!--
+      Self-hosted Plausible, proxied through /pa-stats/* (see netlify.toml) so it
+      is same-origin and needs no CSP exception.
+
+      data-api is required, not decorative: without it the script posts to
+      /api/event on this origin, which is not proxied, and every event would be
+      swallowed by the SPA fallback.
+
+      The `manual` variant fires no pageviews by itself - src/lib/analytics.ts
+      is the only thing that asks for one.
+    -->
+    <script
+      defer
+      data-domain="safelyspend.app"
+      data-api="/pa-stats/api/event"
+      src="/pa-stats/js/script.manual.js"></script>
   </head>
   <body>
     <div id="root"></div>
