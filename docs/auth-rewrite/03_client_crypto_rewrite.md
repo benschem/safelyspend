@@ -6,4 +6,4 @@
 - **Size:** L
 - **Deps:** [Phase 1](01_crypto_storage_design.md).
 
-The format-v2 ciphertext must carry an explicit version byte so [Phase 6](06_migration_v037.md) can detect v1 vs v2 on read and migrate.
+The format-v2 ciphertext still carries an explicit version byte, but **not** so a v1 blob can be detected and migrated — there are none, and no v1 read path is built. The byte exists so a future v3 has a cheap discriminator. Reject anything that is not `0x02`.

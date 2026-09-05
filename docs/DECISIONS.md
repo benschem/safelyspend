@@ -120,3 +120,29 @@ Three parts of this look like needless complexity from the outside. They aren't,
 **Why the first-party proxy.** `netlify.toml` proxies `/pa-stats/*` to the analytics host at status 200. Adblockers can't pattern-match it, but the bigger win is that the script and its events stay same-origin, so `script-src 'self'` and `connect-src 'self'` already cover them and the CSP needs no third-party exception. `data-api` in the script tag is load-bearing for this: without it the script posts to `/api/event` on our own origin, which isn't proxied, and every event vanishes into the SPA fallback.
 
 **Why no custom events.** Pageviews answer the questions that currently exist. Plausible's own SaaS guidance is a four-step funnel, not an event catalogue, and the usual reason to ration events (Cloud bills them like pageviews) doesn't apply to a self-hosted instance — the real cost is events nobody reads. Activation and funnel events can come later if pageviews leave a genuine question open.
+
+## Why there is no v0.37 → v2 migration
+
+**Chosen:** wipe production and start the schema clean, rather than migrate.
+
+The auth rewrite (`docs/auth-rewrite/`) originally carried a whole phase for migrating
+existing cloud-sync users off the passphrase-derived vault format. Before designing
+against it, production was actually checked: `users` held four rows, all of them the
+maintainer's own testing, and `sync_state` was empty. No vault had ever been uploaded,
+so R2 held nothing either.
+
+The temptation is to keep the migration path anyway, "just in case" or because it was
+already designed. It was deleted instead, because a compatibility path is not free
+once it exists — it is a second codepath that every future change has to keep working,
+and it can only ever be exercised by data that does not exist. Keeping it would mean
+maintaining a v1 reader forever to serve nobody.
+
+What the deletion bought, beyond dropping one phase: no `schema_version` tombstone on
+`users`, no `sv` JWT claim, no dual v1/v2 branch on the vault routes, no vestigial
+`user_id` column on `vaults`, and a flat "reject any blob not starting with `0x02`"
+rule in place of per-user version state. `src/lib/e2e-crypto.ts` also stopped being
+dangerous to touch, since the format it implements has never encrypted a stored byte.
+
+The one thing genuinely given up is prior art. If a format v3 ever ships, there *will*
+be a live fleet and anti-downgrade protection becomes a real requirement. The deleted
+design is in git history rather than gone: see commits `9df23fa` and `1c81392`.

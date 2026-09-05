@@ -2,7 +2,9 @@
 
 **Status:** Draft 2 (Phase 1 of the auth + couples + privacy rewrite). Locks the cryptographic surface for everything that follows. No code lands until this doc is approved.
 
-**Scope:** key hierarchy, KDF choice, ciphertext envelopes (format v2), at-rest encryption strategy, recovery-phrase derivation, asymmetric invite handoff. Does **not** cover backend schema (Phase 2), client API (Phase 3), or migration choreography (Phase 6) — those reference this doc.
+**Scope:** key hierarchy, KDF choice, ciphertext envelopes (format v2), at-rest encryption strategy, recovery-phrase derivation, asymmetric invite handoff. Does **not** cover backend schema (Phase 2) or client API (Phase 3) — those reference this doc.
+
+**Draft 3 changelog (vs Draft 2) — the "no data to migrate" pass.** Production was checked and holds no vaults at all (see `auth-rewrite/00_overview.md`). Format v1 has never encrypted a byte in production, so every accommodation for it has been removed: the v1 detection rule, the anti-downgrade tombstone (§4.4), `KDF_KIND=0x01`, and the PBKDF2 migration path in §3.1. Format v2 is the only format that has ever existed as far as any code needs to know.
 
 **Gating answers used:**
 - Q1 (recovery UX) — display + "copy to password manager" CTA + checkbox.
@@ -126,7 +128,7 @@ Argon2id is not exposed by Web Crypto. We will use a WASM implementation — can
 
 **Wall-clock acceptance criterion:** see §3.4.
 
-**Migration path from PBKDF2:** Phase 6 re-derives the KEK with Argon2id during the forced re-key. v0.37 vaults are decrypted with the old PBKDF2 path one last time, the vault is re-encrypted under the new MasterKey, and the new wrapped-key rows go in.
+**No migration path from PBKDF2 is needed.** No production vault was ever encrypted under the v0.37 scheme, so Argon2id is not a migration target — it is simply what the app uses. PBKDF2 survives in this doc only as the BIP-39 seed derivation (§6.2), where it is mandated by the standard.
 
 ### 3.2 KDF version byte
 
@@ -134,7 +136,7 @@ The envelope (see §4) carries a `KDF_KIND` byte so the wrapping algorithm is se
 
 | KDF_KIND | Meaning | Params shape |
 |----------|---------|--------------|
-| 0x01 | PBKDF2-SHA256 | `iterations: uint32 BE` (4 bytes) |
+| 0x01 | *Reserved — was PBKDF2-SHA256. Never written; never read. Not reused.* | — |
 | 0x02 | Argon2id | `m: uint32 BE`, `t: uint32 BE`, `p: uint8` (9 bytes) |
 | 0x03 | BIP-39 + HKDF-SHA256 (recovery) | empty (deterministic from the phrase + the BIP-39 passphrase which we set to empty) |
 | 0x04 | None — key arrives via a non-KDF mechanism (MasterKey-direct, or via §4.3 handoff) | empty |
@@ -279,11 +281,13 @@ The `info` field binds the handoff to a specific sender-pubkey / recipient-pubke
 
 ### 4.4 Version bytes & forward compatibility
 
-`VERSION=0x02` is the only valid value Phase 3+ writes. v0.37 vaults are `VERSION=0x01` (`VERSION|SALT|IV|CIPHERTEXT+TAG`, single PBKDF2-direct format). Phase 6's detection rule: read the first byte. `0x01` → migrate via the v0.37 codepath. `0x02` → already on v2.
+`VERSION=0x02` is the only value ever written and the only value ever accepted. Any other first byte — `0x01` included — is a hard decrypt failure, not a branch into a legacy path.
 
-**Anti-downgrade rule.** Once a user's account has been migrated to v2 (Phase 6 writes a per-user `schema_version='v2'` tombstone on the users row, or equivalent — Phase 2/6 to pin the exact field), the client refuses to read or write `VERSION=0x01` blobs for that account. A malicious server cannot serve stale v1 ciphertexts to keep a user on the weaker PBKDF2 path; the client treats a v1 blob received after migration as tampering and aborts. Phase 6 owns the tombstone schema; this doc reserves the rule.
+**There is no anti-downgrade rule, because there is nothing to downgrade to.** Draft 2 specified a per-user `schema_version='v2'` tombstone so a client would refuse v1 ciphertext served by a malicious server. That defence presupposed v1 ciphertext existing somewhere for the server to serve. It does not: no vault was ever uploaded under v0.37 (`auth-rewrite/00_overview.md`). Refusing every non-`0x02` byte outright is both stronger and simpler than a tombstone, and it needs no server-side state. The tombstone, the `sv` JWT claim, and the `SCHEMA_VERSION_MISMATCH` error are all removed from Phase 2.
 
-Future v3 (e.g. if we add post-quantum primitives or move to per-field encrypted indexes) bumps the version byte and ships a one-shot in-place re-encrypt, same shape as Phase 6.
+**This is the one deletion in the Draft 3 pass that costs something, so it is worth being explicit about what.** A tombstone is what you need when weak-format data exists and you must stop a server from steering clients back onto it. If SafelySpend ever ships a format v3, that situation becomes real for the first time, and the anti-downgrade machinery has to be designed then — with the added difficulty that by then there *will* be a live fleet. Draft 2's §4.4 is worth re-reading at that point rather than reinventing; it is in git history at commit `9df23fa`.
+
+A future v3 bumps the version byte and ships a one-shot in-place re-encrypt on next unlock.
 
 ---
 
@@ -562,8 +566,6 @@ Carried forward, not resolved here:
 - **Argon2id WASM library selection** — Phase 3 call. Candidates: `hash-wasm`, `argon2-browser`. Need to compare bundle size, the slow-path benchmark, and conformance with reference test vectors.
 - **Argon2id final params** (§3.4) — Phase 3 benchmark. Upgrade pattern is locked; the actual numbers are not.
 - **At-rest shape if Phase 3 perf forces a fallback** (§5) — only fall back from whole-store with explicit threat-model and privacy-page updates.
-- **Migration codepath** (Phase 6) — must read v1 envelopes (`VERSION=0x01`), unwrap via PBKDF2, re-encrypt under fresh MasterKey, write v2 everywhere, and set the per-user anti-downgrade tombstone (§4.4).
-- **Anti-downgrade tombstone schema** (§4.4) — Phase 2 / Phase 6 pin the exact column or row that records "this user has migrated to v2."
 - **Safety-number fingerprint encoding** (§7.2) — exact display format (decimal groups vs base32 vs emoji-grid) is Phase 4's UX call; the *crypto* input (SHA-256 of the 32-byte pubkey, truncated to a documented length) is fixed here.
 - **D1 transaction guarantees** (§7.3) — Phase 2 confirms that the membership-insert and rewrap operations can each be issued atomically on D1.
 - **Sweep-poll cadence** (§7.2) — Phase 5's call. Defaults probably 10–30 s with exponential backoff after several misses.
@@ -576,7 +578,6 @@ Carried forward, not resolved here:
 - No code, no API signatures, no HTTP paths — those are Phase 3 (client) and Phase 2 (server). Sequence diagrams in §7 use role names.
 - No SQL — Phase 2.
 - No UI copy for the recovery phrase moment or the safety-number confirmation — Phase 4.
-- No migration script for v0.37 → v2 — Phase 6.
 - No exact bundle-size budget for Argon2id WASM — Phase 3.
 
 The job here is to make every downstream phase's design call obvious. If a phase finds it needs a different envelope, KDF, or key, the change starts back here.

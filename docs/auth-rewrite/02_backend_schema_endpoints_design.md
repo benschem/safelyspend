@@ -2,19 +2,20 @@
 
 **Status:** Draft 1 (Phase 2 of the auth + couples + privacy rewrite). Locks the server-side surface — D1 schema, Worker endpoint contracts, JWT lifecycle, transaction boundaries, anti-downgrade enforcement, server-side validation, error model. No code lands until this doc is approved.
 
-**Scope:** Everything that lives in `worker/` or `worker/migrations/`. References Phase 1 (`docs/crypto-design.md`) for envelope formats, KDF choices, key hierarchy, and the invite handoff sequence. **Does not** cover client crypto implementation (Phase 3), login/unlock UX (Phase 5), migration choreography (Phase 6), invite UI (Phase 7), or household scope UI (Phase 8).
+**Scope:** Everything that lives in `worker/` or `worker/migrations/`. References Phase 1 (`../crypto-design.md`) for envelope formats, KDF choices, key hierarchy, and the invite handoff sequence. **Does not** cover client crypto implementation (Phase 3), login/unlock UX (Phase 5), invite UI (Phase 7), or household scope UI (Phase 8).
+
+**Draft 2 changelog (vs Draft 1) — the "no data to migrate" pass.** Production holds no vaults and no real users (`00_overview.md`). Everything that existed to carry v0.37 users forward is gone: `POST /v1/auth/migrate-v2` and its two-step upload, the `users.schema_version` / `migrated_at` tombstone columns, the `sv` JWT claim, the `SCHEMA_VERSION_MISMATCH` branch, §7's anti-downgrade enforcement, the `migration_pending` row, the 7-day R2 retirement cooldown, and the dual-codepath compromise on `vaults` / `sync_state`. The schema is now written as if the app had always been household-keyed, because as far as any surviving data is concerned, it always was.
 
 **Gating answers used (locked this session):**
 - **Q5** (households per user) — **one per user in v1**. Schema enforces `UNIQUE(household_members.user_id)`. JWT carries a single `householdId`; no switcher.
 - **Q6** (JWT vs MasterKey lifetimes) — **independent**. JWT lives 7d in cookie, auto-rotates at halfway (current behaviour). MasterKey lives in JS memory until tab close or explicit lock. Local re-unlock uses cached wrapped-key rows; no OTP, no server contact required. Logout clears the server session and cookie but does not touch MasterKey (and vice versa).
-- **Anti-downgrade tombstone** — `users.schema_version TEXT` (NULL = pre-migration v1, `'v2'` = wrapped-key + Argon2id). Set atomically by the migration endpoint in the same `db.batch()` as the first v2 key rows.
 - **Sweep-poll shape** — short polling. `GET /v1/handoffs/incoming` returns immediately with the current state. Client picks cadence (Phase 5 default 10–30s).
 
 **Phase 1 invariants this doc plumbs through to the schema and endpoints:**
 - §2 — `user_keys` is one row per `(user_id, kek_kind)`; `household_member_keys` is one row per `(household_id, user_id, kek_kind)` with `kek_kind ∈ {'pwd', 'recovery', 'ecies'}` and the `'ecies'` row is transient.
 - §3.2 — every wrapped-key row carries `kek_kdf_kind` and `kek_kdf_params` so the wrapping algorithm is self-describing.
 - §3.4 — Argon2id rolling upgrade. The rewrap endpoint must replace old rows atomically only after new rows are durable; never delete-before-insert.
-- §4.4 — anti-downgrade. Server rejects v1-byte (`0x01`) writes once `schema_version='v2'`.
+- §4.4 — `VERSION=0x02` is the only accepted first byte. Structural validation (§8) rejects anything else outright; there is no legacy branch and no tombstone gating it.
 - §6.4 step 5 — recovery flow swap is upsert-then-retire, never delete-then-insert. Recovery-kind rows are never deleted by a password-reset.
 - §7.2 — endpoint roles `invite-issue`, `signup-with-invite`, `auth-with-otp`, `sweep-pending-handoffs`, `sweep-poll`, `household-add-member`, `rewrap-member-keys`, `invite-accept` each map to a real `method+path` here.
 - §7.3 — D1 transaction boundaries. Confirmed: D1 has no `BEGIN/COMMIT` outside `db.batch()`. `db.batch()` is the only atomic primitive and it is what the existing vault code already uses (`worker/src/services/vault.ts:179-196`, `worker/src/services/vault.ts:366-369`). Half-applied state is impossible inside a single `batch()`; the network-failure-after-success case is covered by idempotency keys.
@@ -55,35 +56,45 @@ ALTER TABLE users ADD COLUMN verifier_salt      BLOB;            -- 16 random by
 ALTER TABLE users ADD COLUMN verifier_kdf_kind  INTEGER;         -- 0x02 = Argon2id (only valid value in v2)
 ALTER TABLE users ADD COLUMN verifier_kdf_params BLOB;           -- 9 bytes for Argon2id per Phase 1 §3.2
 ALTER TABLE users ADD COLUMN pubkey             BLOB;            -- 32-byte X25519 public key (plaintext per §1 threat model)
-ALTER TABLE users ADD COLUMN schema_version     TEXT;            -- NULL = v1 legacy, 'v2' = migrated
-ALTER TABLE users ADD COLUMN migrated_at        TEXT;            -- ISO timestamp; set by /auth/migrate-v2
 ```
 
-All new columns are nullable so the migration from v0.37 can land without backfilling immediately. Migration of any individual user (Phase 6) fills them in atomically with `schema_version='v2'`. Until `schema_version='v2'`, the v1 codepath continues to work — the wrapped-key endpoints reject writes for users without `'v2'` set, and the v0.37 vault PUT/GET endpoints reject writes for users *with* `'v2'` set (anti-downgrade, §7).
+Since the tables are being dropped and rebuilt anyway, prefer expressing these in a rewritten `0001_initial.sql` rather than as `ALTER`s bolted onto a schema history nobody will ever replay. The `ALTER` form is kept above only to show the diff against v0.37.
+
+Columns stay nullable, because a user row is created by `/auth/login` (find-or-create on first OTP request) before signup has supplied any key material. The row is inert until `/auth/signup` fills it in: no `pubkey` means no `user_keys`, which means no household membership, which means no vault access. `signup` is guarded by `WHERE pubkey IS NULL` for its first-write-wins idempotency, taking over the role Draft 1 gave to `schema_version IS NULL`.
+
+There is no `schema_version` and no `migrated_at`. Draft 1 needed them to tell a half-migrated v0.37 user from a native v2 one. No such user exists or ever will.
 
 #### `vaults` and `sync_state` — re-keyed to `household_id`
 
-Vaults are now household-keyed, not user-keyed. Phase 6's migration moves each user's existing v1 vault to their newly-created household; from then on the `user_id` column on `vaults` is vestigial.
+Vaults are household-keyed, not user-keyed. **`user_id` is dropped from both tables, not deprecated alongside a new column.**
 
-Two options for the schema change:
-- **A. Add `household_id` alongside `user_id`, populate during migration, mark `user_id` deprecated.** Simpler migration (no row rewrites needed beyond setting the new column). Both columns coexist; new code reads `household_id`. Index switch: drop `idx_vaults_user_version`, add `idx_vaults_household_version`.
-- **B. Drop `user_id`, replace with `household_id`.** Cleaner end-state but the migration must rewrite every row.
-
-**Recommend A** — it's friendlier to the rolling Phase 6 migration where some users are pre-migration and some are post-migration in the same database. Phase 6 backfills `household_id`; the codebase reads only `household_id` after Phase 6 lands.
+Draft 1 weighed keeping `user_id` as a vestigial column (option A) against replacing it (option B), and recommended A — but only because a rolling migration would have left pre-migration and post-migration users side by side in one database, and A avoided rewriting rows under them. With no rows to rewrite and no users to straddle, A's entire justification is gone and it leaves nothing behind but a permanently confusing column that new code must remember never to read.
 
 ```sql
-ALTER TABLE vaults     ADD COLUMN household_id TEXT REFERENCES households(id) ON DELETE CASCADE;
-ALTER TABLE sync_state ADD COLUMN household_id TEXT REFERENCES households(id) ON DELETE CASCADE;
-
+CREATE TABLE vaults (
+  id              TEXT PRIMARY KEY,
+  household_id    TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  version         INTEGER NOT NULL,
+  r2_key          TEXT NOT NULL,
+  size_bytes      INTEGER NOT NULL,
+  checksum        TEXT NOT NULL,
+  idempotency_key TEXT,
+  created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
 CREATE UNIQUE INDEX idx_vaults_household_version     ON vaults(household_id, version);
 CREATE UNIQUE INDEX idx_vaults_household_idempotency ON vaults(household_id, idempotency_key);
-CREATE INDEX        idx_vaults_household_id          ON vaults(household_id);
-CREATE UNIQUE INDEX idx_sync_state_household_id      ON sync_state(household_id);
+
+CREATE TABLE sync_state (
+  household_id     TEXT PRIMARY KEY REFERENCES households(id) ON DELETE CASCADE,
+  current_version  INTEGER NOT NULL,
+  current_vault_id TEXT REFERENCES vaults(id),
+  updated_at       TEXT NOT NULL DEFAULT (datetime('now'))
+);
 ```
 
-Old `(user_id, version)` and `(user_id, idempotency_key)` indexes are kept until Phase 6 finishes and v0.37 routes are retired. Phase 6's migration is responsible for ensuring every newly-uploaded v2 vault carries a `household_id`; v1 reads continue to use `user_id` until the user is migrated.
+`sync_state` is one row per household. The R2 key becomes `<household_id>/<vault_id>`; the old `<user_id>/…` layout has no live objects under it.
 
-`sync_state` becomes household-keyed: one row per household, not per user. `PRIMARY KEY (user_id)` is replaced by `PRIMARY KEY (household_id)` via a table rebuild during the household migration in Phase 6. Until then a user has both a `(user_id)` v1 row and (post-migration) a `(household_id)` v2 row; the v1 row is dropped when migration completes.
+**Optimistic concurrency now spans two people.** The existing `X-Expected-Version` check (`worker/src/services/vault.ts`) was written for a single-writer model where a conflict meant the same person on two devices. Household-keyed vaults make a genuine two-writer conflict routine — both partners editing on the same evening — and a rejected push now costs someone else's work, not just your own stale tab. The mechanism does not change here, but Phase 8 owns the question of what the losing client *does* about it, and "last write wins, silently" stops being acceptable at that point.
 
 ### 1.3 New tables
 
@@ -228,7 +239,7 @@ Why a new table and not a JWT-with-purpose claim: the existing JWT middleware (`
 | `idx_invites_sender_user` | List invites *from* a user (sweep pending handoffs) |
 | `idx_invites_expires_at` | Background cleanup |
 | `idx_invites_status` | State-filtered queries |
-| `idx_vaults_household_*` | Replaces `idx_vaults_user_*` once Phase 6 finishes |
+| `idx_vaults_household_*` | Vault lookup and idempotency, household-scoped |
 | `idx_sync_state_household_id` UNIQUE | One sync_state per household |
 | `idx_auth_pending_*` | Standard for the new bridge table |
 
@@ -253,7 +264,6 @@ Why a new table and not a JWT-with-purpose claim: the existing JWT middleware (`
 ### 2.2 What's new
 
 - **JWT payload gains `hid` (household_id).** Currently `{sub, sid, email, iat, exp}`; v2 adds `hid: string`. The household_id is set at signup (and never changes in v1 because of Q5). Vault routes derive scope from `hid` instead of `sub`.
-- **JWT payload gains `sv` (schema_version).** Either `'v1'` (legacy user mid-migration) or `'v2'`. Mid-flight migration users get a fresh JWT with `sv='v2'` issued from `/auth/migrate-v2`. Used by middleware to fast-reject anti-downgrade violations before hitting the DB.
 - **`email` claim becomes optional.** Local-only users do not have a server account and never get a JWT at all. The first time a user opts into cloud sync, they get an email + JWT. Until then, the entire server surface is unreachable.
 
 ### 2.3 Relationship to MasterKey (independent — Q6 locked)
@@ -310,7 +320,7 @@ Modified: behaviour is unchanged from v0.37 *for the request shape*. The semanti
 
 **Errors:** 401 UNAUTHORIZED (`Invalid email or code`, generic — same wording as current). 429 TOO_MANY_REQUESTS.
 
-**Server-side:** if the user is on `schema_version IS NULL` (still v1), respond with 409 `SCHEMA_VERSION_MISMATCH` so the client routes them to the migration flow (`/auth/migrate-v2`) instead of the v2 login completion. This prevents a half-migrated client from accidentally completing a v2 login against a v1 record.
+**Server-side:** a user row with `pubkey IS NULL` has requested an OTP but never completed signup. Respond with the bridge token as normal — the client routes itself to signup rather than login-completion based on the absence of a key bundle. No dedicated error code; this is an ordinary first-run state, not a mismatch.
 
 **Side effect:** marks the matching `auth_codes` row used (`used_at = now`) and creates an `auth_pending` row with the returned token + 5-minute `expires_at`. OTP code is consumed at this step (not at `/login-complete`) so a malicious client can't replay the bridge step.
 
@@ -332,7 +342,7 @@ Modified: behaviour is unchanged from v0.37 *for the request shape*. The semanti
 **Response (200):**
 ```json
 {
-  "user":           { "id": "...", "email": "...", "schemaVersion": "v2" },
+  "user":           { "id": "...", "email": "..." },
   "household":      { "id": "...", "name": "..." },
   "keyBundle":      { /* same shape as GET /v1/auth/key-bundle, §3.7 */ }
 }
@@ -381,7 +391,6 @@ Modified: behaviour is unchanged from v0.37 *for the request shape*. The semanti
     { "kekKind": "pwd",      "wrappedMasterKey": "...", "kekSalt": "...", "kekKdfKind": 2, "kekKdfParams": "..." },
     { "kekKind": "recovery", "wrappedMasterKey": "...", "kekSalt": null,  "kekKdfKind": 3, "kekKdfParams": "" }
   ],
-  "schemaVersion": "v2",
   "rememberMe":    false
 }
 ```
@@ -391,7 +400,7 @@ Modified: behaviour is unchanged from v0.37 *for the request shape*. The semanti
 **Errors:**
 - 401 AUTH_PENDING_INVALID.
 - 400 INVALID_BLOB (server validation failed; see §6).
-- 409 ALREADY_SIGNED_UP — `users.schema_version` is already set, or any of `user_keys` / `household_members` rows already exist for this user.
+- 409 ALREADY_SIGNED_UP — `users.pubkey` is already set, or any of `user_keys` / `household_members` rows already exist for this user.
 - 400 BAD_REQUEST — missing required key kinds (both `pwd` and `recovery` are mandatory).
 - 429 TOO_MANY_REQUESTS.
 
@@ -399,9 +408,8 @@ Modified: behaviour is unchanged from v0.37 *for the request shape*. The semanti
 ```
 UPDATE auth_pending SET used_at=now WHERE id=? AND used_at IS NULL
 UPDATE users SET password_verifier=?, verifier_salt=?, verifier_kdf_kind=?, verifier_kdf_params=?,
-                 pubkey=?, schema_version='v2', migrated_at=now,
-                 updated_at=now
-       WHERE id=? AND schema_version IS NULL    -- enforces "first signup wins" idempotency
+                 pubkey=?, updated_at=now
+       WHERE id=? AND pubkey IS NULL            -- enforces "first signup wins" idempotency
 INSERT INTO user_keys (...)                     × 2 rows (pwd + recovery)
 INSERT INTO households (...)
 INSERT INTO household_members (household_id, user_id, role='owner', joined_at=now)
@@ -432,7 +440,6 @@ If the `UPDATE users` affected 0 rows (already signed up), the whole batch rolls
   "pubkey":            "...",
   "userKeys":          [ { "kekKind":"pwd", ... }, { "kekKind":"recovery", ... } ],
   "inviteToken":       "<base64url>",
-  "schemaVersion":     "v2",
   "rememberMe":        false
 }
 ```
@@ -440,7 +447,7 @@ If the `UPDATE users` affected 0 rows (already signed up), the whole batch rolls
 **Response (200):**
 ```json
 {
-  "user":     { "id": "...", "email": "...", "schemaVersion": "v2" },
+  "user":     { "id": "...", "email": "..." },
   "household": null,                           // not joined yet
   "invite": {
     "id": "...",
@@ -455,7 +462,7 @@ If the `UPDATE users` affected 0 rows (already signed up), the whole batch rolls
 **Single `db.batch()`:**
 ```
 UPDATE auth_pending SET used_at=now WHERE id=? AND used_at IS NULL
-UPDATE users SET password_verifier=?, ..., schema_version='v2', migrated_at=now WHERE id=? AND schema_version IS NULL
+UPDATE users SET password_verifier=?, ..., pubkey=?, updated_at=now WHERE id=? AND pubkey IS NULL
 INSERT INTO user_keys (...) × 2
 UPDATE invites SET recipient_user_id=?, status='accepted_pending_handoff', updated_at=now
        WHERE token=? AND status='open' AND expires_at > now AND recipient_email=?
@@ -466,48 +473,9 @@ If the `UPDATE invites` affected 0 rows, the batch rolls back and the server ret
 
 **Errors:** 410 INVITE_EXPIRED, 409 INVITE_ALREADY_ACCEPTED, 404 INVALID_INVITE, 400 INVALID_BLOB, plus the standard auth errors above.
 
-### 3.6 `POST /v1/auth/migrate-v2` — Phase 6 one-shot migration
+### 3.6 ~~`POST /v1/auth/migrate-v2`~~ — removed
 
-**New.** Atomically converts a v0.37 user to v2. Phase 6 owns the choreography; Phase 2 owns the contract.
-
-**Precondition:** authenticated via v0.37 OTP-only flow. The legacy `/auth/verify` endpoint continues to work *only* for users with `schema_version IS NULL` — it issues a session JWT with `sv='v1'` and gated to the migration endpoint + the legacy v1 vault routes only.
-
-**Request:** same fields as `/auth/signup` plus:
-```json
-{
-  "vaultBlob":        "<binary>",         // sent as separate request or multipart? See note below
-  "expectedVersion":  <integer>,          // v1 vault current version, for optimistic-lock parity
-  "v1VaultRetiredHash": "<sha256>"        // optional sentinel; server verifies it matches the current R2 v1 blob before the swap
-}
-```
-
-**Wire format note:** the vault blob is binary, not JSON. Options:
-- (a) Multipart request with JSON metadata + binary part.
-- (b) Two requests inside a client-managed migration session: `POST /migrate-v2/init` returns a migration ID and uploads keys+verifier; `PUT /migrate-v2/:id/vault` uploads the binary. Server holds a temp state and finalises atomically when both arrive.
-
-Recommend (b) — multipart is fiddly in Workers and (b) is naturally resumable. The temp state lives in a new `migration_pending` table keyed by `(user_id, migration_id)`. The `finalise` step is the single `db.batch()` that flips `schema_version='v2'` and swaps vault rows.
-
-**Response (200):** same shape as `/login-complete`.
-
-**Errors:**
-- 409 ALREADY_MIGRATED (`schema_version` already `'v2'`).
-- 400 INVALID_BLOB.
-- 409 VAULT_VERSION_MISMATCH (the legacy v1 vault was modified between the start of migration and the finalise call).
-
-**Single `db.batch()` at finalise time:**
-```
-UPDATE users SET password_verifier=?, ..., pubkey=?, schema_version='v2', migrated_at=now
-       WHERE id=? AND schema_version IS NULL
-INSERT INTO user_keys × 2
-INSERT INTO households (...)
-INSERT INTO household_members (...)
-INSERT INTO household_member_keys × 2
-INSERT INTO vaults (id, user_id, household_id, version=1, r2_key, size_bytes, checksum, idempotency_key)
-INSERT INTO sync_state (household_id, current_version=1, current_vault_id=?, updated_at=now)
-DELETE FROM sync_state WHERE user_id=? AND household_id IS NULL    -- retire v1 sync_state row
-```
-
-The new v2 vault is written under a fresh R2 key (`<household_id>/<vault_id>`). The legacy v1 R2 object is **not deleted in the same batch** — Phase 6 keeps it around for a configurable cooldown (e.g. 7 days) so a botched migration can be re-attempted against the original ciphertext, then `cleanupOrphanedR2Objects` (existing) reaps it. This is a Phase 6 concern; Phase 2 just makes sure the swap is atomic on the D1 side.
+Draft 1's one-shot v0.37 → v2 migration: a two-step init/upload/finalise flow with a `migration_pending` row, resume-after-crash semantics, and a 7-day cooldown before the old R2 object was reaped. It was the most intricate endpoint in the doc and it existed for zero users. Number retained so §3.7 onwards keep their identities.
 
 ### 3.7 `GET /v1/auth/key-bundle` — fetch wrapped keys for local unlock
 
@@ -521,8 +489,7 @@ The new v2 vault is written under a fresh R2 key (`<household_id>/<vault_id>`). 
     "pubkey": "<base64url>",
     "verifierSalt": "<base64url>",
     "verifierKdfKind": 2,
-    "verifierKdfParams": "<base64url>",
-    "schemaVersion": "v2"
+    "verifierKdfParams": "<base64url>"
   },
   "userKeys": [
     { "kekKind": "pwd",      "wrappedPrivKey": "...", "kekSalt": "...", "kekKdfKind": 2, "kekKdfParams": "..." },
@@ -609,14 +576,14 @@ Per Phase 1 §6.4 step 5: this is upsert-then-retire, not delete-then-insert. Th
 
 **Rate limits:** 1/h per user.
 
-### 3.10 Existing endpoints (unchanged behaviour, gated by `schema_version`)
+### 3.10 Existing endpoints
 
 | Endpoint | v1 (legacy) | v2 (new) |
 |----------|-------------|----------|
 | `POST /auth/login` | Same shape — OTP request | Same shape — OTP request |
-| `POST /auth/verify` | Returns session JWT (current behaviour) | **Disabled**. Returns 410 GONE with `code='USE_V2_LOGIN'` for `schema_version='v2'` users. Continues to work for `schema_version IS NULL` (Phase 6 in-progress users). |
+| `POST /auth/verify` | Returns session JWT (current behaviour) | **Deleted.** It issued a session on OTP alone, which is exactly what the verifier step exists to prevent. Nothing depends on it, so it goes rather than returning 410. |
 | `POST /auth/logout` | Unchanged | Unchanged |
-| `GET /auth/me` | Returns `{user}` | Returns `{user, household, schemaVersion}` |
+| `GET /auth/me` | Returns `{user}` | Returns `{user, household}` |
 | `DELETE /auth/account` | Unchanged | Unchanged. Also cascades through `households` (since user is the sole member, ON DELETE CASCADE wipes the household and its member_keys). |
 | `POST /auth/revoke-all-sessions` | Unchanged | Unchanged |
 | `GET /auth/sessions` | Unchanged | Unchanged |
@@ -626,7 +593,7 @@ Per Phase 1 §6.4 step 5: this is upsert-then-retire, not delete-then-insert. Th
 
 ## 4. Invite + handoff endpoints
 
-All require auth (session JWT, v2 only — `schema_version='v2'`). Endpoint role names from Phase 1 §7.2 are in parentheses.
+All require auth (session JWT). Endpoint role names from Phase 1 §7.2 are in parentheses.
 
 ### 4.1 `POST /v1/invites` (invite-issue)
 
@@ -845,17 +812,17 @@ Not a new endpoint — A re-issues by `DELETE /v1/invites/:id` then `POST /v1/in
 
 All existing routes in `worker/src/routes/vault.ts`. The change is purely the scoping key.
 
-| Route | v1 (legacy) | v2 |
-|-------|-------------|----|
+| Route | Before | After |
+|-------|--------|-------|
 | `GET /v1/vault` | metadata for `user_id` | metadata for `hid` (from JWT) |
 | `GET /v1/vault/data` | current blob for `user_id` | current blob for `hid` |
-| `PUT /v1/vault/data` | upload for `user_id` (X-Expected-Version, X-Idempotency-Key) | upload for `hid`; **also** server inspects the leading byte of the blob and rejects v1 (`0x01`) for `schema_version='v2'` users (anti-downgrade) |
+| `PUT /v1/vault/data` | upload for `user_id` (X-Expected-Version, X-Idempotency-Key) | upload for `hid`; blob must lead with `VERSION=0x02` (§8) |
 | `GET /v1/vault/history` | history for `user_id` | history for `hid` |
 | `GET /v1/vault/data/:vaultId` | unchanged | unchanged (vaultId is already a primary key) |
 
-**No new HTTP shapes**, just a key change. Phase 6 backfills `vaults.household_id` and the v2 code path reads from `hid`. The `user_id` column on `vaults` is retained until Phase 6 finishes for every user, after which a cleanup migration drops it.
+**No new HTTP shapes**, just a key change: every route reads `hid` from the JWT where it previously read `sub`.
 
-**Storage quota:** today's 50MB per-user limit becomes 50MB per-household (one v1 user = one v2 household, same quota). Easy refactor in `vaultService.getTotalStorage`.
+**Storage quota:** today's 50MB per-user limit becomes 50MB per-household. Note this is a real reduction for a couple — two people now share what one person used to have to themselves. Fine at current volumes, but it is a per-*household* limit now and the copy should say so. Easy refactor in `vaultService.getTotalStorage`.
 
 **Existing concurrency / idempotency machinery is unchanged** — version conflict detection in `worker/src/services/vault.ts:163-210` continues to apply, just keyed differently.
 
@@ -872,7 +839,7 @@ Half-applied transactions inside a `batch()` are not possible. The remaining fai
 | Endpoint | Idempotency mechanism |
 |----------|----------------------|
 | `PUT /v1/vault/data` | `X-Idempotency-Key` header → `vaults.idempotency_key UNIQUE(user_id/household_id, idempotency_key)`. Existing pattern, kept. |
-| `POST /v1/auth/signup`, `/signup-with-invite`, `/migrate-v2` | `users.schema_version` upsert with `WHERE schema_version IS NULL` guard. Retry is safe: second attempt sees `schema_version='v2'` and 409s with the right state. |
+| `POST /v1/auth/signup`, `/signup-with-invite` | `users.pubkey` upsert with a `WHERE pubkey IS NULL` guard. Retry is safe: the second attempt sees the row already filled and 409s with the right state. |
 | `POST /v1/households/.../members` | `household_member_keys` PRIMARY KEY `(household_id, user_id, kek_kind='ecies')` UNIQUE. Retry returns 200 if the same row exists. |
 | `POST /v1/households/.../members/.../rewrap` | `INSERT OR REPLACE` on `household_member_keys` is naturally idempotent. |
 | `POST /v1/invites` | Server enforces "one open invite per (sender, recipient) pair." Retry returns 409 INVITE_ALREADY_PENDING with the existing invite ID. |
@@ -885,7 +852,6 @@ Half-applied transactions inside a `batch()` are not possible. The remaining fai
 |-----------|---------------|
 | Signup | `UPDATE auth_pending`, `UPDATE users`, `INSERT user_keys × 2`, `INSERT households`, `INSERT household_members`, `INSERT household_member_keys × 2`, `INSERT sessions` |
 | Signup-with-invite | `UPDATE auth_pending`, `UPDATE users`, `INSERT user_keys × 2`, `UPDATE invites`, `INSERT sessions` |
-| Migrate-v2 (finalise) | `UPDATE users` (schema_version flip), `INSERT user_keys × 2`, `INSERT households`, `INSERT household_members`, `INSERT household_member_keys × 2`, `INSERT vaults`, `INSERT sync_state`, `DELETE FROM sync_state` (v1 row) |
 | Household-add-member | `INSERT household_members`, `INSERT household_member_keys` (ecies), `UPDATE invites` |
 | Rewrap-member-keys | `INSERT OR REPLACE household_member_keys` (pwd), `INSERT OR REPLACE household_member_keys` (recovery), `DELETE household_member_keys` (ecies) |
 | Rewrap-keys (Argon2id upgrade) | `UPDATE user_keys`, `UPDATE household_member_keys`, `UPDATE users` (verifier) |
@@ -899,38 +865,27 @@ The vault `PUT` and the migration `finalise` both write to R2 *and* D1. The exis
 2. Run the D1 `batch()`.
 3. On D1 failure or optimistic-lock loss, delete the R2 object (best-effort) and rely on `cleanupOrphanedR2Objects` for the residual.
 
-This stays. The same pattern applies to the migration finalise — write the v2 vault to R2, then run the schema_version flip batch; on rollback, delete the new R2 key.
+This stays unchanged. The vault `PUT` is now the only operation in the system that touches both R2 and D1.
 
 ### 6.4 Half-applied state detection
 
 D1 `batch()` is all-or-nothing: a partially-applied state cannot exist server-side. The detection question reduces to: *did the client successfully observe the response?* If the network drops between the server's commit and the client's receipt of the 200, the client retries with the same idempotency mechanism (per §6.1 table) and gets the right answer.
 
-The one place this is uncomfortable is `/migrate-v2/:id/vault` (the binary upload of the migration two-step flow). If the R2 upload succeeded but the finalise call never reached the client, the next attempt re-uploads to a fresh R2 key and finalises against that. The old R2 key is orphaned and reaped by `cleanupOrphanedR2Objects`. The `migration_pending` row carries the R2 key so the client can resume mid-migration without re-deriving keys; Phase 6 owns the choreography.
+Draft 1 flagged the migration's binary upload as the one uncomfortable case here. With that endpoint gone, the only R2-then-D1 write left is the ordinary vault `PUT`, which the existing idempotency key already covers.
 
 ---
 
-## 7. Anti-downgrade enforcement
+## 7. Version enforcement (was: anti-downgrade)
 
-### 7.1 Where the tombstone lives
+Draft 1 carried four subsections of tombstone machinery here — where `users.schema_version` lived, which endpoint enforced it, why the client had to check as well, and how the one legitimate v1→v2 transition was fenced. All of it protected users who had v0.37 ciphertext. Nobody does.
 
-`users.schema_version TEXT` — NULL for legacy v1 users, `'v2'` for migrated users. Set atomically by `/auth/signup`, `/auth/signup-with-invite`, and `/auth/migrate-v2` (each in their respective `db.batch()`). Never unset by any v2 endpoint.
+What survives is one line, and it lives in §8 with the rest of the structural validation rather than in a section of its own:
 
-### 7.2 Where the server enforces it
+> Every blob the server accepts must begin with `VERSION=0x02`. Any other leading byte is `400 INVALID_BLOB`. There is no state to consult and no legacy branch to take.
 
-| Endpoint | Enforcement |
-|----------|-------------|
-| `PUT /v1/vault/data` | Read leading byte of body. If `users.schema_version='v2'` and leading byte ≠ `0x02` → 409 ANTI_DOWNGRADE_REJECTED. (Reverse: if NULL and byte == `0x02`, also reject — this would mean the migration endpoint is being bypassed.) |
-| Any wrapped-key write (`/auth/signup`, `/rewrap-keys`, `/recovery-reset`, `/households/.../members`, `/.../rewrap`) | Each `wrappedPrivKey` / `wrappedMasterKey` blob is checked for leading `[VERSION=0x02, KIND=<expected>]`. Server validates VERSION matches schema_version. |
-| Any **legacy v1** route (`POST /auth/verify`) | If `users.schema_version='v2'` → 410 GONE with `code='USE_V2_LOGIN'`. |
-| `/auth/login-complete`, `/login-complete` | Reads `users.schema_version` and includes it in the issued JWT (`sv` claim). |
+This is strictly stronger than the tombstone version, which had to permit `0x01` for un-migrated users and therefore needed per-user state to decide. A flat rule needs none.
 
-### 7.3 Client-side check is still required
-
-Per Phase 1 §4.4: the client *also* refuses to read v1 blobs after migration. Server-side rejection is defence in depth for the case where the server is honest but buggy; the cryptographic guarantee comes from the client refusing to decrypt v1 blobs once it has seen `schema_version='v2'` for itself. Phase 3 wires the client check.
-
-### 7.4 The legitimate v1 → v2 transition
-
-The `/auth/migrate-v2/:id/finalise` batch is the *only* place where the server transitions a user's `schema_version` from NULL to `'v2'`. The batch fence (`UPDATE users SET schema_version='v2', ... WHERE id=? AND schema_version IS NULL`) makes the transition idempotent: a retry sees the post-state and 409s.
+Section number 7 is retained rather than reflowed so that cross-references from Phase 1 and from commit `1c81392` still land somewhere meaningful.
 
 ---
 
@@ -971,7 +926,7 @@ For `users`:
 
 All structural failures return **400 INVALID_BLOB** with a generic message. Do not leak which check failed (it's not security-critical, but the principle is "the server is a parser, not a debugger"). Phase 3 ensures the client never sends malformed blobs; INVALID_BLOB in production is either a client bug or a tampering attempt.
 
-The one exception is anti-downgrade (§7), which returns 409 ANTI_DOWNGRADE_REJECTED with a distinct code so the client can route the user to the migration flow rather than retrying.
+A malformed or wrong-version blob returns 400 INVALID_BLOB (§8). There is no retry that fixes it: the client is shipping bytes the server will never accept, so the code is deliberately not one that invites a retry loop.
 
 ---
 
@@ -986,13 +941,11 @@ Existing `AppError` envelope is unchanged:
 
 | Code | HTTP | Endpoint(s) | When |
 |------|------|-------------|------|
-| `AUTH_PENDING_INVALID` | 401 | `/login-complete`, `/signup*`, `/migrate-v2/*` | Bridge token unknown, expired, or used |
+| `AUTH_PENDING_INVALID` | 401 | `/login-complete`, `/signup*` | Bridge token unknown, expired, or used |
 | `VERIFIER_MISMATCH` | 401 | `/login-complete`, `/rewrap-keys` | Argon2id verifier check failed |
 | `SCHEMA_VERSION_MISMATCH` | 409 | `/verify-otp`, `/signup`, `/rewrap-keys` | User is on a different schema version than the request assumes |
-| `ANTI_DOWNGRADE_REJECTED` | 409 | `PUT /vault/data`, any wrapped-key write | VERSION byte conflicts with `schema_version` |
 | `INVALID_BLOB` | 400 | any wrapped-key write, `PUT /vault/data` | Structural validation failed |
-| `ALREADY_SIGNED_UP` | 409 | `/signup`, `/signup-with-invite` | `schema_version` already set |
-| `ALREADY_MIGRATED` | 409 | `/migrate-v2/finalise` | `schema_version='v2'` already |
+| `ALREADY_SIGNED_UP` | 409 | `/signup`, `/signup-with-invite` | `users.pubkey` already set |
 | `INVALID_INVITE` | 404 | `/invites/:token/accept`, `/signup-with-invite` | Token unknown |
 | `INVITE_EXPIRED` | 410 | invite endpoints | `expires_at < now` |
 | `INVITE_ALREADY_ACCEPTED` | 409 | invite endpoints | `status ≠ 'open'` |
@@ -1004,7 +957,6 @@ Existing `AppError` envelope is unchanged:
 | `EMAIL_MISMATCH` | 403 | `/invites/:token/accept` | Invite's `recipient_email` doesn't match authed user's email |
 | `NO_PENDING_HANDOFF` | 409 | `/rewrap` | No ecies row to consume |
 | `NOT_OWN_KEYS` | 403 | `/rewrap` | Trying to rewrap someone else's keys |
-| `VAULT_VERSION_MISMATCH` | 409 | `/migrate-v2/finalise` | Legacy v1 vault changed between init and finalise |
 | `USE_V2_LOGIN` | 410 | `POST /auth/verify` | Legacy endpoint called by v2 user |
 
 ### 9.2 Auth-style endpoints stay enumeration-resistant
@@ -1024,7 +976,6 @@ Adopts the existing IP + per-user pattern (`worker/src/middleware/rate-limit.ts`
 | `POST /auth/login-complete` | 30 / min | 10 / 15 min per user |
 | `POST /auth/signup` | 5 / h | 5 / h per user |
 | `POST /auth/signup-with-invite` | 5 / h | 5 / h per user |
-| `POST /auth/migrate-v2/*` | 5 / h | 3 / h per user |
 | `GET  /auth/key-bundle` | 60 / min | 30 / min per user |
 | `POST /auth/rewrap-keys` | 5 / h | 1 / h per user |
 | `POST /auth/recovery-reset` | 5 / h | 1 / h per user |
@@ -1048,7 +999,6 @@ All limits degrade open on D1 failure (existing pattern).
 ### Carried to Phase 3 (client crypto)
 - Wire encoding for binary fields in JSON: base64url is assumed throughout this doc but Phase 3 may prefer raw base64 or hex for cosmetic reasons. The server should accept whichever Phase 3 picks consistently.
 - Argon2id WASM library choice (still open from Phase 1 §8).
-- `/migrate-v2` two-step shape: should the binary vault upload be multipart or two requests? This doc recommends two requests with a `migration_pending` row; Phase 6 confirms.
 
 ### Carried to Phase 5 (login / unlock / logout UX)
 - Sweep-poll cadence (Phase 1 §8 deferred; Phase 2 confirms the endpoint is short-poll, so cadence is a pure UX call).
@@ -1056,11 +1006,8 @@ All limits degrade open on D1 failure (existing pattern).
 - The recovery-flow `via=recovery` claim wiring on `/login-complete`.
 - Auto-rotation of JWT when the user is mid-unlock (sequencing).
 
-### Carried to Phase 6 (v0.37 migration)
-- Full `/auth/migrate-v2` choreography: init → upload vault → finalise. Resume semantics when client crashes mid-upload (re-upload to fresh R2 key, finalise against new key, orphan old key).
-- Cooldown for retiring the v1 R2 object — recommendation in §3.6 is 7 days; Phase 6 confirms.
-- Handling users who have a v1 vault but never log in within the migration window — graceful degradation, banner copy, eventual forced migration on next login.
-- Pre-migration backup export: should the migration endpoint emit a downloadable v1-format backup (envelope B) before flipping the schema? Phase 6's call.
+### Carried to Phase 8 (household UI)
+- **Two-writer vault conflicts.** `X-Expected-Version` already rejects a stale push, but with two people on one household vault a rejection means the other person's work is on the server and yours is not. What the losing client does — auto-merge, prompt, or refuse — is a Phase 8 decision and the first genuinely new failure mode couples introduce.
 
 ### Carried to Phase 7 (invite UI)
 - Email template copy (Resend).
