@@ -134,10 +134,15 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
             </Link>
           )}
           {/* Nothing is rendered while the session check is in flight, so the
-              button never flickers from "Log in" to "My account". */}
+              button never flickers from "Log in" to "My account".
+
+              Signed in with no local data goes to /login rather than /settings:
+              /settings sits inside RootLayout, which redirects back here until
+              setup is done. /login owns the decision about where an
+              authenticated visitor belongs (restore a vault, or set up fresh). */}
           {authStatus !== 'loading' && (
             <Link
-              to={isAuthenticated ? '/settings' : '/login'}
+              to={isAuthenticated && isInitialized ? '/settings' : '/login'}
               className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
             >
               {isAuthenticated ? 'My account' : 'Log in'}
