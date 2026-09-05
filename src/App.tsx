@@ -4,6 +4,16 @@ import { Toaster } from '@/components/ui/sonner';
 import { RootLayout } from '@/components/layout/root-layout';
 import { ErrorBoundary } from '@/components/error-boundary';
 
+/**
+ * Rendered while a lazily-loaded route resolves on first load.
+ *
+ * Every top-level entry below is the root of its own branch, so each one needs
+ * its own copy; React Router warns on every cold start without it. Rendering
+ * nothing matches what RootLayout and the setup wizard already do while their
+ * config loads, so there is no flash of placeholder chrome.
+ */
+const HydrateFallback = () => null;
+
 // Dev-only: style guide and error preview not bundled in production
 const devOnlyRoutes = import.meta.env.DEV
   ? [
@@ -26,6 +36,7 @@ const router = createBrowserRouter([
     lazy: () =>
       import('@/components/first-run-wizard').then((m) => ({ Component: m.FirstRunWizard })),
     errorElement: <ErrorBoundary />,
+    HydrateFallback,
   },
   // Public landing page at a stable URL. Unlike "/", this never redirects, so
   // it is reachable from inside the app (the header logo links here).
@@ -33,6 +44,7 @@ const router = createBrowserRouter([
     path: '/welcome',
     lazy: () => import('@/routes/welcome').then((m) => ({ Component: m.WelcomePage })),
     errorElement: <ErrorBoundary />,
+    HydrateFallback,
   },
   // Legacy redirect
   {
@@ -45,12 +57,14 @@ const router = createBrowserRouter([
     lazy: () =>
       import('@/components/check-in-wizard').then((m) => ({ Component: m.CheckInWizard })),
     errorElement: <ErrorBoundary />,
+    HydrateFallback,
   },
   // Login page (outside of RootLayout - full screen)
   {
     path: '/login',
     lazy: () => import('@/routes/login').then((m) => ({ Component: m.LoginPage })),
     errorElement: <ErrorBoundary />,
+    HydrateFallback,
   },
   // Privacy policy (outside of RootLayout - linked from the landing page footer,
   // so it must render without app chrome for visitors who aren't set up yet)
@@ -58,11 +72,13 @@ const router = createBrowserRouter([
     path: '/privacy',
     lazy: () => import('@/routes/privacy').then((m) => ({ Component: m.PrivacyPage })),
     errorElement: <ErrorBoundary />,
+    HydrateFallback,
   },
   // App routes (pathless layout route with RootLayout)
   {
     element: <RootLayout />,
     errorElement: <ErrorBoundary />,
+    HydrateFallback,
     children: [
       // Cash Flow (monthly overview)
       {
