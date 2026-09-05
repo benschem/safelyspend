@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.38.0',
+    date: '2026-09-05',
+    changes: [
+      'Added a privacy page explaining what stays on your device and what does not',
+      'Started counting visits to the welcome page — nothing you do inside the app is measured',
+    ],
+  },
+  {
     version: '0.37.1',
     date: '2026-05-22',
     changes: [
