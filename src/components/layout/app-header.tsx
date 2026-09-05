@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { Sparkles, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -246,7 +247,12 @@ export function AppHeader() {
         {/* Left: hamburger + branding */}
         <div className="flex items-center gap-2">
           <MobileNav />
-          <span className="text-lg font-semibold">SafelySpend</span>
+          <Link
+            to="/welcome"
+            className="text-lg font-semibold transition-colors hover:text-muted-foreground"
+          >
+            SafelySpend
+          </Link>
         </div>
 
         {hasScenarios && (
