@@ -355,7 +355,6 @@ export const changelog: ChangelogEntry[] = [
     date: '2026-02-04',
     changes: [
       'What-If page now shows Current Plan as a separate card at the top',
-      'Impact comparison with waterfall chart shown directly on the What-If page',
       'Values that differ from your Current Plan now appear in purple',
       'Scenario banner turns purple when you make adjustments or explore alternatives',
       'Cleaner, more neutral default theme',
