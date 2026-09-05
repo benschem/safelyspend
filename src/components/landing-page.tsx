@@ -96,9 +96,9 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
             Know what you can safely spend
           </h1>
           <p className="mt-4 max-w-xl text-lg text-muted-foreground">
-            This budgeting app focuses on where your money can go. Your plan starts from your next payday and
-            works backwards through bills, savings, and spending limits, leaving you with one clear
-            number: what&apos;s actually yours to use.
+            This budgeting app focuses on where your money can go. Your plan starts from your next
+            payday and works backwards through bills, savings, and spending limits, leaving you with
+            one clear number: what&apos;s actually yours to use.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Button size="lg" asChild className="gap-2">
@@ -188,8 +188,8 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
                 <h2 className="text-2xl font-semibold">Your surplus has a job</h2>
                 <p className="mt-4 text-muted-foreground">
                   Every dollar above your spending is money working toward something — a holiday, an
-                  emergency fund, a house deposit. Set targets with deadlines and the app tracks your
-                  pace, including interest, so you know exactly when you&apos;ll get there.
+                  emergency fund, a house deposit. Set targets with deadlines and the app tracks
+                  your pace, including interest, so you know exactly when you&apos;ll get there.
                 </p>
                 <p className="mt-3 text-muted-foreground">
                   Savings aren&apos;t an afterthought. They&apos;re baked into the plan from the
@@ -251,8 +251,8 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
           <div className="mx-auto max-w-4xl text-center">
             <h2 className="text-2xl font-semibold">Test decisions before you make them</h2>
             <p className="mt-2 text-muted-foreground">
-              Thinking about a new car payment? A salary negotiation? Cutting subscriptions? Model it
-              as a scenario and see what your end-of-month surplus looks like — then decide.
+              Thinking about a new car payment? A salary negotiation? Cutting subscriptions? Model
+              it as a scenario and see what your end-of-month surplus looks like — then decide.
             </p>
 
             <div className="mx-auto mt-10 grid max-w-2xl gap-4 sm:grid-cols-2">
@@ -323,8 +323,8 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
           <div className="mx-auto max-w-4xl text-center">
             <h2 className="text-2xl font-semibold">Your month is one equation</h2>
             <p className="mt-2 text-muted-foreground">
-              Income in. Bills out. Spending out. Savings out. What&apos;s left is your surplus — the
-              money you can use freely without derailing a single thing.
+              Income in. Bills out. Spending out. Savings out. What&apos;s left is your surplus —
+              the money you can use freely without derailing a single thing.
             </p>
 
             <div className="mx-auto mt-10 max-w-lg rounded-xl border bg-card p-5 text-left">
@@ -381,8 +381,8 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
                 <h2 className="text-2xl font-semibold">Two minutes. Total clarity.</h2>
                 <p className="mt-4 text-muted-foreground">
                   A regular check-in keeps your projections honest. Import your latest transactions,
-                  confirm your bank balance, and update your savings — then get an instant snapshot of
-                  where you stand. No spreadsheets. No mental maths.
+                  confirm your bank balance, and update your savings — then get an instant snapshot
+                  of where you stand. No spreadsheets. No mental maths.
                 </p>
                 <p className="mt-3 text-muted-foreground">
                   Because the app knows your real balance, it can tell you exactly where you&apos;ll
@@ -497,14 +497,59 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
                     aria-label="Cash flow chart showing earned, spent, and saved over 6 months"
                   >
                     {/* Grid lines */}
-                    <line x1="30" y1="30" x2="370" y2="30" stroke="currentColor" strokeOpacity="0.06" />
-                    <line x1="30" y1="70" x2="370" y2="70" stroke="currentColor" strokeOpacity="0.06" />
-                    <line x1="30" y1="110" x2="370" y2="110" stroke="currentColor" strokeOpacity="0.06" />
-                    <line x1="30" y1="150" x2="370" y2="150" stroke="currentColor" strokeOpacity="0.06" />
+                    <line
+                      x1="30"
+                      y1="30"
+                      x2="370"
+                      y2="30"
+                      stroke="currentColor"
+                      strokeOpacity="0.06"
+                    />
+                    <line
+                      x1="30"
+                      y1="70"
+                      x2="370"
+                      y2="70"
+                      stroke="currentColor"
+                      strokeOpacity="0.06"
+                    />
+                    <line
+                      x1="30"
+                      y1="110"
+                      x2="370"
+                      y2="110"
+                      stroke="currentColor"
+                      strokeOpacity="0.06"
+                    />
+                    <line
+                      x1="30"
+                      y1="150"
+                      x2="370"
+                      y2="150"
+                      stroke="currentColor"
+                      strokeOpacity="0.06"
+                    />
 
                     {/* "Now" marker */}
-                    <line x1="318" y1="15" x2="318" y2="165" stroke="#6b7280" strokeWidth="1.5" strokeDasharray="4 3" />
-                    <text x="318" y="12" textAnchor="middle" fill="#6b7280" fontSize="9" fontWeight="500">Now</text>
+                    <line
+                      x1="318"
+                      y1="15"
+                      x2="318"
+                      y2="165"
+                      stroke="#6b7280"
+                      strokeWidth="1.5"
+                      strokeDasharray="4 3"
+                    />
+                    <text
+                      x="318"
+                      y="12"
+                      textAnchor="middle"
+                      fill="#6b7280"
+                      fontSize="9"
+                      fontWeight="500"
+                    >
+                      Now
+                    </text>
 
                     {/* Earned line (green) */}
                     <polyline
@@ -558,12 +603,66 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
                     <circle cx="370" cy="128" r="3" fill="#3b82f6" />
 
                     {/* X-axis labels */}
-                    <text x="30" y="180" textAnchor="middle" fill="currentColor" fillOpacity="0.4" fontSize="10">Sep</text>
-                    <text x="98" y="180" textAnchor="middle" fill="currentColor" fillOpacity="0.4" fontSize="10">Oct</text>
-                    <text x="166" y="180" textAnchor="middle" fill="currentColor" fillOpacity="0.4" fontSize="10">Nov</text>
-                    <text x="234" y="180" textAnchor="middle" fill="currentColor" fillOpacity="0.4" fontSize="10">Dec</text>
-                    <text x="302" y="180" textAnchor="middle" fill="currentColor" fillOpacity="0.4" fontSize="10">Jan</text>
-                    <text x="370" y="180" textAnchor="middle" fill="currentColor" fillOpacity="0.4" fontSize="10">Feb</text>
+                    <text
+                      x="30"
+                      y="180"
+                      textAnchor="middle"
+                      fill="currentColor"
+                      fillOpacity="0.4"
+                      fontSize="10"
+                    >
+                      Sep
+                    </text>
+                    <text
+                      x="98"
+                      y="180"
+                      textAnchor="middle"
+                      fill="currentColor"
+                      fillOpacity="0.4"
+                      fontSize="10"
+                    >
+                      Oct
+                    </text>
+                    <text
+                      x="166"
+                      y="180"
+                      textAnchor="middle"
+                      fill="currentColor"
+                      fillOpacity="0.4"
+                      fontSize="10"
+                    >
+                      Nov
+                    </text>
+                    <text
+                      x="234"
+                      y="180"
+                      textAnchor="middle"
+                      fill="currentColor"
+                      fillOpacity="0.4"
+                      fontSize="10"
+                    >
+                      Dec
+                    </text>
+                    <text
+                      x="302"
+                      y="180"
+                      textAnchor="middle"
+                      fill="currentColor"
+                      fillOpacity="0.4"
+                      fontSize="10"
+                    >
+                      Jan
+                    </text>
+                    <text
+                      x="370"
+                      y="180"
+                      textAnchor="middle"
+                      fill="currentColor"
+                      fillOpacity="0.4"
+                      fontSize="10"
+                    >
+                      Feb
+                    </text>
                   </svg>
                   {/* Legend */}
                   <div className="mt-2 flex items-center justify-center gap-4 text-xs text-muted-foreground">
@@ -606,8 +705,8 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
                 <h2 className="text-2xl font-semibold">Sync across devices. Trust no one.</h2>
                 <p className="mt-4 text-muted-foreground">
                   Cloud sync is completely optional. When enabled, your data is end-to-end encrypted
-                  before it ever leaves your device. The server stores only ciphertext — it can never
-                  read your budget, transactions, or goals.
+                  before it ever leaves your device. The server stores only ciphertext — it can
+                  never read your budget, transactions, or goals.
                 </p>
                 <p className="mt-3 text-muted-foreground">
                   Version history lets you roll back to any previous snapshot, so you&apos;re never
@@ -710,8 +809,8 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
                   transactions are flagged so nothing gets counted twice.
                 </p>
                 <p className="mt-3 text-muted-foreground">
-                  Set up import rules to auto-categorise transactions — Woolworths goes to Groceries,
-                  Netflix to Entertainment. Once configured, imports just work.
+                  Set up import rules to auto-categorise transactions — Woolworths goes to
+                  Groceries, Netflix to Entertainment. Once configured, imports just work.
                 </p>
               </div>
             </div>
@@ -728,8 +827,7 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
               <p className="font-medium">Private by default. Encrypted if you sync.</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Everything runs locally on your device. If you enable cloud sync, your data is
-                end-to-end encrypted — the server never sees it. Export or delete your data
-                anytime.
+                end-to-end encrypted — the server never sees it. Export or delete your data anytime.
               </p>
               <p className="mt-2 text-sm">
                 <Link
@@ -806,10 +904,31 @@ function BreakdownRow({
 }
 
 const DEMO_SLIDERS = [
-  { label: 'Salary', initial: 725000, min: 0, max: 1450000, step: 2500, variant: 'income' as const },
+  {
+    label: 'Salary',
+    initial: 725000,
+    min: 0,
+    max: 1450000,
+    step: 2500,
+    variant: 'income' as const,
+  },
   { label: 'Rent', initial: 185000, min: 0, max: 370000, step: 2500, variant: 'expense' as const },
-  { label: 'Groceries', initial: 60000, min: 0, max: 120000, step: 1000, variant: 'expense' as const },
-  { label: 'Japan Trip', initial: 50000, min: 0, max: 100000, step: 1000, variant: 'savings' as const },
+  {
+    label: 'Groceries',
+    initial: 60000,
+    min: 0,
+    max: 120000,
+    step: 1000,
+    variant: 'expense' as const,
+  },
+  {
+    label: 'Japan Trip',
+    initial: 50000,
+    min: 0,
+    max: 100000,
+    step: 1000,
+    variant: 'savings' as const,
+  },
 ];
 
 const VARIANT_STYLES = {

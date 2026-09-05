@@ -31,9 +31,7 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '0.37.1',
     date: '2026-05-22',
-    changes: [
-      'Fixed an issue that prevented the login email from sending on the Cloud Sync page',
-    ],
+    changes: ['Fixed an issue that prevented the login email from sending on the Cloud Sync page'],
   },
   {
     version: '0.37.0',
@@ -248,7 +246,7 @@ export const changelog: ChangelogEntry[] = [
     version: '0.19.0',
     date: '2026-02-04',
     changes: [
-      'After changing a transaction\'s category, you can now apply it to all matching transactions at once',
+      "After changing a transaction's category, you can now apply it to all matching transactions at once",
       'Optionally create an import rule for future imports when bulk-applying categories',
     ],
   },

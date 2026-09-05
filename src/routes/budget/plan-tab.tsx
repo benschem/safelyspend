@@ -129,8 +129,6 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
   const isLoading =
     categoriesLoading || budgetLoading || forecastsLoading || savingsLoading || transactionsLoading;
 
-
-
   // Dialog state
   const [addCategoryDialogOpen, setAddCategoryDialogOpen] = useState(false);
   const [editCategoryDialogOpen, setEditCategoryDialogOpen] = useState(false);
@@ -246,17 +244,28 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     if (setter) {
       setter(true);
       // Clear the param so it doesn't re-trigger
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete('section');
-        return next;
-      }, { replace: true });
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('section');
+          return next;
+        },
+        { replace: true },
+      );
       // Scroll to section after DOM update
       requestAnimationFrame(() => {
         sectionRefs.current[section]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     }
-  }, [isLoading, searchParams, setSearchParams, setIncomeOpen, setFixedExpensesOpen, setBudgetedExpensesOpen, setSavingsOpen]);
+  }, [
+    isLoading,
+    searchParams,
+    setSearchParams,
+    setIncomeOpen,
+    setFixedExpensesOpen,
+    setBudgetedExpensesOpen,
+    setSavingsOpen,
+  ]);
 
   // Expand a section and scroll to it
   const scrollToSection = useCallback((section: string, setOpen: (open: boolean) => void) => {
@@ -617,7 +626,12 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
                 <CreditCard className="h-4 w-4" />
                 Planned Shortfall
               </p>
-              <p className={cn('mt-2 text-5xl font-bold tracking-tight', surplusDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-amber-500')}>
+              <p
+                className={cn(
+                  'mt-2 text-5xl font-bold tracking-tight',
+                  surplusDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-amber-500',
+                )}
+              >
                 {formatCents(Math.abs(totals.unallocated))}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -657,7 +671,12 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
                 <Banknote className="h-4 w-4" />
                 Planned Surplus
               </p>
-              <p className={cn('mt-2 text-5xl font-bold tracking-tight', surplusDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-green-500')}>
+              <p
+                className={cn(
+                  'mt-2 text-5xl font-bold tracking-tight',
+                  surplusDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'text-green-500',
+                )}
+              >
                 {formatCents(totals.unallocated)}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -688,7 +707,12 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
             </div>
             <span className="text-sm text-muted-foreground">Income</span>
           </div>
-          <p className={cn('mt-2 text-2xl font-bold', incomeDelta !== 0 && 'text-violet-600 dark:text-violet-400')}>
+          <p
+            className={cn(
+              'mt-2 text-2xl font-bold',
+              incomeDelta !== 0 && 'text-violet-600 dark:text-violet-400',
+            )}
+          >
             {totals.income > 0 ? formatCents(totals.income) : '—'}
           </p>
           {totals.income > 0 && (
@@ -696,7 +720,11 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
               {incomeRules.length} source{incomeRules.length !== 1 ? 's' : ''}
             </p>
           )}
-          <ScenarioDelta delta={getTotalDelta('income', totals.monthlyIncome)} show={showDeltas} comparedToName={comparedToName} />
+          <ScenarioDelta
+            delta={getTotalDelta('income', totals.monthlyIncome)}
+            show={showDeltas}
+            comparedToName={comparedToName}
+          />
         </button>
 
         {/* Fixed Expenses Card */}
@@ -711,7 +739,12 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
             </div>
             <span className="text-sm text-muted-foreground">Fixed Expenses</span>
           </div>
-          <p className={cn('mt-2 text-2xl font-bold', fixedDelta !== 0 && 'text-violet-600 dark:text-violet-400')}>
+          <p
+            className={cn(
+              'mt-2 text-2xl font-bold',
+              fixedDelta !== 0 && 'text-violet-600 dark:text-violet-400',
+            )}
+          >
             {totals.fixed > 0 ? formatCents(totals.fixed) : '—'}
           </p>
           {totals.income > 0 && totals.fixed > 0 && (
@@ -719,7 +752,11 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
               {Math.round((totals.fixed / totals.income) * 100)}% of income
             </p>
           )}
-          <ScenarioDelta delta={getTotalDelta('fixed', totals.monthlyFixed)} show={showDeltas} comparedToName={comparedToName} />
+          <ScenarioDelta
+            delta={getTotalDelta('fixed', totals.monthlyFixed)}
+            show={showDeltas}
+            comparedToName={comparedToName}
+          />
         </button>
 
         {/* Budgeted Expenses Card */}
@@ -734,7 +771,12 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
             </div>
             <span className="text-sm text-muted-foreground">Budgeted Expenses</span>
           </div>
-          <p className={cn('mt-2 text-2xl font-bold', budgetDelta !== 0 && 'text-violet-600 dark:text-violet-400')}>
+          <p
+            className={cn(
+              'mt-2 text-2xl font-bold',
+              budgetDelta !== 0 && 'text-violet-600 dark:text-violet-400',
+            )}
+          >
             {totals.variable > 0 ? formatCents(totals.variable) : '—'}
           </p>
           {totals.income > 0 && totals.variable > 0 && (
@@ -761,7 +803,12 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
             </div>
             <span className="text-sm text-muted-foreground">Savings</span>
           </div>
-          <p className={cn('mt-2 text-2xl font-bold', savingsDelta !== 0 && 'text-violet-600 dark:text-violet-400')}>
+          <p
+            className={cn(
+              'mt-2 text-2xl font-bold',
+              savingsDelta !== 0 && 'text-violet-600 dark:text-violet-400',
+            )}
+          >
             {formatCents(totals.savings)}
           </p>
           {totals.income > 0 && totals.savings > 0 && (
@@ -815,7 +862,9 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
                         : 0;
                       return (
                         <span
-                          className={incomeDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'hidden'}
+                          className={
+                            incomeDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'hidden'
+                          }
                         >
                           {' '}
                           ({incomeDelta > 0 ? '+' : ''}
@@ -852,7 +901,12 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
       </div>
 
       {/* Income Sources Section */}
-      <div id="section-income" ref={(el) => { sectionRefs.current['income'] = el; }}>
+      <div
+        id="section-income"
+        ref={(el) => {
+          sectionRefs.current['income'] = el;
+        }}
+      >
         <IncomeSliderSection
           incomeRules={incomeRules}
           isOpen={incomeOpen}
@@ -867,7 +921,12 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
       </div>
 
       {/* Fixed Expenses Section */}
-      <div id="section-fixed" ref={(el) => { sectionRefs.current['fixed'] = el; }}>
+      <div
+        id="section-fixed"
+        ref={(el) => {
+          sectionRefs.current['fixed'] = el;
+        }}
+      >
         <FixedExpenseSliderSection
           expenseRules={expenseRules}
           categories={categories}
@@ -883,7 +942,12 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
       </div>
 
       {/* Budgeted Expenses */}
-      <div id="section-variable" ref={(el) => { sectionRefs.current['variable'] = el; }}>
+      <div
+        id="section-variable"
+        ref={(el) => {
+          sectionRefs.current['variable'] = el;
+        }}
+      >
         <BudgetedSpendingSliderSection
           budgetRules={budgetRules}
           categories={categories}
@@ -899,7 +963,12 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
       </div>
 
       {/* Savings Contributions Section */}
-      <div id="section-savings" ref={(el) => { sectionRefs.current['savings'] = el; }}>
+      <div
+        id="section-savings"
+        ref={(el) => {
+          sectionRefs.current['savings'] = el;
+        }}
+      >
         <SavingsSliderSection
           savingsRules={savingsRules}
           savingsGoals={savingsGoals}
