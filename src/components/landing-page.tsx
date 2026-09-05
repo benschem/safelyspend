@@ -720,8 +720,16 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
               <p className="font-medium">Private by default. Encrypted if you sync.</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Everything runs locally on your device. If you enable cloud sync, your data is
-                end-to-end encrypted — the server never sees it. No tracking. Export or delete your
-                data anytime.
+                end-to-end encrypted — the server never sees it. Export or delete your data
+                anytime.
+              </p>
+              <p className="mt-2 text-sm">
+                <Link
+                  to="/privacy"
+                  className="text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                >
+                  What we store, and what we don&apos;t
+                </Link>
               </p>
             </div>
           </div>
@@ -746,7 +754,14 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
 
       {/* Footer */}
       <footer className="border-t py-6 text-center text-sm text-muted-foreground">
-        <p>Built for personal use. No tracking. No analytics.</p>
+        <p>
+          Built for personal use. Nothing you do inside the app is tracked. No ads. No data sold.
+        </p>
+        <p className="mt-2">
+          <Link to="/privacy" className="underline underline-offset-4 hover:text-foreground">
+            Privacy
+          </Link>
+        </p>
       </footer>
     </div>
   );

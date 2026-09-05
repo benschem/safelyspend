@@ -44,6 +44,7 @@ import {
   Lock,
   LockOpen,
   Loader2,
+  ShieldCheck,
 } from 'lucide-react';
 import { PassphraseDialog } from '@/components/dialogs/passphrase-dialog';
 import { useAuth } from '@/hooks/use-auth';
@@ -1272,6 +1273,16 @@ export function SettingsPage() {
               <div className="mt-2 flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Data Format</span>
                 <span className="font-mono">v{CURRENT_DATA_VERSION}</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Privacy</span>
+                <Link
+                  to="/privacy"
+                  className="inline-flex items-center gap-1 text-xs text-purple-600 hover:underline dark:text-purple-400"
+                >
+                  <ShieldCheck className="h-3 w-3" />
+                  What we store
+                </Link>
               </div>
             </div>
           </div>
