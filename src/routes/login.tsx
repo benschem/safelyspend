@@ -239,8 +239,8 @@ export function LoginPage() {
             </form>
 
             <Alert>
-              Your passphrase never leaves this device. Without it, nobody — including us — can read
-              your vault.
+              Your passphrase never leaves this device. Without it, nobody can read your vault. Not
+              me, not anyone.
             </Alert>
 
             <div className="text-center">

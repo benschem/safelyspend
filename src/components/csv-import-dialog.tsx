@@ -1069,11 +1069,11 @@ function validateSamples(
   if (expect === 'description') {
     const allNumeric = samples.every((s) => looksLikeAmount(s));
     if (allNumeric) {
-      return 'These look like amounts — is this the right column?';
+      return 'These look like amounts. Is this the right column?';
     }
     const allDates = samples.every((s) => looksLikeDate(s));
     if (allDates) {
-      return 'These look like dates — is this the right column?';
+      return 'These look like dates. Is this the right column?';
     }
   }
 

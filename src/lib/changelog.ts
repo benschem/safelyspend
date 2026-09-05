@@ -34,7 +34,7 @@ export const changelog: ChangelogEntry[] = [
     date: '2026-09-05',
     changes: [
       'Added a privacy page explaining what stays on your device and what does not',
-      'Started counting visits to the welcome page — nothing you do inside the app is measured',
+      'Started counting visits to the welcome page. Nothing you do inside the app is measured',
     ],
   },
   {
@@ -47,7 +47,7 @@ export const changelog: ChangelogEntry[] = [
     date: '2026-02-15',
     changes: [
       'Cloud sync lets you back up and restore your data across devices with end-to-end encryption',
-      'Set a passphrase to protect your synced data — only you can read it',
+      'Set a passphrase to protect your synced data. Only you can read it',
       'View and manage your active login sessions from Settings',
       'Revoke individual sessions or log out of all other devices at once',
       'Improved reliability and performance of the sync backend',

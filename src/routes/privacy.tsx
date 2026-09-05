@@ -42,9 +42,9 @@ export function PrivacyPage() {
           <section>
             <h2 className="text-lg font-semibold">Where your data lives</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Everything you enter — transactions, categories, budgets, scenarios, savings goals —
-              is stored in your browser, on your device. It is not uploaded anywhere unless you turn
-              on cloud sync.
+              Everything you enter (transactions, categories, budgets, scenarios, savings goals) is
+              stored in your browser, on your device. It is not uploaded anywhere unless you turn on
+              cloud sync.
             </p>
             <p className="mt-3 text-sm text-muted-foreground">
               You can export all of it to a file, or delete it, at any time from Settings.
@@ -59,7 +59,7 @@ export function PrivacyPage() {
             </p>
             <p className="mt-3 text-sm text-muted-foreground">
               Your data is encrypted on your device, before it is sent, with a passphrase only you
-              know. That passphrase is never stored and never sent anywhere — you re-enter it each
+              know. That passphrase is never stored and never sent anywhere; you re-enter it each
               session. The flip side is that if you lose it, nobody can recover your data. Not me,
               not anyone.
             </p>
@@ -67,8 +67,8 @@ export function PrivacyPage() {
               The encrypted file itself is stored on Cloudflare. Alongside it, a small database
               records your email address, which version of the file is current, how big it is, a
               checksum, and when it last changed. So Cloudflare holds a file nobody can read, plus
-              the fact that you have one and roughly how large it is. The contents — your
-              transactions, categories, budgets, balances — are never visible to Cloudflare or to
+              the fact that you have one and roughly how large it is. The contents, meaning your
+              transactions, categories, budgets and balances, are never visible to Cloudflare or to
               me.
             </p>
           </section>
@@ -83,7 +83,7 @@ export function PrivacyPage() {
             <p className="mt-3 text-sm text-muted-foreground">
               Your IP address is recorded briefly to stop people hammering the login endpoint, and
               is deleted as soon as that limit window expires. Sign-in sessions record only when
-              they were created and when they expire — no IP address, no device details. You can see
+              they were created and when they expire. No IP address, no device details. You can see
               and revoke them under Settings.
             </p>
           </section>
@@ -91,7 +91,7 @@ export function PrivacyPage() {
           <section>
             <h2 className="text-lg font-semibold">Analytics</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              I count visits to the landing page — the page you see before you start using the app —
+              I count visits to the landing page (the page you see before you start using the app)
               so I know whether anyone is finding SafelySpend and where they came from. Nothing
               inside the app is measured. Once you start using it, no page you open and no action
               you take is recorded or sent anywhere.
