@@ -2,46 +2,37 @@
 
 ## Context
 
-SafelySpend is a privacy-focused, local-first budgeting app at safelyspend.app. Today it is single-user with optional E2E-encrypted cloud sync (Cloudflare Workers + D1 + R2). Authentication is passwordless email-OTP; the vault is one encrypted blob per user, derived directly from a sync passphrase (PBKDF2 → AES-GCM, format v1: `VERSION | SALT | IV | CIPHERTEXT+TAG`). IndexedDB on the client is plaintext on disk. No code-level concept of households or invites exists yet — only `docs/couples-feature-plan.md` (which predates the wrapped-key + recovery-phrase decisions).
+SafelySpend is a privacy-focused, local-first budgeting app at safelyspend.app. Today it is single-user with optional E2E-encrypted cloud sync (Cloudflare Workers + D1 + R2). Authentication is passwordless email-OTP; the vault is one encrypted blob per user, derived directly from a sync passphrase. IndexedDB on the client is plaintext on disk, and stays that way. No code-level concept of households or invites exists yet.
 
-The goal is to land **Variant 2**: a unified password-locked account model, a household-keyed wrapped-vault crypto scheme, and an invite-based couples flow — without surrendering the "server never sees your data" guarantee. This is a multi-week, multi-phase effort. The crypto is unforgiving, so the design must be locked before code lands.
+The goal is a unified account model, a household-keyed wrapped-vault crypto scheme, and an invite-based couples flow — without surrendering the "server never sees your data" guarantee. The crypto is unforgiving, so the design is locked before code lands.
 
-This directory is a **meta-plan**: ten phases at one screen of detail each. Phases 1 and 2 have since been deep-dived into full design docs; Phase 6 has been dropped (see below). The remaining phases are still one screen each and get their detail when they are picked up.
+Phases 1 and 2 have full design docs. The rest are one screen each and get their detail when they are picked up.
 
-## There is no data to migrate (2026-09-05)
+## Start with a clean database
 
-Production was checked before any code was planned against it: `users` held four rows, all of them the maintainer's own testing (two placeholder addresses, two real ones created the same day while fixing the landing page login), and `sync_state` was **empty**. No vault has ever been uploaded, so R2 holds nothing either. The maintainer's local IndexedDB data is explicitly disposable.
+Production holds no vaults and no real users, and the maintainer's local data is disposable. Before Phase 3 begins: drop the D1 tables and R2 objects, rewrite migrations `0001`–`0004` into a single clean household-keyed schema, re-run.
 
-**Consequences, which reach further than deleting one phase:**
-
-- **Phase 6 is dropped entirely.** Replaced by a one-off chore: drop the D1 tables and R2 objects, rewrite migrations `0001`–`0004` into a single clean household-keyed schema, re-run. The phase file is deleted; this section is its epitaph.
-- **There is no v1 read path anywhere.** Format v1 (`VERSION=0x01`, PBKDF2-direct) has never encrypted a byte in production. Nothing needs to decrypt it, detect it, or refuse it.
-- **Anti-downgrade protection is unnecessary.** It defended against a malicious server replaying stale v1 ciphertext to hold a user on the weaker KDF. There is no stale v1 ciphertext. The `users.schema_version` tombstone, the `sv` JWT claim, and the `SCHEMA_VERSION_MISMATCH` branch all go.
-- **`src/lib/e2e-crypto.ts` comes off the don't-touch list** in `../HANDOVER.md`. Its stated risk was "changing the format makes existing synced vaults unreadable." There are no synced vaults. It is now ordinary code that can be rewritten in place.
-- **Q3 is void** and Q4 loses its Phase 6 dependency.
-
-Do the wipe *before* Phase 3 starts, so nothing downstream is quietly designed around data that is about to be deleted.
+Everything downstream assumes this. There is no format-v1 read path, no migration, and no per-user version state anywhere in the plan. `DECISIONS.md` records why.
 
 ## Conventions used in each phase file
 
 - **Goal** — one line
 - **Files** — most-likely-touched paths (representative, not exhaustive)
-- **Gates** — which "open questions" from `docs/auth-rewrite-prompt.md` must be resolved before this phase can ship
+- **Gates** — which open questions must be resolved before this phase can ship
 - **Size** — S / M / L (rough scope, not time)
 - **Deps** — which other phases must land first
 
-Decisions already locked (see handoff): wrapped-key pattern, Curve25519 keypair per user, household-keyed vault, password mandatory from signup, recovery phrase mandatory, client-generated UUIDs, invite pattern lifted from `../searchyourstuff`, three-path invite acceptance, two-pass landing rewrite.
+Locked throughout: wrapped-key pattern, X25519 keypair per user, household-keyed vault, mandatory recovery phrase, client-generated UUIDs, invite pattern lifted from `../searchyourstuff`, three-path invite acceptance.
 
 ## Phase index
 
-Phases keep their original numbers even though 6 is gone. Renumbering would break every cross-link in this directory and in the two design docs, and would silently rewrite the meaning of "Phase 7" in commit messages that already exist.
+Numbering has a gap at 6. Renumbering would break every cross-link here and in the design docs.
 
 - [Phase 1 — Crypto + storage design doc](01_crypto_storage_design.md) — **designed** (`../crypto-design.md`)
 - [Phase 2 — Backend schema + endpoints](02_backend_schema_endpoints.md) — **designed** (`02_backend_schema_endpoints_design.md`)
 - [Phase 3 — Client crypto rewrite](03_client_crypto_rewrite.md)
-- [Phase 4 — Onboarding rewrite](04_onboarding_rewrite.md)
-- [Phase 5 — Login / unlock / logout with session timeout](05_login_unlock_logout.md)
-- Phase 6 — ~~Migration for existing v0.37 cloud-sync users~~ — **dropped**, no data to migrate
+- [Phase 4 — Account creation at cloud-sync opt-in](04_onboarding_rewrite.md)
+- [Phase 5 — Cloud login and logout](05_login_unlock_logout.md)
 - [Phase 7 — Invite flow (UI + backend + email)](07_invite_flow.md)
 - [Phase 8 — Household concept in app UI (shared vs personal scope)](08_household_ui_scope.md)
 - [Phase 9 — Landing page rewrite (two passes)](09_landing_page_rewrite.md)
@@ -50,22 +41,16 @@ Phases keep their original numbers even though 6 is gone. Renumbering would brea
 ## Critical path
 
 ```
-1 ────► 2 ──┐
-   │        ├──► 5 ──┐
-   └► 3 ────┤        ├──► 7 ──► 8 ──► 9(pass 2) ──► 10
-            └► 4 ────┘
+benchmark ──► 3 ──► 2 ──► 4 ──► 5 ──► 7 ──► 8 ──► 9(pass 2) ──► 10
+
 9(pass 1) — ships any time, parallel to all.
 ```
 
-Phase 1 gates the entire rewrite. Phase 3 gates the client-side work (4, 5, 7, 8). Phase 2 gates the server-touching work (5, 7). Phase 8 cannot land until invites work (7) and households are real on both sides.
+Phase 1 gates the entire rewrite. Phase 3 gates the client-side work (4, 5, 7, 8). Phase 2 gates the server-touching work (5, 7). Phase 8 cannot land until invites work (7) and households are real on both sides. Pass 2 of Phase 9 waits on Phase 8, which is the point at which the new guarantees are true rather than aspirational.
 
-Pass 2 of Phase 9 previously waited on the migration; it now waits on Phase 8, which is the point at which the new guarantees are actually true rather than aspirational.
+## The benchmark comes first
 
-## Sequencing note: the benchmark comes first
-
-Phase 1 pre-commits to two numbers it has not measured — Argon2id at m=64 MiB / t=3, and whole-store IndexedDB encryption. Both have documented fallbacks, and the whole-store fallback (per-row, `KIND=0x04`) **weakens the at-rest threat-model claim in §1.5** and would force a privacy-page correction.
-
-Run that benchmark before treating Phase 1 as locked. It is roughly half a day with `hash-wasm` and a seeded 5,000-transaction vault, and it is the only cheap thing that can invalidate the expensive doc.
+Phase 1 pre-commits to Argon2id at m=64 MiB / t=3 without having measured it, and it is the only cheap thing that can invalidate the expensive doc. Run it before treating Phase 1 as locked: `hash-wasm` on a laptop, a mid-tier Android and Safari iOS, against the §3.4 criterion of a 2 s 95th-percentile unlock on the slow path. If it misses, step down to m=32 MiB and record the trade-off.
 
 ## How each phase will be verified as it lands
 
@@ -83,14 +68,10 @@ Answered and locked:
 - **Q1** (recovery UX) — display + "copy to password manager" CTA + acknowledgement checkbox.
 - **Q2** (invite handoff choreography) — the existing member's client wraps on their next cloud login; the invitee polls. Pubkeys are verified out-of-band before the wrap.
 - **Q5** (households per user) — one, in v1. Enforced by `UNIQUE(household_members.user_id)`.
-- **Q6** (local unlock vs cloud auth session) — independent lifetimes. JWT 7d in a cookie; MasterKey in memory until tab close or explicit lock.
+- **Q6** (session lifetimes) — JWT and MasterKey are independent. JWT 7d in a cookie; MasterKey in memory until tab close.
 - **Q7** (leaving a household) — not supported in v1. Requires MasterKey rotation, which is not designed. Account deletion is the only exit.
-
-Void:
-
-- ~~**Q3** (v0.37 migration shape)~~ — there is nothing to migrate.
 
 Still open:
 
-- **Q4** (perf budget) — gates Phase 1 + Phase 3. Not a discussion; a benchmark. See the sequencing note above.
+- **Q4** (perf budget) — gates Phase 1 + Phase 3. Not a discussion; a benchmark. See above.
 - **Q8** (is the repo public) — gates Phase 9 + Phase 10. A yes/no that decides whether the privacy page and landing page can offer a "read the source" trust signal. Open since February; costs nothing to answer.

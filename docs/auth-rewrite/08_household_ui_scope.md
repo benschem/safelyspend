@@ -3,12 +3,12 @@
 - **Goal:** Two people share one household budget, each with a personal spending allowance that accrues and carries over. Shared money is the app as it exists today; personal money is one new screen.
 - **Files:** `src/lib/types.ts` (`scope` on entities, real `userId`, allowance rules); `src/lib/db.ts` (version bump, `scope` index, migration defaulting existing rows to `'household'`); new `src/routes/my-money.tsx`; `src/routes/budget/plan-tab.tsx` (spending-money lines); `src/routes/net-wealth.tsx` (envelope subtraction); `src/routes/transactions/new.tsx` and the CSV import flow (scope choice); `src/routes/settings.tsx` (Members & Allowances pane); `src/components/layout/sidebar.tsx` (one new nav item).
 - **Gates:** none outstanding. Q5 (one household per user) and Q7 (no leaving a household) are both locked and both simplify this phase.
-- **Size:** M — smaller than the original L estimate, because personal money became one screen rather than a mode threaded through nine.
+- **Size:** M
 - **Deps:** [Phase 2](02_backend_schema_endpoints.md), [Phase 3](03_client_crypto_rewrite.md), [Phase 7](07_invite_flow.md).
 
 ---
 
-## The model (settled 2026-09-06)
+## The model
 
 ### An allowance is a transfer, not an expense
 

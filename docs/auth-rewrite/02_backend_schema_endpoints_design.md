@@ -1,10 +1,10 @@
 # SafelySpend — Backend Schema + Endpoints Design
 
-**Status:** Draft 1 (Phase 2 of the auth + couples + privacy rewrite). Locks the server-side surface — D1 schema, Worker endpoint contracts, JWT lifecycle, transaction boundaries, anti-downgrade enforcement, server-side validation, error model. No code lands until this doc is approved.
+**Status:** Phase 2 of the auth + couples + privacy rewrite. Locks the server-side surface — D1 schema, Worker endpoint contracts, JWT lifecycle, transaction boundaries, anti-downgrade enforcement, server-side validation, error model. No code lands until this doc is approved.
 
 **Scope:** Everything that lives in `worker/` or `worker/migrations/`. References Phase 1 (`../crypto-design.md`) for envelope formats, KDF choices, key hierarchy, and the invite handoff sequence. **Does not** cover client crypto implementation (Phase 3), login/unlock UX (Phase 5), invite UI (Phase 7), or household scope UI (Phase 8).
 
-**Draft 2 changelog (vs Draft 1) — the "no data to migrate" pass.** Production holds no vaults and no real users (`00_overview.md`). Everything that existed to carry v0.37 users forward is gone: `POST /v1/auth/migrate-v2` and its two-step upload, the `users.schema_version` / `migrated_at` tombstone columns, the `sv` JWT claim, the `SCHEMA_VERSION_MISMATCH` branch, §7's anti-downgrade enforcement, the `migration_pending` row, the 7-day R2 retirement cooldown, and the dual-codepath compromise on `vaults` / `sync_state`. The schema is now written as if the app had always been household-keyed, because as far as any surviving data is concerned, it always was.
+The schema is written for a clean database (`00_overview.md`). There is no legacy user, no format-v1 read path, and no per-user version state anywhere below.
 
 **Gating answers used (locked this session):**
 - **Q5** (households per user) — **one per user in v1**. Schema enforces `UNIQUE(household_members.user_id)`. JWT carries a single `householdId`; no switcher.
@@ -58,17 +58,13 @@ ALTER TABLE users ADD COLUMN verifier_kdf_params BLOB;           -- 9 bytes for 
 ALTER TABLE users ADD COLUMN pubkey             BLOB;            -- 32-byte X25519 public key (plaintext per §1 threat model)
 ```
 
-Since the tables are being dropped and rebuilt anyway, prefer expressing these in a rewritten `0001_initial.sql` rather than as `ALTER`s bolted onto a schema history nobody will ever replay. The `ALTER` form is kept above only to show the diff against v0.37.
+Since the tables are being rebuilt, express these in a rewritten `0001_initial.sql` rather than as `ALTER`s bolted onto a schema history nobody will replay. The `ALTER` form above just shows the diff against what exists today.
 
-Columns stay nullable, because a user row is created by `/auth/login` (find-or-create on first OTP request) before signup has supplied any key material. The row is inert until `/auth/signup` fills it in: no `pubkey` means no `user_keys`, which means no household membership, which means no vault access. `signup` is guarded by `WHERE pubkey IS NULL` for its first-write-wins idempotency, taking over the role Draft 1 gave to `schema_version IS NULL`.
-
-There is no `schema_version` and no `migrated_at`. Draft 1 needed them to tell a half-migrated v0.37 user from a native v2 one. No such user exists or ever will.
+Columns stay nullable, because a user row is created by `/auth/login` (find-or-create on first OTP request) before signup has supplied any key material. The row is inert until `/auth/signup` fills it in: no `pubkey` means no `user_keys`, which means no household membership, which means no vault access. `signup` is guarded by `WHERE pubkey IS NULL` for first-write-wins idempotency.
 
 #### `vaults` and `sync_state` — re-keyed to `household_id`
 
-Vaults are household-keyed, not user-keyed. **`user_id` is dropped from both tables, not deprecated alongside a new column.**
-
-Draft 1 weighed keeping `user_id` as a vestigial column (option A) against replacing it (option B), and recommended A — but only because a rolling migration would have left pre-migration and post-migration users side by side in one database, and A avoided rewriting rows under them. With no rows to rewrite and no users to straddle, A's entire justification is gone and it leaves nothing behind but a permanently confusing column that new code must remember never to read.
+Vaults are household-keyed. `user_id` is gone from both tables rather than kept alongside `household_id` — a vestigial column that new code must remember never to read is worse than no column.
 
 ```sql
 CREATE TABLE vaults (
@@ -94,7 +90,7 @@ CREATE TABLE sync_state (
 
 `sync_state` is one row per household. The R2 key becomes `<household_id>/<vault_id>`; the old `<user_id>/…` layout has no live objects under it.
 
-**Optimistic concurrency now spans two people.** The existing `X-Expected-Version` check (`worker/src/services/vault.ts`) was written for a single-writer model where a conflict meant the same person on two devices. Household-keyed vaults make a genuine two-writer conflict routine — both partners editing on the same evening — and a rejected push now costs someone else's work, not just your own stale tab. The mechanism does not change here, but Phase 8 owns the question of what the losing client *does* about it, and "last write wins, silently" stops being acceptable at that point.
+**Optimistic concurrency now spans two people.** The existing `X-Expected-Version` check (`worker/src/services/vault.ts`) assumes a single writer, where a conflict means the same person on two devices. A household vault makes genuine two-writer conflicts routine — both partners editing on the same evening — and a rejected push then costs someone else's work rather than your own stale tab. The mechanism is unchanged here; what the losing client *does* is [Phase 8](08_household_ui_scope.md)'s call, and silently discarding is not it.
 
 ### 1.3 New tables
 
@@ -472,10 +468,6 @@ INSERT INTO sessions (...)
 If the `UPDATE invites` affected 0 rows, the batch rolls back and the server returns 410 INVITE_EXPIRED, 409 INVITE_ALREADY_ACCEPTED, or 404 INVALID_INVITE depending on which condition failed (an out-of-batch read distinguishes; safe because the user is already authenticated by the bridge token at this point).
 
 **Errors:** 410 INVITE_EXPIRED, 409 INVITE_ALREADY_ACCEPTED, 404 INVALID_INVITE, 400 INVALID_BLOB, plus the standard auth errors above.
-
-### 3.6 ~~`POST /v1/auth/migrate-v2`~~ — removed
-
-Draft 1's one-shot v0.37 → v2 migration: a two-step init/upload/finalise flow with a `migration_pending` row, resume-after-crash semantics, and a 7-day cooldown before the old R2 object was reaped. It was the most intricate endpoint in the doc and it existed for zero users. Number retained so §3.7 onwards keep their identities.
 
 ### 3.7 `GET /v1/auth/key-bundle` — fetch wrapped keys for local unlock
 
@@ -871,21 +863,17 @@ This stays unchanged. The vault `PUT` is now the only operation in the system th
 
 D1 `batch()` is all-or-nothing: a partially-applied state cannot exist server-side. The detection question reduces to: *did the client successfully observe the response?* If the network drops between the server's commit and the client's receipt of the 200, the client retries with the same idempotency mechanism (per §6.1 table) and gets the right answer.
 
-Draft 1 flagged the migration's binary upload as the one uncomfortable case here. With that endpoint gone, the only R2-then-D1 write left is the ordinary vault `PUT`, which the existing idempotency key already covers.
+The only operation that writes to both R2 and D1 is the vault `PUT`, which the existing idempotency key already covers.
 
 ---
 
-## 7. Version enforcement (was: anti-downgrade)
+## 7. Version enforcement
 
-Draft 1 carried four subsections of tombstone machinery here — where `users.schema_version` lived, which endpoint enforced it, why the client had to check as well, and how the one legitimate v1→v2 transition was fenced. All of it protected users who had v0.37 ciphertext. Nobody does.
-
-What survives is one line, and it lives in §8 with the rest of the structural validation rather than in a section of its own:
+One rule, enforced in §8 alongside the rest of the structural validation:
 
 > Every blob the server accepts must begin with `VERSION=0x02`. Any other leading byte is `400 INVALID_BLOB`. There is no state to consult and no legacy branch to take.
 
-This is strictly stronger than the tombstone version, which had to permit `0x01` for un-migrated users and therefore needed per-user state to decide. A flat rule needs none.
-
-Section number 7 is retained rather than reflowed so that cross-references from Phase 1 and from commit `1c81392` still land somewhere meaningful.
+Phase 1 §4.4 covers the client side and the circumstances under which this would need to become more than one line.
 
 ---
 
