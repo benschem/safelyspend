@@ -48,6 +48,46 @@ These files are correct but fragile. Change them only with full understanding an
 | `worker/src/services/auth.ts` | Brute-force protection, OTP hash storage, lockout logic. Security-critical. |
 | `src/contexts/what-if-context.tsx` | Complex in-memory overlay that many components depend on. Works well but the internal shape is non-obvious. |
 
+## Parked — considered, probably not worth it
+
+### Encrypting IndexedDB at rest
+
+Was Phase 3b of the auth rewrite. Designed in full (`crypto-design.md` §5 has the
+shape and the acceptance criterion), then parked on 2026-09-06 without being
+started. Recorded here as a maybe rather than a to-do, because the honest
+answer may be that it never happens.
+
+**The threat it closes is narrower than it first appears.** FileVault and
+BitLocker are on by default, so a stolen powered-off laptop is already covered.
+Another OS account cannot read your browser profile. Malware running as you can
+read IndexedDB, but it can equally keylog the password you would type to unlock
+it. What is left is someone with read access to your browser profile while the
+app is locked, who cannot also read memory or keystrokes.
+
+**And it does nothing for the privacy boundary the app actually creates.** In a
+household, a partner cannot see your personal spending because a hook filters
+it — they hold the same household key you do and sit inside the encryption
+boundary. Encrypting the store hides nothing from the one person it might
+occur to you to hide it from.
+
+**The cost is the highest in the project.** Whole-store encryption turns Dexie
+from a queryable database into a blob decrypted on unlock, and `useLiveQuery`
+plus the date-range indexes are what every hook in `src/hooks/` is built on.
+The per-row fallback keeps queries working but leaks index keys (dates,
+category ids, scenario ids) in plaintext, which is most of the shape of
+someone's finances even without the amounts.
+
+**Consequences of leaving it parked**, both live right now:
+
+- There is no local unlock, because nothing is locked. The account password's
+  only job is wrapping the keys for the cloud vault.
+- Local data is plaintext on disk and the privacy page must say so. "Your data
+  stays on your device" is still true and is a different claim.
+
+**What would change the answer:** shared or managed devices, a real user base
+beyond people who chose this app for its privacy story, or Dexie gaining
+encrypted indexes so the cost stops being architectural.
+
 ## 2-Week Roadmap
 
 Suggested priorities if picking this up today:

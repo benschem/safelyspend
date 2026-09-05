@@ -1,29 +1,15 @@
 # SafelySpend — Crypto + Storage Design
 
-**Status:** Draft 2 (Phase 1 of the auth + couples + privacy rewrite). Locks the cryptographic surface for everything that follows. No code lands until this doc is approved.
+**Status:** Phase 1 of the auth + couples + privacy rewrite. Locks the cryptographic surface for everything that follows. No code lands until this doc is approved.
 
-**Scope:** key hierarchy, KDF choice, ciphertext envelopes (format v2), at-rest encryption strategy, recovery-phrase derivation, asymmetric invite handoff. Does **not** cover backend schema (Phase 2) or client API (Phase 3) — those reference this doc.
-
-**Draft 3 changelog (vs Draft 2) — the "no data to migrate" pass.** Production was checked and holds no vaults at all (see `auth-rewrite/00_overview.md`). Format v1 has never encrypted a byte in production, so every accommodation for it has been removed: the v1 detection rule, the anti-downgrade tombstone (§4.4), `KDF_KIND=0x01`, and the PBKDF2 migration path in §3.1. Format v2 is the only format that has ever existed as far as any code needs to know.
+**Scope:** key hierarchy, KDF choice, ciphertext envelopes (format v2), recovery-phrase derivation, asymmetric invite handoff. §5 specifies an at-rest scheme that is designed but not scheduled. Does **not** cover backend schema (Phase 2) or client API (Phase 3) — those reference this doc.
 
 **Gating answers used:**
 - Q1 (recovery UX) — display + "copy to password manager" CTA + checkbox.
 - Q2 (invite handoff) — sweep on every cloud login by the existing member; invitee pubkey is verified out-of-band before the wrap proceeds (§7.2).
-- Q4 (perf budget / at-rest) — envelope is fixed here; at-rest shape pre-commits to whole-store, with per-table / per-row as Phase 3 fallbacks only if the perf target is missed.
+- Q4 (perf budget) — envelope is fixed here; Argon2id parameters are provisional until benchmarked (§3.4).
 - Q5 (households) — one household per user in v1.
 - Q7 (leaving a household) — not supported in v1; account deletion is the only exit.
-
-**Draft 2 changelog (vs Draft 1):**
-- §3.3 verifier — removed the HMAC-then-Argon2id construction; now plain Argon2id with an independent salt. Honest about residual brute-force risk.
-- §4 — mandatory AAD binding on every AES-GCM call so envelope swaps fail at the AEAD layer.
-- §4.3 — handoff is now sender-authenticated (static-static + ephemeral X25519, libsodium `crypto_box`-style) so a malicious server cannot forge a wrap from A to B.
-- §4.4 — anti-downgrade tombstone after v0.37 → v2 migration.
-- §5 — pre-commits to whole-store; per-table / per-row are Phase 3 fallbacks only.
-- §7.2 — safety-number out-of-band verification of the invitee's pubkey before A wraps; replaces Draft 1's server-side HMAC row signing (which couldn't defend against the threat model).
-- §3.4 — single perf acceptance criterion; Argon2id upgrade pattern locked.
-- §3.5 — byte-level pinning of password and mnemonic encoding (NFKD UTF-8).
-- §1 — adds JWT-signing-key compromise and MasterKey-rotation non-support to the threat model.
-- §7.2 — sequence diagram uses role names instead of HTTP paths; polling cadence punted to Phase 5.
 
 ---
 
@@ -40,7 +26,7 @@ Properties we commit to:
 2. **Compromise of one user's password** ⇒ attacker can read that user's household vault (intended). Cannot read other households (each has its own master key) and cannot impersonate another household member's pubkey (private key is per-user).
 3. **Compromise of the recovery phrase** ⇒ attacker can decrypt any vault ciphertext they have already exfiltrated. They cannot establish a fresh server session on their own (no `password_verifier` is associated with the recovery phrase), so they cannot download fresh blobs without separately compromising the user's email/OTP path.
 4. **Loss of both password and recovery phrase** ⇒ data is unrecoverable. Stated honestly on the privacy page (Phase 10).
-5. **At-rest device compromise (locked app)** ⇒ IndexedDB stores a single whole-store ciphertext under the household master key (§5). MasterKey only exists in memory after unlock. An attacker reading the disk sees envelopes, not plaintext. (If Phase 3 falls back to per-row, this guarantee weakens — see §5 acceptance criterion.)
+5. **At-rest device compromise** ⇒ **no protection. This is not a guarantee we make.** IndexedDB holds plaintext on disk. Anyone who can read the browser profile can read the budget, and the account password does not change that — it wraps the keys for the cloud vault only. Full-disk encryption (FileVault, BitLocker) is the control that covers the stolen-laptop case, and it is the user's rather than ours. `auth-rewrite/10_privacy_page.md` carries the obligation to say so plainly.
 6. **Compromise of the server's JWT signing key** ⇒ attacker can mint sessions for any user and download ciphertexts, but cannot derive any KEK or MasterKey. Vault contents remain confidential. Attacker can however *write* corrupted ciphertexts back to any account (DoS / integrity attack on the cloud copy; the local IndexedDB copy is unaffected until the corrupted copy is pulled).
 7. **All pubkey lookups must produce an authenticated (user_id, pubkey) binding.** Every endpoint that returns a pubkey for the purpose of wrapping (handoff sweep, member directory, future cross-household flows) must be paired with out-of-band verification (§7.2). Server-side signing alone is insufficient because server compromise is already in the threat model.
 
@@ -165,7 +151,7 @@ Authentication flow:
 
 Honest characterisation of the residual risk:
 - The verifier is offline-brute-forceable at exactly the same cost as recovering KEK_pwd from a stolen wrapped blob (both are Argon2id-of-password with the same params, just different salts). The verifier does not weaken anything, nor does it strengthen anything beyond Argon2id itself. Its purpose is to prevent email/OTP compromise alone from establishing a server session.
-- Draft 1 wrapped the password in HMAC before Argon2id. That construction has been removed — it added no security over plain `Argon2id(password, verifier_salt)` because the brute-force adversary always attacks the password, not the intermediate HMAC output.
+- Wrapping the password in HMAC before Argon2id would add nothing: the brute-force adversary attacks the password, not the intermediate HMAC output.
 
 ### 3.4 Performance acceptance criterion and Argon2id upgrade path
 
@@ -281,17 +267,17 @@ The `info` field binds the handoff to a specific sender-pubkey / recipient-pubke
 
 ### 4.4 Version bytes & forward compatibility
 
-`VERSION=0x02` is the only value ever written and the only value ever accepted. Any other first byte — `0x01` included — is a hard decrypt failure, not a branch into a legacy path.
+`VERSION=0x02` is the only value ever written and the only value ever accepted. Any other first byte is a hard decrypt failure, not a branch into a legacy path. The client refuses it and so does the server (Phase 2 §8).
 
-**There is no anti-downgrade rule, because there is nothing to downgrade to.** Draft 2 specified a per-user `schema_version='v2'` tombstone so a client would refuse v1 ciphertext served by a malicious server. That defence presupposed v1 ciphertext existing somewhere for the server to serve. It does not: no vault was ever uploaded under v0.37 (`auth-rewrite/00_overview.md`). Refusing every non-`0x02` byte outright is both stronger and simpler than a tombstone, and it needs no server-side state. The tombstone, the `sv` JWT claim, and the `SCHEMA_VERSION_MISMATCH` error are all removed from Phase 2.
+There is no anti-downgrade state, because there is no weaker format for an attacker to steer a client back onto. A flat rule needs no per-user version tracking; the tombstone-based alternative would.
 
-**This is the one deletion in the Draft 3 pass that costs something, so it is worth being explicit about what.** A tombstone is what you need when weak-format data exists and you must stop a server from steering clients back onto it. If SafelySpend ever ships a format v3, that situation becomes real for the first time, and the anti-downgrade machinery has to be designed then — with the added difficulty that by then there *will* be a live fleet. Draft 2's §4.4 is worth re-reading at that point rather than reinventing; it is in git history at commit `9df23fa`.
-
-A future v3 bumps the version byte and ships a one-shot in-place re-encrypt on next unlock.
+**This changes if a format v3 ever ships.** At that point weak-format data exists in a live fleet for the first time, and refusing to be downgraded onto v2 becomes a real requirement that needs designing. `DECISIONS.md` records where the earlier work on this lives.
 
 ---
 
-## 5. IndexedDB at-rest scheme
+## 5. IndexedDB at-rest scheme — specified, not scheduled
+
+**None of this ships.** Local data stays plaintext on disk; `auth-rewrite/HANDOVER.md` holds the reasoning and what would change it. The specification is kept so that picking it up is a matter of reading rather than redesigning. Nothing else in this doc depends on it — the envelope A / KIND=0x01 shape below is also what the cloud R2 blob uses, and that does ship.
 
 **Default: whole-store snapshot, encrypted as a single envelope A with KIND=0x01.** Same shape as the cloud R2 blob — one ciphertext per vault version, no granularity at the storage layer. This keeps §1.5's at-rest guarantee tight ("envelopes, not plaintext") and is the simplest implementation. For a v1-sized vault (5k transactions, 200 forecast rules, 12 months of range) whole-store is also the fastest read path.
 
@@ -542,7 +528,7 @@ The handoff is *also* cryptographically sender-authenticated (§4.3): even with 
 
 - **Invite expires before A logs in:** `expires_at` is checked at invite-accept time or by a server-side sweep. If B hasn't completed signup, the invite is dropped silently. If B *has* completed signup (path 1) but A never came online, the invite row stays in `accepted_pending_handoff`. We do **not** auto-expire those — the household_members row still doesn't exist, so there's no leak. A is shown a banner on next login: "Pending invite to B — you've been offline for 7+ days." A can re-send or cancel.
 - **A is compromised between issuing invite and wrapping:** Attacker holding A's keys can complete the wrap themselves, silently adding B to the household. Equivalent to A doing it. Mitigation belongs to A's account security (password strength, OTP), not this flow.
-- **B's pubkey is wrong / forged (server attack):** Defended by §7.2 out-of-band safety-number verification. A's UI shows the fingerprint; A confirms with B via a side channel before wrapping. A malicious server cannot bypass this without also compromising the side channel. (Draft 1 proposed server-side HMAC row signing here; that has been removed because server compromise is in the threat model and an HMAC key held by the compromised server is no defence.)
+- **B's pubkey is wrong / forged (server attack):** Defended by §7.2 out-of-band safety-number verification. A's UI shows the fingerprint; A confirms with B via a side channel before wrapping. A malicious server cannot bypass this without also compromising the side channel. Server-side signing of the pubkey row is not an alternative: server compromise is in the threat model, and an HMAC key held by the compromised server defends nothing.
 - **Server lies about who wrapped a key to B (sender substitution):** Defended cryptographically by §4.3 — envelope C carries `SENDER_PUB` in both the body and the AAD, so a wrap can only decrypt cleanly if `SENDER_PUB` matches the sender_pubkey the receiver is verifying against. The server cannot mint an envelope that looks like it came from A without holding A's long-term private key.
 - **Mid-flow crash on B's side after ECIES unwrap but before rewrap:** B's `kek_kind='ecies'` row sits on the server indefinitely. On B's next login, the client detects "I have an ecies row but no pwd/recovery row for this household" and re-runs the rewrap. Idempotent.
 - **Mid-flow crash between A's `household-add-member` and B's `rewrap-member-keys`:** The server must implement each as a single transaction (membership insert + ecies-row insert + invite status update; and separately the rewrap upsert + ecies-row delete). Phase 2 must confirm D1 supports the needed transaction semantics. If a transaction partially succeeds, operator intervention is required — we treat this as a "should not happen" path, not a flow.
