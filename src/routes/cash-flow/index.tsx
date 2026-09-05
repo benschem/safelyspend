@@ -31,10 +31,10 @@ import { useBudgetPeriodData } from '@/hooks/use-budget-period-data';
 import { useSavingsAnchors } from '@/hooks/use-savings-anchors';
 import { useCashSurplus } from '@/hooks/use-cash-surplus';
 import { useWhatIf } from '@/contexts/what-if-context';
-import { BurnRateChart } from '@/components/charts/burn-rate-chart';
 import { CashBalanceCard, SavingsGrowthCard } from '@/components/cash-flow/summary-cards';
 import { CHART_COLORS } from '@/lib/chart-colors';
 import { cn, formatCents, toMonthlyCents, type CadenceType } from '@/lib/utils';
+import { SpendingPaceCard } from '@/components/cash-flow/spending-pace-card';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import type { ForecastRule } from '@/lib/types';
 
@@ -782,46 +782,22 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
 
       {/* Spending Pace */}
       {isCurrentPeriod && budgetStatus?.hasBudget && burnRateData.totalBudget > 0 && (
-        <div className={cn('rounded-xl border bg-card p-6', showDeltas && 'border-violet-500/30')}>
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500/10">
-                <BanknoteArrowDown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-              </span>
-              <h3 className="text-lg font-semibold">Spending Pace</h3>
-            </div>
-            {(() => {
-              const isFaster =
-                pacesDiffer && projectedVariable !== null && projectedVariable > variable;
-              const isSlower =
-                pacesDiffer && projectedVariable !== null && projectedVariable < variable;
-              return (
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
-                    isFaster
-                      ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400'
-                      : 'bg-green-500/10 text-green-600 dark:text-green-400',
-                  )}
-                >
-                  {isFaster ? 'Faster than planned' : isSlower ? 'Less than planned' : 'On track'}
-                </span>
-              );
-            })()}
-          </div>
-          <BurnRateChart
-            dailySpending={burnRateData.dailySpending}
-            totalBudget={burnRateData.totalBudget}
-            periodStart={burnRateData.periodStart}
-            periodEnd={burnRateData.periodEnd}
-            periodLabel={burnRateData.periodLabel}
-            viewMode="month"
-            income={income}
-            fixedExpenseSchedule={burnRateData.fixedExpenseSchedule}
-            variableBudget={burnRateData.variableBudget}
-            fixedExpensesTotal={burnRateData.fixedExpensesTotal}
-          />
-        </div>
+        <SpendingPaceCard
+          showDeltas={showDeltas}
+          pacesDiffer={pacesDiffer}
+          projectedVariable={projectedVariable}
+          variable={variable}
+          dailySpending={burnRateData.dailySpending}
+          totalBudget={burnRateData.totalBudget}
+          periodStart={burnRateData.periodStart}
+          periodEnd={burnRateData.periodEnd}
+          periodLabel={burnRateData.periodLabel}
+          viewMode="month"
+          income={income}
+          fixedExpenseSchedule={burnRateData.fixedExpenseSchedule}
+          variableBudget={burnRateData.variableBudget}
+          fixedExpensesTotal={burnRateData.fixedExpensesTotal}
+        />
       )}
 
       {/* Cash Flow Breakdown */}
