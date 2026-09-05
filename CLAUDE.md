@@ -12,6 +12,30 @@ npm run lint     # Run ESLint
 npx prettier --write "src/**/*.{ts,tsx}"  # Format code
 ```
 
+### Formatting
+
+**Run Prettier on the files you touched before calling any piece of work
+done** — as the last step before committing, alongside `npm run lint` and
+`npm run build`:
+
+```bash
+npx prettier --write src/routes/login.tsx src/components/layout/app-header.tsx
+```
+
+`src/` is fully formatted as of `6c4f000`, so this only ever touches lines you
+wrote. If Prettier does reformat code you didn't write, something has drifted —
+land that as its own `style:` commit rather than burying it in a feature diff.
+
+Nothing enforces this: there is no pre-commit hook and no CI workflow. Check
+what is still unformatted with:
+
+```bash
+npx prettier --list-different "src/**/*.{ts,tsx}"
+```
+
+Nothing enforces this — there is no pre-commit hook and no CI workflow — so it
+only happens if you remember.
+
 ## Architecture Overview
 
 A React 19 + TypeScript budgeting app with local-only persistence. Supports "what-if" scenario planning by separating facts (transactions) from plans (scenarios with rules).
