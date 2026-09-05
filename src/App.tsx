@@ -27,10 +27,17 @@ const router = createBrowserRouter([
       import('@/components/first-run-wizard').then((m) => ({ Component: m.FirstRunWizard })),
     errorElement: <ErrorBoundary />,
   },
+  // Public landing page at a stable URL. Unlike "/", this never redirects, so
+  // it is reachable from inside the app (the header logo links here).
+  {
+    path: '/welcome',
+    lazy: () => import('@/routes/welcome').then((m) => ({ Component: m.WelcomePage })),
+    errorElement: <ErrorBoundary />,
+  },
   // Legacy redirect
   {
     path: '/landing',
-    element: <Navigate to="/" replace />,
+    element: <Navigate to="/welcome" replace />,
   },
   // Check-in wizard (outside of RootLayout - full screen)
   {
