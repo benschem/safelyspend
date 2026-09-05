@@ -2,6 +2,22 @@
   command = "npm run build"
   publish = "dist"
 
+# Plausible analytics, proxied through a first-party path.
+# Two reasons for the proxy: adblockers can't pattern-match /pa-stats/*, and it
+# keeps the traffic same-origin so the CSP needs no third-party exceptions.
+#
+# These MUST stay above the SPA fallback below - Netlify matches redirects in
+# order, so a leading /* rule would swallow them and serve index.html instead.
+[[redirects]]
+  from = "/pa-stats/js/*"
+  to = "https://analytics.rocketzip.com.au/js/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/pa-stats/api/event"
+  to = "https://analytics.rocketzip.com.au/api/event"
+  status = 200
+
 # SPA fallback - serve index.html for all routes
 [[redirects]]
   from = "/*"
