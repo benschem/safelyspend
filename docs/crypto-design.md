@@ -7,9 +7,43 @@
 **Gating answers used:**
 - Q1 (recovery UX) — display + "copy to password manager" CTA + checkbox.
 - Q2 (invite handoff) — sweep on every cloud login by the existing member; invitee pubkey is verified out-of-band before the wrap proceeds (§7.2).
-- Q4 (perf budget) — envelope is fixed here; Argon2id parameters are provisional until benchmarked (§3.4).
+- Q4 (perf budget) — envelope is fixed here; Argon2id parameters are benchmarked and locked at m=64 MiB / t=3 / p=1 (§3.4, resolved 2026-09-13).
 - Q5 (households) — one household per user in v1.
 - Q7 (leaving a household) — not supported in v1; account deletion is the only exit.
+
+## 0. In plain English
+
+### The problem
+
+You and a partner want to share one budget. It syncs through your server. The server must never be able to read it — that's the promise the app makes.
+
+So the data gets encrypted on your device before it's uploaded. Fine. But that raises an awkward question: where does the key live?
+
+### Why not just use the password as the key
+
+The obvious answer is "turn the password into the key". That's what the app does today, and it has two problems.
+
+Change your password, and every byte you've ever encrypted has to be downloaded, decrypted, re-encrypted, re-uploaded. And there's no way to let a partner in without literally telling them your password.
+
+### The fix: lock the key, not the data
+
+One random key encrypts the budget. Call it the master key. It never changes.
+
+Then you put that key inside several locked boxes:
+
+- a box your password opens
+- a box your recovery phrase opens
+- a box your partner can open
+
+Every box contains the same key. Change your password and you rebuild one small box — the budget data isn't touched. Add a partner and you hand them a box, never your password. Lose your password and the recovery phrase box still opens.
+
+That's the wrapped-key pattern, and it's why the whole rewrite exists.
+
+### Why the password step is deliberately slow
+
+If someone steals your server database, they get locked boxes and nothing else. Their only move is guessing passwords.
+
+So turning a password into a box-key is made expensive on purpose — Argon2id, which burns 64 MB of memory and a chunk of CPU every single attempt. You pay it once at login and never notice: that's the 216 ms measured on an iPhone 11. An attacker pays it on every guess, billions of times, and that's what makes stealing the database not worth much.
 
 ---
 
