@@ -10,9 +10,11 @@ Phases 1 and 2 have full design docs. The rest are one screen each and get their
 
 ## Start with a clean database
 
-Production holds no vaults and no real users, and the maintainer's local data is disposable. Before Phase 3 begins: drop the D1 tables and R2 objects, rewrite migrations `0001`–`0004` into a single clean household-keyed schema, re-run.
+Production holds no vaults and no real users, and the maintainer's local data is disposable. Drop the D1 tables and R2 objects, rewrite migrations `0001`–`0004` into a single clean household-keyed schema, re-run.
 
 Everything downstream assumes this. There is no format-v1 read path, no migration, and no per-user version state anywhere in the plan. `DECISIONS.md` records why.
+
+**Status:** migrations `0002`–`0004` are gone and `0001_initial.sql` is the whole household-keyed schema. The **remote** reset has not been run — production D1 still holds v1 tables and the applied-migrations ledger still lists four entries, so `wrangler d1 migrations apply` will not replay the rewritten `0001` until both are cleared. `worker/README.md` has the procedure.
 
 ## Conventions used in each phase file
 
@@ -29,8 +31,8 @@ Locked throughout: wrapped-key pattern, X25519 keypair per user, household-keyed
 Numbering has a gap at 6. Renumbering would break every cross-link here and in the design docs.
 
 - [Phase 1 — Crypto + storage design doc](01_crypto_storage_design.md) — **designed** (`../crypto-design.md`)
-- [Phase 2 — Backend schema + endpoints](02_backend_schema_endpoints.md) — **designed** (`02_backend_schema_endpoints_design.md`)
-- [Phase 3 — Client crypto rewrite](03_client_crypto_rewrite.md)
+- [Phase 2 — Backend schema + endpoints](02_backend_schema_endpoints.md) — **built** (`02_backend_schema_endpoints_design.md`; §13 lists where the design was wrong)
+- [Phase 3 — Client crypto rewrite](03_client_crypto_rewrite.md) — **built**
 - [Phase 4 — Account creation at cloud-sync opt-in](04_onboarding_rewrite.md)
 - [Phase 5 — Cloud login and logout](05_login_unlock_logout.md)
 - [Phase 7 — Invite flow (UI + backend + email)](07_invite_flow.md)

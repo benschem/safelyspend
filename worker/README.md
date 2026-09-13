@@ -1,6 +1,13 @@
 # Budget API Worker
 
-Cloudflare Worker backend for SafelySpend. Handles authentication (email code login) and encrypted vault storage (D1 metadata + R2 blobs).
+Cloudflare Worker backend for SafelySpend. Handles authentication (email code plus a
+password verifier), household membership and invites, storage of wrapped key material,
+and encrypted vault storage (D1 metadata + R2 blobs).
+
+The server never sees a password, a key, or a byte of plaintext budget data. It stores
+locked boxes and hands them back; the unlocking always happens in the browser. What that
+means in detail is in `docs/crypto-design.md`; the schema and endpoint contracts are in
+`docs/auth-rewrite/02_backend_schema_endpoints_design.md`.
 
 ## Prerequisites
 
@@ -22,11 +29,15 @@ The dev server uses local D1 (SQLite) and R2 (filesystem) emulation — no Cloud
 ## Running Tests
 
 ```bash
-npm run test       # watch mode
-npm run test:run   # single run
+npm run test        # watch mode
+npm run test:run    # single run
+npm run typecheck   # tsc --noEmit
 ```
 
 Tests use `@cloudflare/vitest-pool-workers` to run inside workerd with real D1/R2 bindings. No external services or secrets are required — test secrets are configured in `vitest.config.ts`.
+
+Run `npm run typecheck` as well as the tests. The worker has its own `tsconfig.json` and
+is not covered by the repo root's `npm run build`, so nothing else type-checks it.
 
 ## Deployment
 
@@ -127,10 +138,11 @@ D1 migrations live in `migrations/` as numbered SQL files. Wrangler applies them
 
 | File | Description |
 |------|-------------|
-| `0001_initial.sql` | Users, auth_codes, vaults, sync_state tables |
-| `0002_security.sql` | Sessions, rate_limits tables; brute-force tracking on auth_codes |
-| `0003_cleanup_indexes.sql` | Indexes for rate_limits and auth_codes cleanup queries |
-| `0004_idempotency.sql` | Idempotency key column on vaults |
+| `0001_initial.sql` | The whole schema: accounts and key material, households and membership, wrapped-key storage, invites, household-keyed vaults and sync state, sessions, rate limits |
+
+There is one migration by design. The four v1 migrations were collapsed into it during the
+auth rewrite — see "Resetting the database" below for why, and for what that means if you
+are holding a database that was created before the rewrite.
 
 ### Applying migrations
 
@@ -170,6 +182,84 @@ Wrangler automatically detects which migrations are new and applies only those. 
    ```bash
    npm run db:migrate:remote
    ```
+
+### Resetting the database
+
+`0001_initial.sql` was rewritten in place during the auth rewrite, and `0002`–`0004`
+were deleted. That is not an ordinary migration: it changes a file Wrangler has already
+recorded as applied.
+
+Wrangler tracks applied migrations by **filename** in a `d1_migrations` table. A database
+that already ran the old `0001` will not re-run the new one, and will not notice the
+contents changed — so a pre-rewrite database ends up with v1 tables, a ledger claiming
+four migrations ran, and a worker that queries columns which do not exist.
+
+The fix is not a migration. It is a reset, and it destroys everything in D1 and R2.
+
+**This was safe to do exactly once**, when production held zero vaults and zero real
+users (verified 2026-09-13: R2 `budget-vaults` empty, D1 `vaults` and `sync_state` both
+empty). There is no format-v1 read path anywhere in the client, so there was nothing to
+migrate and nothing to preserve. **If the database now holds real data, none of the
+below applies** — write a forward migration instead.
+
+Check before doing anything:
+
+```bash
+wrangler d1 execute budget-db --remote --command="SELECT COUNT(*) AS vaults FROM vaults"
+wrangler r2 object list budget-vaults
+```
+
+If either returns anything, stop.
+
+Local first — the local database is disposable, so this is just a delete:
+
+```bash
+rm -rf .wrangler/state/v3/d1 .wrangler/state/v3/r2
+npm run db:migrate:local
+npm run test:run
+```
+
+Remote, once local is green. Drop the v1 tables, clear the ledger, then re-apply:
+
+```bash
+# 1. Drop every v1 table. Order matters: children before parents.
+wrangler d1 execute budget-db --remote --command="
+  DROP TABLE IF EXISTS sync_state;
+  DROP TABLE IF EXISTS vaults;
+  DROP TABLE IF EXISTS auth_codes;
+  DROP TABLE IF EXISTS sessions;
+  DROP TABLE IF EXISTS rate_limits;
+  DROP TABLE IF EXISTS users;
+"
+
+# 2. Clear the applied-migrations ledger so the rewritten 0001 runs again.
+wrangler d1 execute budget-db --remote --command="DELETE FROM d1_migrations"
+
+# 3. Apply the new schema.
+npm run db:migrate:remote
+
+# 4. Confirm it landed.
+wrangler d1 execute budget-db --remote --command="
+  SELECT name FROM sqlite_master WHERE type='table' ORDER BY name
+"
+```
+
+R2 objects are keyed `{userId}/{vaultId}` under the old layout and
+`{householdId}/{vaultId}` under the new one. Nothing reads the old prefix, so any
+leftovers are orphans — the nightly cron (`cleanupOrphanedR2Objects`) removes objects
+with no matching `vaults` row, which after the reset is all of them. To clear them
+immediately instead:
+
+```bash
+wrangler r2 object list budget-vaults          # confirm what is there
+wrangler r2 object delete budget-vaults/<key>  # one key at a time
+```
+
+Finally, redeploy so the worker and the schema match:
+
+```bash
+npm run deploy
+```
 
 ### Rollback
 
@@ -242,22 +332,57 @@ All endpoints return JSON. Authenticated routes require a `__budget_session` coo
 |--------|------|------|-------------|
 | GET | `/health` | No | Returns `{ ok: true }` |
 
-### Auth (`/auth`)
+Logging in takes three calls, not one. `/auth/login` sends the code, `/auth/verify-otp`
+exchanges the code for a short-lived bridge token plus the parameters needed to derive a
+password verifier, and `/auth/login-complete` checks that verifier and issues the
+session. The split exists so that proving control of a mailbox is never on its own
+enough to obtain a session, and so the verifier salt is only handed out after the code
+has been passed.
+
+### Auth (`/v1/auth`)
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | POST | `/auth/login` | No | Send a 6-digit login code to an email address |
-| POST | `/auth/verify` | No | Verify a login code, returns a session cookie |
+| POST | `/auth/verify-otp` | No | Exchange a code for a bridge token and the verifier parameters |
+| POST | `/auth/login-complete` | No | Check the password verifier, issue a session and the key bundle |
+| POST | `/auth/signup` | No | Create a cloud-sync account and its household (needs a bridge token) |
+| POST | `/auth/signup-with-invite` | No | Create an account that joins someone else's household |
+| GET | `/auth/key-bundle` | Yes | Fetch the wrapped keys needed for a local unlock |
+| POST | `/auth/rewrap-keys` | Yes | Replace the password-wrapped rows at stronger Argon2id parameters |
+| POST | `/auth/recovery-reset` | Yes | Set a new password after unlocking with the recovery phrase |
 | POST | `/auth/logout` | Yes | Delete the current session |
-| GET | `/auth/me` | Yes | Return the current user |
-| DELETE | `/auth/account` | Yes | Delete the user account and all associated data |
+| GET | `/auth/me` | Yes | Return the current user and their household |
+| DELETE | `/auth/account` | Yes | Delete the account, and the household if nobody else is left in it |
 | GET | `/auth/sessions` | Yes | List active sessions |
 | DELETE | `/auth/sessions/:id` | Yes | Revoke a specific session |
 | POST | `/auth/revoke-all-sessions` | Yes | Revoke all sessions except the current one |
 
-### Vault (`/vault`)
+### Invites and handoffs (`/v1/invites`, `/v1/handoffs`, `/v1/households`)
 
-All vault routes require authentication.
+Adding a partner is a two-sided exchange, and the two people are never required to be
+online at the same time. The existing member issues an invite; the recipient signs up and
+waits; the existing member wraps the household key for the recipient's public key on
+their next login; the recipient unwraps it and re-wraps it under their own password and
+recovery phrase. Both sides compare a fingerprint out of band before trusting the other's
+public key.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/invites` | Yes | Issue an invite and email it |
+| GET | `/invites` | Yes | List invites sent and received |
+| POST | `/invites/:token/accept` | Yes | Accept an invite as an existing account |
+| DELETE | `/invites/:id` | Yes | Revoke an invite you sent |
+| GET | `/handoffs/pending` | Yes | Invitees waiting for you to wrap the household key for them |
+| GET | `/handoffs/incoming` | Yes | A household key wrapped for you, waiting to be re-wrapped |
+| POST | `/households/:id/members` | Yes | Complete the handoff from the sender's side |
+| POST | `/households/:id/members/:userId/rewrap` | Yes | Complete it from the recipient's side |
+
+### Vault (`/v1/vault`)
+
+All vault routes require authentication **and** membership of a household — the vault is
+shared by the household, not owned by a user. A signed-in user with no household yet
+gets `409 NO_HOUSEHOLD`.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -267,6 +392,10 @@ All vault routes require authentication.
 | GET | `/vault/history` | Yes | List all vault versions |
 | GET | `/vault/data/:vaultId` | Yes | Download a specific historical version |
 
+`X-Expected-Version` now guards against two people rather than two tabs. A rejected push
+means your partner's work is on the server and yours is not, so the client cannot simply
+discard and retry.
+
 ## Disaster Recovery
 
 ### Data layout
@@ -275,10 +404,12 @@ D1 and R2 are complementary — neither is sufficient on its own.
 
 | Store | Contains | Recoverable without it? |
 |-------|----------|------------------------|
-| **D1** | Users, sessions, auth codes, vault metadata (versions, checksums, R2 key paths), sync state | No — R2 objects are opaque blobs; without D1 you can't identify which version is current or who owns what |
+| **D1** | Users, households and membership, wrapped key material, sessions, auth codes, invites, vault metadata (versions, checksums, R2 key paths), sync state | No — R2 objects are opaque blobs; without D1 you can't identify which version is current, who it belongs to, or which wrapped key opens it |
 | **R2** | Encrypted vault data (the actual user data blobs) | No — D1 only stores metadata; the encrypted payload lives solely in R2 |
 
-R2 keys follow the pattern `{userId}/{vaultId}`. D1's `vaults.r2_key` column is the sole mapping between metadata and blobs.
+R2 keys follow the pattern `{householdId}/{vaultId}`. D1's `vaults.r2_key` column is the sole mapping between metadata and blobs.
+
+D1 also holds the wrapped key material — `users.pubkey` and the verifier columns, `user_keys`, `household_member_keys`. Losing it is worse than losing vault metadata: the R2 blobs stay encrypted under a MasterKey whose every wrapped copy lived in D1, so without those rows the ciphertext is unrecoverable even with the right password. The exception is a user who still holds their recovery phrase *and* a local copy of the data — the phrase only unwraps rows that still exist.
 
 ### D1 backups (Time Travel)
 
@@ -365,11 +496,11 @@ worker/
 ├── migrations/          # D1 SQL migrations (applied in filename order)
 ├── src/
 │   ├── index.ts         # Hono app entry point
-│   ├── types.ts         # Env, User, JWT types
-│   ├── lib/             # crypto, error helpers, ID generation
-│   ├── middleware/       # auth, rate-limit
-│   ├── routes/          # auth, vault route handlers
-│   ├── services/        # auth, email, users, vault business logic
+│   ├── types.ts         # Env, User, Household, JWT types
+│   ├── lib/             # crypto, bytes, wrapped-key validation, session, errors, IDs
+│   ├── middleware/      # auth (plus the recovery-session and household guards), rate-limit
+│   ├── routes/          # auth, invites, handoffs, households, vault handlers
+│   ├── services/        # auth, email, users, households, invites, key-bundle, vault
 │   └── __tests__/       # integration + unit tests
 ├── vitest.config.ts
 ├── wrangler.toml

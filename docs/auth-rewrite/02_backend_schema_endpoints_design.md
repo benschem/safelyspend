@@ -1,6 +1,6 @@
 # SafelySpend — Backend Schema + Endpoints Design
 
-**Status:** Phase 2 of the auth + couples + privacy rewrite. Locks the server-side surface — D1 schema, Worker endpoint contracts, JWT lifecycle, transaction boundaries, anti-downgrade enforcement, server-side validation, error model. No code lands until this doc is approved.
+**Status:** Phase 2 of the auth + couples + privacy rewrite. Locks the server-side surface — D1 schema, Worker endpoint contracts, JWT lifecycle, transaction boundaries, anti-downgrade enforcement, server-side validation, error model. **Built.** Nine places where this doc did not survive contact with D1, with Phase 1, or with the shipped Phase 3 client are corrected inline below and listed together in §13.
 
 **Scope:** Everything that lives in `worker/` or `worker/migrations/`. References Phase 1 (`../crypto-design.md`) for envelope formats, KDF choices, key hierarchy, and the invite handoff sequence. **Does not** cover client crypto implementation (Phase 3), login/unlock UX (Phase 5), invite UI (Phase 7), or household scope UI (Phase 8).
 
@@ -259,7 +259,15 @@ Why a new table and not a JWT-with-purpose claim: the existing JWT middleware (`
 
 ### 2.2 What's new
 
-- **JWT payload gains `hid` (household_id).** Currently `{sub, sid, email, iat, exp}`; v2 adds `hid: string`. The household_id is set at signup (and never changes in v1 because of Q5). Vault routes derive scope from `hid` instead of `sub`.
+- **JWT payload gains `hid` (household_id).** Currently `{sub, sid, email, iat, exp}`; v2 adds `hid?: string`.
+
+  **`hid` is informational, and server-side scoping does not read it.** An earlier draft said the household is set at signup and never changes in v1, so vault routes could derive scope from the claim. That is true for the member who *created* the household and false for the one who joined it: an invitee signs up with no household at all, and gains one mid-session when the inviter completes the handoff. Scoping from the claim would leave them locked out of their own vault until they logged in again, for no reason a user could understand.
+
+  The auth middleware resolves the household from `household_members` on every request — a `LEFT JOIN` onto the session lookup it already performs, so no extra round trip — and puts it on the request context. `hid` stays in the payload for the client's benefit and is carried across JWT rotation, along with `rec`.
+
+  This is also the stronger position: the claim is signed by a key that is itself inside the server-compromise blast radius (Phase 1 §1, property 6), so a forged `hid` buys nothing when scope comes from a row instead.
+
+- **The claim is optional.** A user between `signup-with-invite` and the handoff has no household. Routes that need one (all vault routes, issuing an invite) reject with **409 `NO_HOUSEHOLD`**; `/auth/me` and `/auth/key-bundle` return `household: null`.
 - **`email` claim becomes optional.** Local-only users do not have a server account and never get a JWT at all. The first time a user opts into cloud sync, they get an email + JWT. Until then, the entire server surface is unreachable.
 
 ### 2.3 Relationship to MasterKey (independent — Q6 locked)
@@ -288,11 +296,15 @@ All `Content-Type: application/json` unless otherwise stated. All responses foll
 
 ### 3.1 `POST /v1/auth/login` — request OTP
 
-Modified: behaviour is unchanged from v0.37 *for the request shape*. The semantic change is that the server no longer creates a user automatically; users only exist after `/auth/signup` (§3.4).
+Unchanged from v0.37, including the find-or-create.
+
+An earlier draft of this section said the server no longer creates a user automatically and that users only exist after `/auth/signup`. **That is not implementable and was not built.** Signup requires a bridge token, a bridge token requires a verified OTP, and an OTP requires a `users` row to hang the code off: the account has to exist before its owner can prove anything about it. §3.2 and §3.4 both assume the row already exists, so this section was the outlier. What makes find-or-create harmless is §1.2's inert row — no `pubkey` means no `user_keys`, no household, and no vault.
 
 **Request:** `{ email: string }`
 
-**Response (always 200):** `{ message: 'Code sent' }`. Returns 200 even for unknown emails (no enumeration). Sends OTP only if `users.email` row exists.
+**Response (always 200):** `{ message: 'Code sent' }`. Returns 200 even for unknown emails (no enumeration).
+
+**Side effect:** a background sweep on this endpoint expires stale invites, alongside the existing code and session cleanups.
 
 **Rate limits:** existing — 5/min per IP, 3/15min per email. Unchanged.
 
@@ -400,20 +412,32 @@ Modified: behaviour is unchanged from v0.37 *for the request shape*. The semanti
 - 400 BAD_REQUEST — missing required key kinds (both `pwd` and `recovery` are mandatory).
 - 429 TOO_MANY_REQUESTS.
 
-**Single `db.batch()`:**
+**Ordering — the correction that matters most in this doc.**
+
+> **A guarded `UPDATE` that matches zero rows does not roll a D1 batch back.** It is a *success* with `meta.changes === 0`. D1 rolls a batch back on a statement **error** — a constraint violation — and on nothing else.
+
+An earlier draft of this section, of §3.5, and of §6.1 assumed the opposite, and every "if the UPDATE affected 0 rows the batch rolls back" claim built on it was wrong. Taken literally it would have let the rest of a signup apply against a bridge token that was already spent.
+
+What is built instead:
+
+1. **Validate all key material first**, before anything is spent. Malformed blobs then cost the user a retry rather than a fresh OTP.
+2. **Spend the bridge token as a standalone guarded `UPDATE ... RETURNING user_id`.** One statement is atomic on its own, and it is the gate for everything after it. The cost is that a failure past this point burns the token; that is the same trade §3.3 already accepts for `/login-complete`.
+3. **Run the rest as one batch**, relying on primary keys and unique indexes — not on `WHERE` guards — for idempotency. Every insert below is covered by one, so a replay raises a constraint violation and the batch really does roll back.
+
 ```
-UPDATE auth_pending SET used_at=now WHERE id=? AND used_at IS NULL
+UPDATE auth_pending SET used_at=now WHERE id=? AND used_at IS NULL RETURNING user_id   -- standalone
+-- then, in one batch:
 UPDATE users SET password_verifier=?, verifier_salt=?, verifier_kdf_kind=?, verifier_kdf_params=?,
                  pubkey=?, updated_at=now
-       WHERE id=? AND pubkey IS NULL            -- enforces "first signup wins" idempotency
-INSERT INTO user_keys (...)                     × 2 rows (pwd + recovery)
-INSERT INTO households (...)
-INSERT INTO household_members (household_id, user_id, role='owner', joined_at=now)
-INSERT INTO household_member_keys (...)         × 2 rows (pwd + recovery)
-INSERT INTO sessions (id, user_id, expires_at)
+       WHERE id=? AND pubkey IS NULL            -- belt-and-braces; the guard below is what enforces it
+INSERT INTO user_keys (...)                     × 2 rows (pwd + recovery)   -- PK (user_id, kek_kind)
+INSERT INTO households (...)                                                -- PK id
+INSERT INTO household_members (household_id, user_id, role='owner', joined_at=now)  -- UNIQUE(user_id)
+INSERT INTO household_member_keys (...)         × 2 rows (pwd + recovery)   -- PK (household_id, user_id, kek_kind)
+INSERT INTO sessions (id, user_id, expires_at)                              -- PK id
 ```
 
-If the `UPDATE users` affected 0 rows (already signed up), the whole batch rolls back; return 409 ALREADY_SIGNED_UP. JWT is then signed in Worker code (post-batch) using the new session row.
+A second signup for the same account is caught by an explicit `pubkey IS NULL` read before the batch, and by the `user_keys` and `household_members` constraints inside it. Both paths return 409 ALREADY_SIGNED_UP. The JWT is signed in Worker code after the batch.
 
 **Rate limits:** 5/h per user (paired with the `auth_pending` 5-minute lifetime, this limits abuse).
 
@@ -455,17 +479,25 @@ If the `UPDATE users` affected 0 rows (already signed up), the whole batch rolls
 }
 ```
 
-**Single `db.batch()`:**
+**Ordering.** Per the correction in §3.4, the invite claim cannot live inside the account batch — a guard that matches nothing would leave the rest applied. It also must not run *before* it. The sequence is:
+
 ```
-UPDATE auth_pending SET used_at=now WHERE id=? AND used_at IS NULL
+-- read: validate the invite (status, expiry, recipient_email) and fail early
+UPDATE auth_pending SET used_at=now WHERE id=? AND used_at IS NULL RETURNING user_id   -- standalone
+-- then, in one batch:
 UPDATE users SET password_verifier=?, ..., pubkey=?, updated_at=now WHERE id=? AND pubkey IS NULL
 INSERT INTO user_keys (...) × 2
+INSERT INTO sessions (...)
+-- then, standalone and guarded:
 UPDATE invites SET recipient_user_id=?, status='accepted_pending_handoff', updated_at=now
        WHERE token=? AND status='open' AND expires_at > now AND recipient_email=?
-INSERT INTO sessions (...)
 ```
 
-If the `UPDATE invites` affected 0 rows, the batch rolls back and the server returns 410 INVITE_EXPIRED, 409 INVITE_ALREADY_ACCEPTED, or 404 INVALID_INVITE depending on which condition failed (an out-of-batch read distinguishes; safe because the user is already authenticated by the bridge token at this point).
+**The account is created before the invite is claimed, deliberately.** Reverse the two and a failure in the account batch strands a claimed invite against an account with no keys — a state nothing in v1 can repair, because the invite is no longer `open` and the recipient cannot sign up twice. In this order a failed claim leaves a perfectly usable account that can accept the same invite again through `POST /v1/invites/:token/accept` (§4.3).
+
+If the `UPDATE invites` affects 0 rows the server re-reads the invite and returns 410 INVITE_EXPIRED, 409 INVITE_ALREADY_ACCEPTED, or 404 INVALID_INVITE depending on which condition failed. The disambiguating read is safe because the caller is already authenticated by the bridge token.
+
+**Expiry is reported before status.** The background sweep on `/auth/login` rewrites a lapsed `open` invite to `expired`, so a status check that runs first reports a timed-out invite as "already used" — the wrong thing to tell the recipient and the wrong code for the client to branch on. Check `status='expired' OR expires_at <= now` → 410 first, then `status != 'open'` → 409.
 
 **Errors:** 410 INVITE_EXPIRED, 409 INVITE_ALREADY_ACCEPTED, 404 INVALID_INVITE, 400 INVALID_BLOB, plus the standard auth errors above.
 
@@ -550,7 +582,18 @@ The verifier params are also bumped at the same time (in Phase 1 §3.4 the upgra
 }
 ```
 
-**Authentication:** requires a session JWT that was issued via a parallel "recovery-OTP" flow. Since the v1 design has no separate "recovery proof," the simplest server stance is: this endpoint requires a *fresh* session JWT (issued <5 minutes ago) AND the JWT must carry a `recovery=true` claim. The `/login-complete` endpoint sets `recovery=true` if the client signalled `via=recovery` in the request — Phase 3 wires the client flag. The server has no way to verify that the client actually used the recovery phrase (it just trusts the flag), but the flag governs which audit-log event is emitted; the actual cryptographic protection is that the recovery phrase is required to decrypt the wrapped private key, which the server doesn't verify.
+**Authentication: how a recovery session is obtained.** The original draft required a JWT carrying a `recovery=true` claim without ever saying how one could be issued — and the omission hides a real problem. A user in the recovery flow has forgotten their password, so they *cannot* produce a verifier candidate, so §3.3's check cannot be the thing that lets them in.
+
+What is built:
+
+- `POST /v1/auth/login-complete` accepts `via: 'recovery'`. It **skips the verifier check** and issues a session whose JWT carries `rec: true`.
+- **A `rec` session reaches exactly two endpoints:** `GET /v1/auth/key-bundle` and `POST /v1/auth/recovery-reset`. Everything else — every vault route, every invite and handoff route, account deletion, session management — returns **403 `RECOVERY_SESSION`**.
+- `recovery-reset` additionally requires the JWT to be **less than 5 minutes old** (`now - iat < 300`), and returns 401 `RECOVERY_SESSION_EXPIRED` otherwise.
+- The claim survives JWT rotation. Dropping it on renewal would silently promote a recovery session to a full one.
+
+**Why the confinement is not optional.** Skipping the verifier means OTP control alone now issues *some* session, which is precisely what §3.3's verifier exists to prevent. Confining it keeps the damage at nothing an attacker can use: the key bundle is ciphertext wrapped under a KEK derived from a recovery phrase they do not have, and a `recovery-reset` they attempt overwrites only the `pwd` rows while the `recovery` rows — the ones that still open the vault — are untouched by that endpoint (Phase 1 §6.4 step 5). Threat-model property 3 already anticipated this shape: the recovery-phrase holder "cannot establish a fresh server session on their own... without separately compromising the user's email/OTP path."
+
+**Residual risk, stated plainly.** An attacker with mailbox control but no recovery phrase can still call `recovery-reset` and overwrite the `pwd` wraps, locking the legitimate user out of password unlock. It is a denial of service, not a disclosure: the user recovers with their phrase. Whether that warrants a stronger recovery proof is **Phase 5's call**, and it is the reason this is written down rather than left implicit. The server cannot verify that the phrase was actually used — it only ever sees the flag.
 
 **Single `db.batch()`:**
 ```
@@ -576,10 +619,19 @@ Per Phase 1 §6.4 step 5: this is upsert-then-retire, not delete-then-insert. Th
 | `POST /auth/verify` | Returns session JWT (current behaviour) | **Deleted.** It issued a session on OTP alone, which is exactly what the verifier step exists to prevent. Nothing depends on it, so it goes rather than returning 410. |
 | `POST /auth/logout` | Unchanged | Unchanged |
 | `GET /auth/me` | Returns `{user}` | Returns `{user, household}` |
-| `DELETE /auth/account` | Unchanged | Unchanged. Also cascades through `households` (since user is the sole member, ON DELETE CASCADE wipes the household and its member_keys). |
+| `DELETE /auth/account` | Unchanged | See below — the household does **not** cascade. |
 | `POST /auth/revoke-all-sessions` | Unchanged | Unchanged |
 | `GET /auth/sessions` | Unchanged | Unchanged |
 | `DELETE /auth/sessions/:id` | Unchanged | Unchanged |
+
+### 3.11 `DELETE /auth/account` — what actually cascades
+
+An earlier draft of the table above claimed the household is wiped by `ON DELETE CASCADE`. **It is not.** `households` has no foreign key to `users` — it cannot have one, because a household outlives any individual member. Deleting a user cascades `auth_codes`, `auth_pending`, `sessions`, `user_keys`, `household_members`, `household_member_keys` and sent `invites`, and leaves the `households` row, its `vaults`, its `sync_state` and its R2 objects orphaned.
+
+The handler therefore tears the household down explicitly, and only when the departing user is its **last** member:
+
+- **Sole member** — delete `sync_state` and `vaults` in one batch, delete the R2 objects, delete the `households` row, then delete the user.
+- **A partner remains** — delete only the user. Their membership and wrapped keys cascade; the household, the vault and the partner's own key rows are untouched. This is the one case where Q7's "leaving is not supported" has a real exit, and it works because the remaining member's `pwd` and `recovery` wraps of the MasterKey are independent of the departing member's.
 
 ---
 
@@ -677,7 +729,7 @@ A's client calls this on every login. Server returns invites in `accepted_pendin
       "inviteId": "...",
       "inviteeUserId": "...",
       "inviteePubkey": "<base64url>",
-      "inviteePubkeyFingerprint": "...",     // server-computed: SHA-256(pubkey)[0..15] hex; final display format is Phase 4's call
+      "inviteePubkeyFingerprint": "...",     // server-computed: SHA-256(pubkey)[0..7] hex, 16 chars; display format is Phase 4's call
       "recipientEmail": "...",
       "householdId": "..."                   // A's household
     }
@@ -686,6 +738,8 @@ A's client calls this on every login. Server returns invites in `accepted_pendin
 ```
 
 The pubkey fingerprint is *also* shown so the client can render it without re-hashing — but A's client SHOULD recompute it before showing the safety number to the user (defence in depth against a Worker that serves a real pubkey with a mismatched fingerprint).
+
+**Truncation is 8 bytes, not 16.** An earlier draft said `[0..15]`. The Phase 3 client shipped first and truncates to 8 (`PUBLIC_KEY_FINGERPRINT_LENGTH` in `src/lib/key-management.ts`), so a 16-byte server fingerprint would never match the client's recomputation and the defence-in-depth check above would fail on every handoff. The server matches the client. Phase 1 §8 fixes "SHA-256 of the 32-byte pubkey, truncated to a documented length" without ever documenting the length; it is 8 bytes, and the two implementations must change together or not at all.
 
 **Errors:** 401 UNAUTHORIZED.
 
@@ -897,8 +951,10 @@ Envelope B (KIND=0x05, export file) doesn't transit through the server — it's 
 Cross-column rules that SQLite `CHECK` can't express cleanly:
 
 For `user_keys`:
-- `kek_kind='pwd'` → `kek_salt` length = 16; `kek_kdf_kind ∈ {0x01, 0x02}`; `kek_kdf_params` length = 4 (for 0x01) or 9 (for 0x02).
+- `kek_kind='pwd'` → `kek_salt` length = 16; **`kek_kdf_kind = 0x02` (Argon2id only)**; `kek_kdf_params` length = 9.
 - `kek_kind='recovery'` → `kek_salt` NULL; `kek_kdf_kind=0x03`; `kek_kdf_params` length 0.
+
+An earlier draft admitted `kek_kdf_kind ∈ {0x01, 0x02}` here. **0x01 is rejected.** Phase 1 §3.2 reserves it as *"was PBKDF2-SHA256. Never written; never read. Not reused."* Accepting it on a write would let a client downgrade its own key derivation to the algorithm this entire rewrite exists to leave behind — and since the client chooses what it sends, that is a downgrade the server would be volunteering for. Same rule for the `pwd` rows of `household_member_keys`.
 
 For `household_member_keys`:
 - Same rules as above for `'pwd'` and `'recovery'`.
@@ -1023,3 +1079,49 @@ All limits degrade open on D1 failure (existing pattern).
 - No UI copy, no error message localisation, no email template content.
 
 If any later phase finds it needs a different endpoint shape, table column, error code, or transaction boundary, the change starts back here.
+
+---
+
+## 13. Where this doc was wrong
+
+Nine corrections, found while building it. Each is fixed inline above; this is the index. They are recorded rather than quietly patched because the doc is the source of truth for Phases 4–8, and three of them would have produced a working-looking system with a real hole in it.
+
+**Wrong about D1**
+
+1. **§3.4, §3.5, §6.1 — "if the guarded UPDATE affected 0 rows, the batch rolls back."** It does not. Zero changes is a *success*; only a statement error rolls a batch back. Fixed by spending the bridge token in a standalone guarded `UPDATE ... RETURNING`, and by leaning on primary keys and unique indexes for in-batch idempotency instead of `WHERE` clauses. **This is the one that mattered** — taken literally it would have let a signup apply against an already-spent token.
+
+2. **§3.5 — invite claim inside the signup batch.** Same root cause, and reordering it needed a decision the doc had not made: account first, claim second, so that a failure leaves a usable account rather than an unrepairable stranded invite.
+
+**Wrong about Phase 1**
+
+3. **§8.2 — `kek_kdf_kind ∈ {0x01, 0x02}` for password rows.** Phase 1 §3.2 reserves 0x01 as never-written. Accepting it would have let a client volunteer its own downgrade to PBKDF2. Argon2id only.
+
+**Wrong about the shipped client**
+
+4. **§4.5 — fingerprint truncated to 16 bytes.** The Phase 3 client shipped 8. A mismatch here fails the client's recomputation on every handoff, which is indistinguishable from a server substituting a pubkey — the exact attack the check exists to catch. Server now matches client; `crypto-design.md` §8 records the length it never stated.
+
+**Wrong about SQLite**
+
+5. **§3.10 — "account deletion cascades through `households`."** `households` has no foreign key to `users` and cannot have one. Without the explicit teardown now in §3.11, every deleted account would have orphaned a household row, its vault versions and its R2 objects.
+
+**Wrong about the invitee**
+
+6. **§2.2 — "`hid` is set at signup and never changes."** True for the member who creates the household, false for the one who joins it. Scoping from the claim would have locked a new partner out of the vault they had just been given access to. Scope now resolves from `household_members` per request; the claim is informational.
+
+**Silent gaps**
+
+7. **§3.9 — no way to obtain the `recovery=true` session it requires.** A user in recovery cannot produce a verifier by definition. Resolved by `via=recovery` on `/login-complete`, with the resulting session confined to two endpoints. Carries a documented residual DoS risk for **Phase 5**.
+
+8. **§3.6 does not exist** — the numbering jumps 3.5 → 3.7, and the missing section is the signup-time invite sweep (crypto-design §7.4 path 2). The sweep is implemented: `/auth/signup` returns any open invites matching the new user's email as `pendingInvites` so the client can show a banner.
+
+   **But path 2 dead-ends under Q5, and the design never noticed.** A user who signs up from the landing page gets their own household in the same call. `UNIQUE(household_members.user_id)` then means they can never accept the invite — `POST /invites/:token/accept` returns 409 HOUSEHOLD_FULL. The banner is real; the button behind it cannot work. Three ways out, all **Phase 7's call**: detect the pending invite *before* creating a household and route the user to `signup-with-invite`; support discarding a brand-new empty household on acceptance; or drop path 2 and rely on paths 1 and 3. None is a Phase 2 change, and nothing else depends on it.
+
+**Cosmetic**
+
+9. **§1.4 — `idx_sync_state_household_id UNIQUE`.** Redundant: `household_id` is already `sync_state`'s primary key. Not created.
+
+### Also worth knowing
+
+- **The `ecies` handoff row is never resurrected.** `POST /households/:id/members` checks for an existing membership *before* validating invite state, so a replayed request is a 200 no-op rather than a 409. If the membership exists but the `ecies` row is gone, the invitee has already rewrapped and the request returns 409 HOUSEHOLD_ROW_RACE rather than re-creating a transient row they have finished with.
+- **Invite emails are rolled back on send failure.** An invite nobody received would otherwise occupy the one-open-invite-per-pair slot while being unusable.
+- **Storage quota is per household**, so a couple shares what one person used to have alone. Phase 8's copy needs to say "household".
