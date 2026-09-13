@@ -18,6 +18,9 @@ dist-ssr
 .dev.vars.*
 .env
 
+# Wrangler's local D1 and R2 emulation state
+.wrangler/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
