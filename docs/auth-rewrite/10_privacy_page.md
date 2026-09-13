@@ -2,7 +2,7 @@
 
 - **Goal:** Architecture-as-plain-English at `/privacy`. KISS.
 - **Files:** new `src/routes/privacy.tsx`; route registration in `src/App.tsx`; possibly `src/components/architecture-diagram.tsx` or an inline SVG; link from landing page footer.
-- **Gates:** Q8 (repo visibility — whether to link).
+- **Gates:** none outstanding. Q8 is answered yes — link `github.com/benschem/safelyspend`.
 - **Size:** S–M
 - **Deps:** [Phase 1](01_crypto_storage_design.md) final design doc (so copy reflects reality, not aspiration). Otherwise standalone.
 
@@ -14,10 +14,16 @@ being false.
 
 Shipped: where data lives, cloud sync encryption, analytics, hosting, no ads/no selling.
 
-Still to do, and still gated: the per-network-call breakdown of what the server sees,
-what would be handed over if compelled, the recovery tradeoff, and the repo link. These
-depend on the Phase 1 crypto design being final (so the copy describes reality) and on
-Q8 for the repo link. The architecture diagram is also still outstanding.
+Still to do: the per-network-call breakdown of what the server sees, what would be
+handed over if compelled, and the recovery tradeoff. These depend on the Phase 1 crypto
+design being final, so the copy describes reality. The architecture diagram is also
+still outstanding. The repo link is no longer gated — Q8 is answered and the link is
+`github.com/benschem/safelyspend`.
+
+A public repo makes the UI-enforced privacy split below verifiable rather than merely
+asserted: anyone can read the `scope` filter and see that it is a hook check. That is
+the honest version and the one that survives someone reading the source, so the repo
+link and the wording below reinforce each other.
 
 **Not optional:** the page must say plainly that data on
 your device is **not encrypted at rest** — it sits in IndexedDB in the clear,

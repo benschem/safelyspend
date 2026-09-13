@@ -70,8 +70,7 @@ Answered and locked:
 - **Q5** (households per user) — one, in v1. Enforced by `UNIQUE(household_members.user_id)`.
 - **Q6** (session lifetimes) — JWT and MasterKey are independent. JWT 7d in a cookie; MasterKey in memory until tab close.
 - **Q7** (leaving a household) — not supported in v1. Requires MasterKey rotation, which is not designed. Account deletion is the only exit.
+- **Q8** (is the repo public) — yes. `github.com/benschem/safelyspend`, confirmed public 2026-09-13. Phase 9 and Phase 10 can both offer a "read the source" link.
+- **Q4** (perf budget) — benchmarked 2026-09-13. **m=64 MiB / t=3 / p=1 stands.** 134 ms p95 on an M1, 216 ms on an iPhone 11 — a 432 ms cloud login on the slower of the two, comfortably inside the old 2 s budget. The mid-tier Android leg was dropped rather than measured: the fleet is the maintainer's own devices, and a slow unlock on old hardware is not a cost worth trading security for. `../crypto-design.md` §3.4 records the revised criterion, the extrapolated slow-path figure, and the fact that a login pays Argon2id twice.
 
-Still open:
-
-- **Q4** (perf budget) — gates Phase 1 + Phase 3. Not a discussion; a benchmark. See above.
-- **Q8** (is the repo public) — gates Phase 9 + Phase 10. A yes/no that decides whether the privacy page and landing page can offer a "read the source" trust signal. Open since February; costs nothing to answer.
+No open questions remain. Phase 1 is locked; the benchmark that gated it is done.

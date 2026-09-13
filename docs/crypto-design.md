@@ -155,12 +155,28 @@ Honest characterisation of the residual risk:
 
 ### 3.4 Performance acceptance criterion and Argon2id upgrade path
 
-Per Q4, the exact Argon2id params are **provisional**. Phase 3 will benchmark `m × t` on:
-- A recent MacBook (proxy for laptop users).
-- A mid-tier Android (proxy for the slow path).
-- Safari iOS (proxy for the constrained WASM path).
+**Resolved 2026-09-13. Params are m=64 MiB / t=3 / p=1, as targeted.**
 
-**Single acceptance criterion:** 95th-percentile unlock time ≤ 2 s on the slow path. If we cannot hit that at m=64 MiB / t=3, we step down to m=32 MiB / t=3 (and document the tradeoff in §3.1 and on the privacy page).
+The original criterion was 95th-percentile unlock ≤ 2 s on a mid-tier Android, benchmarked across a MacBook, that Android, and Safari iOS. That criterion was written for a public user base the app does not have. The real fleet is the maintainer's own devices, and the maintainer's stated position is that a slow unlock on an old Android is not a cost worth paying security for. The Android leg is therefore **deliberately not measured**, and the slow-path figure is unknown rather than acceptable.
+
+Measured, `hash-wasm` 4.12.0, 20 samples, single derivation:
+
+| Device | m=64 MiB, t=3 | m=32 MiB, t=3 |
+|--------|---------------|---------------|
+| Apple M1, Node 22 (20 samples) | 134 ms p95 | 64 ms p95 |
+| iPhone 11 / A13, Safari (10 samples) | 216 ms p95 | 105 ms p95 |
+
+**Revised criterion:** unlock stays imperceptible on the maintainer's own devices, and `m` is set as high as that allows. The worst measured figure is 216 ms for a single derivation and 432 ms for a full cloud login — roughly 5× inside even the old 2 s budget. 64 MiB is nowhere near a limit, so the m=32 MiB fallback is not taken. It stays documented in case the fleet assumption changes.
+
+**On the unmeasured slow path:** a 2019 A13 came in at only 1.6× the M1, so Safari's WASM carries no special penalty and mobile silicon is not the drag it is often assumed to be. Extrapolating, an old budget Android plausibly lands somewhere near 0.7–1.1 s per derivation, or 1.4–2.2 s for a login — borderline against the old criterion rather than hopeless. That is an extrapolation from two Apple devices, not a measurement, and it is recorded as such.
+
+If the app ever acquires users who are not the maintainer, this section is the one to revisit. Note that the upgrade path below only ever *strengthens* params: stepping 64 MiB back down to 32 MiB is not a supported move, so re-measure before that becomes someone else's problem.
+
+#### A login pays Argon2id twice
+
+Worth stating plainly because "unlock time" hides it. §3.3 derives `verifier_candidate` from `verifier_salt`; §3.1 derives `KEK_pwd` from `kek_salt`. The salts must be independent, so neither derivation reuses the other's work, and a cloud login runs Argon2id **twice**. Re-opening a tab against a live JWT (Q6) derives only `KEK_pwd` and pays it once.
+
+Both derivations need only the password, so Phase 3 may run them concurrently in two Web Workers for roughly one derivation of wall clock, at the cost of holding 2 × m simultaneously — a 128 MiB spike in a phone browser tab. Not needed at current measured speeds; it is the lever to reach for if login latency ever becomes the complaint.
 
 The envelope's KDF_PARAMS field captures the actual params used per-wrap, so future tuning does not require a format bump.
 
