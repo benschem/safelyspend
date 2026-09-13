@@ -20,6 +20,8 @@ Re-verified immediately before the production reset: `vaults` 0 rows, `sync_stat
 
 The remote sequence was: drop the six v1 tables, `DELETE FROM d1_migrations` (4 entries), re-apply. Production now holds the 12 new tables and 19 named indexes, with `vaults` keyed by `household_id` and no `user_id` column. The pre-reset D1 bookmark was `00000013-00000000-000050e5-3e12429faad9bc55c7ade3eb4e1f5648`, restorable via Time Travel for 30 days.
 
+The schema was re-applied once more the same day, to add `'declined'` to the `invites.status` CHECK before anything could be written (see `07_invite_flow.md`). Production carries that version; it does not need a later table rebuild.
+
 **The deployed worker has not been redeployed**, so the live API is v1 code against a v2 schema until Phase 4 or 5 ships the client to match. That is the same deliberate outage as the rest of the interval. `worker/README.md` has the full procedure.
 
 ## Conventions used in each phase file
