@@ -1,3 +1,12 @@
+/** Vault storage. Scoped to the household, not the user: both partners read and write
+ *  the same encrypted blob, and the R2 key is <household_id>/<vault_id>.
+ *
+ *  The optimistic-concurrency machinery is unchanged from the single-user version, but
+ *  its meaning is not: a rejected push used to mean your own stale tab, and now
+ *  routinely means your partner got there first. What the losing client does about
+ *  that is Phase 8's call.
+ */
+
 import { generateId } from '../lib/id.js';
 import { sha256ArrayBuffer } from '../lib/crypto.js';
 import { conflict } from '../lib/errors.js';
@@ -11,9 +20,7 @@ interface VaultMetadataRow {
 
 interface VaultRow {
   id: string;
-  user_id: string;
   version: number;
-  r2_key: string;
   size_bytes: number;
   checksum: string;
   created_at: string;
@@ -48,16 +55,16 @@ export interface VaultHistoryEntry {
 
 export async function getMetadata(
   db: D1Database,
-  userId: string,
+  householdId: string,
 ): Promise<VaultMetadata | null> {
   const row = await db
     .prepare(
       `SELECT s.current_version, v.size_bytes, v.checksum, s.updated_at
        FROM sync_state s
        LEFT JOIN vaults v ON v.id = s.current_vault_id
-       WHERE s.user_id = ?`,
+       WHERE s.household_id = ?`,
     )
-    .bind(userId)
+    .bind(householdId)
     .first<VaultMetadataRow>();
 
   if (!row || row.current_version === 0) {
@@ -75,16 +82,16 @@ export async function getMetadata(
 export async function getData(
   db: D1Database,
   bucket: R2Bucket,
-  userId: string,
+  householdId: string,
 ): Promise<VaultData | null> {
   const vault = await db
     .prepare(
       `SELECT v.r2_key, v.version, v.size_bytes, v.checksum
        FROM sync_state s
        JOIN vaults v ON v.id = s.current_vault_id
-       WHERE s.user_id = ?`,
+       WHERE s.household_id = ?`,
     )
-    .bind(userId)
+    .bind(householdId)
     .first<{ r2_key: string; version: number; size_bytes: number; checksum: string }>();
 
   if (!vault) {
@@ -107,14 +114,12 @@ export async function getData(
 export async function getDataByVaultId(
   db: D1Database,
   bucket: R2Bucket,
-  userId: string,
+  householdId: string,
   vaultId: string,
 ): Promise<{ body: ReadableStream; version: number } | null> {
   const vault = await db
-    .prepare(
-      'SELECT r2_key, version FROM vaults WHERE id = ? AND user_id = ?',
-    )
-    .bind(vaultId, userId)
+    .prepare('SELECT r2_key, version FROM vaults WHERE id = ? AND household_id = ?')
+    .bind(vaultId, householdId)
     .first<{ r2_key: string; version: number }>();
 
   if (!vault) {
@@ -135,7 +140,7 @@ export async function getDataByVaultId(
 export async function putData(
   db: D1Database,
   bucket: R2Bucket,
-  userId: string,
+  householdId: string,
   data: ArrayBuffer,
   expectedVersion: number,
   idempotencyKey?: string,
@@ -143,8 +148,8 @@ export async function putData(
   // If idempotency key provided, check for a previous upload with the same key
   if (idempotencyKey) {
     const existing = await db
-      .prepare('SELECT id, version FROM vaults WHERE user_id = ? AND idempotency_key = ?')
-      .bind(userId, idempotencyKey)
+      .prepare('SELECT id, version FROM vaults WHERE household_id = ? AND idempotency_key = ?')
+      .bind(householdId, idempotencyKey)
       .first<{ id: string; version: number }>();
 
     if (existing) {
@@ -154,8 +159,8 @@ export async function putData(
 
   // Pre-check current version (fast reject for stale clients before R2 upload)
   const syncState = await db
-    .prepare('SELECT current_version, current_vault_id FROM sync_state WHERE user_id = ?')
-    .bind(userId)
+    .prepare('SELECT current_version, current_vault_id FROM sync_state WHERE household_id = ?')
+    .bind(householdId)
     .first<SyncStateRow>();
 
   const currentVersion = syncState?.current_version ?? 0;
@@ -166,7 +171,7 @@ export async function putData(
 
   const newVersion = currentVersion + 1;
   const vaultId = generateId();
-  const r2Key = `${userId}/${vaultId}`;
+  const r2Key = `${householdId}/${vaultId}`;
   const checksum = await sha256ArrayBuffer(data);
   const sizeBytes = data.byteLength;
   const now = new Date().toISOString();
@@ -179,42 +184,42 @@ export async function putData(
     const batchResults = await db.batch([
       db
         .prepare(
-          'INSERT INTO vaults (id, user_id, version, r2_key, size_bytes, checksum, created_at, idempotency_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          'INSERT INTO vaults (id, household_id, version, r2_key, size_bytes, checksum, created_at, idempotency_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         )
-        .bind(vaultId, userId, newVersion, r2Key, sizeBytes, checksum, now, idempotencyKey ?? null),
+        .bind(vaultId, householdId, newVersion, r2Key, sizeBytes, checksum, now, idempotencyKey ?? null),
       syncState
         ? db
             .prepare(
-              'UPDATE sync_state SET current_version = ?, current_vault_id = ?, updated_at = ? WHERE user_id = ? AND current_version = ?',
+              'UPDATE sync_state SET current_version = ?, current_vault_id = ?, updated_at = ? WHERE household_id = ? AND current_version = ?',
             )
-            .bind(newVersion, vaultId, now, userId, expectedVersion)
+            .bind(newVersion, vaultId, now, householdId, expectedVersion)
         : db
             .prepare(
-              'INSERT INTO sync_state (user_id, current_version, current_vault_id, updated_at) VALUES (?, ?, ?, ?)',
+              'INSERT INTO sync_state (household_id, current_version, current_vault_id, updated_at) VALUES (?, ?, ?, ?)',
             )
-            .bind(userId, newVersion, vaultId, now),
+            .bind(householdId, newVersion, vaultId, now),
     ]);
 
     // Check if UPDATE affected 0 rows (another request snuck in)
-    if (syncState && batchResults[1].meta.changes === 0) {
+    if (syncState && batchResults[1]?.meta.changes === 0) {
       // Clean up orphan vault record + R2
       await Promise.all([
         db.prepare('DELETE FROM vaults WHERE id = ?').bind(vaultId).run(),
         bucket.delete(r2Key),
       ]);
       const latest = await db
-        .prepare('SELECT current_version FROM sync_state WHERE user_id = ?')
-        .bind(userId)
+        .prepare('SELECT current_version FROM sync_state WHERE household_id = ?')
+        .bind(householdId)
         .first<{ current_version: number }>();
       throw conflict('Version conflict', { currentVersion: latest?.current_version ?? currentVersion });
     }
   } catch (err) {
-    // Unique constraint violation on vaults(user_id, version) means concurrent write
+    // Unique constraint violation on vaults(household_id, version) means concurrent write
     if (err instanceof Error && err.message.includes('UNIQUE constraint failed')) {
       await bucket.delete(r2Key);
       const latest = await db
-        .prepare('SELECT current_version FROM sync_state WHERE user_id = ?')
-        .bind(userId)
+        .prepare('SELECT current_version FROM sync_state WHERE household_id = ?')
+        .bind(householdId)
         .first<{ current_version: number }>();
       throw conflict('Version conflict', { currentVersion: latest?.current_version ?? currentVersion });
     }
@@ -234,13 +239,13 @@ export async function putData(
 
 export async function getHistory(
   db: D1Database,
-  userId: string,
+  householdId: string,
 ): Promise<VaultHistoryEntry[]> {
   const { results } = await db
     .prepare(
-      'SELECT id, version, size_bytes, checksum, created_at FROM vaults WHERE user_id = ? ORDER BY version DESC LIMIT 100',
+      'SELECT id, version, size_bytes, checksum, created_at FROM vaults WHERE household_id = ? ORDER BY version DESC LIMIT 100',
     )
-    .bind(userId)
+    .bind(householdId)
     .all<VaultRow>();
 
   return results.map((row) => ({
@@ -255,15 +260,15 @@ export async function getHistory(
 export async function pruneOldVersions(
   db: D1Database,
   bucket: R2Bucket,
-  userId: string,
+  householdId: string,
   keepCount: number,
 ): Promise<void> {
   // Get all vaults ordered by version desc, skip the first `keepCount`
   const { results } = await db
     .prepare(
-      'SELECT id, r2_key FROM vaults WHERE user_id = ? ORDER BY version DESC LIMIT -1 OFFSET ?',
+      'SELECT id, r2_key FROM vaults WHERE household_id = ? ORDER BY version DESC LIMIT -1 OFFSET ?',
     )
-    .bind(userId, keepCount)
+    .bind(householdId, keepCount)
     .all<{ id: string; r2_key: string }>();
 
   if (results.length === 0) {
@@ -278,8 +283,8 @@ export async function pruneOldVersions(
   const ids = results.map((r) => r.id);
   const placeholders = ids.map(() => '?').join(', ');
   await db
-    .prepare(`DELETE FROM vaults WHERE id IN (${placeholders}) AND user_id = ?`)
-    .bind(...ids, userId)
+    .prepare(`DELETE FROM vaults WHERE id IN (${placeholders}) AND household_id = ?`)
+    .bind(...ids, householdId)
     .run();
 }
 
@@ -288,15 +293,17 @@ export interface StorageSummary {
   versionCount: number;
 }
 
+/** Per household, not per user. Two partners now share the quota one person used to
+ *  have to themselves, so the user-facing copy has to say "household". */
 export async function getTotalStorage(
   db: D1Database,
-  userId: string,
+  householdId: string,
 ): Promise<StorageSummary> {
   const row = await db
     .prepare(
-      'SELECT COALESCE(SUM(size_bytes), 0) as total_bytes, COUNT(*) as version_count FROM vaults WHERE user_id = ?',
+      'SELECT COALESCE(SUM(size_bytes), 0) as total_bytes, COUNT(*) as version_count FROM vaults WHERE household_id = ?',
     )
-    .bind(userId)
+    .bind(householdId)
     .first<{ total_bytes: number; version_count: number }>();
 
   return {
@@ -319,8 +326,8 @@ export async function cleanupOrphanedR2Objects(
     scanned += keys.length;
 
     if (keys.length > 0) {
-      // Extract vault IDs from R2 keys (format: {userId}/{vaultId})
-      const vaultIds = keys.map((key) => key.split('/')[1]).filter(Boolean);
+      // Extract vault IDs from R2 keys (format: {householdId}/{vaultId})
+      const vaultIds = keys.map((key) => key.split('/')[1]).filter(Boolean) as string[];
 
       if (vaultIds.length > 0) {
         // Batch-check which vault IDs exist in the DB
@@ -351,21 +358,24 @@ export async function cleanupOrphanedR2Objects(
   console.info(JSON.stringify({ event: 'orphan_cleanup', scanned, deleted }));
 }
 
-export async function deleteAllForUser(
+/** Tear down a household's vault entirely. Called when the last member deletes their
+ *  account — `households` has no foreign key to `users`, so nothing cascades here on
+ *  its own and the rows have to be removed explicitly. */
+export async function deleteAllForHousehold(
   db: D1Database,
   bucket: R2Bucket,
-  userId: string,
+  householdId: string,
 ): Promise<void> {
-  // Get all R2 keys for this user
+  // Get all R2 keys for this household
   const { results } = await db
-    .prepare('SELECT r2_key FROM vaults WHERE user_id = ?')
-    .bind(userId)
+    .prepare('SELECT r2_key FROM vaults WHERE household_id = ?')
+    .bind(householdId)
     .all<{ r2_key: string }>();
 
   // Atomic batch: delete sync_state before vaults due to foreign key
   await db.batch([
-    db.prepare('DELETE FROM sync_state WHERE user_id = ?').bind(userId),
-    db.prepare('DELETE FROM vaults WHERE user_id = ?').bind(userId),
+    db.prepare('DELETE FROM sync_state WHERE household_id = ?').bind(householdId),
+    db.prepare('DELETE FROM vaults WHERE household_id = ?').bind(householdId),
   ]);
 
   // Delete R2 objects (best-effort after DB records are gone)

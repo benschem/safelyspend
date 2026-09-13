@@ -1,8 +1,10 @@
 import { generateId } from '../lib/id.js';
 import { sha256, generateAuthCode } from '../lib/crypto.js';
+import { randomToken } from '../lib/bytes.js';
 import { tooManyRequests } from '../lib/errors.js';
 
 const AUTH_CODE_EXPIRY_MINUTES = 10;
+const AUTH_PENDING_EXPIRY_MINUTES = 5;
 const MAX_ATTEMPTS = 5;
 const MAX_DAILY_FAILED_ATTEMPTS = 15;
 
@@ -101,5 +103,57 @@ export async function cleanupExpiredCodes(db: D1Database): Promise<void> {
   // (created_at uses datetime('now') which returns 'YYYY-MM-DD HH:MM:SS')
   await db
     .prepare("DELETE FROM auth_codes WHERE created_at < datetime('now', '-1 hour')")
+    .run();
+}
+
+// --- Bridge tokens (auth_pending) ---
+
+/** Issued once the OTP has been verified, and spent by /login-complete or /signup.
+ *  A dedicated single-use bearer credential rather than a JWT with a purpose claim:
+ *  a purpose claim is only as good as every handler remembering to check it. */
+export async function createAuthPending(db: D1Database, userId: string): Promise<string> {
+  const token = randomToken();
+  const expiresAt = new Date(
+    Date.now() + AUTH_PENDING_EXPIRY_MINUTES * 60 * 1000,
+  ).toISOString();
+
+  await db
+    .prepare('INSERT INTO auth_pending (id, user_id, expires_at) VALUES (?, ?, ?)')
+    .bind(token, userId, expiresAt)
+    .run();
+
+  return token;
+}
+
+/** Spend the bridge token, returning the user it was issued to, or null if it is
+ *  unknown, expired, or already used.
+ *
+ *  The single guarded UPDATE is the atomic gate for everything that follows. It runs
+ *  before the caller's batch rather than inside it because D1 rolls a batch back only
+ *  on a statement *error* — a guarded UPDATE that matches no rows is a success with
+ *  zero changes, so putting it in the batch would let the rest of the batch apply
+ *  against a token that was already spent. The cost is that a failure after this
+ *  point burns the token and the user redoes the OTP.
+ */
+export async function consumeAuthPending(
+  db: D1Database,
+  token: string,
+): Promise<string | null> {
+  const now = new Date().toISOString();
+  const row = await db
+    .prepare(
+      `UPDATE auth_pending SET used_at = ?
+       WHERE id = ? AND used_at IS NULL AND expires_at > ?
+       RETURNING user_id`,
+    )
+    .bind(now, token, now)
+    .first<{ user_id: string }>();
+
+  return row?.user_id ?? null;
+}
+
+export async function cleanupExpiredAuthPending(db: D1Database): Promise<void> {
+  await db
+    .prepare("DELETE FROM auth_pending WHERE expires_at < datetime('now', '-1 hour')")
     .run();
 }

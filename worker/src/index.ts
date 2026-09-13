@@ -57,7 +57,7 @@ app.onError((err, c) => {
         code: err.code,
         ...(err.data ? { data: err.data } : {}),
       },
-      err.status as 400 | 401 | 403 | 404 | 409 | 429 | 500,
+      err.status as 400 | 401 | 403 | 404 | 409 | 410 | 413 | 429 | 500,
     );
   }
 

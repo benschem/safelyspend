@@ -1,13 +1,17 @@
 import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, requireFullSession, requireHousehold } from '../middleware/auth.js';
 import { rateLimit, userRateLimit } from '../middleware/rate-limit.js';
 import { AppError, badRequest, notFound, payloadTooLarge } from '../lib/errors.js';
+import { assertVaultBlob } from '../lib/key-material.js';
 import * as vaultService from '../services/vault.js';
+import { householdIdOrThrow } from './helpers.js';
 import type { HonoEnv } from '../types.js';
 
 const KEEP_VERSIONS = 10;
 const MAX_VAULT_SIZE = 10 * 1024 * 1024; // 10MB
-const MAX_USER_STORAGE = 50 * 1024 * 1024; // 50MB
+/** Per household, not per user — two partners now share what one person used to have
+ *  to themselves, and the user-facing copy has to say so. */
+const MAX_HOUSEHOLD_STORAGE = 50 * 1024 * 1024; // 50MB
 
 /** Read request body as stream with early abort if size exceeds limit. */
 async function readBodyWithLimit(req: Request, maxSize: number): Promise<ArrayBuffer> {
@@ -61,13 +65,14 @@ const userUploadLimit = userRateLimit({ max: 60, windowSeconds: 60, keyPrefix: '
 
 const vault = new Hono<HonoEnv>();
 
-// All vault routes require authentication
-vault.use('*', authMiddleware);
+// Every vault route is scoped to the caller's household, so all three guards apply:
+// authenticated, not a recovery-only session, and actually in a household.
+vault.use('*', authMiddleware, requireFullSession, requireHousehold);
 
 // GET /vault - Get vault metadata
 vault.get('/', readRateLimit, userReadLimit, async (c) => {
-  const user = c.get('user');
-  const metadata = await vaultService.getMetadata(c.env.DB, user.id);
+  const householdId = householdIdOrThrow(c);
+  const metadata = await vaultService.getMetadata(c.env.DB, householdId);
 
   if (!metadata) {
     return c.json({ version: 0 });
@@ -83,8 +88,8 @@ vault.get('/', readRateLimit, userReadLimit, async (c) => {
 
 // GET /vault/data - Stream current encrypted blob
 vault.get('/data', readRateLimit, userReadLimit, async (c) => {
-  const user = c.get('user');
-  const data = await vaultService.getData(c.env.DB, c.env.VAULT_BUCKET, user.id);
+  const householdId = householdIdOrThrow(c);
+  const data = await vaultService.getData(c.env.DB, c.env.VAULT_BUCKET, householdId);
 
   if (!data) {
     throw notFound('No vault data found');
@@ -102,6 +107,7 @@ vault.get('/data', readRateLimit, userReadLimit, async (c) => {
 // PUT /vault/data - Upload encrypted blob
 vault.put('/data', uploadRateLimit, userUploadLimit, async (c) => {
   const user = c.get('user');
+  const householdId = householdIdOrThrow(c);
 
   const contentType = c.req.header('content-type') ?? '';
   if (!contentType.includes('application/octet-stream')) {
@@ -128,12 +134,16 @@ vault.put('/data', uploadRateLimit, userUploadLimit, async (c) => {
   // rather than buffering the entire request before checking
   const body = await readBodyWithLimit(c.req.raw, MAX_VAULT_SIZE);
 
-  // Check per-user storage quota before uploading
-  const storage = await vaultService.getTotalStorage(c.env.DB, user.id);
-  if (storage.totalBytes + body.byteLength > MAX_USER_STORAGE) {
+  // Reject anything that is not a format-v2 vault envelope. One rule, no legacy
+  // branch: there is no older format for a client to be steered back onto.
+  assertVaultBlob(new Uint8Array(body));
+
+  // Check the household's storage quota before uploading
+  const storage = await vaultService.getTotalStorage(c.env.DB, householdId);
+  if (storage.totalBytes + body.byteLength > MAX_HOUSEHOLD_STORAGE) {
     throw payloadTooLarge('Storage quota exceeded', {
       currentBytes: storage.totalBytes,
-      maxBytes: MAX_USER_STORAGE,
+      maxBytes: MAX_HOUSEHOLD_STORAGE,
     });
   }
 
@@ -143,30 +153,30 @@ vault.put('/data', uploadRateLimit, userUploadLimit, async (c) => {
     const result = await vaultService.putData(
       c.env.DB,
       c.env.VAULT_BUCKET,
-      user.id,
+      householdId,
       body,
       expectedVersion,
       idempotencyKey,
     );
 
     const requestId = c.get('requestId');
-    console.info(JSON.stringify({ event: 'vault_uploaded', requestId, userId: user.id, version: result.version, sizeBytes: body.byteLength }));
+    console.info(JSON.stringify({ event: 'vault_uploaded', requestId, userId: user.id, householdId, version: result.version, sizeBytes: body.byteLength }));
 
     // Background tasks: prune old versions + log storage summary
     c.executionCtx.waitUntil(
       Promise.all([
-        vaultService.pruneOldVersions(c.env.DB, c.env.VAULT_BUCKET, user.id, KEEP_VERSIONS)
+        vaultService.pruneOldVersions(c.env.DB, c.env.VAULT_BUCKET, householdId, KEEP_VERSIONS)
           .catch((err) => console.error(JSON.stringify({
             event: 'background_task_failed',
             requestId,
             task: 'vault_prune',
             error: err instanceof Error ? err.message : 'Unknown error',
           }))),
-        vaultService.getTotalStorage(c.env.DB, user.id)
+        vaultService.getTotalStorage(c.env.DB, householdId)
           .then((summary) => console.info(JSON.stringify({
             event: 'vault_storage_summary',
             requestId,
-            userId: user.id,
+            householdId,
             totalBytes: summary.totalBytes,
             versionCount: summary.versionCount,
           })))
@@ -197,20 +207,20 @@ vault.put('/data', uploadRateLimit, userUploadLimit, async (c) => {
 
 // GET /vault/history - List all vault versions
 vault.get('/history', readRateLimit, userReadLimit, async (c) => {
-  const user = c.get('user');
-  const history = await vaultService.getHistory(c.env.DB, user.id);
+  const householdId = householdIdOrThrow(c);
+  const history = await vaultService.getHistory(c.env.DB, householdId);
   return c.json({ versions: history });
 });
 
 // GET /vault/data/:vaultId - Stream specific historical version
 vault.get('/data/:vaultId', readRateLimit, userReadLimit, async (c) => {
-  const user = c.get('user');
+  const householdId = householdIdOrThrow(c);
   const vaultId = c.req.param('vaultId');
 
   const data = await vaultService.getDataByVaultId(
     c.env.DB,
     c.env.VAULT_BUCKET,
-    user.id,
+    householdId,
     vaultId,
   );
 

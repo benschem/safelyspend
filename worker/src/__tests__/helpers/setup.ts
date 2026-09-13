@@ -1,11 +1,9 @@
 import { env, createExecutionContext, waitOnExecutionContext } from 'cloudflare:test';
 import { jwtSign } from '../../lib/crypto.js';
 import { generateId } from '../../lib/id.js';
+import { COOKIE_NAME, JWT_EXPIRY_SECONDS } from '../../lib/session.js';
 import app from '../../index.js';
 import migration0001 from '../../../migrations/0001_initial.sql?raw';
-import migration0002 from '../../../migrations/0002_security.sql?raw';
-import migration0003 from '../../../migrations/0003_cleanup_indexes.sql?raw';
-import migration0004 from '../../../migrations/0004_idempotency.sql?raw';
 
 /** Split multi-statement SQL and execute each statement individually.
  *  D1's exec() has observability bugs in the test runtime, so we use prepare().run(). */
@@ -21,31 +19,65 @@ async function execStatements(db: D1Database, sql: string): Promise<void> {
 
 export async function applyMigrations(db: D1Database): Promise<void> {
   await execStatements(db, migration0001);
-  await execStatements(db, migration0002);
-  await execStatements(db, migration0003);
-  await execStatements(db, migration0004);
 }
 
-export const COOKIE_NAME = '__budget_session';
-export const JWT_EXPIRY_SECONDS = 7 * 24 * 60 * 60;
+// Re-exported so the tests assert against the values the app actually ships, rather
+// than against a second copy that could drift away from them unnoticed.
+export { COOKIE_NAME, JWT_EXPIRY_SECONDS };
+
 const SESSION_EXPIRY_SECONDS = 30 * 24 * 60 * 60;
 
-export async function createAuthenticatedUser(
-  db: D1Database,
-  options?: { jwtExpiry?: number },
-): Promise<{
+export interface TestUser {
   user: { id: string; email: string };
+  householdId: string | null;
   sessionId: string;
   cookie: string;
-}> {
+}
+
+export interface CreateUserOptions {
+  jwtExpiry?: number;
+  /** Skip household creation, mirroring an invitee whose handoff has not completed. */
+  withoutHousehold?: boolean;
+  /** Mark the session as recovery-only, as /login-complete does for `via=recovery`. */
+  viaRecovery?: boolean;
+  /** Join this existing household rather than creating a new one. */
+  joinHouseholdId?: string;
+  email?: string;
+}
+
+/** Seed a signed-up user with a live session, straight into the database. Bypasses the
+ *  OTP and verifier flow, which is what the auth route tests exercise directly. */
+export async function createAuthenticatedUser(
+  db: D1Database,
+  options: CreateUserOptions = {},
+): Promise<TestUser> {
   const userId = generateId();
-  const email = `test-${userId.slice(0, 8)}@example.com`;
+  const email = options.email ?? `test-${userId.slice(0, 8)}@example.com`;
   const now = new Date().toISOString();
 
   await db
-    .prepare('INSERT INTO users (id, email, created_at, updated_at) VALUES (?, ?, ?, ?)')
-    .bind(userId, email, now, now)
+    .prepare(
+      'INSERT INTO users (id, email, pubkey, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+    )
+    .bind(userId, email, new Uint8Array(32).fill(7), now, now)
     .run();
+
+  let householdId: string | null = null;
+  if (!options.withoutHousehold) {
+    householdId = options.joinHouseholdId ?? generateId();
+    if (!options.joinHouseholdId) {
+      await db
+        .prepare('INSERT INTO households (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)')
+        .bind(householdId, 'Test Household', now, now)
+        .run();
+    }
+    await db
+      .prepare(
+        'INSERT INTO household_members (id, household_id, user_id, role, joined_at) VALUES (?, ?, ?, ?, ?)',
+      )
+      .bind(generateId(), householdId, userId, options.joinHouseholdId ? 'member' : 'owner', now)
+      .run();
+  }
 
   const sessionId = generateId();
   const expiresAt = new Date(Date.now() + SESSION_EXPIRY_SECONDS * 1000).toISOString();
@@ -55,16 +87,46 @@ export async function createAuthenticatedUser(
     .run();
 
   const token = await jwtSign(
-    { sub: userId, sid: sessionId, email },
+    {
+      sub: userId,
+      sid: sessionId,
+      email,
+      ...(householdId ? { hid: householdId } : {}),
+      ...(options.viaRecovery ? { rec: true } : {}),
+    },
     env.JWT_SECRET,
-    options?.jwtExpiry ?? JWT_EXPIRY_SECONDS,
+    options.jwtExpiry ?? JWT_EXPIRY_SECONDS,
   );
 
   return {
     user: { id: userId, email },
+    householdId,
     sessionId,
     cookie: `${COOKIE_NAME}=${token}`,
   };
+}
+
+/** Drive the real OTP flow up to the bridge token, the way a client would. */
+export async function requestBridgeToken(
+  email: string,
+  capturedCode: () => string,
+): Promise<{ authPendingToken: string; verifierSalt: string | null }> {
+  await appFetch(jsonRequest('/v1/auth/login', { email }));
+  const res = await appFetch(jsonRequest('/v1/auth/verify-otp', { email, code: capturedCode() }));
+
+  if (res.status !== 200) {
+    throw new Error(`verify-otp failed with ${res.status}`);
+  }
+  return (await res.json()) as { authPendingToken: string; verifierSalt: string | null };
+}
+
+/** Build an authenticated request with no body. */
+export function authedRequest(
+  path: string,
+  cookie: string,
+  method = 'GET',
+): Request {
+  return new Request(`http://localhost${path}`, { method, headers: { Cookie: cookie } });
 }
 
 /** Build a JSON POST request. */
