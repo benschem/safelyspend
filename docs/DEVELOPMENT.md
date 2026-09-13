@@ -149,7 +149,10 @@ npm run test:run    # Single run
 What's covered:
 - `lib/utils.test.ts` — Date helpers, formatting, `toMonthlyCents`
 - `lib/import-schema.test.ts` — Zod schema validation, import migration
-- `lib/e2e-crypto.test.ts` — Encrypt/decrypt round-trip
+- `lib/envelope.test.ts` — Ciphertext framing, header parsing, AAD binding
+- `lib/key-management.test.ts` — Key derivation, wrapping, vault round-trip
+- `lib/argon2-conformance.test.ts` — Argon2id known-answer vectors (pins `hash-wasm`)
+- `lib/hkdf-conformance.test.ts` — HKDF known-answer vectors (pins `@noble/hashes`)
 - `lib/db-versioning.test.ts` — Schema version checks
 - `lib/up-csv-parser.test.ts` — Up Bank CSV parsing
 - `lib/duplicate-detection.test.ts` — Import fingerprint dedup

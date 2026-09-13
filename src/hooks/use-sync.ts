@@ -1,10 +1,11 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useCallback, useSyncExternalStore } from 'react';
 import { api, ApiError } from '@/lib/api-client';
-import { encrypt, decrypt, isWrongPassphrase } from '@/lib/e2e-crypto';
+import { decryptVault, encryptVault, isWrongKey } from '@/lib/key-management';
+import { getMasterKey, isVaultUnlocked, lockKeyVault } from '@/lib/key-vault';
 import { exportAllData, importAllData } from '@/lib/db';
 import { validateImport } from '@/lib/import-schema';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
-import type { BudgetData } from '@/lib/types';
+import type { BudgetData, MasterKey } from '@/lib/types';
 
 type SyncStatus = 'idle' | 'pushing' | 'pulling';
 
@@ -14,12 +15,18 @@ interface ConflictInfo {
 }
 
 interface UseSyncReturn {
-  /** Whether a passphrase has been entered this session */
-  hasPassphrase: boolean;
-  /** Set the passphrase for this session */
-  setPassphrase: (passphrase: string) => void;
-  /** Clear the passphrase */
-  clearPassphrase: () => void;
+  /** Whether this session holds a MasterKey — see `key-vault.ts`. */
+  isUnlocked: boolean;
+  /**
+   * Unlock the session from the account password.
+   *
+   * Not implemented until Phase 5: unlocking means fetching the user's wrapped
+   * key rows, deriving KEK_pwd and unwrapping, and none of those endpoints
+   * exist yet. Throws rather than failing quietly.
+   */
+  unlockWithPassword: (password: string) => Promise<void>;
+  /** Drop the MasterKey. Does not touch the server session (overview Q6). */
+  lock: () => void;
   /** Current sync operation status */
   syncStatus: SyncStatus;
   /** Conflict info if a push was rejected */
@@ -53,35 +60,71 @@ function setStoredLastSyncedAt(timestamp: string): void {
   localStorage.setItem(STORAGE_KEYS.SYNC_LAST_SYNCED_AT, timestamp);
 }
 
+/**
+ * Shown verbatim by `login.tsx` and `settings.tsx`. Phase 3 deliberately ships
+ * the sync controls in a knowingly broken state rather than behind a flag —
+ * see the step 6 decision in `docs/auth-rewrite/03_client_crypto_rewrite.md` —
+ * so this message is the whole of the unlock user experience until Phase 5.
+ */
+const VAULT_REBUILDING_MESSAGE = 'Cloud sync is being rebuilt and cannot be unlocked yet.';
+
+/**
+ * The key vault is a module-level variable rather than React state, so every
+ * `useSync` caller has to be told when it changes. Subscribers are held here
+ * and notified on lock; Phase 5 notifies on unlock through the same path.
+ */
+const unlockListeners = new Set<() => void>();
+
+function subscribeToUnlockState(listener: () => void): () => void {
+  unlockListeners.add(listener);
+  return () => {
+    unlockListeners.delete(listener);
+  };
+}
+
+function notifyUnlockStateChanged(): void {
+  unlockListeners.forEach((listener) => listener());
+}
+
+function requireMasterKey(): MasterKey {
+  const masterKey = getMasterKey();
+  if (!masterKey) {
+    throw new Error('Vault is locked');
+  }
+  return masterKey;
+}
+
 export function useSync(): UseSyncReturn {
-  const passphraseRef = useRef<string | null>(null);
-  const [hasPassphrase, setHasPassphrase] = useState(false);
+  const isUnlocked = useSyncExternalStore(subscribeToUnlockState, isVaultUnlocked);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const [conflict, setConflict] = useState<ConflictInfo | null>(null);
   const [localVersion, setLocalVersion] = useState(getStoredVersion);
   const [lastSyncedAt, setLastSyncedAt] = useState(getStoredLastSyncedAt);
 
-  const setPassphrase = useCallback((passphrase: string) => {
-    passphraseRef.current = passphrase;
-    setHasPassphrase(true);
-  }, []);
+  // Takes no parameter yet, which still satisfies the one-argument type above.
+  // Phase 5 adds `password` back when there is something to derive from it,
+  // and replaces this body: GET the wrapped key rows, deriveKek against the
+  // returned kek_salt, unwrapMasterKey, unwrapPrivateKey, put both in the key
+  // vault, then notifyUnlockStateChanged().
+  const unlockWithPassword = useCallback(
+    (): Promise<void> => Promise.reject(new Error(VAULT_REBUILDING_MESSAGE)),
+    [],
+  );
 
-  const clearPassphrase = useCallback(() => {
-    passphraseRef.current = null;
-    setHasPassphrase(false);
+  const lock = useCallback(() => {
+    lockKeyVault();
+    notifyUnlockStateChanged();
   }, []);
 
   const push = useCallback(async (force?: boolean): Promise<{ version: number }> => {
-    if (!passphraseRef.current) {
-      throw new Error('Passphrase not set');
-    }
+    const masterKey = requireMasterKey();
 
     setSyncStatus('pushing');
     setConflict(null);
 
     try {
       const backup = await exportAllData();
-      const encrypted = await encrypt(backup, passphraseRef.current);
+      const encrypted = await encryptVault(masterKey, backup);
 
       let expectedVersion = getStoredVersion();
       if (force) {
@@ -90,7 +133,7 @@ export function useSync(): UseSyncReturn {
         expectedVersion = metadata.version;
       }
 
-      const result = await api.vault.putData(encrypted, expectedVersion);
+      const result = await api.vault.putData(encrypted.buffer as ArrayBuffer, expectedVersion);
 
       setStoredVersion(result.version);
       setLocalVersion(result.version);
@@ -115,16 +158,14 @@ export function useSync(): UseSyncReturn {
   }, []);
 
   const pull = useCallback(async (): Promise<void> => {
-    if (!passphraseRef.current) {
-      throw new Error('Passphrase not set');
-    }
+    const masterKey = requireMasterKey();
 
     setSyncStatus('pulling');
     setConflict(null);
 
     try {
       const { data: encryptedData, version } = await api.vault.getData();
-      const backup = await decrypt(encryptedData, passphraseRef.current);
+      const backup = await decryptVault(masterKey, new Uint8Array(encryptedData));
 
       // Validate using existing Zod schema
       const validated = validateImport(backup);
@@ -140,8 +181,8 @@ export function useSync(): UseSyncReturn {
       setStoredLastSyncedAt(now);
       setLastSyncedAt(now);
     } catch (err) {
-      if (isWrongPassphrase(err)) {
-        throw new Error('Wrong passphrase. Please try again.');
+      if (isWrongKey(err)) {
+        throw new Error('Could not decrypt the vault with this key.');
       }
       throw err;
     } finally {
@@ -150,9 +191,9 @@ export function useSync(): UseSyncReturn {
   }, []);
 
   return {
-    hasPassphrase,
-    setPassphrase,
-    clearPassphrase,
+    isUnlocked,
+    unlockWithPassword,
+    lock,
     syncStatus,
     conflict,
     clearConflict: () => setConflict(null),

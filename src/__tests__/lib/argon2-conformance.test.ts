@@ -98,7 +98,7 @@ const REFERENCE_VECTORS = [
   },
 ] as const;
 
-/** The params `deriveKEK` and `deriveVerifier` are locked to — design doc section 3.1. */
+/** The params `deriveKek` and `deriveVerifier` are locked to — design doc section 3.1. */
 const LOCKED_PARAMS = {
   memorySize: 64 * 1024,
   iterations: 3,

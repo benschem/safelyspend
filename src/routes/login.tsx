@@ -15,21 +15,21 @@ export function LoginPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { verify, login, isAuthenticated, user } = useAuth();
   const { isInitialized, isLoading: configLoading } = useAppConfig();
-  const { setPassphrase, pull } = useSync();
+  const { unlockWithPassword, pull } = useSync();
 
   const step = searchParams.get('step') ?? 'email';
   const emailParam = searchParams.get('email') ?? '';
 
   const [email, setEmail] = useState(emailParam);
   const [code, setCode] = useState('');
-  const [passphrase, setPassphraseInput] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [rememberMe, setRememberMe] = useState(false);
 
   const codeInputRef = useRef<HTMLInputElement>(null);
-  const passphraseInputRef = useRef<HTMLInputElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
 
   // Single decision point for where an authenticated visitor belongs. Both a
   // fresh sign-in and someone opening /login while already signed in land here,
@@ -87,7 +87,7 @@ export function LoginPage() {
     if (step === 'verify') {
       codeInputRef.current?.focus();
     } else if (step === 'restore') {
-      passphraseInputRef.current?.focus();
+      passwordInputRef.current?.focus();
     }
   }, [step]);
 
@@ -147,14 +147,14 @@ export function LoginPage() {
     e.preventDefault();
     setError(null);
 
-    if (!passphrase) {
-      setError('Please enter your encryption passphrase.');
+    if (!password) {
+      setError('Please enter your encryption password.');
       return;
     }
 
     setLoading(true);
     try {
-      setPassphrase(passphrase);
+      await unlockWithPassword(password);
       await pull();
       // pull() marks the database as initialised, so the app shell will now
       // render instead of redirecting to the landing page.
@@ -198,21 +198,21 @@ export function LoginPage() {
               <h1 className="text-2xl font-bold">Restore your budget</h1>
               <p className="mt-2 text-muted-foreground">
                 You have a synced budget, but nothing on this device yet. Enter your encryption
-                passphrase to bring it back.
+                password to bring it back.
               </p>
             </div>
 
             <form onSubmit={handleRestore} className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="passphrase" className="text-sm font-medium">
-                  Encryption passphrase
+                <label htmlFor="password" className="text-sm font-medium">
+                  Encryption password
                 </label>
                 <Input
-                  ref={passphraseInputRef}
-                  id="passphrase"
+                  ref={passwordInputRef}
+                  id="password"
                   type="password"
-                  value={passphrase}
-                  onChange={(e) => setPassphraseInput(e.target.value)}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
                 />
               </div>
@@ -239,7 +239,7 @@ export function LoginPage() {
             </form>
 
             <Alert>
-              Your passphrase never leaves this device. Without it, nobody can read your vault. Not
+              Your password never leaves this device. Without it, nobody can read your vault. Not
               me, not anyone.
             </Alert>
 

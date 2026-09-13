@@ -46,7 +46,7 @@ import {
   Loader2,
   ShieldCheck,
 } from 'lucide-react';
-import { PassphraseDialog } from '@/components/dialogs/passphrase-dialog';
+import { PasswordDialog } from '@/components/dialogs/password-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { useSync } from '@/hooks/use-sync';
 import { api, ApiError } from '@/lib/api-client';
@@ -133,9 +133,9 @@ export function SettingsPage() {
   // Cloud sync state
   const { user, isAuthenticated, logout, deleteAccount } = useAuth();
   const {
-    hasPassphrase,
-    setPassphrase,
-    clearPassphrase,
+    isUnlocked,
+    unlockWithPassword,
+    lock,
     syncStatus,
     conflict,
     clearConflict,
@@ -143,10 +143,10 @@ export function SettingsPage() {
     push,
     pull,
   } = useSync();
-  const [passphraseDialogOpen, setPassphraseDialogOpen] = useState(false);
-  const [passphraseDialogMode, setPassphraseDialogMode] = useState<'create' | 'unlock'>('unlock');
-  const [passphraseError, setPassphraseError] = useState<string | null>(null);
-  const [passphraseLoading, setPassphraseLoading] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [passwordDialogMode, setPasswordDialogMode] = useState<'create' | 'unlock'>('unlock');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordLoading, setPasswordLoading] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [overwriteConfirmOpen, setOverwriteConfirmOpen] = useState(false);
@@ -178,21 +178,21 @@ export function SettingsPage() {
   };
 
   // Cloud sync handlers
-  const handleOpenPassphraseDialog = (mode: 'create' | 'unlock') => {
-    setPassphraseDialogMode(mode);
-    setPassphraseError(null);
-    setPassphraseDialogOpen(true);
+  const handleOpenPasswordDialog = (mode: 'create' | 'unlock') => {
+    setPasswordDialogMode(mode);
+    setPasswordError(null);
+    setPasswordDialogOpen(true);
   };
 
-  const handlePassphraseSubmit = async (passphrase: string) => {
-    setPassphraseError(null);
-    setPassphraseLoading(true);
+  const handlePasswordSubmit = async (password: string) => {
+    setPasswordError(null);
+    setPasswordLoading(true);
 
     try {
-      setPassphrase(passphrase);
-      setPassphraseDialogOpen(false);
+      await unlockWithPassword(password);
+      setPasswordDialogOpen(false);
 
-      if (passphraseDialogMode === 'create') {
+      if (passwordDialogMode === 'create') {
         // First push
         const result = await push();
         toast.success('Pushed to cloud', {
@@ -200,17 +200,16 @@ export function SettingsPage() {
         });
       }
     } catch (err) {
-      clearPassphrase();
-      if (err instanceof Error && err.message.includes('Wrong passphrase')) {
-        setPassphraseError('Wrong passphrase. Please try again.');
-        setPassphraseDialogOpen(true);
-      } else {
-        const msg = err instanceof Error ? err.message : 'Failed to sync';
-        toast.error('Sync failed', { description: msg });
-        setPassphraseDialogOpen(false);
-      }
+      lock();
+      // There is no wrong-password case to distinguish yet: until Phase 5
+      // wires the unwrap, `unlockWithPassword` rejects the same way for every
+      // input. Reinstate a dialog-level branch here when it can actually tell
+      // a bad password from a failed request.
+      const msg = err instanceof Error ? err.message : 'Failed to sync';
+      toast.error('Sync failed', { description: msg });
+      setPasswordDialogOpen(false);
     } finally {
-      setPassphraseLoading(false);
+      setPasswordLoading(false);
     }
   };
 
@@ -261,7 +260,7 @@ export function SettingsPage() {
   const handleLogout = async () => {
     try {
       await logout();
-      clearPassphrase();
+      lock();
       toast('Logged out');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Logout failed';
@@ -300,7 +299,7 @@ export function SettingsPage() {
   const handleDeleteAccount = async () => {
     try {
       await deleteAccount();
-      clearPassphrase();
+      lock();
       setDeleteAccountOpen(false);
       setDeleteConfirmText('');
       toast('Account deleted');
@@ -872,7 +871,7 @@ export function SettingsPage() {
                             ? `Last synced: ${formatRelativeTime(lastSyncedAt)}`
                             : 'Never synced'}
                         </p>
-                        {hasPassphrase && (
+                        {isUnlocked && (
                           <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                             <LockOpen className="h-3.5 w-3.5" />
                             Vault unlocked
@@ -919,7 +918,7 @@ export function SettingsPage() {
                     {/* Push/Pull buttons or Unlock */}
                     {!conflict && (
                       <div className="mt-4">
-                        {hasPassphrase ? (
+                        {isUnlocked ? (
                           <div className="flex gap-3">
                             <Button
                               variant="outline"
@@ -964,13 +963,13 @@ export function SettingsPage() {
                               <div className="flex items-start gap-2">
                                 <Lock className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
                                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                                  Enter your passphrase to enable push and pull.
+                                  Enter your password to enable push and pull.
                                 </p>
                               </div>
                             </div>
                             <Button
                               variant="outline"
-                              onClick={() => handleOpenPassphraseDialog('unlock')}
+                              onClick={() => handleOpenPasswordDialog('unlock')}
                               className="cursor-pointer"
                             >
                               Unlock Vault
@@ -1573,14 +1572,14 @@ export function SettingsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Passphrase Dialog */}
-      <PassphraseDialog
-        open={passphraseDialogOpen}
-        onOpenChange={setPassphraseDialogOpen}
-        mode={passphraseDialogMode}
-        onSubmit={handlePassphraseSubmit}
-        error={passphraseError}
-        loading={passphraseLoading}
+      {/* Password Dialog */}
+      <PasswordDialog
+        open={passwordDialogOpen}
+        onOpenChange={setPasswordDialogOpen}
+        mode={passwordDialogMode}
+        onSubmit={handlePasswordSubmit}
+        error={passwordError}
+        loading={passwordLoading}
       />
 
       {/* Delete Account Dialog */}

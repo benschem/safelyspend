@@ -42,7 +42,7 @@ These files are correct but fragile. Change them only with full understanding an
 |------|-----|
 | `src/lib/db.ts` | Dexie schema version chain. A wrong version bump or bad migration can corrupt or lose user data. Always test import/export round-trips after changes. |
 | `src/lib/import-schema.ts` | Zod schemas for import validation + data migration. Breaking this breaks data restore from backups. |
-| `src/lib/e2e-crypto.ts` | ~~Encryption binary format.~~ **No longer risky (2026-09-05).** The stated risk was that a format change breaks existing synced vaults. Production has none — `sync_state` is empty and no vault was ever uploaded. Format v1 is being replaced wholesale by the wrapped-key scheme in `docs/crypto-design.md`; there is nothing to stay compatible with. |
+| `src/lib/envelope.ts`, `src/lib/key-management.ts` (was `src/lib/e2e-crypto.ts`) | ~~Encryption binary format.~~ **No longer risky (2026-09-05).** The stated risk was that a format change breaks existing synced vaults. Production has none — `sync_state` is empty and no vault was ever uploaded. Format v1 was replaced wholesale by the wrapped-key scheme in `docs/crypto-design.md`; there was nothing to stay compatible with. Once real vaults exist, this row goes back to being a genuine don't-touch. |
 | `worker/src/services/vault.ts` (`putData`) | Optimistic concurrency + orphan cleanup. Subtle race condition handling between D1 metadata and R2 blob writes. |
 | `worker/src/middleware/auth.ts` | JWT verification + session rotation. Security-critical. |
 | `worker/src/services/auth.ts` | Brute-force protection, OTP hash storage, lockout logic. Security-critical. |

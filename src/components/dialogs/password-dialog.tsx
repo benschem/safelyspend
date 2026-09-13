@@ -11,50 +11,60 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 
-interface PassphraseDialogProps {
+/**
+ * Collects the account password that unlocks the cloud vault.
+ *
+ * Under the wrapped-key scheme there is no separate vault passphrase: the
+ * account password derives KEK_pwd, which unwraps the MasterKey. The wording
+ * here says "password" throughout for that reason — a second name for the
+ * same secret is the fastest way to make people think there are two.
+ */
+interface PasswordDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: 'create' | 'unlock';
-  onSubmit: (passphrase: string) => void;
+  onSubmit: (password: string) => void;
   error?: string | null;
   loading?: boolean;
 }
 
-export function PassphraseDialog({
+const MINIMUM_PASSWORD_LENGTH = 8;
+
+export function PasswordDialog({
   open,
   onOpenChange,
   mode,
   onSubmit,
   error,
   loading,
-}: PassphraseDialogProps) {
-  const [passphrase, setPassphrase] = useState('');
-  const [confirmPassphrase, setConfirmPassphrase] = useState('');
-  const [showPassphrase, setShowPassphrase] = useState(false);
+}: PasswordDialogProps) {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError(null);
 
-    if (passphrase.length < 8) {
-      setValidationError('Passphrase must be at least 8 characters.');
+    if (password.length < MINIMUM_PASSWORD_LENGTH) {
+      setValidationError(`Password must be at least ${MINIMUM_PASSWORD_LENGTH} characters.`);
       return;
     }
 
-    if (mode === 'create' && passphrase !== confirmPassphrase) {
-      setValidationError('Passphrases do not match.');
+    if (mode === 'create' && password !== confirmPassword) {
+      setValidationError('Passwords do not match.');
       return;
     }
 
-    onSubmit(passphrase);
+    onSubmit(password);
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
-      setPassphrase('');
-      setConfirmPassphrase('');
-      setShowPassphrase(false);
+      setPassword('');
+      setConfirmPassword('');
+      setShowPassword(false);
       setValidationError(null);
     }
     onOpenChange(nextOpen);
@@ -66,13 +76,11 @@ export function PassphraseDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>
-            {mode === 'create' ? 'Create Vault Passphrase' : 'Unlock Vault'}
-          </DialogTitle>
+          <DialogTitle>{mode === 'create' ? 'Create Vault Password' : 'Unlock Vault'}</DialogTitle>
           <DialogDescription>
             {mode === 'create'
-              ? 'This passphrase encrypts your data. It never leaves your device.'
-              : 'Enter your passphrase to sync.'}
+              ? 'This password encrypts your data. It never leaves your device.'
+              : 'Enter your password to sync.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -82,48 +90,48 @@ export function PassphraseDialog({
               <div className="flex items-start gap-2">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                 <p className="text-sm text-amber-800 dark:text-amber-200">
-                  If you forget this passphrase, your cloud data cannot be recovered. Write it down.
+                  If you forget this password, your cloud data cannot be recovered. Write it down.
                 </p>
               </div>
             </div>
           )}
 
           <div className="space-y-2">
-            <label htmlFor="passphrase" className="text-sm font-medium">
-              Passphrase
+            <label htmlFor="vault-password" className="text-sm font-medium">
+              Password
             </label>
             <div className="relative">
               <Input
-                id="passphrase"
-                type={showPassphrase ? 'text' : 'password'}
-                value={passphrase}
-                onChange={(e) => setPassphrase(e.target.value)}
-                placeholder="Enter passphrase"
+                id="vault-password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter password"
                 autoFocus
                 className="pr-10"
               />
               <button
                 type="button"
-                onClick={() => setShowPassphrase(!showPassphrase)}
+                onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
                 tabIndex={-1}
               >
-                {showPassphrase ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
           </div>
 
           {mode === 'create' && (
             <div className="space-y-2">
-              <label htmlFor="confirm-passphrase" className="text-sm font-medium">
-                Confirm passphrase
+              <label htmlFor="confirm-vault-password" className="text-sm font-medium">
+                Confirm password
               </label>
               <Input
-                id="confirm-passphrase"
-                type={showPassphrase ? 'text' : 'password'}
-                value={confirmPassphrase}
-                onChange={(e) => setConfirmPassphrase(e.target.value)}
-                placeholder="Confirm passphrase"
+                id="confirm-vault-password"
+                type={showPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm password"
               />
             </div>
           )}

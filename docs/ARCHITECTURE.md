@@ -375,19 +375,20 @@ erDiagram
 
 ## Encryption Format
 
-The client-side encryption format (`src/lib/e2e-crypto.ts`):
+The client-side encryption format is version `2`, the wrapped-key scheme. It is
+specified in full by `docs/crypto-design.md`; this is the map of where it lives
+in the code:
 
-```
-┌─────────┬──────────────┬────────────┬─────────────────────────┐
-│ VERSION │     SALT     │     IV     │   CIPHERTEXT + GCM TAG  │
-│ 1 byte  │   16 bytes   │  12 bytes  │      variable length    │
-└─────────┴──────────────┴────────────┴─────────────────────────┘
-```
+- `src/lib/envelope.ts` — the byte codec. Three envelope variants, each with
+  its header bound into the AES-GCM associated data.
+- `src/lib/key-management.ts` — Argon2id and HKDF derivation, key generation,
+  wrapping and unwrapping, and the vault encrypt/decrypt pair.
+- `src/lib/key-vault.ts` — the in-memory holder for the MasterKey and private
+  key of an unlocked session. Nothing is persisted.
 
-- **Version**: Currently `1`. Allows future format changes without breaking existing vaults.
-- **PBKDF2**: 600,000 iterations, SHA-256, random salt per encryption.
-- **AES-256-GCM**: Authenticated encryption. Wrong passphrase = `OperationError` (GCM tag mismatch).
-- There is no v2 migration path yet. Changing this format is a breaking change — see the don't-touch list in `HANDOVER.md`.
+Format `1` (PBKDF2 + AES-256-GCM under a passphrase) was replaced wholesale
+rather than migrated: production held no vaults, so there was nothing to stay
+compatible with. Version `2` is the only byte the codec accepts.
 
 ## Key Tradeoffs
 

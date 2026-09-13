@@ -226,3 +226,51 @@ export interface ExpandedForecast {
   sourceType: 'rule' | 'interest';
   sourceId: string;
 }
+
+// -----------------------------------------------------------------------------
+// Key material (see docs/crypto-design.md section 2)
+// -----------------------------------------------------------------------------
+
+/**
+ * The household key that encrypts the vault. Generated client-side once, never
+ * rotated in v1, and wrapped under each member's KEKs rather than stored.
+ *
+ * Extractable, because wrapping it means exporting its raw bytes. The KEKs
+ * that wrap it are not extractable — they never need to leave Web Crypto.
+ */
+export type MasterKey = CryptoKey;
+
+/** A key-encryption key: Argon2id from a password, or HKDF from a recovery phrase. */
+export type Kek = CryptoKey;
+
+/** X25519 private key. Raw bytes because `@noble/curves` works in bytes. */
+export type PrivateKeyBytes = Uint8Array;
+
+/** X25519 public key. Plaintext server-side; untrusted until verified out-of-band. */
+export type PublicKeyBytes = Uint8Array;
+
+export interface Keypair {
+  publicKey: PublicKeyBytes;
+  privateKey: PrivateKeyBytes;
+}
+
+/**
+ * Which key opens a wrapped row. Mirrors the `kek_kind` column in `user_keys`
+ * and `household_member_keys`.
+ *
+ * No consumer until Phase 5 reads those columns — it lands here with the rest
+ * of the key-material types so the whole vocabulary arrives in one place.
+ *
+ * Salt rules differ per kind and a missing salt is not corruption (section
+ * 6.3): `recovery` rows carry no salt because BIP-39 is deterministic from the
+ * phrase, and `ecies` rows carry neither salt nor KDF columns because the key
+ * was never derived by a KDF.
+ */
+export type KekKind = 'pwd' | 'recovery' | 'ecies';
+
+/** Argon2id cost parameters as stored alongside a wrap, so tuning needs no format bump. */
+export interface Argon2idParams {
+  memoryKib: number;
+  iterations: number;
+  parallelism: number;
+}

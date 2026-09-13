@@ -57,7 +57,9 @@ Read these first, in this order:
 │   │   ├── db.ts              # Dexie database + schema
 │   │   ├── utils.ts           # formatCents, toMonthlyCents, generateId, etc.
 │   │   ├── storage-keys.ts    # localStorage key constants
-│   │   ├── e2e-crypto.ts      # PBKDF2 + AES-256-GCM encryption
+│   │   ├── envelope.ts        # Ciphertext framing — the byte codec
+│   │   ├── key-management.ts  # Key derivation, generation and wrapping
+│   │   ├── key-vault.ts       # In-memory holder for an unlocked session's keys
 │   │   ├── import-schema.ts   # Zod schemas for import validation + migration
 │   │   ├── changelog.ts       # Version history entries
 │   │   ├── analytics.ts       # Landing page pageview — the ONLY tracking call

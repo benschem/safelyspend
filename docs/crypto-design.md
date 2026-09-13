@@ -95,7 +95,7 @@ Diagram:
    Argon2id(salt_pwd)                  PBKDF2-HMAC-SHA512 ("mnemonic", 2048)
           │                                       │ → BIP-39 seed (64B)
           │                                  HKDF-SHA256
-          │                                       │ info="ss-recovery-kek-v1"
+          │                                       │ info="safelyspend-recovery-kek-v1"
           ▼                                       ▼
        KEK_pwd                                KEK_rec
    (256-bit AES-GCM)                       (256-bit AES-GCM)
@@ -602,6 +602,7 @@ Carried forward, not resolved here:
 - ~~**Argon2id WASM library selection**~~ — **resolved 2026-09-13.** `hash-wasm` 4.12.0 is selected, on bundle size, measured speed (§3.4) and now conformance. The slow-path leg stays deliberately unmeasured. Conformance is checked in `src/__tests__/lib/argon2-conformance.test.ts` against the eight Argon2id v1.3 known-answer vectors in the reference implementation's own test suite (`P-H-C/phc-winner-argon2`, `src/test.c`) — all pass, varying password, salt, `t`, `m` and `p`. RFC 9106 §5.3's own vector is **not** used, and cannot be: it supplies 12 bytes of associated data, and `hash-wasm` hardcodes the associated-data length to zero when it computes H0. The vector is unreachable through the library's API rather than failing against it. Nothing is lost — no flow in this design passes associated data to Argon2id, and the reference vectors cover every input that does vary.
 - ~~**Argon2id final params**~~ — **resolved 2026-09-13** (§3.4): m=64 MiB / t=3 / p=1. Upgrade pattern was already locked.
 - **At-rest shape** (§5) — moot unless the at-rest scheme is ever picked up; no scheme ships, so there is no shape to pick. If it is, only fall back from whole-store with explicit threat-model and privacy-page updates.
+- **Password policy is unspecified** — noticed in Phase 3, 2026-09-13. This doc fixes how a password is *turned into* a key (§3.1) and concedes that `password_verifier` is offline-brute-forceable after a server breach (§1, property 1), but never says what a password is allowed to be. §7.3 delegates a mitigation to "password strength, OTP" while assuming a policy exists somewhere; none does. The shipped UI enforces 8 characters, inherited from when the secret was a local vault passphrase that never left the device. Argon2id's cost is a multiplier on guessing, not a substitute for entropy in what is being guessed. Phase 4 owns the decision (`auth-rewrite/04_onboarding_rewrite.md`); it is recorded here because the gap is this doc's, not Phase 4's.
 - **Safety-number fingerprint encoding** (§7.2) — exact display format (decimal groups vs base32 vs emoji-grid) is Phase 4's UX call; the *crypto* input (SHA-256 of the 32-byte pubkey, truncated to a documented length) is fixed here.
 - **D1 transaction guarantees** (§7.3) — Phase 2 confirms that the membership-insert and rewrap operations can each be issued atomically on D1.
 - **Sweep-poll cadence** (§7.2) — Phase 5's call. Defaults probably 10–30 s with exponential backoff after several misses.

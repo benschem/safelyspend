@@ -1,7 +1,9 @@
 # Phase 3 — Client crypto rewrite
 
 - **Goal:** Replace `src/lib/e2e-crypto.ts` with the wrapped-key API and add the asymmetric helpers the invite handoff needs.
-- **Files:** new `src/lib/envelope.ts` (pure byte codec: `sealWithKey`/`openWithKey`, `sealExportFile`/`parseExportFile`/`openExportFile`, `sealHandoff`/`parseHandoff`/`openHandoff`, plus `encodeArgon2idParams`/`decodeArgon2idParams` and `EnvelopeFormatError`); rewrite `src/lib/e2e-crypto.ts` (public surface: `deriveKEK`, `deriveVerifier`, `generateMasterKey`, `wrap`/`unwrap`, `encryptVault`/`decryptVault`, `generateKeypair`, `wrapForRecipient`/`unwrapFromSender`, `generateRecoveryPhrase`, `deriveKEKFromRecoveryPhrase`, `fingerprint`); new `src/lib/key-vault.ts` (in-memory holder for the unwrapped master key and private key during a session, plus the explicit clear); `src/hooks/use-sync.ts` (uses the master key, not a passphrase-derived key); `src/lib/types.ts` for the new key-material types.
+- **Files:** new `src/lib/envelope.ts` (pure byte codec: `sealWithKey`/`openWithKey`, `sealExportFile`/`parseExportFile`/`openExportFile`, `sealHandoff`/`parseHandoff`/`openHandoff`, plus `encodeArgon2idParams`/`decodeArgon2idParams` and `EnvelopeFormatError`); `src/lib/e2e-crypto.ts` replaced by `src/lib/key-management.ts` (public surface: `deriveKek`, `deriveVerifier`, `generateMasterKey`, `wrap`/`unwrap`, `encryptVault`/`decryptVault`, `generateKeypair`, `wrapForRecipient`/`unwrapFromSender`, `generateRecoveryPhrase`, `deriveRecoveryKek`, `publicKeyFingerprint`); new `src/lib/key-vault.ts` (in-memory holder for the unwrapped master key and private key during a session, plus the explicit lock); `src/hooks/use-sync.ts` (uses the master key, not a passphrase-derived key); `src/lib/types.ts` for the new key-material types.
+
+**On the names.** The module is `key-management.ts`, not `e2e-crypto.ts`: nothing about the file is end-to-end-specific once the framing lives in `envelope.ts`, and "key management" is what it actually does. `publicKeyFingerprint` rather than `fingerprint`, because `fingerprint` already means the transaction dedup hash everywhere else in this codebase. `deriveKek`/`deriveRecoveryKek` rather than `deriveKEK`/`deriveKEKFromRecoveryPhrase`, for TypeScript's acronym casing and to match `KEK_pwd`/`KEK_rec` in the design doc.
 - **Gates:** none. The Argon2id benchmark that gated this phase is done — `../crypto-design.md` §3.4.
 - **Prerequisite (not a gate):** `00_overview.md` puts the clean-database reset before this phase — drop the D1 tables and R2 objects, collapse migrations `0001`–`0004` into one household-keyed schema, re-run. It is Phase 2's schema, but it happens first and nothing here assumes a format-v1 read path.
 - **Size:** M
@@ -19,9 +21,9 @@ Only two files import the module: `src/hooks/use-sync.ts` and `src/__tests__/lib
 
 The stub's file list named `deriveKEK`, `generateMasterKey`, `wrap`/`unwrap`, `encryptVault`/`decryptVault`, `generateKeypair`, `wrapForRecipient`/`unwrapFromSender`. Reading `../crypto-design.md` end to end, three more primitives are load-bearing. The Files line above is amended to include them; this is why each one is there:
 
-- **`deriveVerifier(password, verifierSalt)`** — §3.3 step 2 has the *client* derive `verifier_candidate` and send it to the server. Argon2id at the same params as `deriveKEK`, different salt. Phase 5 cannot log in without it.
-- **`generateRecoveryPhrase()` and `deriveKEKFromRecoveryPhrase(mnemonic)`** — §6.1 and §6.2. Phase 4 owns the UI, but the primitive belongs here: signup cannot write the `kek_kind='recovery'` rows without it (§6.3), and Phase 5's recovery flow (§6.4) unwraps with it. Note that these rows are **envelope A**, with the KDF descriptor in the `kek_kdf_kind` / `kek_kdf_params` columns — `KDF_KIND` appears inside an envelope only on variant B (§3.2), which is export files (`KIND=0x05`). No shipping v1 flow writes `KDF_KIND=0x03` on the wire, so the codec does not depend on this primitive; the account flows do.
-- **`fingerprint(pubkey)`** — §8 fixes the crypto input as SHA-256 of the 32-byte pubkey truncated to a documented length. Only the display format is Phase 4's call.
+- **`deriveVerifier(password, verifierSalt)`** — §3.3 step 2 has the *client* derive `verifier_candidate` and send it to the server. Argon2id at the same params as `deriveKek`, different salt. Phase 5 cannot log in without it.
+- **`generateRecoveryPhrase()` and `deriveRecoveryKek(mnemonic)`** — §6.1 and §6.2. Phase 4 owns the UI, but the primitive belongs here: signup cannot write the `kek_kind='recovery'` rows without it (§6.3), and Phase 5's recovery flow (§6.4) unwraps with it. Note that these rows are **envelope A**, with the KDF descriptor in the `kek_kdf_kind` / `kek_kdf_params` columns — `KDF_KIND` appears inside an envelope only on variant B (§3.2), which is export files (`KIND=0x05`). No shipping v1 flow writes `KDF_KIND=0x03` on the wire, so the codec does not depend on this primitive; the account flows do.
+- **`publicKeyFingerprint(pubkey)`** — §8 fixes the crypto input as SHA-256 of the 32-byte pubkey truncated to a documented length. Only the display format is Phase 4's call.
 
 Recovery derivation is exactly: `seed = PBKDF2-HMAC-SHA512(mnemonic, salt="mnemonic", 2048, 64)`, then `KEK_rec = HKDF-SHA256(salt=null, ikm=seed, info="safelyspend-recovery-kek-v1", 32)`.
 
@@ -52,13 +54,13 @@ The three variants are named for what a caller reaches for rather than for the m
 
 Parsed envelopes copy every small header field, so they are the caller's to keep. `ciphertext` alone stays a view into the source buffer — copying a multi-megabyte vault to decrypt it once is not worth it — so the buffer must not be mutated between parse and open. A test pins that.
 
-**`src/lib/e2e-crypto.ts` — the key-management surface.** Derivation, generation, wrapping, and the vault encrypt/decrypt pair. Calls into the codec; never lays out bytes itself.
+**`src/lib/key-management.ts` — the key-management surface.** Derivation, generation, wrapping, and the vault encrypt/decrypt pair. Calls into the codec; never lays out bytes itself.
 
 The split matters because the AAD binding in §4 is a property of the *framing*, not of any caller. If each call site assembles its own associated data, one of them will eventually assemble it slightly differently and the bug will be a decrypt failure in production with no obvious cause. Assemble AAD in exactly one place: the codec, derived from the header it just wrote.
 
 ## Details worth pinning before writing code
 
-**Password normalisation.** §3.5 requires NFKD-normalised UTF-8, no trimming, no case folding. `password.normalize('NFKD')` at the single point of entry to `deriveKEK`, not at each caller. A password that round-trips through a different normalisation once is a permanently unopenable vault.
+**Password normalisation.** §3.5 requires NFKD-normalised UTF-8, no trimming, no case folding. `password.normalize('NFKD')` at the single point of entry to `deriveKek`, not at each caller. A password that round-trips through a different normalisation once is a permanently unopenable vault.
 
 **Two derivations per login.** §3.4 records that a cloud login runs Argon2id twice — once for the verifier (`verifier_salt`), once for `KEK_pwd` (`kek_salt`). Independent salts, no shared work. Measured at 432 ms on an iPhone 11, so run them sequentially in v1; the parallel-workers option stays documented as the lever if that ever becomes the complaint.
 
@@ -96,7 +98,7 @@ This is the phase where tests are the deliverable, not a chore appended to it. P
 1. Add the four dependencies; confirm the named `hash-wasm` import tree-shakes to roughly the size recorded above.
 2. `src/lib/envelope.ts` plus its tests — codec only, no key management, no app wiring.
 3. Argon2id conformance vectors. If `hash-wasm` fails these, the library choice reopens and everything after this step waits.
-4. `src/lib/e2e-crypto.ts` rewrite against the codec.
+4. `src/lib/key-management.ts` written against the codec, replacing `src/lib/e2e-crypto.ts`.
 5. `src/lib/key-vault.ts`.
 6. `src/hooks/use-sync.ts` onto the master key; delete `src/__tests__/lib/e2e-crypto.test.ts` and replace it.
 7. `src/lib/types.ts` key-material types — last, once the shapes have stopped moving.
@@ -128,6 +130,8 @@ Worth stating before step 6 rather than discovering during it. `use-sync.ts` cur
 This is acceptable, and only because production holds zero vaults and zero real users (verified 2026-09-13: R2 `budget-vaults` is 0 objects, D1 `vaults` and `sync_state` are both empty). Nobody loses data, and nothing is depending on sync working.
 
 What it forbids is shipping the intermediate state to the landing page as though sync worked. Take the decision deliberately at step 6: either disable the sync entry point behind a flag until Phase 5 lands, or accept a knowingly broken control on a site nobody but the maintainer uses. Do not leave it looking functional.
+
+**Decided at step 6, 2026-09-13: the controls stay, knowingly broken, with no flag.** `useSync().unlockWithPassword` throws "Cloud sync is being rebuilt and cannot be unlocked yet" — a clear message rather than a silent failure or an opaque one, surfaced by the existing error handling in `login.tsx` and `settings.tsx`. What makes this safe is not the message: it is that **main is not being pushed until the whole feature is ready**, so the broken interval never reaches the deployed site at all. The no-flag option would be the wrong call under continuous deployment; revisit it if that changes before Phase 5 lands.
 
 ## Encrypting IndexedDB at rest is not part of this
 

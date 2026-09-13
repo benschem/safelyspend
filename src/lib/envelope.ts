@@ -29,6 +29,8 @@
  * place, so it is assembled here and nowhere else.
  */
 
+import { concatBytes } from './bytes';
+
 export const FORMAT_VERSION = 0x02;
 
 /** Identifies the use site, so a blob in the wrong slot is caught early. */
@@ -108,17 +110,6 @@ function randomIv(): Uint8Array {
   return crypto.getRandomValues(new Uint8Array(IV_LENGTH));
 }
 
-function concatBytes(...parts: Uint8Array[]): Uint8Array {
-  const total = parts.reduce((sum, part) => sum + part.length, 0);
-  const combined = new Uint8Array(total);
-  let offset = 0;
-  for (const part of parts) {
-    combined.set(part, offset);
-    offset += part.length;
-  }
-  return combined;
-}
-
 function readByte(envelope: Uint8Array, offset: number, description: string): number {
   const value = envelope[offset];
   if (value === undefined) {
@@ -127,7 +118,8 @@ function readByte(envelope: Uint8Array, offset: number, description: string): nu
   return value;
 }
 
-function toHex(value: number): string {
+/** One byte as two hex digits, for error messages that name a header byte. */
+function toHexByte(value: number): string {
   return value.toString(16).padStart(2, '0');
 }
 
@@ -136,7 +128,7 @@ function assertVersion(envelope: Uint8Array): void {
   // accepted. A different byte is a hard failure, never a legacy branch.
   const version = readByte(envelope, 0, 'a version byte');
   if (version !== FORMAT_VERSION) {
-    throw new EnvelopeFormatError(`Unsupported envelope version: 0x${toHex(version)}`);
+    throw new EnvelopeFormatError(`Unsupported envelope version: 0x${toHexByte(version)}`);
   }
 }
 
@@ -144,14 +136,14 @@ function assertKind(envelope: Uint8Array, expected: EnvelopeKindValue): void {
   const kind = readByte(envelope, 1, 'a kind byte');
   if (kind !== expected) {
     throw new EnvelopeFormatError(
-      `Envelope kind mismatch: expected 0x${toHex(expected)}, found 0x${toHex(kind)}`,
+      `Envelope kind mismatch: expected 0x${toHexByte(expected)}, found 0x${toHexByte(kind)}`,
     );
   }
 }
 
 function assertKeyedKind(kind: EnvelopeKindValue): void {
   if (!KEYED_KINDS.includes(kind)) {
-    throw new EnvelopeFormatError(`Envelope A cannot carry kind 0x${toHex(kind)}`);
+    throw new EnvelopeFormatError(`Envelope A cannot carry kind 0x${toHexByte(kind)}`);
   }
 }
 
@@ -162,11 +154,11 @@ function assertKeyedKind(kind: EnvelopeKindValue): void {
  */
 function assertDerivableKdfKind(value: number): asserts value is KdfKindValue {
   if (!KNOWN_KDF_KINDS.includes(value)) {
-    throw new EnvelopeFormatError(`Unknown KDF kind: 0x${toHex(value)}`);
+    throw new EnvelopeFormatError(`Unknown KDF kind: 0x${toHexByte(value)}`);
   }
   if (!DERIVABLE_KDF_KINDS.includes(value)) {
     throw new EnvelopeFormatError(
-      `KDF kind 0x${toHex(value)} cannot derive a key and must not appear in an export file`,
+      `KDF kind 0x${toHexByte(value)} cannot derive a key and must not appear in an export file`,
     );
   }
 }
@@ -331,7 +323,7 @@ export async function sealExportFile(
   const expectedParamsLength = KDF_PARAMS_LENGTHS[kdfKind];
   if (expectedParamsLength !== undefined && kdfParams.length !== expectedParamsLength) {
     throw new EnvelopeFormatError(
-      `KDF kind 0x${toHex(kdfKind)} takes ${expectedParamsLength} parameter bytes, found ${kdfParams.length}`,
+      `KDF kind 0x${toHexByte(kdfKind)} takes ${expectedParamsLength} parameter bytes, found ${kdfParams.length}`,
     );
   }
 
