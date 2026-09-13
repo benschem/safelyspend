@@ -78,7 +78,7 @@ Q6 is "until tab close **or explicit lock**", so `key-vault.ts` exposes a `clear
 
 This is the phase where tests are the deliverable, not a chore appended to it. Per `00_overview.md`, Phase 3 is verified by "unit + integration tests against the schema and crypto primitives; round-trip tests (encrypt → decrypt under derived material) covering every envelope variant, including the asymmetric handoff."
 
-- **Argon2id conformance against RFC 9106 test vectors.** The last outstanding item in the library-selection bullet in `../crypto-design.md` §8. That bullet asks for three things: bundle size is answered, the slow-path benchmark is declined on the record (§3.4 does not measure an Android and says so), conformance is not yet done.
+- **Argon2id conformance against published known-answer vectors.** The last outstanding item in the library-selection bullet in `../crypto-design.md` §8. That bullet asks for three things: bundle size is answered, the slow-path benchmark is declined on the record (§3.4 does not measure an Android and says so), conformance is done as of 2026-09-13 and `hash-wasm` passes. Note the source: RFC 9106 §5.3's own vector supplies associated data, and `hash-wasm` hardcodes the associated-data length to zero, so that vector is unreachable through its API. The vectors used are the eight Argon2id v1.3 vectors from the reference implementation (`P-H-C/phc-winner-argon2`, `src/test.c`), which vary password, salt, `t`, `m` and `p` — every input this app varies. §8 records the reasoning.
 - **HKDF with `salt=null` against RFC 5869 vectors.** §6.2 warns that an implementation silently substituting a non-zero default salt must be rejected. That substitution produces a working-looking key that simply is not the specified one, so nothing catches it except a vector test.
 - **BIP-39 reference vectors**, mnemonic → seed, before the HKDF step. A wrong seed derivation locks every recovery phrase out permanently.
 - **Mnemonic generation refuses to run without `crypto.getRandomValues`** (§6.1).
@@ -113,7 +113,7 @@ That test splits the work into five commits:
 chore: pin the crypto libraries the wrapped-key scheme needs   (step 1)
 docs: correct the phase 3 plan against what the design doc says
 feat: add the format-v2 envelope codec                          (step 2)
-test: check argon2id against the rfc 9106 vectors               (step 3)
+test: check argon2id against the argon2 reference vectors       (step 3)
 feat: replace the passphrase crypto with the wrapped-key scheme (steps 4-7)
 ```
 
