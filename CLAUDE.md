@@ -297,6 +297,17 @@ Uses **semantic versioning** (MAJOR.MINOR.PATCH):
 
 Users can view the changelog via Settings > "View Changelog".
 
+### Deployment Documentation
+
+`DEPLOYMENT.md` **is committed in this repo**, and `README.md` links to it. This is a
+deliberate exception to the general rule that deploy specifics stay uncommitted.
+
+It contains no secret values — only the procedure (`openssl rand -base64 48`,
+`wrangler secret put`, DNS record shapes). Since the repo is public, a guide that lets
+someone self-host is worth shipping. Keep it that way: **never paste an actual secret,
+key, token or account credential into it.** Values go in `wrangler secret`, names go in
+the doc.
+
 ### Git Commit Messages
 
 Use a plain conventional commit type. Do **not** prefix with `claude:` — commits up to
