@@ -2,6 +2,9 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { AppError } from './lib/errors.js';
 import authRoutes from './routes/auth.js';
+import handoffRoutes from './routes/handoffs.js';
+import householdRoutes from './routes/households.js';
+import inviteRoutes from './routes/invites.js';
 import vaultRoutes from './routes/vault.js';
 import * as vaultService from './services/vault.js';
 import type { Env, HonoEnv, JwtPayload } from './types.js';
@@ -84,6 +87,9 @@ app.get('/health', (c) => {
 // Mount routes
 app.route('/v1/auth', authRoutes);
 app.route('/v1/vault', vaultRoutes);
+app.route('/v1/invites', inviteRoutes);
+app.route('/v1/handoffs', handoffRoutes);
+app.route('/v1/households', householdRoutes);
 
 // 404 fallback
 app.notFound((c) => {
