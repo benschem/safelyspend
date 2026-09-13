@@ -23,6 +23,18 @@ function arrayBufferToHex(buffer: ArrayBuffer): string {
   return hexParts.join('');
 }
 
+/** Safety-number input: SHA-256 of the 32-byte X25519 public key, truncated and hex
+ *  encoded. The truncation length must stay identical to the client's
+ *  PUBLIC_KEY_FINGERPRINT_LENGTH in src/lib/key-management.ts — clients recompute this
+ *  before showing it to the user, and a mismatch would make every check fail.
+ *  The display format (decimal groups, base32, emoji) is the client's call. */
+const PUBKEY_FINGERPRINT_BYTES = 8;
+
+export async function pubkeyFingerprint(pubkey: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', pubkey);
+  return arrayBufferToHex(digest.slice(0, PUBKEY_FINGERPRINT_BYTES));
+}
+
 // --- Auth Code ---
 
 export function generateAuthCode(): string {

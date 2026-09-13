@@ -37,6 +37,22 @@ export function conflict(message: string, data?: unknown): AppError {
   return new AppError(message, 409, 'CONFLICT', data);
 }
 
+export function gone(message: string, code: string): AppError {
+  return new AppError(message, 410, code);
+}
+
+/** For the Phase 2 error model (design section 9.1), where the machine code carries
+ *  the meaning and the HTTP status alone is not specific enough. */
+export function coded(message: string, status: number, code: string, data?: unknown): AppError {
+  return new AppError(message, status, code, data);
+}
+
+/** Structural validation of a wrapped blob failed. The message is deliberately
+ *  generic: the server is a parser, not a debugger (design section 8.3). */
+export function invalidBlob(): AppError {
+  return new AppError('Invalid key material', 400, 'INVALID_BLOB');
+}
+
 export function payloadTooLarge(message: string, data?: unknown): AppError {
   return new AppError(message, 413, 'QUOTA_EXCEEDED', data);
 }
