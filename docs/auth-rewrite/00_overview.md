@@ -14,7 +14,13 @@ Production holds no vaults and no real users, and the maintainer's local data is
 
 Everything downstream assumes this. There is no format-v1 read path, no migration, and no per-user version state anywhere in the plan. `DECISIONS.md` records why.
 
-**Status:** migrations `0002`–`0004` are gone and `0001_initial.sql` is the whole household-keyed schema. The **remote** reset has not been run — production D1 still holds v1 tables and the applied-migrations ledger still lists four entries, so `wrangler d1 migrations apply` will not replay the rewritten `0001` until both are cleared. `worker/README.md` has the procedure.
+**Status: done, 2026-09-13.** Migrations `0002`–`0004` are gone and `0001_initial.sql` is the whole household-keyed schema, applied to both the local and the production database.
+
+Re-verified immediately before the production reset: `vaults` 0 rows, `sync_state` 0 rows, R2 `budget-vaults` 0 objects and 0 bytes. Four `users` rows existed, the same four the earlier check identified as our own testing, and with no vault ever uploaded there was nothing attached to them. Those rows are gone.
+
+The remote sequence was: drop the six v1 tables, `DELETE FROM d1_migrations` (4 entries), re-apply. Production now holds the 12 new tables and 19 named indexes, with `vaults` keyed by `household_id` and no `user_id` column. The pre-reset D1 bookmark was `00000013-00000000-000050e5-3e12429faad9bc55c7ade3eb4e1f5648`, restorable via Time Travel for 30 days.
+
+**The deployed worker has not been redeployed**, so the live API is v1 code against a v2 schema until Phase 4 or 5 ships the client to match. That is the same deliberate outage as the rest of the interval. `worker/README.md` has the full procedure.
 
 ## Conventions used in each phase file
 

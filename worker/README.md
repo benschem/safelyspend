@@ -206,10 +206,10 @@ Check before doing anything:
 
 ```bash
 wrangler d1 execute budget-db --remote --command="SELECT COUNT(*) AS vaults FROM vaults"
-wrangler r2 object list budget-vaults
+wrangler r2 bucket info budget-vaults
 ```
 
-If either returns anything, stop.
+If the vault count is non-zero, or the bucket reports any objects, stop.
 
 Local first — the local database is disposable, so this is just a delete:
 
@@ -251,9 +251,13 @@ with no matching `vaults` row, which after the reset is all of them. To clear th
 immediately instead:
 
 ```bash
-wrangler r2 object list budget-vaults          # confirm what is there
+wrangler r2 bucket info budget-vaults          # object_count and bucket_size
 wrangler r2 object delete budget-vaults/<key>  # one key at a time
 ```
+
+Wrangler has no `r2 object list`: `bucket info` gives you the count, and individual
+keys have to come from the dashboard or the S3-compatible API. After a reset the count
+should already be zero, so this is a confirmation rather than a step.
 
 Finally, redeploy so the worker and the schema match:
 
@@ -448,7 +452,7 @@ Mitigations:
 3. Redeploy the worker: `npm run deploy`
 4. Users can log in and access their vaults immediately — R2 data is intact
 
-If Time Travel is unavailable, D1 data is unrecoverable. R2 objects can be listed by user prefix (`wrangler r2 object list budget-vaults --prefix={userId}/`) but there's no way to reconstruct version ordering, user accounts, or sessions.
+If Time Travel is unavailable, D1 data is unrecoverable. R2 objects survive, but wrangler cannot list them and there is no way to reconstruct version ordering, household membership, or the wrapped keys that would decrypt them.
 
 **R2 lost, D1 intact:**
 
