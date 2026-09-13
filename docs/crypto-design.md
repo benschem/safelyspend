@@ -327,11 +327,11 @@ There is no anti-downgrade state, because there is no weaker format for an attac
 
 ## 5. IndexedDB at-rest scheme — specified, not scheduled
 
-**None of this ships.** Local data stays plaintext on disk; `auth-rewrite/HANDOVER.md` holds the reasoning and what would change it. The specification is kept so that picking it up is a matter of reading rather than redesigning. Nothing else in this doc depends on it — the envelope A / KIND=0x01 shape below is also what the cloud R2 blob uses, and that does ship.
+**None of this ships.** Local data stays plaintext on disk; `HANDOVER.md` holds the reasoning and what would change it. The specification is kept so that picking it up is a matter of reading rather than redesigning. Nothing else in this doc depends on it — the envelope A / KIND=0x01 shape below is also what the cloud R2 blob uses, and that does ship.
 
 **Default: whole-store snapshot, encrypted as a single envelope A with KIND=0x01.** Same shape as the cloud R2 blob — one ciphertext per vault version, no granularity at the storage layer. This keeps §1.5's at-rest guarantee tight ("envelopes, not plaintext") and is the simplest implementation. For a v1-sized vault (5k transactions, 200 forecast rules, 12 months of range) whole-store is also the fastest read path.
 
-The Phase 3 benchmark exists to confirm whole-store meets the perf target. If it does not, fall back in this order:
+There is no Phase 3 benchmark for this. An earlier draft had one, to confirm whole-store met the perf target; since no at-rest scheme ships there is no shape to pick and nothing to measure. If the work is ever picked up, benchmark then and fall back in this order:
 
 | Shape | When to fall back | Trade-off | Envelope KIND |
 |-------|-------------------|-----------|---------------|
@@ -339,7 +339,7 @@ The Phase 3 benchmark exists to confirm whole-store meets the perf target. If it
 | Per-table snapshot | Whole-store misses the perf target on writes but reads are fine. | One blob per Dexie table; queries decrypt one table to memory. Cannot use IDB range queries directly. | 0x01 (per blob) |
 | Per-row encrypted payload | Both above miss target. **Weakens §1.5 threat-model claim — see below.** | Smallest working set; granular updates. Index columns (id, date, categoryId, scenarioId) leak in plaintext on disk. | 0x04 |
 
-Acceptance criterion for the Phase 3 pick: open-app-to-dashboard time ≤ 2 s on the slow path with a vault of 5,000 transactions, 200 forecast rules, 12 months of date range. The first shape in the table above that meets the criterion wins.
+Acceptance criterion, whenever that happens: open-app-to-dashboard time ≤ 2 s on the slow path with a vault of 5,000 transactions, 200 forecast rules, 12 months of date range. The first shape in the table above that meets the criterion wins.
 
 **Per-row leakage caveat (only if we fall back to KIND=0x04).** Dexie indexes operate on plaintext keys. Per-row at rest means the IDB store contains plaintext `id`, `date`, `categoryId`, `scenarioId`, and any index keys needed for range queries. Transaction *amounts*, *descriptions*, and *notes* never leak. An attacker with raw disk access can infer "this user has N transactions on date D categorised under category-id X" but cannot read the amounts or descriptions.
 
@@ -599,9 +599,9 @@ All three end with B in `accepted_pending_handoff` until A's next login.
 
 Carried forward, not resolved here:
 
-- **Argon2id WASM library selection** — Phase 3 call. Candidates: `hash-wasm`, `argon2-browser`. Need to compare bundle size, the slow-path benchmark, and conformance with reference test vectors.
-- **Argon2id final params** (§3.4) — Phase 3 benchmark. Upgrade pattern is locked; the actual numbers are not.
-- **At-rest shape if Phase 3 perf forces a fallback** (§5) — only fall back from whole-store with explicit threat-model and privacy-page updates.
+- **Argon2id WASM library selection** — `hash-wasm` on bundle size and measured speed (§3.4); the slow-path leg is deliberately not measured. Outstanding: conformance against RFC 9106 reference vectors, which Phase 3 runs before building on it.
+- ~~**Argon2id final params**~~ — **resolved 2026-09-13** (§3.4): m=64 MiB / t=3 / p=1. Upgrade pattern was already locked.
+- **At-rest shape** (§5) — moot unless the at-rest scheme is ever picked up; no scheme ships, so there is no shape to pick. If it is, only fall back from whole-store with explicit threat-model and privacy-page updates.
 - **Safety-number fingerprint encoding** (§7.2) — exact display format (decimal groups vs base32 vs emoji-grid) is Phase 4's UX call; the *crypto* input (SHA-256 of the 32-byte pubkey, truncated to a documented length) is fixed here.
 - **D1 transaction guarantees** (§7.3) — Phase 2 confirms that the membership-insert and rewrap operations can each be issued atomically on D1.
 - **Sweep-poll cadence** (§7.2) — Phase 5's call. Defaults probably 10–30 s with exponential backoff after several misses.

@@ -41,16 +41,16 @@ Numbering has a gap at 6. Renumbering would break every cross-link here and in t
 ## Critical path
 
 ```
-benchmark ──► 3 ──► 2 ──► 4 ──► 5 ──► 7 ──► 8 ──► 9(pass 2) ──► 10
+3 ──► 2 ──► 4 ──► 5 ──► 7 ──► 8 ──► 9(pass 2) ──► 10
 
 9(pass 1) — ships any time, parallel to all.
 ```
 
 Phase 1 gates the entire rewrite. Phase 3 gates the client-side work (4, 5, 7, 8). Phase 2 gates the server-touching work (5, 7). Phase 8 cannot land until invites work (7) and households are real on both sides. Pass 2 of Phase 9 waits on Phase 8, which is the point at which the new guarantees are true rather than aspirational.
 
-## The benchmark comes first
+## The benchmark came first — and is done
 
-Phase 1 pre-commits to Argon2id at m=64 MiB / t=3 without having measured it, and it is the only cheap thing that can invalidate the expensive doc. Run it before treating Phase 1 as locked: `hash-wasm` on a laptop, a mid-tier Android and Safari iOS, against the §3.4 criterion of a 2 s 95th-percentile unlock on the slow path. If it misses, step down to m=32 MiB and record the trade-off.
+Phase 1 pre-committed to Argon2id at m=64 MiB / t=3 without having measured it, the one cheap thing that could have invalidated the expensive doc. Measured 2026-09-13 with `hash-wasm`: 134 ms p95 on an M1, 216 ms p95 on an iPhone 11, so 432 ms for a full cloud login. The params stand as written and the m=32 MiB fallback is not taken. The mid-tier Android leg was deliberately skipped — the fleet is the maintainer's own devices. `../crypto-design.md` §3.4 has the numbers and the reasoning.
 
 ## How each phase will be verified as it lands
 
@@ -68,7 +68,7 @@ Answered and locked:
 - **Q1** (recovery UX) — display + "copy to password manager" CTA + acknowledgement checkbox.
 - **Q2** (invite handoff choreography) — the existing member's client wraps on their next cloud login; the invitee polls. Pubkeys are verified out-of-band before the wrap.
 - **Q5** (households per user) — one, in v1. Enforced by `UNIQUE(household_members.user_id)`.
-- **Q6** (session lifetimes) — JWT and MasterKey are independent. JWT 7d in a cookie; MasterKey in memory until tab close.
+- **Q6** (session lifetimes) — JWT and MasterKey are independent. JWT 7d in a cookie; MasterKey in memory until tab close **or explicit lock**. Local re-unlock reads the cached wrapped-key rows — no OTP, no server contact. Logout clears the server session without touching the MasterKey, and clearing the MasterKey leaves the JWT alone. `02_backend_schema_endpoints_design.md` §1 is the fuller statement.
 - **Q7** (leaving a household) — not supported in v1. Requires MasterKey rotation, which is not designed. Account deletion is the only exit.
 - **Q8** (is the repo public) — yes. `github.com/benschem/safelyspend`, confirmed public 2026-09-13. Phase 9 and Phase 10 can both offer a "read the source" link.
 - **Q4** (perf budget) — benchmarked 2026-09-13. **m=64 MiB / t=3 / p=1 stands.** 134 ms p95 on an M1, 216 ms on an iPhone 11 — a 432 ms cloud login on the slower of the two, comfortably inside the old 2 s budget. The mid-tier Android leg was dropped rather than measured: the fleet is the maintainer's own devices, and a slow unlock on old hardware is not a cost worth trading security for. `../crypto-design.md` §3.4 records the revised criterion, the extrapolated slow-path figure, and the fact that a login pays Argon2id twice.
