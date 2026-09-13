@@ -16,6 +16,7 @@ import {
 } from '../helpers/setup.js';
 import * as fixtures from '../helpers/fixtures.js';
 import { sendAuthCode, sendInvite } from '../../services/email.js';
+import * as inviteService from '../../services/invites.js';
 
 const mockSendAuthCode = vi.mocked(sendAuthCode);
 const mockSendInvite = vi.mocked(sendInvite);
@@ -124,6 +125,49 @@ async function completeHandoff(
   );
   expect(rewrapRes.status).toBe(200);
 }
+
+describe('invites.status', () => {
+  /** Insert a bare invite row, bypassing the service, to see what the table accepts. */
+  async function insertWithStatus(status: string): Promise<void> {
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+      `INSERT INTO invites
+         (id, token, sender_user_id, household_id, recipient_email, status, expires_at,
+          created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+      .bind(
+        `status-${status}`,
+        `token-${status}`,
+        statusProbe.userId,
+        statusProbe.householdId,
+        'status@example.com',
+        status,
+        now,
+        now,
+        now,
+      )
+      .run();
+  }
+
+  let statusProbe: { userId: string; householdId: string };
+
+  beforeAll(async () => {
+    const probe = await createAuthenticatedUser(env.DB);
+    statusProbe = { userId: probe.user.id, householdId: probe.householdId! };
+  });
+
+  // The CHECK constraint and INVITE_STATUSES are two copies of one list, and SQLite
+  // cannot extend a CHECK in place. A value added to the union without a matching
+  // table rebuild type-checks everywhere and only fails on the write.
+  it.each(inviteService.INVITE_STATUSES)('accepts %s, which the type union declares', async (status) => {
+    await expect(insertWithStatus(status)).resolves.not.toThrow();
+  });
+
+  it('rejects a status the union does not declare', async () => {
+    await expect(insertWithStatus('mislaid')).rejects.toThrow();
+  });
+});
 
 describe('POST /invites', () => {
   it('issues an invite and emails the recipient a token', async () => {

@@ -203,6 +203,7 @@ State machine:
 - `completed` — A has wrapped, B has rewrapped. Membership is durable.
 - `expired` — `expires_at < now` and recipient never signed up. Set by the cleanup sweep on `/auth/login` (mirroring existing `cleanupExpiredCodes`).
 - `revoked` — sender explicitly cancelled via `DELETE /v1/invites/:id`.
+- `declined` — recipient signed up and chose their own household instead. Terminal, because Q5 makes the choice irreversible. Set by Phase 7; no Phase 2 endpoint writes it. The value exists in the `CHECK` from the start because SQLite cannot extend one in place.
 
 In v1, an invite that reaches `accepted_pending_handoff` and then ages past `expires_at` is **not** auto-expired (per Phase 1 §7.3 "Invite expires before A logs in"). A's UI shows a banner; A re-sends or revokes.
 
@@ -1114,7 +1115,11 @@ Nine corrections, found while building it. Each is fixed inline above; this is t
 
 8. **§3.6 does not exist** — the numbering jumps 3.5 → 3.7, and the missing section is the signup-time invite sweep (crypto-design §7.4 path 2). The sweep is implemented: `/auth/signup` returns any open invites matching the new user's email as `pendingInvites` so the client can show a banner.
 
-   **But path 2 dead-ends under Q5, and the design never noticed.** A user who signs up from the landing page gets their own household in the same call. `UNIQUE(household_members.user_id)` then means they can never accept the invite — `POST /invites/:token/accept` returns 409 HOUSEHOLD_FULL. The banner is real; the button behind it cannot work. Three ways out, all **Phase 7's call**: detect the pending invite *before* creating a household and route the user to `signup-with-invite`; support discarding a brand-new empty household on acceptance; or drop path 2 and rely on paths 1 and 3. None is a Phase 2 change, and nothing else depends on it.
+   **But path 2 dead-ends under Q5, and the design never noticed.** A user who signs up from the landing page gets their own household in the same call. `UNIQUE(household_members.user_id)` then means they can never accept the invite — `POST /invites/:token/accept` returns 409 HOUSEHOLD_FULL. The banner is real; the button behind it cannot work.
+
+   **Resolved for Phase 7 (see `07_invite_flow.md`): sweep before create, then fork.** `/auth/signup` checks for a matching open invite before it builds anything; if one exists it returns the invite and creates nothing, and the client offers "join them" (re-route to `signup-with-invite`) or "start my own" (ordinary signup). Nothing is built speculatively, so nothing has to be torn down. The fork screen must state that "start my own" is permanent, because Q5 and Q7 together make it so.
+
+   The one Phase 2 consequence, taken now: **`invites.status` gained `'declined'`**. SQLite cannot extend a `CHECK` in place, so adding it later means rebuilding the table; adding it while the database was empty cost one word. Nothing sets it yet — Phase 7 wires the transition, and should give `assertAcceptable` a case for it so a declined invite stops reporting as `INVITE_ALREADY_ACCEPTED`.
 
 **Cosmetic**
 

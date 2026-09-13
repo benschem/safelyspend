@@ -3,12 +3,18 @@ import { blobToBase64url, blobToBytes, bytesToBase64url, randomToken } from '../
 import { pubkeyFingerprint } from '../lib/crypto.js';
 import { coded, internal, notFound } from '../lib/errors.js';
 
+/** Must stay in step with the CHECK constraint on invites.status. SQLite cannot
+ *  extend a CHECK in place, so a value added here without a matching table rebuild
+ *  type-checks and then fails at write time. */
 export const INVITE_STATUSES = [
   'open',
   'accepted_pending_handoff',
   'completed',
   'expired',
   'revoked',
+  /** The recipient signed up and chose their own household instead. Q5 makes that
+   *  irreversible, so this is a terminal state, not a pause. Phase 7 sets it. */
+  'declined',
 ] as const;
 export type InviteStatus = (typeof INVITE_STATUSES)[number];
 

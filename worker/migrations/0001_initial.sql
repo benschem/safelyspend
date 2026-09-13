@@ -126,7 +126,16 @@ CREATE TABLE invites (
   household_id      TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
   recipient_email   TEXT NOT NULL,
   recipient_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
-  status            TEXT NOT NULL CHECK (status IN ('open', 'accepted_pending_handoff', 'completed', 'expired', 'revoked')),
+  -- Spelled out because SQLite cannot extend a CHECK in place: adding a value later
+  -- means rebuilding the table, so the set is settled while the database is empty.
+  status            TEXT NOT NULL CHECK (status IN (
+                      'open',
+                      'accepted_pending_handoff',
+                      'completed',
+                      'expired',
+                      'revoked',
+                      'declined'
+                    )),
   expires_at        TEXT NOT NULL,
   created_at        TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at        TEXT NOT NULL DEFAULT (datetime('now'))
