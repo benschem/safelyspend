@@ -24,6 +24,55 @@ The schema was re-applied once more the same day, to add `'declined'` to the `in
 
 **The deployed worker has not been redeployed**, so the live API is v1 code against a v2 schema until Phase 4 or 5 ships the client to match. That is the same deliberate outage as the rest of the interval. `worker/README.md` has the full procedure.
 
+## Shipping v1 — scope cut, 2026-09-14
+
+The plan above was written to be right. This section makes it shippable.
+
+The maintainer wants to use this with their partner, soon, and has said plainly that a
+rough v1 they can upgrade later beats a good one that never lands. Nothing is pushed
+until the whole thing works, so a broken intermediate state costs nothing and no
+interval needs designing around.
+
+**What v1 has to do:** two people share one budget, encrypted so the server cannot read
+it, each with a personal spending allowance.
+
+That last clause is not a nice-to-have. It is the reason the feature exists — without
+it, a couple would just share one account and skip all of this.
+
+**On the critical path:** Phases 4, 5, 7, 8, and a thin pass of 10.
+
+**Deferred to post-v1** — parked, not abandoned. The reasoning in each doc stays where
+it is:
+
+- **Password strength meter** (`zxcvbn`). The floor goes from 8 to 12 characters and the
+  copy points at a password manager. A dictionary and a lazy-loaded chunk to protect two
+  people who both use one is not the cost to pay first. Revisit if the app ever acquires
+  users who are not the maintainer — the same trigger as `../crypto-design.md` §3.4.
+- **Two-writer vault conflict resolution.** The existing pull-or-overwrite conflict UI
+  stays as it is. It can lose an evening's work and it tells you it is about to, which
+  is the bar for v1. Auto-merge is a real design problem and it is not this one.
+- **Phase 9, the landing page rewrite.** Whole thing. Only revisit if the current copy
+  says something that has become false.
+- **Phase 10 down to an accuracy pass.** One obligation survives: say plainly that data
+  on the device is not encrypted and that the password protects the cloud copy only.
+  The rest of the page rewrite waits.
+- **Household rename**, **invite re-issue / extend-expiry**, and the **client-side
+  Argon2id rolling-upgrade check on unlock**. The household is called "Household";
+  re-sending an invite is revoke-then-send; the upgrade path stays server-ready and
+  client-unimplemented.
+- **Phase 8 trims** — recorded in `08_household_ui_scope.md` under "v1 scope and
+  decisions", which also carries the decisions that phase's model left open: the app is
+  the source of truth and the bank accounts are plumbing, transfers between the
+  household's own accounts are never imported, and member display names live in the
+  vault rather than on `users`.
+
+**Accepted risk, deliberately.** `07_invite_flow.md` path 2 — the recipient ignores the
+emailed link and signs up from the landing page — still dead-ends permanently under Q5,
+and the fix (sweep before create, then fork) is **not** being built for v1. The
+maintainer will tell the one recipient to click the link. The failure mode is an account
+that has to be deleted and recreated, on a fleet of two, with nothing in it. Build the
+fork the moment there is a third user.
+
 ## Conventions used in each phase file
 
 - **Goal** — one line
@@ -41,22 +90,24 @@ Numbering has a gap at 6. Renumbering would break every cross-link here and in t
 - [Phase 1 — Crypto + storage design doc](01_crypto_storage_design.md) — **designed** (`../crypto-design.md`)
 - [Phase 2 — Backend schema + endpoints](02_backend_schema_endpoints.md) — **built** (`02_backend_schema_endpoints_design.md`; §13 lists where the design was wrong)
 - [Phase 3 — Client crypto rewrite](03_client_crypto_rewrite.md) — **built**
-- [Phase 4 — Account creation at cloud-sync opt-in](04_onboarding_rewrite.md)
-- [Phase 5 — Cloud login and logout](05_login_unlock_logout.md)
-- [Phase 7 — Invite flow (UI + backend + email)](07_invite_flow.md)
-- [Phase 8 — Household concept in app UI (shared vs personal scope)](08_household_ui_scope.md)
-- [Phase 9 — Landing page rewrite (two passes)](09_landing_page_rewrite.md)
-- [Phase 10 — Privacy page](10_privacy_page.md)
+- [Phase 4 — Account creation at cloud-sync opt-in](04_onboarding_rewrite.md) — **v1**
+- [Phase 5 — Cloud login and logout](05_login_unlock_logout.md) — **v1**
+- [Phase 7 — Invite flow (UI + backend + email)](07_invite_flow.md) — **v1**
+- [Phase 8 — Household concept in app UI (shared vs personal scope)](08_household_ui_scope.md) — **v1, trimmed**
+- [Phase 9 — Landing page rewrite (two passes)](09_landing_page_rewrite.md) — **deferred post-v1**
+- [Phase 10 — Privacy page](10_privacy_page.md) — **v1, accuracy pass only**
 
 ## Critical path
 
 ```
-3 ──► 2 ──► 4 ──► 5 ──► 7 ──► 8 ──► 9(pass 2) ──► 10
-
-9(pass 1) — ships any time, parallel to all.
+3 ──► 2 ──► 4 ──► 5 ──► 7 ──► 8 ──► 10(thin)   ship
+                                               │
+                                          9 ───┘ post-v1
 ```
 
-Phase 1 gates the entire rewrite. Phase 3 gates the client-side work (4, 5, 7, 8). Phase 2 gates the server-touching work (5, 7). Phase 8 cannot land until invites work (7) and households are real on both sides. Pass 2 of Phase 9 waits on Phase 8, which is the point at which the new guarantees are true rather than aspirational.
+Phase 1 gates the entire rewrite. Phase 3 gates the client-side work (4, 5, 7, 8). Phase 2 gates the server-touching work (5, 7). Phase 8 cannot land until invites work (7) and households are real on both sides.
+
+Phase 9 used to sit between 8 and 10, on the reasoning that its second pass could only be written once the new guarantees were true rather than aspirational. That is still right; it is simply no longer on the path to a usable app.
 
 ## The benchmark came first — and is done
 

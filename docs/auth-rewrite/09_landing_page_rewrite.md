@@ -1,5 +1,10 @@
 # Phase 9 — Landing page rewrite (two passes)
 
+> **Deferred past v1, 2026-09-14.** Both passes. `00_overview.md` records the cut: the
+> landing page is not on the path to two people sharing a budget. The one thing that
+> would pull it back in is the current copy becoming false — check it against the
+> shipped behaviour before release, and fix only what lies.
+
 - **Goal:** Honest copy.
   - **Pass 1** (ships immediately, in parallel): describe what's true *today* — local-first, optional E2E sync, no tracking, no household yet.
   - **Pass 2** (ships after [Phase 8](08_household_ui_scope.md)): add the new guarantees — password-locked at rest, household sharing without server ever holding a key.

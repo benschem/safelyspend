@@ -6,6 +6,22 @@
 - **Size:** S–M
 - **Deps:** [Phase 3](03_client_crypto_rewrite.md), [Phase 2](02_backend_schema_endpoints.md).
 
+## Scope, after the v1 cut
+
+[Phase 4](04_onboarding_rewrite.md) builds the auth shell — the email and code steps —
+and the signup branch, because `/auth/verify-otp` returns `verifierSalt: null` to
+distinguish the two and building the shell twice would mean rewriting it here. What is
+left for this phase is the login branch, the recovery redemption screen, and logout.
+
+**Recovery redemption stays in v1.** Handing someone twelve words they cannot actually
+use is worse than handing them nothing. The crypto is built
+([Phase 3](03_client_crypto_rewrite.md)) and so is `POST /v1/auth/recovery-reset`, so
+this is one screen: enter the phrase, unwrap, set a new password, upload the new
+password-wrapped rows.
+
+If the login branch is cheap once Phase 4's shell exists, take it there instead. The
+phase boundary is a planning artefact.
+
 ## The shape
 
 Three calls where there are currently two, per Phase 2 §3.1–§3.3: request the OTP, exchange the code for a short-lived bridge token plus the verifier salt, then send the Argon2id verifier and receive the session and key bundle. The salt only appears after the code checks out, so it cannot be used to probe which emails have accounts.

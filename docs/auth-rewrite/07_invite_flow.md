@@ -8,6 +8,19 @@
 
 Reference: `../searchyourstuff/app/models/{house,invite,user}.rb` and `app/models/concerns/invitable.rb` — sweep-on-signup pattern is the model.
 
+## v1 does not build the path 2 fix, 2026-09-14
+
+The decision below stands and is still the right one. It is **not being built for v1**.
+
+`00_overview.md` records the trade: the maintainer will tell the one recipient to click
+the emailed link, which puts them on path 1 where everything works. The exposure is that
+a recipient who ignores the link and signs up from the landing page gets their own
+household and can never join — recoverable only by deleting the account, which at that
+point holds nothing.
+
+Build the fork the moment there is a third user. Everything below is the design, ready
+to pick up; nothing about it changes.
+
 ## Path 2 is decided: sweep before create, then fork
 
 Path 2 is the one where the recipient ignores the emailed link, signs up from the

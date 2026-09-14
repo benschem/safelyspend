@@ -1,5 +1,14 @@
 # Phase 10 — Privacy page
 
+> **Cut to an accuracy pass for v1, 2026-09-14.** The page already exists (see the
+> status note below), so the v1 obligation is to make it true, not to rewrite it. Two
+> claims it must carry, both from `../crypto-design.md` §1: data on the device is **not**
+> encrypted and the account password protects the cloud copy only (property 5); and the
+> shared-vs-personal split in [Phase 8](08_household_ui_scope.md) is **UI-enforced, not
+> cryptographic** — both partners hold the same household key and either browser can
+> decrypt every byte. Overclaiming the second one is the specific mistake Phase 8 warns
+> about. The rest of the rewrite waits.
+
 - **Goal:** Architecture-as-plain-English at `/privacy`. KISS.
 - **Files:** new `src/routes/privacy.tsx`; route registration in `src/App.tsx`; possibly `src/components/architecture-diagram.tsx` or an inline SVG; link from landing page footer.
 - **Gates:** none outstanding. Q8 is answered yes — link `github.com/benschem/safelyspend`.
