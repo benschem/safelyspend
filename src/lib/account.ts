@@ -2,8 +2,9 @@
  * The bridge between the wire shapes in `api-client.ts` and the crypto
  * primitives in `key-management.ts`.
  *
- * Two jobs, and they are inverses of each other: assemble the key material a
- * signup uploads, and open the key bundle a session downloads. Both are here
+ * Two pairs of jobs, each pair inverses of each other: assemble the key
+ * material an upload sends, and open the key bundle a session downloads —
+ * once under the password, once under the recovery phrase. All four are here
  * rather than in a route component so they can be tested without rendering
  * anything, and so exactly one module knows how a wrapped-key row is shaped.
  *
@@ -22,6 +23,7 @@ import {
   generateKeypair,
   generateMasterKey,
   generateSalt,
+  isValidRecoveryPhrase,
   isWrongKey,
   unwrapMasterKey,
   unwrapPrivateKey,
@@ -29,7 +31,14 @@ import {
   wrapPrivateKey,
 } from './key-management';
 import { generateId } from './utils';
-import type { KeyBundle, SignupBody, UserKeyRow, MemberKeyRow } from './api-client';
+import type {
+  KekKind,
+  KeyBundle,
+  RecoveryResetBody,
+  SignupBody,
+  UserKeyRow,
+  MemberKeyRow,
+} from './api-client';
 import type { MasterKey, PrivateKeyBytes } from './types';
 
 /**
@@ -190,13 +199,43 @@ export class WrongPasswordError extends Error {
   }
 }
 
-function requirePasswordRow<Row extends { kekKind: string }>(
+/**
+ * Thrown when the recovery phrase simply did not open the wrapped rows.
+ *
+ * Its own class rather than a reused `WrongPasswordError`, for the reason that
+ * one gives: the screens branch on the type, and a phrase and a password fail
+ * for different reasons and need different wording.
+ *
+ * Covers both ways a phrase can be wrong — one that fails BIP-39's checksum and
+ * one that passes it but opens nothing — because the user can do nothing
+ * different about either, and this is the last way in. The form can still say
+ * something sharper about a mistyped word before it gets here; it just cannot
+ * be the only thing that does.
+ */
+export class WrongPhraseError extends Error {
+  constructor() {
+    super('That recovery phrase did not unlock your vault.');
+    this.name = 'WrongPhraseError';
+  }
+}
+
+/** How each kind of wrapping is named to a user, who has never heard of a KEK. */
+const KEK_KIND_WORDING: Record<KekKind, string> = {
+  pwd: 'password',
+  recovery: 'recovery-phrase',
+  ecies: 'invite',
+};
+
+function requireRow<Row extends { kekKind: KekKind }>(
   rows: Row[],
+  kekKind: KekKind,
   description: string,
 ): Row {
-  const row = rows.find((candidate) => candidate.kekKind === 'pwd');
+  const row = rows.find((candidate) => candidate.kekKind === kekKind);
   if (!row) {
-    throw new KeyBundleError(`This account has no password-wrapped ${description}`);
+    throw new KeyBundleError(
+      `This account has no ${KEK_KIND_WORDING[kekKind]}-wrapped ${description}`,
+    );
   }
   return row;
 }
@@ -275,8 +314,8 @@ function assertSameKek(userKey: KekDescriptor, memberKey: KekDescriptor): void {
  * and is structural.
  */
 export async function unlockKeyBundle(password: string, bundle: KeyBundle): Promise<SessionKeys> {
-  const userKey = requirePasswordRow(bundle.userKeys, 'private key');
-  const memberKey = requirePasswordRow(bundle.memberKeys, 'household key');
+  const userKey = requireRow(bundle.userKeys, 'pwd', 'private key');
+  const memberKey = requireRow(bundle.memberKeys, 'pwd', 'household key');
   assertSameKek(userKey, memberKey);
 
   const kek = await deriveBundleKek(password, userKey);
@@ -291,6 +330,126 @@ export async function unlockKeyBundle(password: string, bundle: KeyBundle): Prom
     }
     throw err;
   }
+}
+
+/**
+ * Refuse to open a recovery row that does not say it was wrapped by BIP-39.
+ *
+ * The counterpart to `assertSameKek`, and needed for the same reason rather
+ * than a different one. There are no salts or parameters to compare here — a
+ * recovery row carries a null salt and an empty parameter block by
+ * construction — so the only thing that can drift is the KDF kind itself, and
+ * a row naming some other KDF will not open under `deriveRecoveryKek`.
+ *
+ * Unguarded, that reaches the user as "wrong recovery phrase" against a
+ * perfectly correct phrase, which is the worst sentence this flow could say:
+ * it is the last way in, and someone told their phrase is wrong will conclude
+ * their data is gone.
+ */
+function assertBip39Kdf(row: { kekKdfKind: number | null }, description: string): void {
+  if (row.kekKdfKind !== KdfKind.bip39Hkdf) {
+    throw new KeyBundleError(
+      `Your ${description} was wrapped by a recovery method this version cannot read`,
+    );
+  }
+}
+
+/**
+ * Open a key bundle with the twelve-word recovery phrase.
+ *
+ * The mirror of `unlockKeyBundle`, and deliberately its own function rather
+ * than a mode flag on that one: they select different rows, derive under
+ * different KDFs, and fail with different words. The only thing they share is
+ * the unwrap at the bottom, which is two lines.
+ *
+ * There is no Argon2id here. `deriveRecoveryKek` is BIP-39 plus HKDF and is
+ * deterministic from the phrase alone, which is why a recovery row needs no
+ * stored salt — and why this is fast where a password unlock costs ~216 ms.
+ */
+export async function unlockKeyBundleWithPhrase(
+  phrase: string,
+  bundle: KeyBundle,
+): Promise<SessionKeys> {
+  // Checked here and not only in the form. `deriveRecoveryKek` rejects a failed
+  // checksum with a bare `Error`, which is neither of the two types the screens
+  // branch on, so an unguarded mistyped word would reach the user as whatever
+  // the generic handler says — on the one screen where that is worst.
+  if (!isValidRecoveryPhrase(phrase)) {
+    throw new WrongPhraseError();
+  }
+
+  const userKey = requireRow(bundle.userKeys, 'recovery', 'private key');
+  const memberKey = requireRow(bundle.memberKeys, 'recovery', 'household key');
+  assertBip39Kdf(userKey, 'private key');
+  assertBip39Kdf(memberKey, 'household key');
+
+  const kek = await deriveRecoveryKek(phrase);
+
+  try {
+    const privateKey = await unwrapPrivateKey(kek, base64urlToBytes(userKey.wrappedPrivKey));
+    const masterKey = await unwrapMasterKey(kek, base64urlToBytes(memberKey.wrappedMasterKey));
+    return { masterKey, privateKey };
+  } catch (err) {
+    if (isWrongKey(err)) {
+      throw new WrongPhraseError();
+    }
+    throw err;
+  }
+}
+
+/**
+ * Re-wrap recovered keys under a new password, for `/auth/recovery-reset`.
+ *
+ * Takes the keys rather than deriving them, because the caller has just
+ * unwrapped them with the phrase and they are the same MasterKey and private
+ * key throughout — a password reset changes how the keys are locked up, never
+ * what they are. Re-minting either would orphan the vault.
+ *
+ * Fresh salts on both the KEK and the verifier, for the same reason a signup
+ * generates independent ones: they are the only domain separation between the
+ * two derivations (section 3.3). Reusing the old KEK salt would also leave the
+ * old wrapped rows openable by anyone who had captured them alongside a
+ * cracked old password.
+ *
+ * Only `pwd` rows are built. The recovery rows stay exactly as they were, so
+ * the phrase the user has just proved they hold keeps working afterwards — the
+ * server will not overwrite them even if asked.
+ */
+export async function buildPasswordResetMaterial(
+  newPassword: string,
+  keys: SessionKeys,
+): Promise<RecoveryResetBody> {
+  const kekSalt = generateSalt();
+  const verifierSalt = generateSalt();
+
+  // Sequential, not concurrent: two overlapping Argon2id passes hold 128 MiB
+  // at once, which `buildSignupMaterial` declines to do for the same reason.
+  const verifier = await deriveVerifier(newPassword, verifierSalt);
+  const kekPwd = await deriveKek(newPassword, kekSalt);
+
+  const argon2idParams = encodedArgon2idParams();
+  const metadata = {
+    kekSalt: bytesToBase64url(kekSalt),
+    kekKdfKind: KdfKind.argon2id,
+    kekKdfParams: argon2idParams,
+  };
+
+  return {
+    newVerifier: {
+      verifierCandidate: bytesToBase64url(verifier),
+      verifierSalt: bytesToBase64url(verifierSalt),
+      verifierKdfKind: KdfKind.argon2id,
+      verifierKdfParams: argon2idParams,
+    },
+    newUserKeyPwd: {
+      ...metadata,
+      wrappedPrivKey: bytesToBase64url(await wrapPrivateKey(kekPwd, keys.privateKey)),
+    },
+    newMemberKeyPwd: {
+      ...metadata,
+      wrappedMasterKey: bytesToBase64url(await wrapMasterKey(kekPwd, keys.masterKey)),
+    },
+  };
 }
 
 /**
