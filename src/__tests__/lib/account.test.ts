@@ -1,10 +1,13 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import {
+  buildPasswordResetMaterial,
   buildSignupMaterial,
   deriveLoginVerifier,
   unlockKeyBundle,
+  unlockKeyBundleWithPhrase,
   KeyBundleError,
   WrongPasswordError,
+  WrongPhraseError,
   type SignupMaterial,
 } from '@/lib/account';
 import { base64urlToBytes } from '@/lib/base64url';
@@ -15,14 +18,30 @@ import {
   encryptVault,
   unwrapMasterKey,
 } from '@/lib/key-management';
-import type { KeyBundle } from '@/lib/api-client';
+import type { KeyBundle, RecoveryResetBody } from '@/lib/api-client';
 import type { BudgetBackup } from '@/lib/db';
 
 const PASSWORD = 'correct horse battery staple';
+const NEW_PASSWORD = 'a different twelve plus character password';
 
 /** BIP-39's own all-zero-entropy vector. A real mnemonic, so it passes validation. */
 const RECOVERY_PHRASE =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+
+/**
+ * BIP-39's all-0x7f vector: a phrase that passes its checksum and still opens
+ * nothing. The case a valid-looking phrase from the wrong account produces, and
+ * the only one that reaches the unwrap.
+ */
+const OTHER_RECOVERY_PHRASE =
+  'legal winner thank year wave sausage worth useful legal winner thank yellow';
+
+/**
+ * Twelve real words whose checksum does not add up — what a mistyped last word
+ * produces. Never reaches the wrapped rows, so it fails differently inside.
+ */
+const MISTYPED_RECOVERY_PHRASE =
+  'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon';
 
 /**
  * Argon2id at the locked parameters costs roughly 130 ms a derivation, and a
@@ -50,6 +69,33 @@ function bundleFrom(material: SignupMaterial): KeyBundle {
     userKeys: body.userKeys,
     household: body.household,
     memberKeys: body.memberKeys,
+  };
+}
+
+/**
+ * The bundle the server would hand back *after* a recovery reset: the new
+ * password rows in place of the old ones, the recovery rows untouched. That
+ * substitution is the endpoint's whole behaviour, so the tests reproduce it
+ * rather than assume it.
+ */
+function bundleAfterReset(material: SignupMaterial, reset: RecoveryResetBody): KeyBundle {
+  const bundle = bundleFrom(material);
+  return {
+    ...bundle,
+    user: {
+      ...bundle.user,
+      verifierSalt: reset.newVerifier.verifierSalt,
+      verifierKdfKind: reset.newVerifier.verifierKdfKind,
+      verifierKdfParams: reset.newVerifier.verifierKdfParams,
+    },
+    userKeys: [
+      { ...reset.newUserKeyPwd, kekKind: 'pwd' },
+      ...bundle.userKeys.filter((row) => row.kekKind === 'recovery'),
+    ],
+    memberKeys: [
+      { ...reset.newMemberKeyPwd, kekKind: 'pwd', senderUserId: null, senderPubkey: null },
+      ...bundle.memberKeys.filter((row) => row.kekKind === 'recovery'),
+    ],
   };
 }
 
@@ -252,6 +298,199 @@ describe('the recovery-wrapped rows', () => {
       const masterKey = await unwrapMasterKey(kek, base64urlToBytes(row!.wrappedMasterKey));
 
       expect(await decryptVault(masterKey, sealed)).toEqual({ categories: [] });
+    },
+    ARGON2ID_TIMEOUT_MS,
+  );
+});
+
+describe('unlockKeyBundleWithPhrase', () => {
+  const backup = { transactions: [{ id: 'txn-1' }] } as unknown as BudgetBackup;
+
+  it(
+    'recovers the master key that sealed the vault',
+    async () => {
+      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+      const sealed = await encryptVault(material.keys.masterKey, backup);
+
+      const reopened = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
+
+      expect(await decryptVault(reopened.masterKey, sealed)).toEqual(backup);
+    },
+    ARGON2ID_TIMEOUT_MS,
+  );
+
+  it(
+    'recovers the private key as well as the master key',
+    async () => {
+      // Section 7's handoff needs PrivKey in memory. A recovery that produced
+      // only the MasterKey would leave someone unable to accept an invite.
+      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+
+      const reopened = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
+
+      expect(reopened.privateKey).toHaveLength(32);
+    },
+    ARGON2ID_TIMEOUT_MS,
+  );
+
+  it(
+    'reports a valid but wrong phrase as a wrong phrase',
+    async () => {
+      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+
+      await expect(
+        unlockKeyBundleWithPhrase(OTHER_RECOVERY_PHRASE, bundleFrom(material)),
+      ).rejects.toThrow(WrongPhraseError);
+    },
+    ARGON2ID_TIMEOUT_MS,
+  );
+
+  it(
+    'reports a phrase failing its checksum as a wrong phrase too',
+    async () => {
+      // Same sentence as a valid-but-wrong phrase, because the user can do
+      // nothing different about either. What matters is that it is a
+      // WrongPhraseError and not the bare Error deriveRecoveryKek throws.
+      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+
+      await expect(
+        unlockKeyBundleWithPhrase(MISTYPED_RECOVERY_PHRASE, bundleFrom(material)),
+      ).rejects.toThrow(WrongPhraseError);
+    },
+    ARGON2ID_TIMEOUT_MS,
+  );
+
+  it(
+    'reports a missing recovery row as structural, not as a wrong phrase',
+    async () => {
+      // An account with no way back in is not the user mistyping, and telling
+      // them it is would send them hunting for a phrase that cannot help.
+      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+      const bundle = bundleFrom(material);
+      bundle.userKeys = bundle.userKeys.filter((row) => row.kekKind !== 'recovery');
+
+      await expect(unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundle)).rejects.toThrow(
+        KeyBundleError,
+      );
+    },
+    ARGON2ID_TIMEOUT_MS,
+  );
+
+  it(
+    'refuses a recovery row naming a KDF it cannot perform',
+    async () => {
+      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+      const bundle = bundleFrom(material);
+      const row = bundle.memberKeys.find((entry) => entry.kekKind === 'recovery');
+      row!.kekKdfKind = KdfKind.reservedPbkdf2;
+
+      await expect(unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundle)).rejects.toThrow(
+        KeyBundleError,
+      );
+    },
+    ARGON2ID_TIMEOUT_MS,
+  );
+});
+
+describe('buildPasswordResetMaterial', () => {
+  const backup = { transactions: [{ id: 'txn-1' }] } as unknown as BudgetBackup;
+
+  /**
+   * The whole reset, end to end, against a vault sealed before it happened.
+   *
+   * This is the test the feature exists for. A reset that produced a working
+   * new password over a *different* master key would pass every shape check
+   * above and silently strand the user's data.
+   */
+  it(
+    'leaves the new password opening the vault the old one sealed',
+    async () => {
+      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+      const sealed = await encryptVault(material.keys.masterKey, backup);
+
+      const recovered = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
+      const reset = await buildPasswordResetMaterial(NEW_PASSWORD, recovered);
+
+      const reopened = await unlockKeyBundle(NEW_PASSWORD, bundleAfterReset(material, reset));
+
+      expect(await decryptVault(reopened.masterKey, sealed)).toEqual(backup);
+    },
+    ARGON2ID_TIMEOUT_MS,
+  );
+
+  it(
+    'leaves the old password unable to open the rewrapped rows',
+    async () => {
+      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+      const recovered = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
+      const reset = await buildPasswordResetMaterial(NEW_PASSWORD, recovered);
+
+      await expect(unlockKeyBundle(PASSWORD, bundleAfterReset(material, reset))).rejects.toThrow(
+        WrongPasswordError,
+      );
+    },
+    ARGON2ID_TIMEOUT_MS,
+  );
+
+  it(
+    'leaves the recovery phrase still working afterwards',
+    async () => {
+      // The server never overwrites the recovery rows, so a reset must not
+      // assume it can replace them. Someone who has just used their phrase
+      // still has only that phrase.
+      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+      const recovered = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
+      const reset = await buildPasswordResetMaterial(NEW_PASSWORD, recovered);
+
+      const again = await unlockKeyBundleWithPhrase(
+        RECOVERY_PHRASE,
+        bundleAfterReset(material, reset),
+      );
+
+      expect(again.privateKey).toEqual(recovered.privateKey);
+    },
+    ARGON2ID_TIMEOUT_MS,
+  );
+
+  it(
+    'produces a verifier the server will accept for the new password',
+    async () => {
+      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+      const recovered = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
+      const reset = await buildPasswordResetMaterial(NEW_PASSWORD, recovered);
+
+      const candidate = await deriveLoginVerifier(NEW_PASSWORD, reset.newVerifier);
+
+      expect(candidate).toBe(reset.newVerifier.verifierCandidate);
+    },
+    ARGON2ID_TIMEOUT_MS,
+  );
+
+  it(
+    'uses fresh, independent salts rather than the ones it is replacing',
+    async () => {
+      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+      const recovered = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
+      const reset = await buildPasswordResetMaterial(NEW_PASSWORD, recovered);
+
+      const oldKekSalt = material.body.userKeys.find((row) => row.kekKind === 'pwd')!.kekSalt;
+
+      expect(reset.newUserKeyPwd.kekSalt).not.toBe(oldKekSalt);
+      expect(reset.newVerifier.verifierSalt).not.toBe(material.body.verifierSalt);
+      expect(reset.newVerifier.verifierSalt).not.toBe(reset.newUserKeyPwd.kekSalt);
+    },
+    ARGON2ID_TIMEOUT_MS,
+  );
+
+  it(
+    'wraps both rows under the one KEK, as unlockKeyBundle requires',
+    async () => {
+      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+      const recovered = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
+      const reset = await buildPasswordResetMaterial(NEW_PASSWORD, recovered);
+
+      expect(reset.newMemberKeyPwd.kekSalt).toBe(reset.newUserKeyPwd.kekSalt);
+      expect(reset.newMemberKeyPwd.kekKdfParams).toBe(reset.newUserKeyPwd.kekKdfParams);
     },
     ARGON2ID_TIMEOUT_MS,
   );

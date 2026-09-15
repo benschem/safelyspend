@@ -82,8 +82,15 @@ export interface Household {
  * bytes, a `recovery` row carries a null salt and an empty parameter string,
  * and an `ecies` row carries nulls throughout.
  */
+/**
+ * Which KEK a wrapped row opens under. Mirrors the worker's own `KekKind`
+ * (`worker/src/lib/key-material.ts:35`); the client needs only the union, not
+ * the runtime array the worker validates against.
+ */
+export type KekKind = 'pwd' | 'recovery' | 'ecies';
+
 interface WrappedKeyMetadata {
-  kekKind: 'pwd' | 'recovery' | 'ecies';
+  kekKind: KekKind;
   kekSalt: string | null;
   kekKdfKind: number | null;
   kekKdfParams: string | null;
@@ -145,6 +152,32 @@ export interface VerifierFields {
   verifierSalt: string;
   verifierKdfKind: number;
   verifierKdfParams: string;
+}
+
+/**
+ * The KDF metadata a `pwd` row carries. Narrower than `WrappedKeyMetadata`:
+ * none of these three is ever null on a password row, and an upload has no
+ * reason to describe the shapes it cannot send.
+ */
+interface PasswordKeyMetadata {
+  kekSalt: string;
+  kekKdfKind: number;
+  kekKdfParams: string;
+}
+
+/**
+ * What `/auth/recovery-reset` takes: a new password proof and the two rows it
+ * wraps, swapped in for the old ones.
+ *
+ * No `kekKind` on either row. The worker imposes `'pwd'` rather than reading it
+ * (`worker/src/lib/key-material.ts:252`), precisely so a client cannot label a
+ * row `'recovery'` and overwrite the phrase it just used to get here. The
+ * recovery rows survive a reset untouched, so the phrase keeps working.
+ */
+export interface RecoveryResetBody {
+  newVerifier: VerifierFields;
+  newUserKeyPwd: PasswordKeyMetadata & { wrappedPrivKey: string };
+  newMemberKeyPwd: PasswordKeyMetadata & { wrappedMasterKey: string };
 }
 
 /** One open invite addressed to the email a signup just claimed. */
