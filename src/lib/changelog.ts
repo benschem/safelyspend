@@ -21,6 +21,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.40.0',
+    date: '2026-09-15',
+    changes: [
+      'Setting up cloud sync now creates your account in one go: confirm your email, choose a password, save a recovery phrase, and your budget is uploaded straight away',
+      'Your recovery phrase lets you back into your budget if you ever forget your password',
+      'You can sign in from the setup screen to bring an existing budget onto a new device',
+    ],
+  },
+  {
     version: '0.39.1',
     date: '2026-09-14',
     changes: ['Updated internal components to their latest supported versions'],
