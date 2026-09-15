@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'react-router';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import {
   ArrowLeft,
   ArrowLeftRight,
@@ -126,6 +126,17 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
         Let&apos;s go
         <ArrowRight className="ml-2 h-4 w-4" />
       </Button>
+
+      {/* The way in on a second device, and the way a partner gets in on their
+          own phone. Without it they land in the opening-balance wizard with no
+          exit. Quiet on purpose: nobody who has not gone looking for an account
+          should be nudged towards one. */}
+      <Link
+        to="/login"
+        className="mt-6 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+      >
+        I already have an account
+      </Link>
     </div>
   );
 }

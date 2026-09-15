@@ -844,11 +844,13 @@ export function SettingsPage() {
                   <div>
                     <h3 className="font-medium">Not connected</h3>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Your data is stored locally on this device only.
+                      Your budget is stored on this device only. Setting up cloud sync creates an
+                      account, encrypts the budget you already have, and uploads it as your first
+                      backup. You will choose a password and save a recovery phrase.
                     </p>
                   </div>
                   <Link to="/login">
-                    <Button className="cursor-pointer">Set Up Cloud Sync</Button>
+                    <Button className="cursor-pointer">Set up cloud sync</Button>
                   </Link>
                 </div>
               </div>
