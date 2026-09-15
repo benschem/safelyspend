@@ -8,6 +8,30 @@
 
 Reference: `../searchyourstuff/app/models/{house,invite,user}.rb` and `app/models/concerns/invitable.rb` — sweep-on-signup pattern is the model.
 
+## What Phase 4 left you
+
+**`api.auth.signupWithInvite` exists and has never run.** Phase 4 built it alongside
+`signup` because the shapes were settled together, but this phase is its only caller and
+nothing invokes it yet — so its field names are transcribed from
+`worker/src/routes/auth.ts`, not verified against a live worker. Check them before
+trusting them. Same for the `SignupWithInviteResponse` type.
+
+**The signup flow is the account half of path 1.** `src/routes/login.tsx` already does
+email → code → password → recovery phrase → create; accepting an invite as a new account
+is that flow with the invite token attached, no household block, and no member keys. It
+should be a branch in the existing shell rather than a second one.
+
+**`account.ts` does not yet build an invite signup payload.** `buildSignupMaterial`
+returns the household and member-key blocks that `signupWithInvite` must omit. Splitting
+out the user-keys half is this phase's first move.
+
+**`assertSameKek` will reject a freshly-handed-off invitee.** `unlockKeyBundle` requires
+the `user_keys` and `household_member_keys` password rows to carry matching KDF metadata.
+Between the handoff and the rewrap the invitee has an `ecies` member-key row and no `pwd`
+one at all, so they take the "no password-wrapped household key" path. That is correct —
+they genuinely cannot unlock yet — but the message says the wrong thing for the case, and
+this phase owns the waiting-for-partner screen that should be shown instead.
+
 ## v1 does not build the path 2 fix, 2026-09-14
 
 The decision below stands and is still the right one. It is **not being built for v1**.

@@ -41,6 +41,11 @@ it, a couple would just share one account and skip all of this.
 
 **On the critical path:** Phases 4, 5, 7, 8, and a thin pass of 10.
 
+**Phase 4 is done** (2026-09-15, `913b18f`, not pushed). It took Phase 5's login branch
+with it, because `/auth/verify-otp` forks on one field and building the shell twice would
+have meant writing the email and code steps twice. What is left of Phase 5 is recovery
+redemption and deciding what logout claims.
+
 **Deferred to post-v1** — parked, not abandoned. The reasoning in each doc stays where
 it is:
 
@@ -90,8 +95,8 @@ Numbering has a gap at 6. Renumbering would break every cross-link here and in t
 - [Phase 1 — Crypto + storage design doc](01_crypto_storage_design.md) — **designed** (`../crypto-design.md`)
 - [Phase 2 — Backend schema + endpoints](02_backend_schema_endpoints.md) — **built** (`02_backend_schema_endpoints_design.md`; §13 lists where the design was wrong)
 - [Phase 3 — Client crypto rewrite](03_client_crypto_rewrite.md) — **built**
-- [Phase 4 — Account creation at cloud-sync opt-in](04_onboarding_rewrite.md) — **v1**
-- [Phase 5 — Cloud login and logout](05_login_unlock_logout.md) — **v1**
+- [Phase 4 — Account creation at cloud-sync opt-in](04_onboarding_rewrite.md) — **built** (2026-09-15; the login branch came with it)
+- [Phase 5 — Cloud login and logout](05_login_unlock_logout.md) — **v1, reduced to recovery redemption and logout**
 - [Phase 7 — Invite flow (UI + backend + email)](07_invite_flow.md) — **v1**
 - [Phase 8 — Household concept in app UI (shared vs personal scope)](08_household_ui_scope.md) — **v1, trimmed**
 - [Phase 9 — Landing page rewrite (two passes)](09_landing_page_rewrite.md) — **deferred post-v1**

@@ -1,5 +1,10 @@
 # Phase 4 — Account creation at cloud-sync opt-in
 
+**Status: built, 2026-09-15**, in six commits ending `913b18f`, on `main` and not
+pushed. What landed and where it differs from the plan below is in
+"[What was actually built](#what-was-actually-built)" at the end; everything above that
+section is the plan as written, left alone.
+
 - **Goal:** Opting into cloud sync collects email, password and recovery phrase, and provisions the household. First run is unchanged: open the app, set an opening balance, start budgeting. No email, no password, no account.
 - **Files:** new `src/lib/base64url.ts`; `src/lib/api-client.ts` (the v2 auth surface); new `src/lib/account.ts` (assembles a signup payload from the Phase 3 primitives); rewrite `src/routes/login.tsx` as the shared auth shell; new `src/components/account/` step components; `src/components/dialogs/password-dialog.tsx` (create mode goes); `src/routes/settings.tsx` (the opt-in door); the first-run entry point (an "I already have an account" link).
 - **Gates:** Q1 (recovery phrase UX) — answered: display, "copy to your password manager" CTA, acknowledgement checkbox.
@@ -176,3 +181,100 @@ This is the first phase with something user-visible to say, so
 [Phase 3](03_client_crypto_rewrite.md)'s deferral ends here. Bump the version and write
 one changelog entry when the flow lands, in the terms `CLAUDE.md` asks for: what someone
 can now do, not what was built.
+
+Shipped as **0.40.0**.
+
+---
+
+## What was actually built
+
+Six commits, `613b0e2`..`913b18f`. Each one typechecks and passes the suite on its own,
+not just the final state.
+
+- `613b0e2` `feat:` the base64url codec
+- `814d4f3` `fix:` `isWrongKey` in both runtimes — see below, this one is not Phase 4's
+- `6f76a97` `feat:` the account flow (the bulk)
+- `6dee736` `feat:` the Settings and first-run doors
+- `14a10a3` `docs:` `BACKLOG.md`
+- `913b18f` `chore:` 0.40.0
+
+### The login branch landed here too
+
+The plan permitted this if it turned out cheap once the shell existed, and it did:
+`/auth/login-complete` returns the key bundle in the same response, so unlocking is
+derive-and-unwrap with no extra round trip. [Phase 5](05_login_unlock_logout.md) is
+correspondingly smaller — recovery redemption and logout semantics are what is left.
+
+**The old `restore` step is deleted**, not kept alongside. It was a second password
+prompt for the case "signed in, no local budget", which is now the `unlock` mode of
+`EnterPasswordStep`: same component, same destination logic, one code path. A device
+with a budget on it still never pulls automatically.
+
+### Three things the plan did not anticipate
+
+**One KEK does not automatically open both rows.** `unlockKeyBundle` derives from the
+`user_keys` row and was using that key on the `household_member_keys` blob too. That
+holds only because signup writes the same metadata to both tables — and the Argon2id
+rolling upgrade (`crypto-design.md` §3.4) is precisely the thing that could re-wrap one
+and not the other. Unguarded, the divergence surfaces as an AES-GCM tag failure and
+reaches the user as "wrong password" against a password that was right. `assertSameKek`
+compares the three KDF columns before either row is opened; it costs a string comparison
+rather than a second 130 ms derivation.
+
+**A failed first push is not a failed signup.** Both were originally inside one `try`
+with one message. Once `/auth/signup` returns, the account exists and the bridge token is
+spent, so "could not create your account, try again" is advice that cannot work. The push
+now warns and the flow continues.
+
+**Signup must not ask the server what is in the vault.** An early version routed signup
+through the same destination helper the sign-in path uses. That helper reads the vault
+version — which `push()` had just set to 1 — so on a device that has not been set up it
+would have pulled back the empty bytes uploaded a line earlier, marked the database
+initialised, and walked the user past the opening-balance wizard into an empty app.
+Signup navigates directly; only sign-in and unlock arrive at a vault they have not seen.
+
+### `isWrongKey` was broken, and is a `fix:` of its own
+
+Not Phase 4's code and not in this plan. `isWrongKey` guarded on
+`instanceof DOMException`; a browser's Web Crypto rejects with one and Node's does not,
+so the predicate answered `false` under test and `true` in production. It shipped in
+Phase 3 with no test, so nothing noticed, and the wrong-key message on `pull()` has only
+ever been reachable in a browser. Now matched on `name`, with two tests, one driving a
+real failed decrypt.
+
+It is committed separately and lands *before* the feature, because Phase 4's tests depend
+on the predicate working.
+
+### Smaller deviations
+
+- **Vault subscription moved into `key-vault.ts`.** It was a listener set in
+  `use-sync.ts`, which meant a caller could mutate the vault and leave the UI showing it
+  locked. Now every mutation notifies, and `setMasterKey`/`setPrivateKey` are replaced by
+  one `unlockKeyVault`.
+- **`WrongPasswordError` is a class**, not a shared message string. Two call sites branch
+  on the condition and branching on wording breaks silently when the wording changes.
+- **Logout locks the key vault**, as account deletion does. Q6 makes the JWT and the
+  MasterKey independent *lifetimes*; that is not the same as leaving decryption keys in
+  memory after an explicit logout. Flagged in case anyone reads Q6 the other way.
+- **`signupWithInvite` is built but unexercised.** Phase 7 is its only caller and has not
+  been written, so nothing in `src/` invokes it and nothing has run it against the live
+  worker. Its field names are transcribed from `worker/src/routes/auth.ts` rather than
+  verified; its doc comment says so.
+- **`rememberMe` is offered on sign-in only.** Signup takes the 7-day default rather than
+  deciding a session length on the user's behalf at a moment they have no context for.
+- **The household is named `"Household"`** with no UI, per the v1 rename deferral.
+- **`hasAccount` was not added**, as the plan concluded.
+
+### Verification — half done
+
+Done: unit tests on `account.ts` (20) and `base64url.ts` (23), plus the two new
+`isWrongKey` tests. 444 client tests pass; the worker's 188 are untouched and still pass.
+The NFKD case from the list above is a real test — a password typed decomposed unlocks
+when retyped composed. So is the recovery-phrase-alone unlock, and the both-row-kinds
+check. Mutation-tested: reusing one salt for both derivations, and dropping the base64url
+padding strip, each fail tests that would otherwise pass.
+
+**Not done, and cannot be until the worker is deployed:** the manual browser walkthrough.
+Specifically outstanding from the list above — a real signup writing `user_keys` and
+`household_member_keys` rows of both kinds server-side, and signup-then-delete leaving a
+working local-only app. Nothing in this phase has ever spoken to a live server.

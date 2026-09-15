@@ -1,6 +1,9 @@
 # Handover
 
-Current status of the project as of v0.37.0 (February 2026).
+Current status of the project as of v0.37.0 (February 2026), with the cloud-sync and auth
+rows updated for the rewrite in progress (v0.40.0, 2026-09-15). The rest of this file has
+not been re-checked against that work — `docs/auth-rewrite/00_overview.md` is the live
+status for anything auth, crypto or household shaped.
 
 ## What Works
 
@@ -12,8 +15,15 @@ These features are complete and stable:
 - **CSV import** — generic CSV and Up Bank format, with duplicate detection via `importFingerprint`
 - **JSON export/import** — full data backup and restore with schema migration
 - **Demo mode** — 4 procedurally-generated personas for trying the app without real data
-- **Cloud sync** — E2E encrypted (PBKDF2 + AES-256-GCM), blob upload/download to Cloudflare R2
-- **Auth system** — passwordless email OTP, JWT sessions, session rotation, account deletion
+- **Cloud sync** — E2E encrypted, blob upload/download to Cloudflare R2. **Rebuilt
+  2026-09-15 and not yet deployed:** Argon2id + AES-256-GCM under the wrapped-key scheme
+  in `crypto-design.md`, replacing PBKDF2-derived-from-a-passphrase. The client is on
+  `main` and the worker is not redeployed, so the live API is v1 code against a v2 schema
+  and cloud sync is knowingly broken in production until both ship.
+- **Auth system** — email OTP **plus a password proof** (no longer passwordless: inbox
+  control alone is not enough), JWT sessions, session rotation, account deletion.
+  Signing up and signing in are one flow at `/login`. A twelve-word recovery phrase is
+  issued at signup and is the only way back in if the password is lost.
 - **Landing page** — marketing page with interactive demos
 - **Check-in wizard** — periodic budget review flow with configurable cadence
 - **Category import rules** — auto-categorize transactions on import
