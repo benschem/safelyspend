@@ -84,8 +84,8 @@ export interface Household {
  */
 /**
  * Which KEK a wrapped row opens under. Mirrors the worker's own `KekKind`
- * (`worker/src/lib/key-material.ts:35`); the client needs only the union, not
- * the runtime array the worker validates against.
+ * (`worker/src/lib/key-material.ts`); the client needs only the union, not the
+ * runtime `KEK_KINDS` array the worker validates against.
  */
 export type KekKind = 'pwd' | 'recovery' | 'ecies';
 
@@ -131,7 +131,7 @@ export interface KeyBundle {
  * `verifierSalt === null` means this account has requested a code but never
  * completed signup. That is not an error — it is how the client knows to route
  * itself to the signup branch rather than to login completion
- * (`worker/src/services/users.ts:253`).
+ * (`getVerifierChallenge` in `worker/src/services/users.ts`).
  */
 export interface OtpChallenge {
   authPendingToken: string;
@@ -170,9 +170,9 @@ interface PasswordKeyMetadata {
  * wraps, swapped in for the old ones.
  *
  * No `kekKind` on either row. The worker imposes `'pwd'` rather than reading it
- * (`worker/src/lib/key-material.ts:252`), precisely so a client cannot label a
- * row `'recovery'` and overwrite the phrase it just used to get here. The
- * recovery rows survive a reset untouched, so the phrase keeps working.
+ * (`parsePasswordKey` in `worker/src/lib/key-material.ts`), so a client cannot
+ * label a row `'recovery'` and overwrite the phrase it just used to get here.
+ * The recovery rows survive a reset untouched, so the phrase keeps working.
  */
 export interface RecoveryResetBody {
   newVerifier: VerifierFields;
@@ -253,6 +253,51 @@ export const api = {
       return request<SessionResponse>('/v1/auth/login-complete', {
         method: 'POST',
         body: JSON.stringify({ authPendingToken, verifierCandidate, rememberMe }),
+      });
+    },
+
+    /**
+     * Spend the bridge token *without* a password proof, for someone who has
+     * forgotten theirs. The same endpoint, and its own method rather than a
+     * flag on the one above: this call sends no verifier, and an argument that
+     * silently makes another argument meaningless is worse than two functions.
+     *
+     * What comes back is deliberately crippled. The session carries `rec`, and
+     * `requireFullSession` (`worker/src/middleware/auth.ts`) lets it reach only
+     * `/auth/key-bundle` and `/auth/recovery-reset` — it cannot push, pull, or
+     * read `/auth/me`. The reset must also land within five minutes of this
+     * call (`RECOVERY_SESSION_MAX_AGE_SECONDS`).
+     *
+     * The key bundle still arrives inline, which is the whole reason this is
+     * one round trip: the caller unwraps the recovery rows from it directly.
+     *
+     * `rememberMe` is pinned false rather than exposed. A session that dies in
+     * five minutes and is replaced by a real sign-in straight afterwards has
+     * nothing to remember.
+     */
+    loginCompleteViaRecovery(authPendingToken: string) {
+      return request<SessionResponse>('/v1/auth/login-complete', {
+        method: 'POST',
+        body: JSON.stringify({ authPendingToken, via: 'recovery', rememberMe: false }),
+      });
+    },
+
+    /**
+     * Swap the password rows and the verifier for ones derived from a new
+     * password. Needs the recovery session above; an ordinary one is refused
+     * with `RECOVERY_SESSION_REQUIRED`.
+     *
+     * Allowed once an hour per user, and the budget is spent on entry — the
+     * `enforceSubjectRateLimit` call in the worker's `/recovery-reset` route
+     * runs before the body is parsed, let alone written. So a retry after a
+     * timeout is refused for the rest of the hour even though the first attempt
+     * may well have landed. Treat a failure here as "find out whether the new
+     * password works" rather than as something to send again.
+     */
+    recoveryReset(body: RecoveryResetBody) {
+      return request<{ ok: true }>('/v1/auth/recovery-reset', {
+        method: 'POST',
+        body: JSON.stringify(body),
       });
     },
 
