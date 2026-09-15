@@ -29,16 +29,34 @@ import type { MasterKey, PrivateKeyBytes } from './types';
 let masterKey: MasterKey | null = null;
 let privateKey: PrivateKeyBytes | null = null;
 
-export function setMasterKey(key: MasterKey): void {
-  masterKey = key;
+/**
+ * The vault is module state rather than React state, so anything rendering
+ * from it has to be told when it changes. Subscription lives here rather than
+ * in `use-sync.ts` for one reason: here, every mutation below notifies, and a
+ * future caller cannot unlock the vault and leave the UI showing it locked.
+ */
+const listeners = new Set<() => void>();
+
+export function subscribeToVaultState(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function notifyVaultStateChanged(): void {
+  listeners.forEach((listener) => listener());
+}
+
+/** Adopt the key material a signup or an unlock just produced. */
+export function unlockKeyVault(keys: { masterKey: MasterKey; privateKey: PrivateKeyBytes }): void {
+  masterKey = keys.masterKey;
+  privateKey = keys.privateKey;
+  notifyVaultStateChanged();
 }
 
 export function getMasterKey(): MasterKey | null {
   return masterKey;
-}
-
-export function setPrivateKey(key: PrivateKeyBytes): void {
-  privateKey = key;
 }
 
 export function getPrivateKey(): PrivateKeyBytes | null {
@@ -57,8 +75,17 @@ export function isVaultUnlocked(): boolean {
  * caller imports it bare: `clear()` at a call site says nothing about what is
  * being cleared.
  *
- * Locking the vault does not touch the server session, and logging out does
- * not lock the vault — Q6 makes the two independent in both directions.
+ * Locking the vault does not touch the server session. Q6 makes the JWT and
+ * the MasterKey independent *lifetimes*: a session expiring does not lock the
+ * vault, and locking does not end the session.
+ *
+ * The converse does not follow, and that is the half worth stating rather than
+ * leaving a reader to infer. An explicit logout *does* lock the vault —
+ * `clearLocalSyncState` in `use-auth.ts` calls this — because the MasterKey
+ * exists only to encrypt the vault for sync, and IndexedDB on this device is
+ * plaintext either way. Once the session is over the key can do nothing at
+ * all, so keeping it is liability with no purpose left to serve. A lifetime
+ * running out on its own and a user pressing Log out are not the same event.
  */
 export function lockKeyVault(): void {
   if (privateKey) {
@@ -66,4 +93,5 @@ export function lockKeyVault(): void {
   }
   privateKey = null;
   masterKey = null;
+  notifyVaultStateChanged();
 }

@@ -49,6 +49,7 @@ import {
 import { PasswordDialog } from '@/components/dialogs/password-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { useSync } from '@/hooks/use-sync';
+import { WrongPasswordError } from '@/lib/account';
 import { api, ApiError } from '@/lib/api-client';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -144,7 +145,6 @@ export function SettingsPage() {
     pull,
   } = useSync();
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
-  const [passwordDialogMode, setPasswordDialogMode] = useState<'create' | 'unlock'>('unlock');
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
@@ -178,8 +178,7 @@ export function SettingsPage() {
   };
 
   // Cloud sync handlers
-  const handleOpenPasswordDialog = (mode: 'create' | 'unlock') => {
-    setPasswordDialogMode(mode);
+  const handleOpenPasswordDialog = () => {
     setPasswordError(null);
     setPasswordDialogOpen(true);
   };
@@ -191,23 +190,18 @@ export function SettingsPage() {
     try {
       await unlockWithPassword(password);
       setPasswordDialogOpen(false);
-
-      if (passwordDialogMode === 'create') {
-        // First push
-        const result = await push();
-        toast.success('Pushed to cloud', {
-          description: `Version ${result.version} saved`,
-        });
-      }
     } catch (err) {
+      // A wrong password keeps the dialog open so it can be retyped; nothing
+      // was spent getting here. Anything structural is a failed request, and
+      // belongs in a toast rather than under the password field.
       lock();
-      // There is no wrong-password case to distinguish yet: until Phase 5
-      // wires the unwrap, `unlockWithPassword` rejects the same way for every
-      // input. Reinstate a dialog-level branch here when it can actually tell
-      // a bad password from a failed request.
-      const msg = err instanceof Error ? err.message : 'Failed to sync';
-      toast.error('Sync failed', { description: msg });
-      setPasswordDialogOpen(false);
+      if (err instanceof WrongPasswordError) {
+        setPasswordError(err.message);
+      } else {
+        const message = err instanceof Error ? err.message : 'Could not unlock your vault.';
+        toast.error('Unlock failed', { description: message });
+        setPasswordDialogOpen(false);
+      }
     } finally {
       setPasswordLoading(false);
     }
@@ -969,7 +963,7 @@ export function SettingsPage() {
                             </div>
                             <Button
                               variant="outline"
-                              onClick={() => handleOpenPasswordDialog('unlock')}
+                              onClick={handleOpenPasswordDialog}
                               className="cursor-pointer"
                             >
                               Unlock Vault
@@ -1576,7 +1570,6 @@ export function SettingsPage() {
       <PasswordDialog
         open={passwordDialogOpen}
         onOpenChange={setPasswordDialogOpen}
-        mode={passwordDialogMode}
         onSubmit={handlePasswordSubmit}
         error={passwordError}
         loading={passwordLoading}

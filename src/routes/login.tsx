@@ -1,416 +1,346 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router';
-import { Cloud, Mail, ArrowRight, ArrowLeft, Loader2, KeyRound } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Alert } from '@/components/ui/alert';
-import { Checkbox } from '@/components/ui/checkbox';
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
+import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
 import { useAppConfig } from '@/hooks/use-app-config';
 import { useSync } from '@/hooks/use-sync';
-import { api } from '@/lib/api-client';
+import { api, ApiError, type OtpChallenge } from '@/lib/api-client';
+// A WrongPasswordError needs no branch here: it carries its own wording, and
+// showFailure prints it. Settings branches on the type because it has to
+// choose between an inline field error and a toast.
+import {
+  buildSignupMaterial,
+  deriveLoginVerifier,
+  unlockKeyBundle,
+  type SessionKeys,
+} from '@/lib/account';
+import { generateRecoveryPhrase } from '@/lib/key-management';
+import { unlockKeyVault } from '@/lib/key-vault';
+import { EmailStep } from '@/components/account/email-step';
+import { CodeStep } from '@/components/account/code-step';
+import { CreatePasswordStep } from '@/components/account/create-password-step';
+import { RecoveryPhraseStep } from '@/components/account/recovery-phrase-step';
+import { EnterPasswordStep } from '@/components/account/enter-password-step';
+
+/**
+ * The one auth route. Signing up and signing in are the same flow with one
+ * branch in the middle, not two routes that happen to look alike.
+ *
+ * `/auth/verify-otp` returns `verifierSalt: null` for an account that has
+ * requested a code but never completed signup, and a real salt for one that
+ * has (`worker/src/services/users.ts:253`). That is not an error condition —
+ * it is how the client routes itself, and it is the only thing that decides
+ * which half of the flow runs.
+ *
+ *   email ──► code ──► verify-otp
+ *                          │
+ *         salt === null ──► password + confirm ──► recovery phrase ──► signup
+ *                          │
+ *         salt !== null ──► password ──► login-complete
+ *
+ * ## Why none of this lives in the URL
+ *
+ * The old version drove its steps from a search param. Past the code step this
+ * flow holds a bridge token, a password and a recovery phrase, none of which
+ * may be written anywhere that outlives the tab. So the step is component
+ * state, and a refresh mid-flow drops the user back at the email step — which
+ * is the correct outcome rather than a limitation: everything held at that
+ * point is single-use anyway.
+ *
+ * `?email=` is still read on entry, because an address is not a secret and
+ * pre-filling it is the whole value of the link.
+ */
+
+type Step = 'email' | 'code' | 'create-password' | 'recovery-phrase' | 'password';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { verify, login, isAuthenticated, user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { login, verifyOtp, isAuthenticated, user, checkAuth } = useAuth();
   const { isInitialized, isLoading: configLoading } = useAppConfig();
-  const { unlockWithPassword, pull } = useSync();
+  const { unlockWithPassword, push, pull } = useSync();
 
-  const step = searchParams.get('step') ?? 'email';
-  const emailParam = searchParams.get('email') ?? '';
-
-  const [email, setEmail] = useState(emailParam);
-  const [code, setCode] = useState('');
-  const [password, setPassword] = useState('');
+  const [step, setStep] = useState<Step>('email');
+  const [email, setEmail] = useState(searchParams.get('email') ?? '');
+  const [challenge, setChallenge] = useState<OtpChallenge | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
-  const [rememberMe, setRememberMe] = useState(false);
 
-  const codeInputRef = useRef<HTMLInputElement>(null);
-  const passwordInputRef = useRef<HTMLInputElement>(null);
+  // Held only for the hop between the two signup steps, and cleared the moment
+  // the account exists. The phrase in particular is shown once and stored
+  // nowhere else — not in sessionStorage, not in the URL, not server-side.
+  const [signupPassword, setSignupPassword] = useState('');
+  const [recoveryPhrase, setRecoveryPhrase] = useState('');
 
-  // Single decision point for where an authenticated visitor belongs. Both a
-  // fresh sign-in and someone opening /login while already signed in land here,
-  // so the routing rules only exist once.
-  useEffect(() => {
-    if (!isAuthenticated || configLoading) return;
-    // The restore step is a destination in its own right — don't route away.
-    if (step === 'restore') return;
-
-    // This device already holds a budget. Never pull automatically, because
-    // restoring replaces every local table; that stays a deliberate choice in
-    // Settings.
+  /**
+   * Where a session that has just been *signed in to* belongs.
+   *
+   * Only the sign-in and unlock paths come through here, because only they
+   * arrive at a vault they have not seen and have to ask the server what is in
+   * it. Signup knows its own answer without asking — see `handleSignup`.
+   *
+   * A device with a budget on it never pulls automatically: restoring replaces
+   * every local table, so that stays a deliberate choice in Settings. A device
+   * with nothing on it is the case the old separate "restore" step existed for,
+   * and it is folded in here.
+   */
+  const goToUnlockedDestination = useCallback(async () => {
     if (isInitialized) {
       navigate('/settings', { replace: true });
       return;
     }
 
-    let cancelled = false;
-    (async () => {
-      let hasVault = false;
-      try {
-        const metadata = await api.vault.getMetadata();
-        hasVault = metadata.version > 0;
-      } catch {
-        hasVault = false;
-      }
-      if (cancelled) return;
-
-      if (hasVault) {
-        setSearchParams({ step: 'restore', email: user?.email ?? emailParam }, { replace: true });
-      } else {
-        // Signed in but nothing to restore: send them through first-run setup
-        // rather than into the app shell, which would bounce them straight
-        // back to the landing page.
-        navigate('/?setup=1', { replace: true });
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    isAuthenticated,
-    configLoading,
-    isInitialized,
-    step,
-    navigate,
-    setSearchParams,
-    user?.email,
-    emailParam,
-  ]);
-
-  // Auto-focus the input that the current step is asking for
-  useEffect(() => {
-    if (step === 'verify') {
-      codeInputRef.current?.focus();
-    } else if (step === 'restore') {
-      passwordInputRef.current?.focus();
-    }
-  }, [step]);
-
-  // Resend cooldown timer
-  useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const timer = setInterval(() => {
-      setResendCooldown((prev) => prev - 1);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [resendCooldown]);
-
-  const handleSendCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    const trimmed = email.trim().toLowerCase();
-    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError('Please enter a valid email address.');
-      return;
-    }
-
-    setLoading(true);
+    // Three outcomes, not two. "The check failed" is not "there is nothing
+    // there": collapsing them drops a returning user who just typed the right
+    // password into the first-run wizard on a dropped request.
+    let vaultVersion: number | null = null;
     try {
-      await login(trimmed);
-      setSearchParams({ step: 'verify', email: trimmed });
-      setResendCooldown(60);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send code. Please try again.');
-    } finally {
+      vaultVersion = (await api.vault.getMetadata()).version;
+    } catch {
+      vaultVersion = null;
+    }
+
+    if (vaultVersion === null) {
+      setError(
+        'You are signed in, but we could not reach your cloud backup. Try again in a moment.',
+      );
       setLoading(false);
-    }
-  };
-
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    const trimmedCode = code.trim();
-    if (trimmedCode.length !== 6 || !/^\d{6}$/.test(trimmedCode)) {
-      setError('Please enter a valid 6-digit code.');
       return;
     }
 
-    setLoading(true);
-    try {
-      await verify(emailParam, trimmedCode, rememberMe);
-      // Deliberately stay in the loading state: the effect above decides where
-      // to send them once the session is live.
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid code. Please try again.');
-      setLoading(false);
-    }
-  };
-
-  const handleRestore = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!password) {
-      setError('Please enter your encryption password.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await unlockWithPassword(password);
+    if (vaultVersion > 0) {
       await pull();
-      // pull() marks the database as initialised, so the app shell will now
-      // render instead of redirecting to the landing page.
+      // pull() marks the database initialised, so the app shell will render
+      // rather than bouncing back to the landing page.
       navigate('/cash-flow', { replace: true });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not restore your data.');
-      setLoading(false);
+    } else {
+      navigate('/?setup=1', { replace: true });
     }
+  }, [isInitialized, navigate, pull]);
+
+  /**
+   * Someone arriving with a session already live — a cookie that outlived the
+   * tab. They need no code, only the password that opens their wrapped rows,
+   * so drop them straight at the unlock prompt. Mid-flow steps are left alone.
+   */
+  useEffect(() => {
+    if (!isAuthenticated || configLoading || step !== 'email') return;
+
+    if (isInitialized) {
+      navigate('/settings', { replace: true });
+      return;
+    }
+    setEmail((current) => user?.email ?? current);
+    setStep('password');
+  }, [isAuthenticated, configLoading, isInitialized, step, navigate, user?.email]);
+
+  /** Put a failure on screen and hand the form back. Sets state; does not throw. */
+  const showFailure = (err: unknown, fallback: string) => {
+    setError(err instanceof Error ? err.message : fallback);
+    setLoading(false);
   };
 
-  const handleResend = async () => {
-    if (resendCooldown > 0) return;
+  const handleEmail = async (submitted: string) => {
     setError(null);
     setLoading(true);
     try {
-      await login(emailParam);
-      setResendCooldown(60);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to resend code.');
-    } finally {
+      await login(submitted);
+      setEmail(submitted);
+      setStep('code');
       setLoading(false);
+    } catch (err) {
+      showFailure(err, 'Could not send a code. Please try again.');
     }
   };
 
-  const goBackToEmail = () => {
-    setSearchParams({});
-    setCode('');
+  const handleResend = () => {
     setError(null);
+    login(email).catch((err: unknown) => {
+      setError(err instanceof Error ? err.message : 'Could not resend the code.');
+    });
   };
+
+  const handleCode = async (code: string) => {
+    setError(null);
+    setLoading(true);
+    try {
+      const otpChallenge = await verifyOtp(email, code);
+      setChallenge(otpChallenge);
+      setStep(otpChallenge.verifierSalt === null ? 'create-password' : 'password');
+      setLoading(false);
+    } catch (err) {
+      showFailure(err, 'That code was not accepted. Please try again.');
+    }
+  };
+
+  const handleCreatePassword = (password: string) => {
+    setError(null);
+    // Generated here rather than in the step component so that re-rendering
+    // that component can never mint a second phrase and silently discard the
+    // one the user is looking at.
+    setSignupPassword(password);
+    setRecoveryPhrase(generateRecoveryPhrase());
+    setStep('recovery-phrase');
+  };
+
+  const handleSignup = async () => {
+    if (!challenge) return;
+    setError(null);
+    setLoading(true);
+
+    let keys: SessionKeys;
+    try {
+      const material = await buildSignupMaterial(signupPassword, recoveryPhrase);
+      keys = material.keys;
+      await api.auth.signup({
+        ...material.body,
+        authPendingToken: challenge.authPendingToken,
+        // The 7-day default. Someone who wants longer can choose it on their
+        // next sign-in; a session length is not this screen's decision to make
+        // on their behalf.
+        rememberMe: false,
+      });
+    } catch (err) {
+      showFailure(err, 'Could not create your account. Please try again.');
+      return;
+    }
+
+    // Past this line the account exists and the bridge token is spent, so
+    // nothing below may report itself as a failed signup — "try again" would
+    // be advice that cannot work.
+    setSignupPassword('');
+    setRecoveryPhrase('');
+    unlockKeyVault(keys);
+    await checkAuth();
+
+    // The first push belongs in the flow rather than being left to the user
+    // (plan section 5), but a push that fails is not a signup that failed: the
+    // account is real and usable, and the budget is still safe on this device.
+    try {
+      await push();
+    } catch {
+      toast.warning('Your account is ready, but your budget has not uploaded yet', {
+        description: 'Use Push in Settings once you are back online.',
+      });
+    }
+
+    // Deliberately not goToUnlockedDestination. That helper asks the server
+    // what is in the vault, which is the right question after a sign-in and the
+    // wrong one here: this flow just wrote the vault, so the cloud copy is the
+    // local budget. Asking anyway would pull back the bytes we uploaded a line
+    // ago and — on a device that has not been set up — mark the empty database
+    // initialised, walking the user past the opening-balance wizard into an
+    // empty app. Navigating is also synchronous, so there is no late failure
+    // left to report on a signup that has already succeeded.
+    navigate(isInitialized ? '/settings' : '/?setup=1', { replace: true });
+  };
+
+  const handlePassword = async (password: string, rememberMe: boolean) => {
+    setError(null);
+    setLoading(true);
+
+    try {
+      if (challenge) {
+        const verifierCandidate = await deriveLoginVerifier(password, challenge);
+        const session = await api.auth.loginComplete(
+          challenge.authPendingToken,
+          verifierCandidate,
+          rememberMe,
+        );
+        unlockKeyVault(await unlockKeyBundle(password, session.keyBundle));
+        await checkAuth();
+      } else {
+        // Already signed in — no bridge token to spend, so this is a local
+        // unlock against the live session.
+        await unlockWithPassword(password);
+      }
+
+      await goToUnlockedDestination();
+    } catch (err) {
+      // A wrong password on the sign-in path spends the bridge token, so there
+      // is no second attempt: send them back for a fresh code rather than
+      // leaving them retyping into a form that can no longer succeed.
+      if (err instanceof ApiError && err.data?.['code'] === 'VERIFIER_MISMATCH') {
+        setChallenge(null);
+        setStep('code');
+        setError('That password was not right. We have used up your code — request a new one.');
+        setLoading(false);
+        return;
+      }
+      // On the unlock path nothing was spent, so the form stays put and the
+      // password can simply be retyped.
+      showFailure(err, 'Could not sign you in. Please try again.');
+    }
+  };
+
+  const backToEmail = () => {
+    setStep('email');
+    setChallenge(null);
+    setSignupPassword('');
+    setRecoveryPhrase('');
+    setError(null);
+    setLoading(false);
+  };
+
+  // Holding a bridge token is what separates completing a sign-in from
+  // unlocking a session that is already live. Decided once, because the prompt
+  // and its escape hatch have to agree about which one this is.
+  const passwordMode = challenge ? 'sign-in' : 'unlock';
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-lg">
-        {step === 'restore' ? (
-          /* Step 3: Restore an existing vault onto a device with no local data */
-          <div className="space-y-6">
-            <div className="flex flex-col items-center text-center">
-              <div className="mb-4 rounded-full bg-blue-500/10 p-3">
-                <KeyRound className="h-6 w-6 text-blue-500" />
-              </div>
-              <h1 className="text-2xl font-bold">Restore your budget</h1>
-              <p className="mt-2 text-muted-foreground">
-                You have a synced budget, but nothing on this device yet. Enter your encryption
-                password to bring it back.
-              </p>
-            </div>
+        {step === 'email' && (
+          <EmailStep
+            initialEmail={email}
+            onSubmit={handleEmail}
+            loading={loading}
+            error={error}
+            // Before setup there is no app to go back to — /cash-flow would
+            // bounce off the RootLayout guard.
+            backTo={isInitialized ? '/cash-flow' : '/welcome'}
+            backLabel={isInitialized ? 'Back to app' : 'Back to home'}
+          />
+        )}
 
-            <form onSubmit={handleRestore} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium">
-                  Encryption password
-                </label>
-                <Input
-                  ref={passwordInputRef}
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                />
-              </div>
+        {step === 'code' && (
+          <CodeStep
+            email={email}
+            onSubmit={handleCode}
+            onResend={handleResend}
+            onBack={backToEmail}
+            loading={loading}
+            error={error}
+          />
+        )}
 
-              {error && (
-                <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                  {error}
-                </div>
-              )}
+        {step === 'create-password' && (
+          <CreatePasswordStep
+            onSubmit={handleCreatePassword}
+            onBack={backToEmail}
+            loading={loading}
+            error={error}
+          />
+        )}
 
-              <Button type="submit" className="w-full cursor-pointer" disabled={loading}>
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Restoring...
-                  </>
-                ) : (
-                  <>
-                    Restore my budget
-                    <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            </form>
+        {step === 'recovery-phrase' && (
+          <RecoveryPhraseStep
+            phrase={recoveryPhrase}
+            onAcknowledge={handleSignup}
+            loading={loading}
+            error={error}
+          />
+        )}
 
-            <Alert>
-              Your password never leaves this device. Without it, nobody can read your vault. Not
-              me, not anyone.
-            </Alert>
-
-            <div className="text-center">
-              <Link
-                to="/?setup=1"
-                className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-              >
-                Set up fresh on this device instead
-              </Link>
-            </div>
-          </div>
-        ) : step === 'verify' ? (
-          /* Step 2: Code Verification */
-          <div className="space-y-6">
-            <div className="flex flex-col items-center text-center">
-              <div className="mb-4 rounded-full bg-blue-500/10 p-3">
-                <Mail className="h-6 w-6 text-blue-500" />
-              </div>
-              <h1 className="text-2xl font-bold">Check your email</h1>
-              <p className="mt-2 text-muted-foreground">
-                We sent a 6-digit code to{' '}
-                <span className="font-medium text-foreground">{emailParam}</span>
-              </p>
-            </div>
-
-            <form onSubmit={handleVerify} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="code" className="text-sm font-medium">
-                  Enter code
-                </label>
-                <Input
-                  ref={codeInputRef}
-                  id="code"
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={6}
-                  placeholder="000000"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                  className="text-center text-lg tracking-widest"
-                  autoComplete="one-time-code"
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="remember-me"
-                  checked={rememberMe}
-                  onCheckedChange={(checked) => setRememberMe(checked === true)}
-                />
-                <label
-                  htmlFor="remember-me"
-                  className="cursor-pointer text-sm text-muted-foreground"
-                >
-                  Remember me for 30 days
-                </label>
-              </div>
-
-              {error && (
-                <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                  {error}
-                </div>
-              )}
-
-              <Button type="submit" className="w-full cursor-pointer" disabled={loading}>
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Verifying...
-                  </>
-                ) : (
-                  <>
-                    Verify
-                    <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            </form>
-
-            <div className="text-center text-sm">
-              <p className="text-muted-foreground">
-                Didn&apos;t receive it?{' '}
-                <button
-                  type="button"
-                  onClick={handleResend}
-                  disabled={resendCooldown > 0 || loading}
-                  className="cursor-pointer font-medium text-foreground underline-offset-4 hover:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
-                >
-                  {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : 'Resend code'}
-                </button>
-              </p>
-            </div>
-
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={goBackToEmail}
-                className="inline-flex cursor-pointer items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-              >
-                <ArrowLeft className="h-3 w-3" />
-                Use a different email
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* Step 1: Email */
-          <div className="space-y-6">
-            <div className="flex flex-col items-center text-center">
-              <div className="mb-4 rounded-full bg-blue-500/10 p-3">
-                <Cloud className="h-6 w-6 text-blue-500" />
-              </div>
-              <h1 className="text-2xl font-bold">Cloud Sync</h1>
-              <p className="mt-2 text-muted-foreground">
-                Sign in to sync your budget across devices.
-              </p>
-            </div>
-
-            <form onSubmit={handleSendCode} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium">
-                  Email address
-                </label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                />
-              </div>
-
-              {error && (
-                <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                  {error}
-                </div>
-              )}
-
-              <Button type="submit" className="w-full cursor-pointer" disabled={loading}>
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    Send login code
-                    <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            </form>
-
-            <Alert>
-              Your financial data is encrypted on your device. We never see your budget.
-            </Alert>
-
-            <div className="text-center">
-              {/* Before setup there is no app to go back to — /cash-flow would
-                  bounce off the RootLayout guard. */}
-              <Link
-                to={isInitialized ? '/cash-flow' : '/welcome'}
-                className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-              >
-                <ArrowLeft className="h-3 w-3" />
-                {isInitialized ? 'Back to app' : 'Back to home'}
-              </Link>
-            </div>
-          </div>
+        {step === 'password' && (
+          <EnterPasswordStep
+            mode={passwordMode}
+            email={email}
+            onSubmit={handlePassword}
+            onBack={passwordMode === 'sign-in' ? backToEmail : () => navigate('/?setup=1')}
+            loading={loading}
+            error={error}
+          />
         )}
       </div>
     </div>

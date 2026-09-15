@@ -1,7 +1,14 @@
 import { useState, useCallback, useSyncExternalStore } from 'react';
 import { api, ApiError } from '@/lib/api-client';
+import { unlockKeyBundle } from '@/lib/account';
 import { decryptVault, encryptVault, isWrongKey } from '@/lib/key-management';
-import { getMasterKey, isVaultUnlocked, lockKeyVault } from '@/lib/key-vault';
+import {
+  getMasterKey,
+  isVaultUnlocked,
+  lockKeyVault,
+  subscribeToVaultState,
+  unlockKeyVault,
+} from '@/lib/key-vault';
 import { exportAllData, importAllData } from '@/lib/db';
 import { validateImport } from '@/lib/import-schema';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
@@ -18,11 +25,12 @@ interface UseSyncReturn {
   /** Whether this session holds a MasterKey — see `key-vault.ts`. */
   isUnlocked: boolean;
   /**
-   * Unlock the session from the account password.
+   * Unlock the session from the account password, against a server session
+   * that is already live.
    *
-   * Not implemented until Phase 5: unlocking means fetching the user's wrapped
-   * key rows, deriving KEK_pwd and unwrapping, and none of those endpoints
-   * exist yet. Throws rather than failing quietly.
+   * No OTP and no bridge token: the JWT is what authorises the key-bundle
+   * fetch, and the password only has to open the wrapped rows it returns. The
+   * two lifetimes are independent in both directions (overview Q6).
    */
   unlockWithPassword: (password: string) => Promise<void>;
   /** Drop the MasterKey. Does not touch the server session (overview Q6). */
@@ -60,32 +68,6 @@ function setStoredLastSyncedAt(timestamp: string): void {
   localStorage.setItem(STORAGE_KEYS.SYNC_LAST_SYNCED_AT, timestamp);
 }
 
-/**
- * Shown verbatim by `login.tsx` and `settings.tsx`. Phase 3 deliberately ships
- * the sync controls in a knowingly broken state rather than behind a flag —
- * see the step 6 decision in `docs/auth-rewrite/03_client_crypto_rewrite.md` —
- * so this message is the whole of the unlock user experience until Phase 5.
- */
-const VAULT_REBUILDING_MESSAGE = 'Cloud sync is being rebuilt and cannot be unlocked yet.';
-
-/**
- * The key vault is a module-level variable rather than React state, so every
- * `useSync` caller has to be told when it changes. Subscribers are held here
- * and notified on lock; Phase 5 notifies on unlock through the same path.
- */
-const unlockListeners = new Set<() => void>();
-
-function subscribeToUnlockState(listener: () => void): () => void {
-  unlockListeners.add(listener);
-  return () => {
-    unlockListeners.delete(listener);
-  };
-}
-
-function notifyUnlockStateChanged(): void {
-  unlockListeners.forEach((listener) => listener());
-}
-
 function requireMasterKey(): MasterKey {
   const masterKey = getMasterKey();
   if (!masterKey) {
@@ -95,25 +77,21 @@ function requireMasterKey(): MasterKey {
 }
 
 export function useSync(): UseSyncReturn {
-  const isUnlocked = useSyncExternalStore(subscribeToUnlockState, isVaultUnlocked);
+  const isUnlocked = useSyncExternalStore(subscribeToVaultState, isVaultUnlocked);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const [conflict, setConflict] = useState<ConflictInfo | null>(null);
   const [localVersion, setLocalVersion] = useState(getStoredVersion);
   const [lastSyncedAt, setLastSyncedAt] = useState(getStoredLastSyncedAt);
 
-  // Takes no parameter yet, which still satisfies the one-argument type above.
-  // Phase 5 adds `password` back when there is something to derive from it,
-  // and replaces this body: GET the wrapped key rows, deriveKek against the
-  // returned kek_salt, unwrapMasterKey, unwrapPrivateKey, put both in the key
-  // vault, then notifyUnlockStateChanged().
-  const unlockWithPassword = useCallback(
-    (): Promise<void> => Promise.reject(new Error(VAULT_REBUILDING_MESSAGE)),
-    [],
-  );
+  const unlockWithPassword = useCallback(async (password: string): Promise<void> => {
+    // A wrong password leaves unlockKeyBundle as a WrongPasswordError, which
+    // the caller branches on; nothing needs translating here.
+    const bundle = await api.auth.keyBundle();
+    unlockKeyVault(await unlockKeyBundle(password, bundle));
+  }, []);
 
   const lock = useCallback(() => {
     lockKeyVault();
-    notifyUnlockStateChanged();
   }, []);
 
   const push = useCallback(async (force?: boolean): Promise<{ version: number }> => {

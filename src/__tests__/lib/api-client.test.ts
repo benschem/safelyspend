@@ -76,14 +76,21 @@ describe('api.auth', () => {
     });
   });
 
-  describe('verify', () => {
-    it('sends POST to /auth/verify with email and code', async () => {
-      mockFetch.mockResolvedValue(jsonResponse({ user: { id: 'u1', email: 'user@example.com' } }));
+  describe('verifyOtp', () => {
+    const challenge = {
+      authPendingToken: 'tok',
+      verifierSalt: 'c2FsdA',
+      verifierKdfKind: 2,
+      verifierKdfParams: 'cGFyYW1z',
+    };
 
-      await api.auth.verify('user@example.com', '123456');
+    it('sends POST to /auth/verify-otp with email and code', async () => {
+      mockFetch.mockResolvedValue(jsonResponse(challenge));
+
+      await api.auth.verifyOtp('user@example.com', '123456');
 
       const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
-      expect(url).toContain('/auth/verify');
+      expect(url).toContain('/auth/verify-otp');
       expect(opts.method).toBe('POST');
       expect(JSON.parse(opts.body as string)).toEqual({
         email: 'user@example.com',
@@ -91,18 +98,76 @@ describe('api.auth', () => {
       });
     });
 
-    it('returns { user } on success', async () => {
-      const user = { id: 'u1', email: 'user@example.com' };
-      mockFetch.mockResolvedValue(jsonResponse({ user }));
+    it('returns the bridge token and the verifier challenge', async () => {
+      mockFetch.mockResolvedValue(jsonResponse(challenge));
 
-      const result = await api.auth.verify('user@example.com', '123456');
-      expect(result).toEqual({ user });
+      expect(await api.auth.verifyOtp('user@example.com', '123456')).toEqual(challenge);
+    });
+
+    // Not an error: it is how the client knows to route itself to signup.
+    it('passes through a null verifierSalt for an account that never signed up', async () => {
+      mockFetch.mockResolvedValue(
+        jsonResponse({
+          authPendingToken: 'tok',
+          verifierSalt: null,
+          verifierKdfKind: null,
+          verifierKdfParams: null,
+        }),
+      );
+
+      const result = await api.auth.verifyOtp('user@example.com', '123456');
+      expect(result.verifierSalt).toBeNull();
     });
 
     it('throws ApiError on 401', async () => {
-      mockFetch.mockResolvedValue(errorResponse(401, 'Invalid code'));
+      mockFetch.mockResolvedValue(errorResponse(401, 'Invalid email or code'));
 
-      await expect(api.auth.verify('user@example.com', '000000')).rejects.toThrow(ApiError);
+      await expect(api.auth.verifyOtp('user@example.com', '000000')).rejects.toThrow(ApiError);
+    });
+  });
+
+  describe('loginComplete', () => {
+    it('sends POST to /auth/login-complete with the token, verifier and rememberMe', async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ user: {}, household: null, keyBundle: {} }));
+
+      await api.auth.loginComplete('tok', 'dmVyaWZpZXI', true);
+
+      const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(url).toContain('/auth/login-complete');
+      expect(opts.method).toBe('POST');
+      expect(JSON.parse(opts.body as string)).toEqual({
+        authPendingToken: 'tok',
+        verifierCandidate: 'dmVyaWZpZXI',
+        rememberMe: true,
+      });
+    });
+
+    it('surfaces VERIFIER_MISMATCH as ApiError data the caller can branch on', async () => {
+      mockFetch.mockResolvedValue(
+        errorResponse(401, 'Incorrect password', { code: 'VERIFIER_MISMATCH' }),
+      );
+
+      try {
+        await api.auth.loginComplete('tok', 'dmVyaWZpZXI', false);
+        expect.fail('Expected ApiError');
+      } catch (e) {
+        expect((e as ApiError).status).toBe(401);
+        expect((e as ApiError).data?.['code']).toBe('VERIFIER_MISMATCH');
+      }
+    });
+  });
+
+  describe('keyBundle', () => {
+    it('sends GET to /auth/key-bundle', async () => {
+      mockFetch.mockResolvedValue(
+        jsonResponse({ user: {}, userKeys: [], household: null, memberKeys: [] }),
+      );
+
+      await api.auth.keyBundle();
+
+      const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(url).toContain('/auth/key-bundle');
+      expect(opts.method).toBeUndefined();
     });
   });
 
@@ -131,12 +196,12 @@ describe('api.auth', () => {
       expect(opts.method).toBeUndefined();
     });
 
-    it('returns { user } when authenticated', async () => {
-      const user = { id: 'u1', email: 'user@example.com' };
-      mockFetch.mockResolvedValue(jsonResponse({ user }));
+    it('returns the user and their household when authenticated', async () => {
+      const body = { user: { id: 'u1', email: 'user@example.com' }, household: null };
+      mockFetch.mockResolvedValue(jsonResponse(body));
 
       const result = await api.auth.me();
-      expect(result).toEqual({ user });
+      expect(result).toEqual(body);
     });
 
     it('throws ApiError on 401', async () => {
