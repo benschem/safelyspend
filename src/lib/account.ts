@@ -81,10 +81,10 @@ function encodedArgon2idParams(): string {
  * Assemble everything `/auth/signup` needs.
  *
  * Both wrapped-key kinds are built here because the endpoint will not take one
- * without the other (`worker/src/lib/key-material.ts:263`). That is also why
- * the recovery phrase cannot be deferred past this point: the account does not
- * exist until the recovery-wrapped rows do, so the window in which an account
- * is unrecoverable never opens.
+ * without the other (`parseKeyPair` in `worker/src/lib/key-material.ts`). That
+ * is also why the recovery phrase cannot be deferred past this point: the
+ * account does not exist until the recovery-wrapped rows do, so the window in
+ * which an account is unrecoverable never opens.
  *
  * The phrase arrives as an argument rather than being generated in here for
  * the same reason. It is shown to the user and acknowledged *before* the

@@ -157,6 +157,80 @@ describe('api.auth', () => {
     });
   });
 
+  describe('loginCompleteViaRecovery', () => {
+    it('sends the same endpoint with via: recovery and no verifier', async () => {
+      // The absent verifierCandidate is the assertion that matters. Sending one
+      // would not fail — the server ignores it on this path — so nothing but
+      // this test stops the recovery call quietly carrying a password proof.
+      mockFetch.mockResolvedValue(jsonResponse({ user: {}, household: null, keyBundle: {} }));
+
+      await api.auth.loginCompleteViaRecovery('tok');
+
+      const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(url).toContain('/auth/login-complete');
+      expect(opts.method).toBe('POST');
+      expect(JSON.parse(opts.body as string)).toEqual({
+        authPendingToken: 'tok',
+        via: 'recovery',
+        rememberMe: false,
+      });
+    });
+
+    it('surfaces a spent bridge token as an ApiError', async () => {
+      mockFetch.mockResolvedValue(errorResponse(401, 'Invalid or expired token'));
+
+      await expect(api.auth.loginCompleteViaRecovery('tok')).rejects.toThrow(ApiError);
+    });
+  });
+
+  describe('recoveryReset', () => {
+    it('sends POST to /auth/recovery-reset with the new verifier and both rows', async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ ok: true }));
+
+      const body = {
+        newVerifier: {
+          verifierCandidate: 'dmVyaWZpZXI',
+          verifierSalt: 'c2FsdA',
+          verifierKdfKind: 2,
+          verifierKdfParams: 'cGFyYW1z',
+        },
+        newUserKeyPwd: {
+          kekSalt: 'a2Vrc2FsdA',
+          kekKdfKind: 2,
+          kekKdfParams: 'cGFyYW1z',
+          wrappedPrivKey: 'd3JhcHBlZFByaXY',
+        },
+        newMemberKeyPwd: {
+          kekSalt: 'a2Vrc2FsdA',
+          kekKdfKind: 2,
+          kekKdfParams: 'cGFyYW1z',
+          wrappedMasterKey: 'd3JhcHBlZE1hc3Rlcg',
+        },
+      };
+
+      await api.auth.recoveryReset(body);
+
+      const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(url).toContain('/auth/recovery-reset');
+      expect(opts.method).toBe('POST');
+      expect(JSON.parse(opts.body as string)).toEqual(body);
+    });
+
+    it('surfaces RECOVERY_SESSION_REQUIRED as ApiError data the caller can branch on', async () => {
+      mockFetch.mockResolvedValue(
+        errorResponse(403, 'Recovery session required', { code: 'RECOVERY_SESSION_REQUIRED' }),
+      );
+
+      try {
+        await api.auth.recoveryReset({} as Parameters<typeof api.auth.recoveryReset>[0]);
+        expect.fail('Expected ApiError');
+      } catch (e) {
+        expect((e as ApiError).status).toBe(403);
+        expect((e as ApiError).data?.['code']).toBe('RECOVERY_SESSION_REQUIRED');
+      }
+    });
+  });
+
   describe('keyBundle', () => {
     it('sends GET to /auth/key-bundle', async () => {
       mockFetch.mockResolvedValue(
