@@ -30,6 +30,7 @@ import {
   generateRecoveryPhrase,
   generateSalt,
   isValidRecoveryPhrase,
+  isWrongKey,
   mnemonicToSeed,
   publicKeyFingerprint,
   unwrapFromSender,
@@ -342,6 +343,24 @@ describe('vault encryption', () => {
     const second = await encryptVault(masterKey, EMPTY_BACKUP);
 
     expect(toHex(first)).not.toBe(toHex(second));
+  });
+});
+
+describe('isWrongKey', () => {
+  /**
+   * Matching on the error's class rather than its name answers differently in
+   * a browser and in Node, so the predicate has to be exercised against a real
+   * rejection rather than a hand-built one.
+   */
+  it('recognises a failed decrypt as a wrong key', async () => {
+    const sealed = await encryptVault(await generateMasterKey(), EMPTY_BACKUP);
+
+    await expect(decryptVault(await generateMasterKey(), sealed)).rejects.toSatisfy(isWrongKey);
+  });
+
+  it('does not claim an ordinary error is a wrong key', () => {
+    expect(isWrongKey(new Error('network request failed'))).toBe(false);
+    expect(isWrongKey('not an error at all')).toBe(false);
   });
 });
 

@@ -421,7 +421,17 @@ export async function publicKeyFingerprint(publicKey: PublicKeyBytes): Promise<U
   return new Uint8Array(digest).slice(0, PUBLIC_KEY_FINGERPRINT_LENGTH);
 }
 
-/** Distinguishes a wrong key from a malformed blob, for callers that show different copy. */
+/**
+ * Distinguishes a wrong key from a malformed blob, for callers that show
+ * different copy.
+ *
+ * Matched on `name` alone. A browser's Web Crypto rejects with a real
+ * `DOMException`, but Node's does not — it throws its own `OperationError`
+ * class — so an `instanceof DOMException` guard quietly returns false under
+ * the test environment and true in production. A predicate that answers
+ * differently depending on the realm is worse than a loose one, particularly
+ * now that user-facing copy hangs off the answer.
+ */
 export function isWrongKey(error: unknown): boolean {
-  return error instanceof DOMException && error.name === 'OperationError';
+  return error instanceof Error && error.name === 'OperationError';
 }
