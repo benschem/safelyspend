@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.41.0',
+    date: '2026-09-16',
+    changes: [
+      'Forgotten your password? You can now use your twelve-word recovery phrase to set a new one',
+      'Your recovery phrase keeps working afterwards, so you can use it again if you need to',
+    ],
+  },
+  {
     version: '0.40.0',
     date: '2026-09-15',
     changes: [
