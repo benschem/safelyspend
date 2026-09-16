@@ -11,21 +11,21 @@ Land each as its own commit when it comes up. Delete the entry when it does.
 
 `src/components/form-field.tsx` exports `FormError`, which renders a
 `destructive` `Alert` and therefore carries `role="alert"`. Almost nothing uses
-it. Eighteen places instead hand-roll the same block:
+it. Nineteen places instead hand-roll the same block:
 
 ```tsx
 <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
 ```
 
-They are in `src/components/account/` (5), `src/components/dialogs/` (10),
+They are in `src/components/account/` (6), `src/components/dialogs/` (10),
 `src/routes/settings.tsx` (2) and `src/routes/categories/import-rules.tsx` (1),
-across seventeen files. Find them with:
+across eighteen files. Find them with:
 
 ```bash
 grep -rn "bg-destructive/10 p-3" src
 ```
 
-Two things follow from it. The cosmetic one is eighteen copies of one style,
+Two things follow from it. The cosmetic one is nineteen copies of one style,
 which drift. The one that matters is accessibility: these messages appear
 *after* a submit, in response to something the user did, and without
 `role="alert"` a screen reader announces nothing at all — the form simply seems

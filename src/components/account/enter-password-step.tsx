@@ -28,6 +28,7 @@ export function EnterPasswordStep({
   email,
   onSubmit,
   onBack,
+  onForgotPassword,
   loading,
   error,
 }: {
@@ -35,6 +36,13 @@ export function EnterPasswordStep({
   email: string;
   onSubmit: (password: string, rememberMe: boolean) => void;
   onBack: () => void;
+  /**
+   * Offered only in `sign-in` mode, because recovery spends the bridge token
+   * this step is holding. An `unlock` has no token to spend — that session is
+   * already live — so someone who has forgotten their password there signs out
+   * and comes back through the front door.
+   */
+  onForgotPassword?: (() => void) | undefined;
   loading: boolean;
   error: string | null;
 }) {
@@ -149,15 +157,29 @@ export function EnterPasswordStep({
           : 'Your password never leaves this device. Without it, nobody can read your vault — not me, not anyone.'}
       </Alert>
 
-      <div className="text-center">
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={loading}
-          className="cursor-pointer text-sm text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
-        >
-          {mode === 'sign-in' ? 'Use a different email' : 'Set up fresh on this device instead'}
-        </button>
+      <div className="space-y-2 text-center">
+        {mode === 'sign-in' && onForgotPassword && (
+          <div>
+            <button
+              type="button"
+              onClick={onForgotPassword}
+              disabled={loading}
+              className="cursor-pointer text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground disabled:cursor-not-allowed"
+            >
+              Forgot your password?
+            </button>
+          </div>
+        )}
+        <div>
+          <button
+            type="button"
+            onClick={onBack}
+            disabled={loading}
+            className="cursor-pointer text-sm text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
+          >
+            {mode === 'sign-in' ? 'Use a different email' : 'Set up fresh on this device instead'}
+          </button>
+        </div>
       </div>
     </div>
   );
