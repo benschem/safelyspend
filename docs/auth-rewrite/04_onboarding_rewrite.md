@@ -1,6 +1,6 @@
 # Phase 4 — Account creation at cloud-sync opt-in
 
-**Status: built, 2026-09-15**, in six commits ending `913b18f`, on `main` and not
+**Status: built, 2026-09-15**, in six commits ending `3c9b2f9`, on `main` and not
 pushed. What landed and where it differs from the plan below is in
 "[What was actually built](#what-was-actually-built)" at the end; everything above that
 section is the plan as written, left alone.
@@ -188,15 +188,15 @@ Shipped as **0.40.0**.
 
 ## What was actually built
 
-Six commits, `613b0e2`..`913b18f`. Each one typechecks and passes the suite on its own,
+Six commits, `613b0e2`..`3c9b2f9`. Each one typechecks and passes the suite on its own,
 not just the final state.
 
 - `613b0e2` `feat:` the base64url codec
 - `814d4f3` `fix:` `isWrongKey` in both runtimes — see below, this one is not Phase 4's
-- `6f76a97` `feat:` the account flow (the bulk)
-- `6dee736` `feat:` the Settings and first-run doors
-- `14a10a3` `docs:` `BACKLOG.md`
-- `913b18f` `chore:` 0.40.0
+- `7d981d2` `feat:` the account flow (the bulk)
+- `a1b37d9` `feat:` the Settings and first-run doors
+- `9d80451` `docs:` `BACKLOG.md`
+- `3c9b2f9` `chore:` 0.40.0
 
 ### The login branch landed here too
 

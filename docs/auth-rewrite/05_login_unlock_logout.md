@@ -1,5 +1,15 @@
 # Phase 5 — Cloud login and logout
 
+**Status: built, 2026-09-16**, in five commits `0392e7a`..`96c9a08`, plus this note, the
+0.41.0 bump that follows it, and one fixup folded into Phase 4's `7d981d2`. On `main`
+and not pushed. What landed and where it differs
+from the plan below is in "[What was actually built](#what-was-actually-built)" at the
+end; everything above that section is the plan as written, left alone.
+
+**Built is not verified.** Nothing in this phase has run against a live server, and the
+one screen anyone has looked at was reached by temporarily hard-coding the step. See
+"[What has and has not been exercised](#what-has-and-has-not-been-exercised)".
+
 - **Goal:** Log in to cloud sync with email OTP *plus* a password proof, so control of the inbox alone is not enough to reach the vault.
 - **Files:** rewrite `src/routes/login.tsx` (418 lines; a three-step flow replaces the single verify call); `worker/src/routes/auth.ts` (JWT gains `hid`); `src/hooks/use-sync.ts` (key bundle handling on login).
 - **Gates:** none outstanding. Q6 is locked — JWT and MasterKey lifetimes are independent.
@@ -73,3 +83,113 @@ There is no local unlock step — nothing on the device is encrypted. See [Phase
 
 - Should the app work fully offline once logged in? It does today because everything is local. Nothing here changes that, but it becomes a promise worth stating rather than an accident.
 - Is `rememberMe` meaningful when there is no local lock to contrast it with?
+
+---
+
+## What was actually built
+
+Four commits, `0392e7a`..`96c9a08`, plus a fixup folded back into Phase 4's `7d981d2`.
+
+- `0392e7a` `feat:` unlock and rewrap keys from the recovery phrase
+- `4e854f5` `feat:` the two recovery endpoints in the API client
+- `3331bc3` `feat:` the forgot-password branch and its two screens
+- `96c9a08` `docs:` a new `BACKLOG.md` entry found while building it
+
+This note and the 0.41.0 bump follow, and are deliberately not listed by SHA. A doc that
+names the commits after itself cannot be corrected without rewriting them, which changes
+the SHAs it just named. Phase 4's list stops in the same place for the same reason.
+
+The logout decision needed no commit of its own — see below.
+
+### The flow
+
+Reached from a **Forgot your password?** link on the sign-in password step, which is
+offered only in `sign-in` mode: recovery spends the bridge token, and an `unlock` has
+none to spend.
+
+```
+password step ──► phrase ──► login-complete (via: recovery) ──► unwrap locally
+                                                                     │
+                              new password ──► recovery-reset ──► sign in again
+```
+
+### Where it differs from the plan
+
+**A wrong phrase does not burn the emailed code.** The plan assumed it would, by
+analogy with a wrong password. It does not have to: the bridge token is spent fetching
+the key bundle, and whether the phrase opens it is decided in the browser. So
+`login.tsx` keeps the bundle in state and every attempt after the first is free, with no
+server contact at all. Only a phrase that is valid BIP-39 *and* belongs to another
+account gets that far, since the checksum stops a typo before anything is sent.
+
+**After a successful reset the user signs in again**, rather than being carried into the
+app. The `rec` session reaches only `/auth/key-bundle` and `/auth/recovery-reset`, so
+carrying it forward would mean a signed-in state that fails at everything else. The
+alternative — having the server upgrade the session on a successful reset — was
+rejected as a worker change on a client-only phase, for a flow people will use once.
+
+**`useAuth().logout` is called afterwards, not `api.auth.logout`.** This matters: if the
+`rec` cookie survives, the `isAuthenticated` effect at the top of `login.tsx` drops the
+user at the unlock prompt, and `/auth/key-bundle` *does* answer a recovery session — so
+they would unlock successfully into an app that cannot push or pull. Nothing calls
+`checkAuth()` on the logout-failure path, deliberately: `/auth/me` has no
+`requireFullSession`, so asking would report a live session and cause the exact walk-in
+this avoids.
+
+**Logout semantics: the code was already right, only the comment was wrong.** Phase 4's
+reading survived re-examination. The MasterKey exists solely to encrypt the vault for
+sync — IndexedDB is plaintext on disk either way — so after a logout it can do nothing,
+and holding it is liability with no purpose. Q6's independence is about *lifetimes*: a
+session expiring should not lock the vault. A user pressing Log out is not a lifetime
+elapsing. `key-vault.ts` claimed the opposite in its own doc comment; that correction
+was folded into `7d981d2`, the commit that introduced the contradiction.
+
+**Three guards that were not in the plan**, each because a structural failure would
+otherwise have reached the user as "your recovery phrase is wrong" — the worst sentence
+this flow can say, on the last way in:
+
+- `assertBip39Kdf`, the recovery-side counterpart to `assertSameKek`. A row naming some
+  other KDF cannot open under `deriveRecoveryKek`.
+- `isValidRecoveryPhrase` inside `unlockKeyBundleWithPhrase`, not only in the form.
+  `deriveRecoveryKek` throws a bare `Error` on a failed checksum, which is neither type
+  the screens branch on.
+- `normaliseRecoveryPhraseInput`, which case-folds on the way in. The BIP-39 wordlist is
+  lowercase and `normaliseMnemonic` does not case-fold, so a phone autocapitalising the
+  first word would read as a wrong phrase.
+
+**Two components gained modes rather than being duplicated.** `CreatePasswordStep` takes
+`mode: 'signup' | 'reset'`, mirroring `EnterPasswordStep`'s existing pair; the reset copy
+says the recovery phrase still works, because someone who has just used theirs will
+assume they have spent it. They have not: the server never touches the recovery rows.
+
+### What has and has not been exercised
+
+**Unit-level only.** 16 new client tests, 460 passing in total, 188 worker tests
+untouched and passing. `npm run lint` and `npm run build` clean at every commit.
+
+**The entry screen has been seen once, in a dev server**, by temporarily hard-coding the
+initial step — the email and code steps need a worker. Confirmed there: the checksum
+rejects twelve real words that do not add up, without contacting the server, and a
+capitalised first word is folded rather than rejected. That scaffolding was reverted
+before the commit.
+
+**Nothing else has run.** No recovery login, no reset, no round trip of any kind. The
+deployed worker is still v1 code against the v2 schema, so the live API cannot serve
+this flow at all.
+
+The walkthrough this phase needs, once a worker is deployed, on top of Phase 4's
+outstanding one:
+
+1. Sign up, keep the phrase, push a budget.
+2. Sign in, claim to have forgotten the password, redeem the phrase.
+3. Get the phrase wrong first, and confirm the retry costs no new code.
+4. Set a new password, confirm the forced sign-in afterwards works with it.
+5. Confirm the **old** phrase still works after the reset — the one claim the UI makes
+   that nothing client-side can verify.
+6. Confirm the old password no longer does.
+
+### Still open
+
+Both original open questions survive untouched. `rememberMe` is offered on sign-in and
+remains a 7-day/30-day choice with no local lock to contrast it against; the offline
+question is still a promise nobody has written down.
