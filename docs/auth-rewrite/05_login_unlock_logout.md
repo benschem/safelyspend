@@ -1,8 +1,8 @@
 # Phase 5 — Cloud login and logout
 
 **Status: built, 2026-09-16**, in five commits `0392e7a`..`96c9a08`, plus this note, the
-0.41.0 bump that follows it, and one fixup folded into Phase 4's `7d981d2`. On `main`
-and not pushed. What landed and where it differs
+0.41.0 bump that follows it, and one fixup folded into Phase 4's `7d981d2`. Pushed, and
+the worker deployed alongside it. What landed and where it differs
 from the plan below is in "[What was actually built](#what-was-actually-built)" at the
 end; everything above that section is the plan as written, left alone.
 
@@ -173,12 +173,11 @@ rejects twelve real words that do not add up, without contacting the server, and
 capitalised first word is folded rather than rejected. That scaffolding was reverted
 before the commit.
 
-**Nothing else has run.** No recovery login, no reset, no round trip of any kind. The
-deployed worker is still v1 code against the v2 schema, so the live API cannot serve
-this flow at all.
+**Nothing else has run.** No recovery login, no reset, no round trip of any kind. The v2
+worker is deployed, so the live API can serve this flow — it simply has not been asked
+to.
 
-The walkthrough this phase needs, once a worker is deployed, on top of Phase 4's
-outstanding one:
+The walkthrough this phase needs, on top of Phase 4's outstanding one:
 
 1. Sign up, keep the phrase, push a budget.
 2. Sign in, claim to have forgotten the password, redeem the phrase.

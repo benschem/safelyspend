@@ -22,7 +22,7 @@ The remote sequence was: drop the six v1 tables, `DELETE FROM d1_migrations` (4 
 
 The schema was re-applied once more the same day, to add `'declined'` to the `invites.status` CHECK before anything could be written (see `07_invite_flow.md`). Production carries that version; it does not need a later table rebuild.
 
-**The deployed worker has not been redeployed**, so the live API is v1 code against a v2 schema until Phase 4 or 5 ships the client to match. That is the same deliberate outage as the rest of the interval. `worker/README.md` has the full procedure.
+**The worker was redeployed once Phase 5 landed**, ending the deliberate outage described here: the live API is v2 code against the v2 schema. `worker/README.md` has the full procedure.
 
 ## Shipping v1 — scope cut, 2026-09-14
 
@@ -41,19 +41,18 @@ it, a couple would just share one account and skip all of this.
 
 **On the critical path:** Phases 4, 5, 7, 8, and a thin pass of 10.
 
-**Phase 4 is done** (2026-09-15, `3c9b2f9`, not pushed). It took Phase 5's login branch
+**Phase 4 is done** (2026-09-15, `3c9b2f9`). It took Phase 5's login branch
 with it, because `/auth/verify-otp` forks on one field and building the shell twice would
 have meant writing the email and code steps twice.
 
-**Phase 5 is done** (2026-09-16, `0392e7a`..`96c9a08` plus docs and a version bump, not
-pushed). Recovery redemption is built and
-logout is settled — Phase 4's reading held, so only a contradictory doc comment needed
-fixing. Neither phase has been exercised against a live server.
+**Phase 5 is done** (2026-09-16, `0392e7a`..`96c9a08` plus docs and a version bump).
+Recovery redemption is built and logout is settled — Phase 4's reading held, so only a
+contradictory doc comment needed fixing. Neither phase has been exercised against a live
+server.
 
 **The critical path is now 7, then 8, then a thin 10.** Phase 7 is the largest piece of
 work left in the plan and has not started; Phase 8 is the one the whole feature exists
-for. Neither can be verified without a deployed worker, and Phase 7 additionally needs
-Resend configured, two mailboxes and two browsers.
+for. Phase 7 additionally needs Resend configured, two mailboxes and two browsers.
 
 **Deferred to post-v1** — parked, not abandoned. The reasoning in each doc stays where
 it is:
@@ -119,10 +118,11 @@ Numbering has a gap at 6. Renumbering would break every cross-link here and in t
                                           9 ───┘ post-v1
 ```
 
-**As of 2026-09-16:** 3, 2, 4 and 5 are built; 7, 8 and 10 have not started. "Built"
-means written and unit-tested, not exercised — none of it has run against a live server,
-because the deployed worker is still v1 code against the v2 schema. One deployment is
-what stands between "written" and "known to work" for everything landed so far.
+**As of 2026-09-16:** 3, 2, 4 and 5 are built, pushed and deployed; 7, 8 and 10 have not
+started. "Built" means written and unit-tested, not exercised — none of it has run
+against a live server. The deployment removed the obstacle to verifying it and did not
+verify it; all that stands between "written" and "known to work" now is somebody running
+the flows.
 
 Phase 1 gates the entire rewrite. Phase 3 gates the client-side work (4, 5, 7, 8). Phase 2 gates the server-touching work (5, 7). Phase 8 cannot land until invites work (7) and households are real on both sides.
 
