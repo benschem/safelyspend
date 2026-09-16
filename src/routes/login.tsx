@@ -4,14 +4,16 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
 import { useAppConfig } from '@/hooks/use-app-config';
 import { useSync } from '@/hooks/use-sync';
-import { api, ApiError, type OtpChallenge } from '@/lib/api-client';
+import { api, ApiError, type KeyBundle, type OtpChallenge } from '@/lib/api-client';
 // A WrongPasswordError needs no branch here: it carries its own wording, and
 // showFailure prints it. Settings branches on the type because it has to
 // choose between an inline field error and a toast.
 import {
+  buildPasswordResetMaterial,
   buildSignupMaterial,
   deriveLoginVerifier,
   unlockKeyBundle,
+  unlockKeyBundleWithPhrase,
   type SessionKeys,
 } from '@/lib/account';
 import { generateRecoveryPhrase } from '@/lib/key-management';
@@ -20,6 +22,7 @@ import { EmailStep } from '@/components/account/email-step';
 import { CodeStep } from '@/components/account/code-step';
 import { CreatePasswordStep } from '@/components/account/create-password-step';
 import { RecoveryPhraseStep } from '@/components/account/recovery-phrase-step';
+import { RecoveryPhraseEntryStep } from '@/components/account/recovery-phrase-entry-step';
 import { EnterPasswordStep } from '@/components/account/enter-password-step';
 
 /**
@@ -37,6 +40,8 @@ import { EnterPasswordStep } from '@/components/account/enter-password-step';
  *         salt === null ──► password + confirm ──► recovery phrase ──► signup
  *                          │
  *         salt !== null ──► password ──► login-complete
+ *                               │
+ *                     forgot it ──► phrase ──► new password ──► recovery-reset
  *
  * ## Why none of this lives in the URL
  *
@@ -51,12 +56,19 @@ import { EnterPasswordStep } from '@/components/account/enter-password-step';
  * pre-filling it is the whole value of the link.
  */
 
-type Step = 'email' | 'code' | 'create-password' | 'recovery-phrase' | 'password';
+type Step =
+  | 'email'
+  | 'code'
+  | 'create-password'
+  | 'show-recovery-phrase'
+  | 'password'
+  | 'enter-recovery-phrase'
+  | 'reset-password';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login, verifyOtp, isAuthenticated, user, checkAuth } = useAuth();
+  const { login, logout, verifyOtp, isAuthenticated, user, checkAuth } = useAuth();
   const { isInitialized, isLoading: configLoading } = useAppConfig();
   const { unlockWithPassword, push, pull } = useSync();
 
@@ -71,6 +83,23 @@ export function LoginPage() {
   // nowhere else — not in sessionStorage, not in the URL, not server-side.
   const [signupPassword, setSignupPassword] = useState('');
   const [recoveryPhrase, setRecoveryPhrase] = useState('');
+
+  /**
+   * The recovery branch's two pieces of held state.
+   *
+   * `recoveryBundle` is kept so a mistyped phrase can be retried for free. The
+   * bridge token is spent fetching it, once; every attempt after that unwraps
+   * locally against the copy already in hand, with no server contact and
+   * nothing further to spend. Dropping it would make each retry cost a fresh
+   * emailed code, which is the one thing this screen's user cannot easily do —
+   * they are already having a bad day.
+   *
+   * `recoveredKeys` holds the unwrapped MasterKey and private key between
+   * proving the phrase and choosing the new password. They are the same keys
+   * throughout; the reset only re-wraps them.
+   */
+  const [recoveryBundle, setRecoveryBundle] = useState<KeyBundle | null>(null);
+  const [recoveredKeys, setRecoveredKeys] = useState<SessionKeys | null>(null);
 
   /**
    * Where a session that has just been *signed in to* belongs.
@@ -140,6 +169,25 @@ export function LoginPage() {
     setLoading(false);
   };
 
+  /**
+   * Back to the start, holding nothing.
+   *
+   * Every exit from a mid-flow step lands here, so it clears all of it rather
+   * than the pieces any one caller happens to have touched — a step added later
+   * that stashes something new is one line here away from being cleaned up on
+   * every path at once, instead of on the paths someone remembered.
+   */
+  const backToEmail = () => {
+    setStep('email');
+    setChallenge(null);
+    setSignupPassword('');
+    setRecoveryPhrase('');
+    setRecoveryBundle(null);
+    setRecoveredKeys(null);
+    setError(null);
+    setLoading(false);
+  };
+
   const handleEmail = async (submitted: string) => {
     setError(null);
     setLoading(true);
@@ -180,7 +228,7 @@ export function LoginPage() {
     // one the user is looking at.
     setSignupPassword(password);
     setRecoveryPhrase(generateRecoveryPhrase());
-    setStep('recovery-phrase');
+    setStep('show-recovery-phrase');
   };
 
   const handleSignup = async () => {
@@ -273,13 +321,97 @@ export function LoginPage() {
     }
   };
 
-  const backToEmail = () => {
-    setStep('email');
-    setChallenge(null);
-    setSignupPassword('');
-    setRecoveryPhrase('');
+  const handleForgotPassword = () => {
     setError(null);
-    setLoading(false);
+    setStep('enter-recovery-phrase');
+  };
+
+  /**
+   * Prove the recovery phrase, which is entirely a local operation once the key
+   * bundle is in hand.
+   *
+   * The server is never told whether the phrase was right. It hands over the
+   * wrapped rows on the strength of the emailed code alone, and whether they
+   * open happens in this browser — which is the same property that makes the
+   * whole scheme end-to-end encrypted, seen from the recovery side.
+   */
+  const handleRecoveryPhrase = async (phrase: string) => {
+    if (!challenge) return;
+    setError(null);
+    setLoading(true);
+
+    try {
+      let bundle = recoveryBundle;
+      if (!bundle) {
+        // Spends the bridge token. Only ever reached once per code, because the
+        // bundle is kept for retries below.
+        bundle = (await api.auth.loginCompleteViaRecovery(challenge.authPendingToken)).keyBundle;
+        setRecoveryBundle(bundle);
+      }
+
+      setRecoveredKeys(await unlockKeyBundleWithPhrase(phrase, bundle));
+      setStep('reset-password');
+      setLoading(false);
+    } catch (err) {
+      showFailure(err, 'We could not check that recovery phrase. Please try again.');
+    }
+  };
+
+  /**
+   * Re-wrap the recovered keys under a new password and upload them.
+   *
+   * Afterwards the user signs in again rather than continuing here. The session
+   * this branch is holding carries the `rec` flag, which reaches only
+   * `/auth/key-bundle` and `/auth/recovery-reset` — it cannot push or pull, so
+   * carrying it into the app would mean a signed-in state that silently fails
+   * at everything. Logging out and asking for one more code is the honest
+   * version, and it costs a minute on the rarest flow in the app.
+   */
+  const handleRecoveryPassword = async (newPassword: string) => {
+    if (!recoveredKeys) return;
+    setError(null);
+    setLoading(true);
+
+    try {
+      await api.auth.recoveryReset(await buildPasswordResetMaterial(newPassword, recoveredKeys));
+    } catch (err) {
+      // Everything this branch holds is dropped on the failure path too. The
+      // reset cannot be retried from here — the hourly budget is already spent
+      // — so keeping a MasterKey and a dead bridge token buys nothing and only
+      // widens the window they sit in.
+      backToEmail();
+      // After `backToEmail`, which clears `error` as part of the reset.
+      //
+      // Deliberately not "try again": the endpoint allows one attempt per hour
+      // and spends that budget on entry, so a timeout here may well have
+      // written the new rows anyway. Sending them to sign in finds out.
+      setError(
+        err instanceof ApiError && err.status === 429
+          ? 'Your password may already have been changed. Sign in with the new one. If that fails, try again in an hour.'
+          : 'We could not finish changing your password. Sign in with the new one to check whether it took effect.',
+      );
+      return;
+    }
+
+    // Past this line the password is changed and nothing below may report a
+    // failure as a failed reset.
+    try {
+      await logout();
+    } catch {
+      // The recovery session dies on its own in five minutes. A logout that
+      // fails delays that and breaks nothing.
+      //
+      // Nothing here calls `checkAuth` afterwards, deliberately. This branch
+      // never told the auth hook it was signed in — only `/auth/*` knows about
+      // the recovery cookie — so asking now would, on exactly this failure,
+      // report a live session and let the redirect effect walk a `rec` token
+      // into the app. That is the state the doc comment above exists to avoid.
+    }
+
+    toast.success('Your password has been changed', {
+      description: 'Sign in with your new password to finish.',
+    });
+    backToEmail();
   };
 
   // Holding a bridge token is what separates completing a sign-in from
@@ -323,7 +455,7 @@ export function LoginPage() {
           />
         )}
 
-        {step === 'recovery-phrase' && (
+        {step === 'show-recovery-phrase' && (
           <RecoveryPhraseStep
             phrase={recoveryPhrase}
             onAcknowledge={handleSignup}
@@ -338,6 +470,34 @@ export function LoginPage() {
             email={email}
             onSubmit={handlePassword}
             onBack={passwordMode === 'sign-in' ? backToEmail : () => navigate('/?setup=1')}
+            // Only the sign-in path holds a bridge token, and recovery needs
+            // one. From an unlock there is nothing to spend, so no offer.
+            onForgotPassword={passwordMode === 'sign-in' ? handleForgotPassword : undefined}
+            loading={loading}
+            error={error}
+          />
+        )}
+
+        {step === 'enter-recovery-phrase' && (
+          <RecoveryPhraseEntryStep
+            onSubmit={handleRecoveryPhrase}
+            // Back to the password prompt, not to the email step: the bridge
+            // token is still good, so someone who suddenly remembers their
+            // password loses nothing by changing their mind here.
+            onBack={() => {
+              setError(null);
+              setStep('password');
+            }}
+            loading={loading}
+            error={error}
+          />
+        )}
+
+        {step === 'reset-password' && (
+          <CreatePasswordStep
+            mode="reset"
+            onSubmit={handleRecoveryPassword}
+            onBack={backToEmail}
             loading={loading}
             error={error}
           />

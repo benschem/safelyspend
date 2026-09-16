@@ -15,13 +15,24 @@ import { MINIMUM_PASSWORD_LENGTH } from '@/lib/account';
  * What this password is *not* is a lock on the data sitting in this browser.
  * Nothing here should imply otherwise — the device copy is plaintext on disk
  * and stays that way (threat model, property 5).
+ *
+ * Two modes, because the same choice means different things:
+ *
+ * - `signup` — there is no account yet, and the budget on this device is about
+ *   to become the vault.
+ * - `reset` — the account exists and the user has just proved they hold the
+ *   recovery phrase. Nothing about the vault changes; only the wrapping does.
+ *   The phrase is untouched by a reset, and the copy says so, because someone
+ *   who has just used theirs will reasonably assume they have spent it.
  */
 export function CreatePasswordStep({
+  mode = 'signup',
   onSubmit,
   onBack,
   loading,
   error,
 }: {
+  mode?: 'signup' | 'reset';
   onSubmit: (password: string) => void;
   onBack: () => void;
   loading: boolean;
@@ -59,10 +70,21 @@ export function CreatePasswordStep({
         <div className="mb-4 rounded-full bg-blue-500/10 p-3">
           <KeyRound className="h-6 w-6 text-blue-500" />
         </div>
-        <h1 className="text-2xl font-bold">Choose a password</h1>
+        <h1 className="text-2xl font-bold">
+          {mode === 'signup' ? 'Choose a password' : 'Choose a new password'}
+        </h1>
         <p className="mt-2 text-muted-foreground">
-          This password encrypts your budget before it leaves this device. Nobody can read your
-          cloud copy without it — not me, not anyone.
+          {mode === 'signup' ? (
+            <>
+              This password encrypts your budget before it leaves this device. Nobody can read your
+              cloud copy without it — not me, not anyone.
+            </>
+          ) : (
+            <>
+              This replaces the password you forgot. Your budget itself is untouched; only the lock
+              on it changes.
+            </>
+          )}
         </p>
       </div>
 
@@ -132,8 +154,9 @@ export function CreatePasswordStep({
       </form>
 
       <Alert>
-        The budget already on this device becomes the first thing you sync. Anyone you later invite
-        to your household will be able to read it.
+        {mode === 'signup'
+          ? 'The budget already on this device becomes the first thing you sync. Anyone you later invite to your household will be able to read it.'
+          : 'Your recovery phrase does not change. The same twelve words will still work if you forget this password too.'}
       </Alert>
 
       <div className="text-center">
@@ -143,7 +166,7 @@ export function CreatePasswordStep({
           disabled={loading}
           className="cursor-pointer text-sm text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
         >
-          Use a different email
+          {mode === 'signup' ? 'Use a different email' : 'Start over'}
         </button>
       </div>
     </div>

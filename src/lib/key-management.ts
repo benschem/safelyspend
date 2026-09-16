@@ -54,6 +54,12 @@ const KEY_LENGTH = 32;
 export const SALT_LENGTH = 16;
 
 const BIP39_ENTROPY_BITS = 128;
+/**
+ * How many words `generateRecoveryPhrase` produces, and therefore how many any
+ * screen asking for one should expect. Fixed by `BIP39_ENTROPY_BITS`: 128 bits
+ * plus a 4-bit checksum, split into 11-bit indices.
+ */
+export const RECOVERY_PHRASE_WORD_COUNT = 12;
 const BIP39_PBKDF2_ITERATIONS = 2048;
 const BIP39_SEED_LENGTH = 64;
 const RECOVERY_HKDF_INFO = 'safelyspend-recovery-kek-v1';
@@ -345,6 +351,24 @@ export function isValidRecoveryPhrase(mnemonic: string): boolean {
  */
 function normaliseMnemonic(mnemonic: string): string {
   return mnemonic.normalize('NFKD').trim().split(/\s+/).join(' ');
+}
+
+/**
+ * Tidy a phrase a person has just typed or pasted, for screens that take one.
+ *
+ * `normaliseMnemonic` alone is not enough, because it does not case-fold: that
+ * is the encoding BIP-39 specifies, and changing it would change what every
+ * stored phrase derives to. The wordlist is entirely lowercase, so "Abandon"
+ * fails validation exactly like a misspelling — and a phone autocapitalising
+ * the first word is enough to produce that, which reads to the user as their
+ * phrase being wrong on the one screen where that sentence is worst.
+ *
+ * Case-folding on the way in is safe where folding inside the derivation would
+ * not be: a correct phrase is lowercase already, so this changes nothing about
+ * what it produces.
+ */
+export function normaliseRecoveryPhraseInput(phrase: string): string {
+  return normaliseMnemonic(phrase).toLowerCase();
 }
 
 /**
