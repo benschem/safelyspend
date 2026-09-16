@@ -1,7 +1,7 @@
 # Phase 4 — Account creation at cloud-sync opt-in
 
-**Status: built, 2026-09-15**, in six commits ending `3c9b2f9`, on `main` and not
-pushed. What landed and where it differs from the plan below is in
+**Status: built, 2026-09-15**, in six commits ending `3c9b2f9`, pushed and deployed.
+What landed and where it differs from the plan below is in
 "[What was actually built](#what-was-actually-built)" at the end; everything above that
 section is the plan as written, left alone.
 
@@ -274,7 +274,8 @@ when retyped composed. So is the recovery-phrase-alone unlock, and the both-row-
 check. Mutation-tested: reusing one salt for both derivations, and dropping the base64url
 padding strip, each fail tests that would otherwise pass.
 
-**Not done, and cannot be until the worker is deployed:** the manual browser walkthrough.
-Specifically outstanding from the list above — a real signup writing `user_keys` and
+**Still not done, and no longer blocked:** the manual browser walkthrough. The worker is
+deployed, so this is now a gap in testing rather than an impossibility. Specifically
+outstanding from the list above — a real signup writing `user_keys` and
 `household_member_keys` rows of both kinds server-side, and signup-then-delete leaving a
-working local-only app. Nothing in this phase has ever spoken to a live server.
+working local-only app. Nothing in this phase has yet spoken to a live server.
