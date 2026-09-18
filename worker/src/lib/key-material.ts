@@ -9,8 +9,8 @@
  *  crypto-design.md sections 3.2, 4 and 6.3.
  */
 
-import { base64urlToBytes } from './bytes.js';
-import { invalidBlob } from './errors.js';
+import { base64urlToBytes, bytesToBase64url } from './bytes.js';
+import { coded, invalidBlob } from './errors.js';
 
 /** The only ciphertext format version ever written or accepted. Any other leading
  *  byte is a hard rejection — there is no legacy branch to take. */
@@ -146,6 +146,36 @@ export function assertKekMetadata(metadata: KekMetadata): void {
   // is NULL. This kind is never accepted from a client on the key-upload paths.
   if (kekSalt !== null || kekKdfKind !== null || kekKdfParams !== null) {
     throw invalidBlob();
+  }
+}
+
+/** A stored row's KDF columns as `listUserKeys` returns them: base64url, not bytes. */
+export interface StoredKekMetadata {
+  kekSalt: string | null;
+  kekKdfKind: number | null;
+  kekKdfParams: string | null;
+}
+
+/** Refuse a password-wrapped member row whose KDF columns differ from the user's stored
+ *  password row.
+ *
+ *  The client opens both rows with a single Argon2id derivation and refuses rows that
+ *  disagree (`assertSameKek` in `src/lib/account.ts`). A row that slipped past here
+ *  would be accepted, and then no password could ever sign that account in. */
+export function assertSamePasswordKek(stored: StoredKekMetadata, incoming: KekMetadata): void {
+  const matches =
+    stored.kekSalt === (incoming.kekSalt && bytesToBase64url(incoming.kekSalt)) &&
+    stored.kekKdfKind === incoming.kekKdfKind &&
+    stored.kekKdfParams === (incoming.kekKdfParams && bytesToBase64url(incoming.kekKdfParams));
+
+  if (!matches) {
+    // Same code as every other malformed upload, with a message that names the cause:
+    // this is the one INVALID_BLOB whose bytes are each individually well-formed.
+    throw coded(
+      'Password-wrapped household key does not match the account password key',
+      400,
+      'INVALID_BLOB',
+    );
   }
 }
 

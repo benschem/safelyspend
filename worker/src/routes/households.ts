@@ -3,8 +3,13 @@ import { authMiddleware, requireFullSession } from '../middleware/auth.js';
 import { rateLimit, userRateLimit } from '../middleware/rate-limit.js';
 import { badRequest, coded, forbidden, notFound } from '../lib/errors.js';
 import { constantTimeEquals } from '../lib/bytes.js';
-import { assertHandoffEnvelope, decodeRequired, parseKeyPair } from '../lib/key-material.js';
-import { getPubkey } from '../services/users.js';
+import {
+  assertHandoffEnvelope,
+  assertSamePasswordKek,
+  decodeRequired,
+  parseKeyPair,
+} from '../lib/key-material.js';
+import { getPubkey, listUserKeys } from '../services/users.js';
 import * as householdService from '../services/households.js';
 import * as inviteService from '../services/invites.js';
 import { parseJsonBody } from './helpers.js';
@@ -160,6 +165,14 @@ households.post('/:householdId/members/:userId/rewrap', rewrapRateLimit, rewrapU
   if (!hasEcies) {
     throw coded('There is no pending handoff to complete', 409, 'NO_PENDING_HANDOFF');
   }
+
+  const userPasswordKey = (await listUserKeys(c.env.DB, user.id)).find(
+    (key) => key.kekKind === 'pwd',
+  );
+  if (!userPasswordKey) {
+    throw coded('This account has no password key to match', 409, 'NO_PASSWORD_KEY');
+  }
+  assertSamePasswordKek(userPasswordKey, memberKeys.pwd);
 
   const now = new Date().toISOString();
 

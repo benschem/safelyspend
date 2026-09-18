@@ -213,6 +213,15 @@ export function generateKeypair(): Keypair {
 }
 
 /**
+ * The public half of a long-term private key. Only the private key is stored
+ * (wrapped), so anything that has to name the key it holds — a handoff sender
+ * declaring itself — derives it from that.
+ */
+export function derivePublicKey(privateKey: PrivateKeyBytes): PublicKeyBytes {
+  return x25519.getPublicKey(privateKey);
+}
+
+/**
  * Section 4.3: ikm is the static-static secret concatenated with the ephemeral
  * one. The static half is the sender authentication — only the holder of the
  * sender's long-term private key can produce it. The ephemeral half is forward

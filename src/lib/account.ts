@@ -2,22 +2,29 @@
  * The bridge between the wire shapes in `api-client.ts` and the crypto
  * primitives in `key-management.ts`.
  *
- * Two pairs of jobs, each pair inverses of each other: assemble the key
- * material an upload sends, and open the key bundle a session downloads —
- * once under the password, once under the recovery phrase. All four are here
- * rather than in a route component so they can be tested without rendering
- * anything, and so exactly one module knows how a wrapped-key row is shaped.
+ * Two kinds of job, mostly in inverse pairs: assemble the key material an
+ * upload sends, and open the key bundle a session downloads — under the
+ * password, under the recovery phrase, or, for an invitee joining a household,
+ * out of a handoff envelope. All of it is here rather than in a route
+ * component so it can be tested without rendering anything, and so exactly one
+ * module knows how a wrapped-key row is shaped.
  *
- * Specified by `docs/crypto-design.md` sections 2, 3 and 6, and by
- * `docs/auth-rewrite/02_backend_schema_endpoints_design.md` sections 3.4 and
- * 3.7.
+ * Specified by `docs/crypto-design.md` sections 2, 3, 6 and 7, and by
+ * `docs/auth-rewrite/02_backend_schema_endpoints_design.md` sections 3.4, 3.7
+ * and 4.
  */
 
 import { bytesToBase64url, base64urlToBytes } from './base64url';
-import { KdfKind, encodeArgon2idParams, decodeArgon2idParams } from './envelope';
+import {
+  EnvelopeFormatError,
+  KdfKind,
+  encodeArgon2idParams,
+  decodeArgon2idParams,
+} from './envelope';
 import {
   ARGON2ID_PARAMS,
   deriveKek,
+  derivePublicKey,
   deriveRecoveryKek,
   deriveVerifier,
   generateKeypair,
@@ -25,21 +32,26 @@ import {
   generateSalt,
   isValidRecoveryPhrase,
   isWrongKey,
+  unwrapFromSender,
   unwrapMasterKey,
   unwrapPrivateKey,
+  wrapForRecipient,
   wrapMasterKey,
   wrapPrivateKey,
 } from './key-management';
 import { generateId } from './utils';
 import type {
+  AddMemberBody,
   KekKind,
   KeyBundle,
   RecoveryResetBody,
+  RewrapBody,
   SignupBody,
+  SignupWithInviteBody,
   UserKeyRow,
   MemberKeyRow,
 } from './api-client';
-import type { MasterKey, PrivateKeyBytes } from './types';
+import type { Kek, MasterKey, PrivateKeyBytes } from './types';
 
 /**
  * The household has no name in v1 and no way to set one — renaming is deferred
@@ -53,8 +65,9 @@ const DEFAULT_HOUSEHOLD_NAME = 'Household';
 export const MINIMUM_PASSWORD_LENGTH = 12;
 
 /**
- * What a signup produces besides the payload: the live keys, so the caller can
- * unlock the session without deriving Argon2id a second time.
+ * The live keys, returned alongside an upload body by anything that has just
+ * derived them, so the caller can unlock the session without paying Argon2id
+ * (~216 ms, 64 MiB) a second time.
  */
 export interface SessionKeys {
   masterKey: MasterKey;
@@ -64,6 +77,85 @@ export interface SessionKeys {
 export interface SignupMaterial {
   body: Omit<SignupBody, 'authPendingToken' | 'rememberMe'>;
   keys: SessionKeys;
+}
+
+/**
+ * What an invite signup produces. No keys come back: the invitee has no
+ * MasterKey to unlock a session with, and their private key is re-derived from
+ * the password at the moment of joining rather than held across the wait.
+ */
+export interface InviteSignupMaterial {
+  body: Omit<SignupWithInviteBody, 'authPendingToken' | 'rememberMe' | 'inviteToken'>;
+}
+
+/**
+ * A base64url public key that a person has checked against its safety number
+ * (section 7.2).
+ *
+ * Every public key the client holds came from the server, and a substituted
+ * one looks exactly like a real one. The brand is how the functions that trust
+ * a key refuse, at compile time, one taken straight from a response.
+ */
+export type ConfirmedPublicKey = string & { readonly __confirmedOutOfBand: true };
+
+/**
+ * The only way to make a `ConfirmedPublicKey`.
+ *
+ * Call it from the handler of the user's "the numbers match" action, on the
+ * exact key the displayed fingerprint was computed from — never on a key whose
+ * fingerprint the server supplied.
+ */
+export function markPublicKeyConfirmed(pubkey: string): ConfirmedPublicKey {
+  return pubkey as ConfirmedPublicKey;
+}
+
+/** A handoff envelope and the sender it names, as the sender uploads it. */
+export type HandoffWrap = Pick<AddMemberBody, 'wrappedMasterKey' | 'senderPubkey'>;
+
+/** A handoff as the invitee may open it: the sender's key has been confirmed. */
+export interface ConfirmedHandoff extends HandoffWrap {
+  senderPubkey: ConfirmedPublicKey;
+}
+
+/**
+ * The KDF columns a `pwd` row carries. `completeHandoff` copies them from the
+ * invitee's existing `user_keys` row rather than minting new ones, so the
+ * shape is named once for both paths.
+ */
+interface PasswordRowMetadata {
+  kekKind: 'pwd';
+  kekSalt: string;
+  kekKdfKind: typeof KdfKind.argon2id;
+  kekKdfParams: string;
+}
+
+/**
+ * A `recovery` row's salt is SQL NULL because BIP-39 is deterministic from the
+ * phrase, and its parameter block is the empty string rather than null — zero
+ * bytes of parameters, which is distinct from "no parameter column".
+ */
+const RECOVERY_ROW_METADATA = {
+  kekKind: 'recovery',
+  kekSalt: null,
+  kekKdfKind: KdfKind.bip39Hkdf,
+  kekKdfParams: '',
+} as const;
+
+/** Everything needed to wrap a MasterKey into a member's `pwd` and `recovery` rows. */
+interface MemberKeyWrapping {
+  kekPwd: Kek;
+  kekRecovery: Kek;
+  passwordMetadata: PasswordRowMetadata;
+}
+
+/**
+ * The account half of a signup: identity, keypair, and the private key wrapped
+ * both ways. Both kinds of signup need exactly this, and only an ordinary one
+ * goes on to mint a household — which is why the KEKs come back as well.
+ */
+interface AccountMaterial extends MemberKeyWrapping {
+  body: InviteSignupMaterial['body'];
+  privateKey: PrivateKeyBytes;
 }
 
 /** The 9-byte Argon2id parameter block, as every row that names Argon2id carries it. */
@@ -90,19 +182,53 @@ function encodedArgon2idParams(): string {
  * the same reason. It is shown to the user and acknowledged *before* the
  * account is created, so it already exists by the time this runs; minting one
  * here would mean wrapping a phrase nobody had seen.
+ */
+export async function buildSignupMaterial(
+  password: string,
+  recoveryPhrase: string,
+): Promise<SignupMaterial> {
+  const account = await buildAccountMaterial(password, recoveryPhrase);
+  const masterKey = await generateMasterKey();
+
+  return {
+    body: {
+      ...account.body,
+      // Client-generated, per the locked conventions in `00_overview.md`.
+      household: { id: generateId(), name: DEFAULT_HOUSEHOLD_NAME },
+      memberKeys: await wrapMemberKeys(masterKey, account),
+    },
+    keys: { masterKey, privateKey: account.privateKey },
+  };
+}
+
+/**
+ * Assemble everything `/auth/signup-with-invite` needs.
  *
+ * An ordinary signup minus the household: no household block and no member
+ * keys, because the invitee is joining a household that exists and has no
+ * MasterKey for it yet. That arrives later through the handoff, and
+ * `completeHandoff` writes the member rows then.
+ */
+export async function buildInviteSignupMaterial(
+  password: string,
+  recoveryPhrase: string,
+): Promise<InviteSignupMaterial> {
+  const account = await buildAccountMaterial(password, recoveryPhrase);
+  return { body: account.body };
+}
+
+/**
  * The three derivations run in sequence rather than concurrently. Argon2id
  * holds 64 MiB while it runs, and section 3.4 makes overlapping them the lever
  * to reach for only if login latency ever becomes a complaint — a 128 MiB
  * spike in a phone browser tab is not a cost to pay for a saving nobody has
  * asked for.
  */
-export async function buildSignupMaterial(
+async function buildAccountMaterial(
   password: string,
   recoveryPhrase: string,
-): Promise<SignupMaterial> {
+): Promise<AccountMaterial> {
   const { publicKey, privateKey } = generateKeypair();
-  const masterKey = await generateMasterKey();
 
   // Independent salts. This is the only domain separation between the verifier
   // and KEK_pwd, and section 3.3 records that it is sufficient.
@@ -114,21 +240,12 @@ export async function buildSignupMaterial(
   const kekRecovery = await deriveRecoveryKek(recoveryPhrase);
 
   const argon2idParams = encodedArgon2idParams();
-  const passwordMetadata = {
+  const passwordMetadata: PasswordRowMetadata = {
     kekKind: 'pwd',
     kekSalt: bytesToBase64url(kekSalt),
     kekKdfKind: KdfKind.argon2id,
     kekKdfParams: argon2idParams,
-  } as const;
-  // A recovery row's salt is SQL NULL because BIP-39 is deterministic from the
-  // phrase, and its parameter block is the empty string rather than null —
-  // zero bytes of parameters, which is distinct from "no parameter column".
-  const recoveryMetadata = {
-    kekKind: 'recovery',
-    kekSalt: null,
-    kekKdfKind: KdfKind.bip39Hkdf,
-    kekKdfParams: '',
-  } as const;
+  };
 
   const userKeys: UserKeyRow[] = [
     {
@@ -136,23 +253,8 @@ export async function buildSignupMaterial(
       wrappedPrivKey: bytesToBase64url(await wrapPrivateKey(kekPwd, privateKey)),
     },
     {
-      ...recoveryMetadata,
+      ...RECOVERY_ROW_METADATA,
       wrappedPrivKey: bytesToBase64url(await wrapPrivateKey(kekRecovery, privateKey)),
-    },
-  ];
-
-  const memberKeys: MemberKeyRow[] = [
-    {
-      ...passwordMetadata,
-      wrappedMasterKey: bytesToBase64url(await wrapMasterKey(kekPwd, masterKey)),
-      senderUserId: null,
-      senderPubkey: null,
-    },
-    {
-      ...recoveryMetadata,
-      wrappedMasterKey: bytesToBase64url(await wrapMasterKey(kekRecovery, masterKey)),
-      senderUserId: null,
-      senderPubkey: null,
     },
   ];
 
@@ -163,13 +265,39 @@ export async function buildSignupMaterial(
       verifierKdfKind: KdfKind.argon2id,
       verifierKdfParams: argon2idParams,
       pubkey: bytesToBase64url(publicKey),
-      // Client-generated, per the locked conventions in `00_overview.md`.
-      household: { id: generateId(), name: DEFAULT_HOUSEHOLD_NAME },
       userKeys,
-      memberKeys,
     },
-    keys: { masterKey, privateKey },
+    privateKey,
+    kekPwd,
+    kekRecovery,
+    passwordMetadata,
   };
+}
+
+/**
+ * The `pwd` and `recovery` member rows for a MasterKey. Shared by signup, which
+ * wraps a MasterKey it has just minted, and the handoff, which wraps one it
+ * has just received — the rows have to come out identical either way, or
+ * `unlockKeyBundle` opens one kind of member and refuses the other.
+ */
+async function wrapMemberKeys(
+  masterKey: MasterKey,
+  wrapping: MemberKeyWrapping,
+): Promise<MemberKeyRow[]> {
+  return [
+    {
+      ...wrapping.passwordMetadata,
+      wrappedMasterKey: bytesToBase64url(await wrapMasterKey(wrapping.kekPwd, masterKey)),
+      senderUserId: null,
+      senderPubkey: null,
+    },
+    {
+      ...RECOVERY_ROW_METADATA,
+      wrappedMasterKey: bytesToBase64url(await wrapMasterKey(wrapping.kekRecovery, masterKey)),
+      senderUserId: null,
+      senderPubkey: null,
+    },
+  ];
 }
 
 /** Thrown when a key bundle cannot produce a session — as distinct from a wrong password. */
@@ -219,6 +347,24 @@ export class WrongPhraseError extends Error {
   }
 }
 
+/**
+ * Thrown when a handoff envelope will not open for the invitee.
+ *
+ * Covers the envelope naming a different sender than the one confirmed, a
+ * wrap addressed to some other key, and a tampered or malformed blob. The
+ * first is the attack section 4.3 exists to stop and the others are
+ * indistinguishable from it here, so the message names no cause; in every case
+ * the right move is to stop and check with the sender.
+ */
+export class HandoffRefusedError extends Error {
+  constructor() {
+    super(
+      'This invite could not be opened safely. Check with the person who sent it before trying again.',
+    );
+    this.name = 'HandoffRefusedError';
+  }
+}
+
 /** How each kind of wrapping is named to a user, who has never heard of a KEK. */
 const KEK_KIND_WORDING: Record<KekKind, string> = {
   pwd: 'password',
@@ -248,7 +394,27 @@ interface KekDescriptor {
 }
 
 /**
- * Derive the password KEK that opens a bundle's `pwd` rows.
+ * Check a stored `pwd` row names a derivation this version can run, and return
+ * its KDF columns non-null. The one place a password row is validated, so every
+ * path reports the same fault in the same words.
+ */
+function readPasswordRowMetadata(row: KekDescriptor): PasswordRowMetadata {
+  if (row.kekKdfKind !== KdfKind.argon2id) {
+    throw new KeyBundleError('This account uses a key derivation this version cannot read');
+  }
+  if (!row.kekSalt || !row.kekKdfParams) {
+    throw new KeyBundleError('Password key material is missing its salt or parameters');
+  }
+  return {
+    kekKind: 'pwd',
+    kekSalt: row.kekSalt,
+    kekKdfKind: KdfKind.argon2id,
+    kekKdfParams: row.kekKdfParams,
+  };
+}
+
+/**
+ * Derive the password KEK a `pwd` row was wrapped under.
  *
  * The parameters come from the row rather than from `ARGON2ID_PARAMS`, because
  * a row wrapped before a parameter change still has to open — that is what the
@@ -257,17 +423,11 @@ interface KekDescriptor {
  * regardless, since getting it wrong means an unopenable vault rather than a
  * missed optimisation.
  */
-async function deriveBundleKek(password: string, row: KekDescriptor): Promise<CryptoKey> {
-  if (row.kekKdfKind !== KdfKind.argon2id) {
-    throw new KeyBundleError('This account uses a key derivation this version cannot read');
-  }
-  if (!row.kekSalt || !row.kekKdfParams) {
-    throw new KeyBundleError('Password key material is missing its salt or parameters');
-  }
+function derivePasswordKek(password: string, metadata: PasswordRowMetadata): Promise<Kek> {
   return deriveKek(
     password,
-    base64urlToBytes(row.kekSalt),
-    decodeArgon2idParams(base64urlToBytes(row.kekKdfParams)),
+    base64urlToBytes(metadata.kekSalt),
+    decodeArgon2idParams(base64urlToBytes(metadata.kekKdfParams)),
   );
 }
 
@@ -276,8 +436,9 @@ async function deriveBundleKek(password: string, row: KekDescriptor): Promise<Cr
  * the same one.
  *
  * One derivation opening both rows is an optimisation, not an invariant: it
- * holds only because `buildSignupMaterial` writes the same metadata to both
- * tables. Nothing enforces it, and the rolling upgrade in section 3.4 is
+ * holds only because signup and the handoff write the same metadata to both
+ * tables. The worker's rewrap endpoint checks it too
+ * (`assertSamePasswordKek`), but the rolling upgrade in section 3.4 is
  * precisely the thing that could re-wrap `user_keys` and not
  * `household_member_keys`.
  *
@@ -285,7 +446,7 @@ async function deriveBundleKek(password: string, row: KekDescriptor): Promise<Cr
  * second unwrap — indistinguishable from a wrong password, and reported to the
  * user as one. A structural failure wearing a user-error label is the
  * expensive kind, and the check costs a string comparison rather than a second
- * 130 ms Argon2id pass.
+ * Argon2id pass.
  */
 function assertSameKek(userKey: KekDescriptor, memberKey: KekDescriptor): void {
   const matches =
@@ -318,7 +479,7 @@ export async function unlockKeyBundle(password: string, bundle: KeyBundle): Prom
   const memberKey = requireRow(bundle.memberKeys, 'pwd', 'household key');
   assertSameKek(userKey, memberKey);
 
-  const kek = await deriveBundleKek(password, userKey);
+  const kek = await derivePasswordKek(password, readPasswordRowMetadata(userKey));
 
   try {
     const privateKey = await unwrapPrivateKey(kek, base64urlToBytes(userKey.wrappedPrivKey));
@@ -364,7 +525,7 @@ function assertBip39Kdf(row: { kekKdfKind: number | null }, description: string)
  *
  * There is no Argon2id here. `deriveRecoveryKek` is BIP-39 plus HKDF and is
  * deterministic from the phrase alone, which is why a recovery row needs no
- * stored salt — and why this is fast where a password unlock costs ~216 ms.
+ * stored salt — and why this is fast where a password unlock is not.
  */
 export async function unlockKeyBundleWithPhrase(
   phrase: string,
@@ -422,8 +583,7 @@ export async function buildPasswordResetMaterial(
   const kekSalt = generateSalt();
   const verifierSalt = generateSalt();
 
-  // Sequential, not concurrent: two overlapping Argon2id passes hold 128 MiB
-  // at once, which `buildSignupMaterial` declines to do for the same reason.
+  // Sequential, not concurrent, as in `buildAccountMaterial`.
   const verifier = await deriveVerifier(newPassword, verifierSalt);
   const kekPwd = await deriveKek(newPassword, kekSalt);
 
@@ -449,6 +609,109 @@ export async function buildPasswordResetMaterial(
       ...metadata,
       wrappedMasterKey: bytesToBase64url(await wrapMasterKey(kekPwd, keys.masterKey)),
     },
+  };
+}
+
+/**
+ * Wrap the household MasterKey for an invitee, for
+ * `POST /households/:householdId/members`.
+ *
+ * `inviteePubkey` is branded because nothing in here can tell a real key from
+ * one the server substituted — that check belongs to the person reading the
+ * safety number, before this runs.
+ */
+export async function buildHandoffWrap(
+  keys: SessionKeys,
+  inviteePubkey: ConfirmedPublicKey,
+): Promise<HandoffWrap> {
+  const wrapped = await wrapForRecipient(
+    keys.privateKey,
+    base64urlToBytes(inviteePubkey),
+    keys.masterKey,
+  );
+  return {
+    wrappedMasterKey: bytesToBase64url(wrapped),
+    senderPubkey: bytesToBase64url(derivePublicKey(keys.privateKey)),
+  };
+}
+
+/**
+ * The invitee's side of the handoff: prove both credentials, open the
+ * envelope, and rewrap under their own keys, for
+ * `POST /households/:householdId/members/:userId/rewrap`.
+ *
+ * The recovery phrase is asked for again because nothing kept it since signup;
+ * `docs/auth-rewrite/07_invite_flow.md` records why.
+ *
+ * **Both credentials are proven before anything is wrapped.** A mistyped
+ * phrase that passes the BIP-39 checksum derives a perfectly good KEK, just
+ * not this account's, and a recovery row wrapped under it would never open —
+ * discovered only on the day the phrase is needed.
+ *
+ * The `pwd` member row reuses the `pwd` user row's salt and parameters, so
+ * `assertSameKek` holds on every later sign-in.
+ *
+ * Use the returned `keys` only once the rewrap upload has succeeded. Until it
+ * does, the server has no `pwd` member row, and a session unlocked early would
+ * find the next sign-in unable to open anything.
+ */
+export async function completeHandoff(
+  credentials: { password: string; recoveryPhrase: string },
+  bundle: KeyBundle,
+  handoff: ConfirmedHandoff,
+): Promise<{ body: RewrapBody; keys: SessionKeys }> {
+  // See `unlockKeyBundleWithPhrase` for why the checksum is checked here.
+  if (!isValidRecoveryPhrase(credentials.recoveryPhrase)) {
+    throw new WrongPhraseError();
+  }
+
+  const passwordRow = requireRow(bundle.userKeys, 'pwd', 'private key');
+  const recoveryRow = requireRow(bundle.userKeys, 'recovery', 'private key');
+  assertBip39Kdf(recoveryRow, 'private key');
+  const passwordMetadata = readPasswordRowMetadata(passwordRow);
+
+  // The phrase first: proving it costs no Argon2id, so a wrong one fails fast.
+  // The private key it opens is discarded — the password yields the same one.
+  const kekRecovery = await deriveRecoveryKek(credentials.recoveryPhrase);
+  try {
+    await unwrapPrivateKey(kekRecovery, base64urlToBytes(recoveryRow.wrappedPrivKey));
+  } catch (err) {
+    if (isWrongKey(err)) {
+      throw new WrongPhraseError();
+    }
+    throw err;
+  }
+
+  const kekPwd = await derivePasswordKek(credentials.password, passwordMetadata);
+  let privateKey: PrivateKeyBytes;
+  try {
+    privateKey = await unwrapPrivateKey(kekPwd, base64urlToBytes(passwordRow.wrappedPrivKey));
+  } catch (err) {
+    if (isWrongKey(err)) {
+      throw new WrongPasswordError();
+    }
+    throw err;
+  }
+
+  let masterKey: MasterKey;
+  try {
+    masterKey = await unwrapFromSender(
+      privateKey,
+      base64urlToBytes(handoff.senderPubkey),
+      base64urlToBytes(handoff.wrappedMasterKey),
+    );
+  } catch (err) {
+    if (err instanceof EnvelopeFormatError || isWrongKey(err)) {
+      throw new HandoffRefusedError();
+    }
+    throw err;
+  }
+
+  return {
+    body: {
+      memberKeys: await wrapMemberKeys(masterKey, { kekPwd, kekRecovery, passwordMetadata }),
+    },
+    keys: { masterKey, privateKey },
   };
 }
 

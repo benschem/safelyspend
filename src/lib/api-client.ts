@@ -202,8 +202,38 @@ export interface SignupResponse extends SessionResponse {
 export interface SignupWithInviteResponse {
   user: AuthUser;
   household: null;
-  invite: { id: string; status: string; senderEmail: string; senderPubkey: string };
+  /**
+   * `senderPubkey` is nullable because the worker's column is
+   * (`describeForRecipient` in `worker/src/services/invites.ts`). A sender has
+   * always completed signup, so in practice it is set; the type says what the
+   * wire can carry rather than what is likely.
+   */
+  invite: { id: string; status: string; senderEmail: string; senderPubkey: string | null };
   keyBundle: KeyBundle;
+}
+
+/**
+ * What `POST /households/:householdId/members` takes: the existing member's
+ * handoff wrap for one invitee.
+ *
+ * `senderPubkey` is the caller's own key. The worker checks it against the
+ * account's stored key, and the invitee's client checks it against the key
+ * embedded in the envelope — the envelope is the one that counts.
+ */
+export interface AddMemberBody {
+  inviteId: string;
+  inviteeUserId: string;
+  wrappedMasterKey: string;
+  senderPubkey: string;
+}
+
+/**
+ * What `POST /households/:householdId/members/:userId/rewrap` takes: the
+ * invitee's MasterKey rewrapped under their own password and recovery phrase.
+ * Exactly one `pwd` and one `recovery` row, or the worker refuses both.
+ */
+export interface RewrapBody {
+  memberKeys: MemberKeyRow[];
 }
 
 export interface SignupBody extends VerifierFields {

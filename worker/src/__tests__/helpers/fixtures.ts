@@ -72,13 +72,17 @@ export function verifierFields(fill = 0x22): Record<string, unknown> {
   };
 }
 
+/** One password derivation opens both tables' `pwd` rows, so a real client writes the
+ *  same salt to each. The fixtures do too, or the rewrap endpoint rightly refuses them. */
+const PASSWORD_KEK_SALT_FILL = 0x44;
+
 /** The mandatory {pwd, recovery} pair for user_keys. */
 export function userKeys(): unknown[] {
   return [
     {
       kekKind: 'pwd',
       wrappedPrivKey: wrappedPrivKey(),
-      kekSalt: salt16(0x44),
+      kekSalt: salt16(PASSWORD_KEK_SALT_FILL),
       kekKdfKind: KdfKind.Argon2id,
       kekKdfParams: argon2Params(),
     },
@@ -98,7 +102,7 @@ export function memberKeys(): unknown[] {
     {
       kekKind: 'pwd',
       wrappedMasterKey: wrappedMasterKey(),
-      kekSalt: salt16(0x55),
+      kekSalt: salt16(PASSWORD_KEK_SALT_FILL),
       kekKdfKind: KdfKind.Argon2id,
       kekKdfParams: argon2Params(),
     },

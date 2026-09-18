@@ -1,21 +1,30 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import {
+  buildHandoffWrap,
+  buildInviteSignupMaterial,
   buildPasswordResetMaterial,
   buildSignupMaterial,
+  completeHandoff,
   deriveLoginVerifier,
+  markPublicKeyConfirmed,
   unlockKeyBundle,
   unlockKeyBundleWithPhrase,
+  HandoffRefusedError,
   KeyBundleError,
   WrongPasswordError,
   WrongPhraseError,
+  type ConfirmedHandoff,
+  type HandoffWrap,
+  type InviteSignupMaterial,
   type SignupMaterial,
 } from '@/lib/account';
-import { base64urlToBytes } from '@/lib/base64url';
+import { base64urlToBytes, bytesToBase64url } from '@/lib/base64url';
 import { EnvelopeKind, FORMAT_VERSION, KdfKind } from '@/lib/envelope';
 import {
   decryptVault,
   deriveRecoveryKek,
   encryptVault,
+  generateKeypair,
   unwrapMasterKey,
 } from '@/lib/key-management';
 import type { KeyBundle, RecoveryResetBody } from '@/lib/api-client';
@@ -534,5 +543,242 @@ describe('deriveLoginVerifier', () => {
         verifierKdfParams: '',
       }),
     ).rejects.toThrow(KeyBundleError);
+  });
+});
+
+describe('buildInviteSignupMaterial', () => {
+  let material: InviteSignupMaterial;
+
+  beforeAll(async () => {
+    material = await buildInviteSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+  }, ARGON2ID_TIMEOUT_MS);
+
+  it('sends both a pwd and a recovery user key', () => {
+    expect(material.body.userKeys.map((row) => row.kekKind).sort()).toEqual(['pwd', 'recovery']);
+  });
+
+  it('sends no household and no member keys', () => {
+    // The invitee has no MasterKey yet. A member row here would be a wrap of
+    // a key that does not exist, and a household block would make a second one.
+    expect(material.body).not.toHaveProperty('household');
+    expect(material.body).not.toHaveProperty('memberKeys');
+  });
+
+  it('uses independent salts for the verifier and for KEK_pwd', () => {
+    const passwordRow = material.body.userKeys.find((row) => row.kekKind === 'pwd');
+    expect(material.body.verifierSalt).not.toBe(passwordRow?.kekSalt);
+  });
+});
+
+describe('the invite handoff', () => {
+  const INVITEE_PASSWORD = 'the invitee has their own password';
+  const backup = { transactions: [{ id: 'txn-1' }] } as unknown as BudgetBackup;
+
+  let owner: SignupMaterial;
+  let invitee: InviteSignupMaterial;
+  let handoff: ConfirmedHandoff;
+
+  beforeAll(async () => {
+    owner = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+    invitee = await buildInviteSignupMaterial(INVITEE_PASSWORD, RECOVERY_PHRASE);
+    handoff = confirmed(
+      await buildHandoffWrap(owner.keys, markPublicKeyConfirmed(invitee.body.pubkey)),
+    );
+  }, ARGON2ID_TIMEOUT_MS);
+
+  /** The handoff once the invitee has confirmed the sender's safety number. */
+  function confirmed(wrap: HandoffWrap): ConfirmedHandoff {
+    return { ...wrap, senderPubkey: markPublicKeyConfirmed(wrap.senderPubkey) };
+  }
+
+  /** What the server hands the invitee while they wait: their own rows, no household. */
+  function inviteeBundle(): KeyBundle {
+    return {
+      user: {
+        id: 'invitee-1',
+        pubkey: invitee.body.pubkey,
+        verifierSalt: invitee.body.verifierSalt,
+        verifierKdfKind: invitee.body.verifierKdfKind,
+        verifierKdfParams: invitee.body.verifierKdfParams,
+      },
+      userKeys: invitee.body.userKeys,
+      household: null,
+      memberKeys: [],
+    };
+  }
+
+  /** The invitee's bundle once the rewrap has landed and the `ecies` row is gone. */
+  function inviteeBundleAfterRewrap(memberKeys: KeyBundle['memberKeys']): KeyBundle {
+    return { ...inviteeBundle(), household: owner.body.household, memberKeys };
+  }
+
+  function inviteeCredentials(
+    overrides: Partial<{ password: string; recoveryPhrase: string }> = {},
+  ) {
+    return { password: INVITEE_PASSWORD, recoveryPhrase: RECOVERY_PHRASE, ...overrides };
+  }
+
+  it('wraps as envelope C kind 0x06, naming the owner as sender', () => {
+    const bytes = base64urlToBytes(handoff.wrappedMasterKey);
+    expect(bytes[0]).toBe(FORMAT_VERSION);
+    expect(bytes[1]).toBe(EnvelopeKind.inviteHandoff);
+    // The worker compares this with the sender's stored pubkey, and refuses
+    // the handoff outright if they differ.
+    expect(handoff.senderPubkey).toBe(owner.body.pubkey);
+  });
+
+  /**
+   * The whole feature, end to end. A vault the owner sealed must open for the
+   * invitee through nothing but their own password, after the handoff.
+   */
+  it(
+    "leaves the invitee's password opening the owner's vault",
+    async () => {
+      const sealed = await encryptVault(owner.keys.masterKey, backup);
+
+      const { body } = await completeHandoff(inviteeCredentials(), inviteeBundle(), handoff);
+      const reopened = await unlockKeyBundle(
+        INVITEE_PASSWORD,
+        inviteeBundleAfterRewrap(body.memberKeys),
+      );
+
+      expect(await decryptVault(reopened.masterKey, sealed)).toEqual(backup);
+    },
+    ARGON2ID_TIMEOUT_MS,
+  );
+
+  it(
+    "leaves the invitee's recovery phrase opening it too",
+    async () => {
+      const sealed = await encryptVault(owner.keys.masterKey, backup);
+
+      const { body } = await completeHandoff(inviteeCredentials(), inviteeBundle(), handoff);
+      const reopened = await unlockKeyBundleWithPhrase(
+        RECOVERY_PHRASE,
+        inviteeBundleAfterRewrap(body.memberKeys),
+      );
+
+      expect(await decryptVault(reopened.masterKey, sealed)).toEqual(backup);
+    },
+    ARGON2ID_TIMEOUT_MS,
+  );
+
+  it(
+    'reuses the password row salt rather than drawing a new one',
+    async () => {
+      // A fresh salt would pass every other check here and then fail
+      // assertSameKek on every sign-in afterwards.
+      const { body } = await completeHandoff(inviteeCredentials(), inviteeBundle(), handoff);
+
+      const userPasswordRow = invitee.body.userKeys.find((row) => row.kekKind === 'pwd');
+      const memberPasswordRow = body.memberKeys.find((row) => row.kekKind === 'pwd');
+      expect(memberPasswordRow?.kekSalt).toBe(userPasswordRow?.kekSalt);
+      expect(memberPasswordRow?.kekKdfParams).toBe(userPasswordRow?.kekKdfParams);
+    },
+    ARGON2ID_TIMEOUT_MS,
+  );
+
+  it(
+    'refuses the wrong password',
+    async () => {
+      await expect(
+        completeHandoff(inviteeCredentials({ password: PASSWORD }), inviteeBundle(), handoff),
+      ).rejects.toThrow(WrongPasswordError);
+    },
+    ARGON2ID_TIMEOUT_MS,
+  );
+
+  /**
+   * The sharp edge of re-asking for the phrase. This one passes its checksum,
+   * so without the proof step it would derive a KEK, wrap the MasterKey under
+   * it, and write a recovery row that can never open.
+   */
+  it(
+    'refuses a valid phrase belonging to nobody, before wrapping anything',
+    async () => {
+      await expect(
+        completeHandoff(
+          inviteeCredentials({ recoveryPhrase: OTHER_RECOVERY_PHRASE }),
+          inviteeBundle(),
+          handoff,
+        ),
+      ).rejects.toThrow(WrongPhraseError);
+    },
+    ARGON2ID_TIMEOUT_MS,
+  );
+
+  it('refuses a phrase failing its checksum', async () => {
+    await expect(
+      completeHandoff(
+        inviteeCredentials({ recoveryPhrase: MISTYPED_RECOVERY_PHRASE }),
+        inviteeBundle(),
+        handoff,
+      ),
+    ).rejects.toThrow(WrongPhraseError);
+  });
+
+  it(
+    'refuses an envelope naming a different sender from the one confirmed',
+    async () => {
+      // The server substituting its own wrap: the invitee confirmed one key's
+      // safety number, and the envelope was sealed by another.
+      const confirmedSomeoneElse = bytesToBase64url(generateKeypair().publicKey);
+
+      await expect(
+        completeHandoff(inviteeCredentials(), inviteeBundle(), {
+          ...handoff,
+          senderPubkey: markPublicKeyConfirmed(confirmedSomeoneElse),
+        }),
+      ).rejects.toThrow(HandoffRefusedError);
+    },
+    ARGON2ID_TIMEOUT_MS,
+  );
+
+  it(
+    'refuses a wrap addressed to a different key',
+    async () => {
+      const strangerPubkey = bytesToBase64url(generateKeypair().publicKey);
+      const misaddressed = await buildHandoffWrap(
+        owner.keys,
+        markPublicKeyConfirmed(strangerPubkey),
+      );
+
+      await expect(
+        completeHandoff(inviteeCredentials(), inviteeBundle(), confirmed(misaddressed)),
+      ).rejects.toThrow(HandoffRefusedError);
+    },
+    ARGON2ID_TIMEOUT_MS,
+  );
+
+  it('proves the phrase before paying for the password', async () => {
+    // Both wrong: the cheap check runs first, so this fails without Argon2id.
+    await expect(
+      completeHandoff(
+        { password: PASSWORD, recoveryPhrase: OTHER_RECOVERY_PHRASE },
+        inviteeBundle(),
+        handoff,
+      ),
+    ).rejects.toThrow(WrongPhraseError);
+  });
+
+  it('reports a missing recovery row as structural', async () => {
+    const bundle = inviteeBundle();
+    bundle.userKeys = bundle.userKeys.filter((row) => row.kekKind !== 'recovery');
+
+    await expect(completeHandoff(inviteeCredentials(), bundle, handoff)).rejects.toThrow(
+      KeyBundleError,
+    );
+  });
+
+  it('names an unreadable password derivation as such, not as missing parameters', async () => {
+    const bundle = inviteeBundle();
+    const passwordRow = bundle.userKeys.find((row) => row.kekKind === 'pwd');
+    bundle.userKeys = bundle.userKeys.map((row) =>
+      row === passwordRow ? { ...row, kekKdfKind: KdfKind.bip39Hkdf } : row,
+    );
+
+    await expect(completeHandoff(inviteeCredentials(), bundle, handoff)).rejects.toThrow(
+      'This account uses a key derivation this version cannot read',
+    );
   });
 });

@@ -753,6 +753,50 @@ describe('POST /households/:householdId/members/:userId/rewrap', () => {
     expect(ecies).not.toBeNull();
   });
 
+  it('rejects a password row whose salt differs from the account password row', async () => {
+    const inviter = await createInviter('rw-salt-a@example.com');
+    const token = await issueInvite(inviter.cookie, 'rw-salt-b@example.com');
+    const partner = await acceptAsNewUser('rw-salt-b@example.com', token);
+
+    const { handoffs } = (await (
+      await appFetch(authedRequest('/v1/handoffs/pending', inviter.cookie))
+    ).json()) as { handoffs: Array<{ inviteId: string }> };
+    await appFetch(
+      jsonRequest(
+        `/v1/households/${inviter.householdId}/members`,
+        {
+          inviteId: handoffs[0]!.inviteId,
+          inviteeUserId: partner.userId,
+          wrappedMasterKey: fixtures.envelopeC(),
+          senderPubkey: fixtures.pubkey(),
+        },
+        { cookie: inviter.cookie },
+      ),
+    );
+
+    const [passwordRow, recoveryRow] = fixtures.memberKeys() as Array<Record<string, unknown>>;
+    const res = await appFetch(
+      jsonRequest(
+        `/v1/households/${inviter.householdId}/members/${partner.userId}/rewrap`,
+        { memberKeys: [{ ...passwordRow, kekSalt: fixtures.salt16(0x99) }, recoveryRow] },
+        { cookie: partner.cookie },
+      ),
+    );
+
+    // Every byte is well-formed, but the client opens both password rows with one
+    // derivation, so accepting this would lock the invitee out of every sign-in.
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { code: string }).code).toBe('INVALID_BLOB');
+
+    const ecies = await env.DB
+      .prepare(
+        "SELECT kek_kind FROM household_member_keys WHERE user_id = ? AND kek_kind = 'ecies'",
+      )
+      .bind(partner.userId)
+      .first();
+    expect(ecies).not.toBeNull();
+  });
+
   it('is retryable after a crash between unwrap and rewrap', async () => {
     const inviter = await createInviter('rw-retry-a@example.com');
     const token = await issueInvite(inviter.cookie, 'rw-retry-b@example.com');
