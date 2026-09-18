@@ -183,7 +183,7 @@ export interface RecoveryResetBody {
 /** One open invite addressed to the email a signup just claimed. */
 export interface PendingInvite {
   id: string;
-  status: string;
+  status: InviteStatus;
   expiresAt: string;
 }
 
@@ -202,14 +202,93 @@ export interface SignupResponse extends SessionResponse {
 export interface SignupWithInviteResponse {
   user: AuthUser;
   household: null;
-  /**
-   * `senderPubkey` is nullable because the worker's column is
-   * (`describeForRecipient` in `worker/src/services/invites.ts`). A sender has
-   * always completed signup, so in practice it is set; the type says what the
-   * wire can carry rather than what is likely.
-   */
-  invite: { id: string; status: string; senderEmail: string; senderPubkey: string | null };
+  invite: InviteForRecipient;
   keyBundle: KeyBundle;
+}
+
+/**
+ * The invite as its recipient first sees it, from `describeForRecipient` in
+ * `worker/src/services/invites.ts`. Both `signupWithInvite` and `accept`
+ * return it.
+ *
+ * `senderPubkey` is nullable because the worker's column is. A sender has
+ * always completed signup, so in practice it is set; the type says what the
+ * wire can carry rather than what is likely.
+ */
+export interface InviteForRecipient {
+  id: string;
+  status: InviteStatus;
+  senderEmail: string;
+  senderPubkey: string | null;
+}
+
+/**
+ * Mirrors `INVITE_STATUSES` in `worker/src/services/invites.ts`, which in turn
+ * mirrors the CHECK constraint on `invites.status`.
+ *
+ * All but `declined` are reachable in v1: `expired` is set by the lapse sweep
+ * and `revoked` by the sender. `declined` belongs to the path 2 fork, which
+ * `07_invite_flow.md` defers, so nothing sets it yet.
+ */
+export type InviteStatus =
+  | 'open'
+  | 'accepted_pending_handoff'
+  | 'completed'
+  | 'expired'
+  | 'revoked'
+  | 'declined';
+
+/** An invite as its sender sees it. The token is never returned: it is emailed. */
+export interface SentInvite {
+  id: string;
+  recipientEmail: string;
+  status: InviteStatus;
+  expiresAt: string;
+  createdAt: string;
+}
+
+/** An invite as its recipient sees it, once their account is attached to it. */
+export interface ReceivedInvite {
+  id: string;
+  senderEmail: string;
+  status: InviteStatus;
+  expiresAt: string;
+  createdAt: string;
+}
+
+/**
+ * One invitee waiting for this member to wrap the MasterKey for them.
+ *
+ * The fingerprint is the server's own, and the client must recompute it from
+ * `inviteePubkey` before showing a safety number. A server serving a real key
+ * beside a mismatched fingerprint is the attack the out-of-band check exists
+ * to catch, and trusting this field would walk straight past it.
+ */
+export interface PendingHandoff {
+  inviteId: string;
+  inviteeUserId: string;
+  inviteePubkey: string;
+  inviteePubkeyFingerprint: string;
+  recipientEmail: string;
+  householdId: string;
+}
+
+/**
+ * A MasterKey wrapped for this user, waiting to be opened and rewrapped.
+ * Zero or one entry in v1 (one household per user); the array is what a
+ * multi-household version would need.
+ *
+ * `senderPubkeyFingerprint` carries the same warning as `PendingHandoff`.
+ */
+export interface IncomingHandoff {
+  householdId: string;
+  senderUserId: string | null;
+  senderEmail: string | null;
+  senderPubkey: string | null;
+  senderPubkeyFingerprint: string | null;
+  wrappedMasterKey: string;
+  kekKind: 'ecies';
+  createdAt: string;
 }
 
 /**
@@ -393,6 +472,98 @@ export const api = {
       return request<{ revoked: number }>('/v1/auth/revoke-all-sessions', {
         method: 'POST',
       });
+    },
+  },
+
+  invites: {
+    /**
+     * Issue an invite. The worker emails the accept link itself and never
+     * returns the token, so there is nothing here for the sender's UI to show
+     * beyond the address and the expiry.
+     *
+     * `expiresInDays` is 1..7 and defaults to 3 server-side; omitting it keeps
+     * that default in one place. `JSON.stringify` drops an `undefined` key, so
+     * an unchosen expiry never reaches the wire.
+     */
+    issue(recipientEmail: string, expiresInDays?: number) {
+      return request<{ invite: SentInvite }>('/v1/invites', {
+        method: 'POST',
+        body: JSON.stringify({ recipientEmail, expiresInDays }),
+      });
+    },
+
+    list() {
+      return request<{ sent: SentInvite[]; received: ReceivedInvite[] }>('/v1/invites');
+    },
+
+    /**
+     * Accept as an account that already exists (path 3). Attaches the invite
+     * and creates no membership — the MasterKey arrives later through the
+     * handoff.
+     *
+     * One household per user (Q5, `00_overview.md`), so this answers 409
+     * HOUSEHOLD_FULL for anyone who signed up ordinarily, since that created a
+     * household. In v1 that is the common case rather than the exception, and
+     * the caller owns saying so plainly.
+     */
+    accept(token: string) {
+      return request<{ household: null; invite: InviteForRecipient }>(
+        `/v1/invites/${encodeURIComponent(token)}/accept`,
+        { method: 'POST' },
+      );
+    },
+
+    /** Sender only. Re-inviting is revoke then issue; there is no extend-expiry in v1. */
+    revoke(inviteId: string) {
+      return request<{ ok: true }>(`/v1/invites/${encodeURIComponent(inviteId)}`, {
+        method: 'DELETE',
+      });
+    },
+  },
+
+  handoffs: {
+    /** Invitees waiting for this member to wrap the MasterKey for them. */
+    pending() {
+      return request<{ handoffs: PendingHandoff[] }>('/v1/handoffs/pending');
+    },
+
+    /** A MasterKey wrapped for this user, if the other member has approved yet. */
+    incoming() {
+      return request<{ handoffs: IncomingHandoff[] }>('/v1/handoffs/incoming');
+    },
+  },
+
+  households: {
+    /** The sender's half of the handoff: membership and wrapped key land together. */
+    addMember(householdId: string, body: AddMemberBody) {
+      return request<{
+        ok: true;
+        member: { userId: string; role: 'owner' | 'member'; joinedAt: string };
+      }>(`/v1/households/${encodeURIComponent(householdId)}/members`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+    },
+
+    /**
+     * The invitee's half: their own `pwd` and `recovery` rows replace the
+     * transient handoff row.
+     *
+     * A 400 INVALID_BLOB here can mean the `pwd` row disagrees with the stored
+     * `user_keys` row — which happens when the key bundle this was built from
+     * is stale, typically a password changed on another device. Retrying with
+     * the same body cannot succeed; the caller has to fetch the bundle again.
+     *
+     * Not idempotent. The first success deletes the `ecies` row, so a retry
+     * after a lost response gets 409 NO_PENDING_HANDOFF, and the worker allows
+     * only three attempts an hour. Treat any failure as "fetch the bundle and
+     * find out whether the rows already landed" rather than something to resend.
+     */
+    rewrapMemberKeys(householdId: string, userId: string, body: RewrapBody) {
+      return request<{ ok: true }>(
+        `/v1/households/${encodeURIComponent(householdId)}/members/${encodeURIComponent(userId)}/rewrap`,
+        { method: 'POST', body: JSON.stringify(body) },
+      );
     },
   },
 

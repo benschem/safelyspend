@@ -299,6 +299,201 @@ describe('api.auth', () => {
 });
 
 // =============================================================================
+// api.invites
+// =============================================================================
+
+describe('api.invites', () => {
+  describe('issue', () => {
+    it('sends POST to /invites with the recipient address', async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ invite: {} }, 201));
+
+      await api.invites.issue('partner@example.com');
+
+      const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(url).toContain('/invites');
+      expect(opts.method).toBe('POST');
+      expect(JSON.parse(opts.body as string)).toEqual({ recipientEmail: 'partner@example.com' });
+    });
+
+    it('omits expiresInDays when it was not chosen, leaving the server default', async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ invite: {} }, 201));
+
+      await api.invites.issue('partner@example.com');
+
+      const [, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(JSON.parse(opts.body as string)).not.toHaveProperty('expiresInDays');
+    });
+
+    it('sends expiresInDays when one was chosen', async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ invite: {} }, 201));
+
+      await api.invites.issue('partner@example.com', 7);
+
+      const [, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(JSON.parse(opts.body as string)).toEqual({
+        recipientEmail: 'partner@example.com',
+        expiresInDays: 7,
+      });
+    });
+
+    it('surfaces INVITE_ALREADY_PENDING with the existing invite id', async () => {
+      mockFetch.mockResolvedValue(
+        errorResponse(409, 'An invite to this address is already pending', {
+          code: 'INVITE_ALREADY_PENDING',
+          inviteId: 'inv-1',
+        }),
+      );
+
+      try {
+        await api.invites.issue('partner@example.com');
+        expect.fail('Expected ApiError');
+      } catch (e) {
+        expect((e as ApiError).status).toBe(409);
+        expect((e as ApiError).data?.['code']).toBe('INVITE_ALREADY_PENDING');
+        expect((e as ApiError).data?.['inviteId']).toBe('inv-1');
+      }
+    });
+  });
+
+  describe('list', () => {
+    it('sends GET to /invites and returns both directions', async () => {
+      const body = {
+        sent: [
+          {
+            id: 'inv-1',
+            recipientEmail: 'partner@example.com',
+            status: 'open',
+            expiresAt: '2026-09-20T00:00:00.000Z',
+            createdAt: '2026-09-17T00:00:00.000Z',
+          },
+        ],
+        received: [],
+      };
+      mockFetch.mockResolvedValue(jsonResponse(body));
+
+      const result = await api.invites.list();
+
+      const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(url).toContain('/invites');
+      expect(opts.method).toBeUndefined();
+      expect(result).toEqual(body);
+    });
+  });
+
+  describe('accept', () => {
+    it('sends POST to /invites/:token/accept with the token escaped into the path', async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ household: null, invite: {} }));
+
+      await api.invites.accept('tok/en+value');
+
+      const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(url).toContain('/invites/tok%2Fen%2Bvalue/accept');
+      expect(opts.method).toBe('POST');
+    });
+  });
+
+  describe('revoke', () => {
+    it('sends DELETE to /invites/:id', async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ ok: true }));
+
+      await api.invites.revoke('inv-1');
+
+      const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(url).toContain('/invites/inv-1');
+      expect(opts.method).toBe('DELETE');
+    });
+  });
+});
+
+// =============================================================================
+// api.handoffs
+// =============================================================================
+
+describe('api.handoffs', () => {
+  it('sends GET to /handoffs/pending', async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ handoffs: [] }));
+
+    await api.handoffs.pending();
+
+    const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/handoffs/pending');
+    expect(opts.method).toBeUndefined();
+  });
+
+  it('sends GET to /handoffs/incoming', async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ handoffs: [] }));
+
+    await api.handoffs.incoming();
+
+    const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/handoffs/incoming');
+    expect(opts.method).toBeUndefined();
+  });
+});
+
+// =============================================================================
+// api.households
+// =============================================================================
+
+describe('api.households', () => {
+  describe('addMember', () => {
+    it('sends POST to /households/:id/members with the wrap and the sender key', async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ ok: true, member: {} }));
+
+      const body = {
+        inviteId: 'inv-1',
+        inviteeUserId: 'user-2',
+        wrappedMasterKey: 'ZW52ZWxvcGVD',
+        senderPubkey: 'cHVia2V5',
+      };
+
+      await api.households.addMember('hh-1', body);
+
+      const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(url).toContain('/households/hh-1/members');
+      expect(opts.method).toBe('POST');
+      expect(JSON.parse(opts.body as string)).toEqual(body);
+    });
+  });
+
+  describe('rewrapMemberKeys', () => {
+    it('sends POST to /households/:id/members/:userId/rewrap with both rows', async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ ok: true }));
+
+      const body = {
+        memberKeys: [
+          {
+            kekKind: 'pwd' as const,
+            wrappedMasterKey: 'd3JhcHBlZFB3ZA',
+            kekSalt: 'a2Vrc2FsdA',
+            kekKdfKind: 2,
+            kekKdfParams: 'cGFyYW1z',
+            senderUserId: null,
+            senderPubkey: null,
+          },
+          {
+            kekKind: 'recovery' as const,
+            wrappedMasterKey: 'd3JhcHBlZFJlYw',
+            kekSalt: null,
+            kekKdfKind: 3,
+            kekKdfParams: '',
+            senderUserId: null,
+            senderPubkey: null,
+          },
+        ],
+      };
+
+      await api.households.rewrapMemberKeys('hh-1', 'user-2', body);
+
+      const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(url).toContain('/households/hh-1/members/user-2/rewrap');
+      expect(opts.method).toBe('POST');
+      expect(JSON.parse(opts.body as string)).toEqual(body);
+    });
+  });
+});
+
+// =============================================================================
 // api.vault
 // =============================================================================
 
