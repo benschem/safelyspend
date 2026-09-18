@@ -665,6 +665,9 @@ describe('POST /households/:householdId/members', () => {
 
     expect(first.status).toBe(200);
     expect(second.status).toBe(200);
+    // A retry has to answer exactly what the first call did, joinedAt included,
+    // or a client whose first response was lost gets a different shape back.
+    expect(await second.json()).toEqual(await first.json());
 
     const count = await env.DB
       .prepare('SELECT COUNT(*) AS count FROM household_members WHERE household_id = ?')

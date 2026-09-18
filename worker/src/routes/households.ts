@@ -75,8 +75,8 @@ households.post('/:householdId/members', addMemberRateLimit, addMemberUserLimit,
   // The replay check comes before the state check. A retried request finds the invite
   // already 'completed' by its own first attempt, so validating state first would
   // report a successful retry as an invalid state rather than as the no-op it is.
-  const alreadyMember = await householdService.isMember(c.env.DB, householdId, inviteeUserId);
-  if (alreadyMember) {
+  const membership = await householdService.findMembership(c.env.DB, householdId, inviteeUserId);
+  if (membership) {
     const hasEcies = await householdService.hasMemberKey(
       c.env.DB,
       householdId,
@@ -84,7 +84,10 @@ households.post('/:householdId/members', addMemberRateLimit, addMemberUserLimit,
       'ecies',
     );
     if (hasEcies) {
-      return c.json({ ok: true, member: { userId: inviteeUserId, role: 'member' } });
+      return c.json({
+        ok: true,
+        member: { userId: inviteeUserId, role: 'member', joinedAt: membership.joinedAt },
+      });
     }
     // Membership without a handoff row means the invitee already rewrapped. Replaying
     // the wrap now would resurrect a transient row they have finished with.

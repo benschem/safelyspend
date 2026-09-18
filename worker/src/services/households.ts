@@ -37,17 +37,19 @@ export async function countMembers(db: D1Database, householdId: string): Promise
   return row?.count ?? 0;
 }
 
-export async function isMember(
+/** Null when the user is not a member. The join date lets a replayed add-member
+ *  request answer exactly what the first one did. */
+export async function findMembership(
   db: D1Database,
   householdId: string,
   userId: string,
-): Promise<boolean> {
+): Promise<{ joinedAt: string } | null> {
   const row = await db
-    .prepare('SELECT id FROM household_members WHERE household_id = ? AND user_id = ?')
+    .prepare('SELECT joined_at FROM household_members WHERE household_id = ? AND user_id = ?')
     .bind(householdId, userId)
-    .first<{ id: string }>();
+    .first<{ joined_at: string }>();
 
-  return row !== null;
+  return row ? { joinedAt: row.joined_at } : null;
 }
 
 export function createHouseholdStatement(
