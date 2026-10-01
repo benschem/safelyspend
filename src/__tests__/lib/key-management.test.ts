@@ -25,6 +25,7 @@ import {
   deriveRecoveryKek,
   deriveVerifier,
   encryptVault,
+  formatSafetyNumber,
   generateKeypair,
   generateMasterKey,
   generateRecoveryPhrase,
@@ -33,6 +34,7 @@ import {
   isWrongKey,
   mnemonicToSeed,
   publicKeyFingerprint,
+  safetyNumberFor,
   unwrapFromSender,
   unwrapMasterKey,
   unwrapPrivateKey,
@@ -452,6 +454,70 @@ describe('publicKeyFingerprint', () => {
 
     expect(truncated).toHaveLength(8);
     expect(toHex(truncated)).toBe(toHex(fullDigest.slice(0, 8)));
+  });
+});
+
+describe('formatSafetyNumber', () => {
+  it('renders an all-zero fingerprint as all zeroes', () => {
+    expect(formatSafetyNumber(new Uint8Array(8))).toBe('0000-0000-00000');
+  });
+
+  /**
+   * 64 one-bits: twelve characters of 11111 (31, `Z`), then the last four
+   * bits padded with a zero, 11110 (30, `Y`).
+   */
+  it('pads the final character of an all-0xFF fingerprint with a zero bit', () => {
+    expect(formatSafetyNumber(new Uint8Array(8).fill(0xff))).toBe('ZZZZ-ZZZZ-ZZZZY');
+  });
+
+  /**
+   * Worked by hand. The bytes 01 23 45 67 89 AB CD EF in binary, regrouped
+   * into fives, with the trailing 1111 padded to 11110:
+   *
+   *   00000 00100 10001 10100 | 01010 11001 11100 01001 | 10101 01111 00110 11110 11110
+   *     0     4    17    20   |  10    25    28     9   |  21    15     6    30    30
+   *     0     4     H     M   |   A     S     W     9   |   N     F     6     Y     Y
+   */
+  it('encodes a known fingerprint as Crockford base32', () => {
+    const fingerprint = new Uint8Array([0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef]);
+
+    expect(formatSafetyNumber(fingerprint)).toBe('04HM-ASW9-NF6YY');
+  });
+
+  it('rejects a fingerprint that is not exactly 8 bytes', () => {
+    expect(() => formatSafetyNumber(new Uint8Array(7))).toThrow(/8-byte/);
+    expect(() => formatSafetyNumber(new Uint8Array(9))).toThrow(/8-byte/);
+  });
+});
+
+describe('safetyNumberFor', () => {
+  it('is 13 Crockford base32 characters grouped 4-4-5', async () => {
+    const safetyNumber = await safetyNumberFor(generateKeypair().publicKey);
+
+    expect(safetyNumber).toMatch(
+      /^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{5}$/,
+    );
+  });
+
+  it('is stable for a given public key', async () => {
+    const { publicKey } = generateKeypair();
+
+    expect(await safetyNumberFor(publicKey)).toBe(await safetyNumberFor(publicKey));
+  });
+
+  it('differs between public keys', async () => {
+    const first = await safetyNumberFor(generateKeypair().publicKey);
+    const second = await safetyNumberFor(generateKeypair().publicKey);
+
+    expect(first).not.toBe(second);
+  });
+
+  it('is the formatted fingerprint of the key', async () => {
+    const { publicKey } = generateKeypair();
+
+    expect(await safetyNumberFor(publicKey)).toBe(
+      formatSafetyNumber(await publicKeyFingerprint(publicKey)),
+    );
   });
 });
 

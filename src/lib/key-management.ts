@@ -17,6 +17,7 @@ import { argon2id } from 'hash-wasm';
 import { x25519 } from '@noble/curves/ed25519.js';
 import { hkdf } from '@noble/hashes/hkdf.js';
 import { sha256 } from '@noble/hashes/sha2.js';
+import { base32crockford } from '@scure/base';
 import { generateMnemonic, validateMnemonic } from '@scure/bip39';
 import { wordlist as englishWordlist } from '@scure/bip39/wordlists/english.js';
 
@@ -69,7 +70,7 @@ const HANDOFF_HKDF_INFO = 'ss-handoff-v1';
  * Length of the truncated pubkey digest behind a safety number (section 8).
  * 64 bits: a second-preimage search at this width is far beyond anyone who
  * would bother, and it is short enough to read aloud over the phone, which is
- * the whole point of the artefact. Phase 4 owns how it is displayed.
+ * the whole point of the artefact. `formatSafetyNumber` is how it is displayed.
  */
 const PUBLIC_KEY_FINGERPRINT_LENGTH = 8;
 
@@ -443,7 +444,7 @@ export async function deriveRecoveryKek(mnemonic: string): Promise<Kek> {
 
 /**
  * Safety-number input (section 8): SHA-256 of the 32-byte pubkey, truncated.
- * The crypto is fixed here; Phase 4 chooses how to render these bytes.
+ * The crypto is fixed here; `formatSafetyNumber` renders these bytes.
  *
  * Named in full because `fingerprint` already means something else in this
  * codebase — `importFingerprint` and friends are the transaction dedup hash,
@@ -452,6 +453,38 @@ export async function deriveRecoveryKek(mnemonic: string): Promise<Kek> {
 export async function publicKeyFingerprint(publicKey: PublicKeyBytes): Promise<Uint8Array> {
   const digest = await crypto.subtle.digest('SHA-256', publicKey as Uint8Array<ArrayBuffer>);
   return new Uint8Array(digest).slice(0, PUBLIC_KEY_FINGERPRINT_LENGTH);
+}
+
+/**
+ * Renders a public-key fingerprint as the safety number people compare:
+ * 13 Crockford base32 characters grouped `XXXX-XXXX-XXXXX`.
+ *
+ * Crockford's alphabet leaves out I, L, O and U, so nothing in a safety
+ * number can be misheard or misread as 1, 0 or V when two people read it to
+ * each other.
+ *
+ * 64 bits is twelve full 5-bit characters with 4 bits left over, so the
+ * thirteenth character is those 4 bits padded with a single zero bit.
+ */
+export function formatSafetyNumber(fingerprint: Uint8Array): string {
+  if (fingerprint.length !== PUBLIC_KEY_FINGERPRINT_LENGTH) {
+    throw new Error(
+      `A safety number needs a ${PUBLIC_KEY_FINGERPRINT_LENGTH}-byte fingerprint, got ${fingerprint.length} bytes`,
+    );
+  }
+
+  const characters = base32crockford.encode(fingerprint);
+
+  return `${characters.slice(0, 4)}-${characters.slice(4, 8)}-${characters.slice(8)}`;
+}
+
+/**
+ * The safety number for a public key. Always call this with the key itself,
+ * never with a fingerprint the server supplied: the number only proves
+ * anything if it is computed from the key that will actually be used.
+ */
+export async function safetyNumberFor(publicKey: PublicKeyBytes): Promise<string> {
+  return formatSafetyNumber(await publicKeyFingerprint(publicKey));
 }
 
 /**
