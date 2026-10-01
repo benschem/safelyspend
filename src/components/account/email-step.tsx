@@ -11,8 +11,15 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * Where both branches start. Nothing here reveals whether the address already
  * has an account — the server answers the same way either way, and the flow
  * only forks after the code has been entered.
+ *
+ * In `invite` mode the copy cannot name the sender: there is no unauthenticated
+ * token lookup, deliberately, so this page knows only that an invite exists.
+ * What it can do is warn that the invite is bound to its address. The server
+ * only checks that at the very end, after the code, the password and the
+ * recovery phrase, so this is the one place to say it early.
  */
 export function EmailStep({
+  mode = 'account',
   initialEmail,
   onSubmit,
   loading,
@@ -20,6 +27,7 @@ export function EmailStep({
   backTo,
   backLabel,
 }: {
+  mode?: 'account' | 'invite';
   initialEmail: string;
   onSubmit: (email: string) => void;
   loading: boolean;
@@ -53,10 +61,21 @@ export function EmailStep({
         <div className="mb-4 rounded-full bg-blue-500/10 p-3">
           <Cloud className="h-6 w-6 text-blue-500" />
         </div>
-        <h1 className="text-2xl font-bold">Cloud sync</h1>
+        <h1 className="text-2xl font-bold">
+          {mode === 'account' ? 'Cloud sync' : 'You have been invited'}
+        </h1>
         <p className="mt-2 text-muted-foreground">
-          Sync your budget across devices, and share it with a partner. Start by confirming your
-          email address.
+          {mode === 'account' ? (
+            <>
+              Sync your budget across devices, and share it with a partner. Start by confirming your
+              email address.
+            </>
+          ) : (
+            <>
+              Someone has invited you to share their budget. Enter the email address the invite was
+              sent to. It will not work with any other address.
+            </>
+          )}
         </p>
       </div>
 

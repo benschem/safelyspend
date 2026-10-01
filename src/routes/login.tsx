@@ -9,6 +9,7 @@ import { api, ApiError, type KeyBundle, type OtpChallenge } from '@/lib/api-clie
 // showFailure prints it. Settings branches on the type because it has to
 // choose between an inline field error and a toast.
 import {
+  buildInviteSignupMaterial,
   buildPasswordResetMaterial,
   buildSignupMaterial,
   deriveLoginVerifier,
@@ -18,12 +19,20 @@ import {
 } from '@/lib/account';
 import { generateRecoveryPhrase } from '@/lib/key-management';
 import { unlockKeyVault } from '@/lib/key-vault';
+import {
+  BROKEN_INVITE_LINK_VIEW,
+  classifyAcceptFailure,
+  classifySignedInInvitee,
+  WAITING_FOR_HANDOFF_PATH,
+  type InviteView,
+} from '@/lib/invite-acceptance';
 import { EmailStep } from '@/components/account/email-step';
 import { CodeStep } from '@/components/account/code-step';
 import { CreatePasswordStep } from '@/components/account/create-password-step';
 import { RecoveryPhraseStep } from '@/components/account/recovery-phrase-step';
 import { RecoveryPhraseEntryStep } from '@/components/account/recovery-phrase-entry-step';
 import { EnterPasswordStep } from '@/components/account/enter-password-step';
+import { InviteStatusStep } from '@/components/account/invite-status-step';
 
 /**
  * The one auth route. Signing up and signing in are the same flow with one
@@ -54,7 +63,36 @@ import { EnterPasswordStep } from '@/components/account/enter-password-step';
  *
  * `?email=` is still read on entry, because an address is not a secret and
  * pre-filling it is the whole value of the link.
+ *
+ * ## Invite mode
+ *
+ * `/accept-invite` renders this same shell holding an invite token. Nothing
+ * about the email, code, password or phrase steps changes; what changes is
+ * where the flow ends. A new account calls `signupWithInvite` rather than
+ * `signup` and goes to the waiting screen, not the setup wizard. Anyone who is
+ * signed in, or signs in, lands on the `invite` step, which works out where
+ * they stand before offering to accept (`classifySignedInInvitee`).
+ *
+ * Accept is never called on load. It is limited to three an hour per user, so
+ * three refreshes would lock someone out of their own invite; it sits behind a
+ * button and is only offered when it can succeed.
  */
+
+/**
+ * Whether this browser holds a working session, asked of the server.
+ *
+ * For the one place the auth hook's state cannot be trusted: straight after a
+ * signup call that failed, the server may have set a cookie the hook has not
+ * heard about.
+ */
+async function hasLiveSession(): Promise<boolean> {
+  try {
+    await api.auth.me();
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 type Step =
   | 'email'
@@ -63,16 +101,25 @@ type Step =
   | 'show-recovery-phrase'
   | 'password'
   | 'enter-recovery-phrase'
-  | 'reset-password';
+  | 'reset-password'
+  | 'invite';
 
-export function LoginPage() {
+/**
+ * `inviteToken` is set only by `/accept-invite`, and its presence is what puts
+ * the shell in invite mode. An empty one is a link with its token cut off.
+ */
+export function LoginPage({ inviteToken }: { inviteToken?: string }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login, logout, verifyOtp, isAuthenticated, user, checkAuth } = useAuth();
   const { isInitialized, isLoading: configLoading } = useAppConfig();
   const { unlockWithPassword, push, pull } = useSync();
 
-  const [step, setStep] = useState<Step>('email');
+  const isInviteMode = inviteToken !== undefined;
+  // A broken link has nowhere to go but its own dead end, so it starts there.
+  const isInviteLinkBroken = inviteToken === '';
+
+  const [step, setStep] = useState<Step>(isInviteLinkBroken ? 'invite' : 'email');
   const [email, setEmail] = useState(searchParams.get('email') ?? '');
   const [challenge, setChallenge] = useState<OtpChallenge | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +147,36 @@ export function LoginPage() {
    */
   const [recoveryBundle, setRecoveryBundle] = useState<KeyBundle | null>(null);
   const [recoveredKeys, setRecoveredKeys] = useState<SessionKeys | null>(null);
+
+  const [inviteView, setInviteView] = useState<InviteView>(
+    isInviteLinkBroken ? BROKEN_INVITE_LINK_VIEW : { kind: 'checking' },
+  );
+
+  /**
+   * Work out where a signed-in invitee stands, from two reads and no accept.
+   *
+   * An account already attached to a live invite goes straight to the waiting
+   * screen; the rest see the view that fits. `classifySignedInInvitee` explains
+   * why "no household" alone is not enough to send someone to wait.
+   */
+  const showSignedInInvite = useCallback(async () => {
+    setStep('invite');
+    setInviteView({ kind: 'checking' });
+    setError(null);
+    setLoading(false);
+
+    try {
+      const [{ household }, { received }] = await Promise.all([api.auth.me(), api.invites.list()]);
+      const state = classifySignedInInvitee(household, received);
+      if (state === 'waiting') {
+        navigate(WAITING_FOR_HANDOFF_PATH, { replace: true });
+        return;
+      }
+      setInviteView({ kind: state });
+    } catch {
+      setInviteView({ kind: 'check-failed' });
+    }
+  }, [navigate]);
 
   /**
    * Where a session that has just been *signed in to* belongs.
@@ -151,17 +228,33 @@ export function LoginPage() {
    * Someone arriving with a session already live — a cookie that outlived the
    * tab. They need no code, only the password that opens their wrapped rows,
    * so drop them straight at the unlock prompt. Mid-flow steps are left alone.
+   *
+   * With an invite link they skip the unlock instead: accepting needs a session
+   * but no keys, and a waiting invitee has no household key to unlock with.
    */
   useEffect(() => {
     if (!isAuthenticated || configLoading || step !== 'email') return;
 
+    if (isInviteMode) {
+      void showSignedInInvite();
+      return;
+    }
     if (isInitialized) {
       navigate('/settings', { replace: true });
       return;
     }
     setEmail((current) => user?.email ?? current);
     setStep('password');
-  }, [isAuthenticated, configLoading, isInitialized, step, navigate, user?.email]);
+  }, [
+    isAuthenticated,
+    configLoading,
+    isInitialized,
+    isInviteMode,
+    showSignedInInvite,
+    step,
+    navigate,
+    user?.email,
+  ]);
 
   /** Put a failure on screen and hand the form back. Sets state; does not throw. */
   const showFailure = (err: unknown, fallback: string) => {
@@ -170,15 +263,14 @@ export function LoginPage() {
   };
 
   /**
-   * Back to the start, holding nothing.
+   * Drop everything the flow is holding, without choosing where to go next.
    *
-   * Every exit from a mid-flow step lands here, so it clears all of it rather
-   * than the pieces any one caller happens to have touched — a step added later
-   * that stashes something new is one line here away from being cleaned up on
-   * every path at once, instead of on the paths someone remembered.
+   * Every exit from a mid-flow step comes through here, so it clears all of it
+   * rather than the pieces any one caller happens to have touched — a step added
+   * later that stashes something new is one line here away from being cleaned
+   * up on every path at once, instead of on the paths someone remembered.
    */
-  const backToEmail = () => {
-    setStep('email');
+  const discardHeldSecrets = () => {
     setChallenge(null);
     setSignupPassword('');
     setRecoveryPhrase('');
@@ -186,6 +278,12 @@ export function LoginPage() {
     setRecoveredKeys(null);
     setError(null);
     setLoading(false);
+  };
+
+  /** Back to the start, holding nothing. */
+  const backToEmail = () => {
+    discardHeldSecrets();
+    setStep('email');
   };
 
   const handleEmail = async (submitted: string) => {
@@ -283,6 +381,134 @@ export function LoginPage() {
     navigate(isInitialized ? '/settings' : '/?setup=1', { replace: true });
   };
 
+  /**
+   * `handleSignup` for someone joining a household rather than starting one.
+   *
+   * Nothing is unlocked and nothing is pushed: the account has no MasterKey
+   * until the other member hands it over, and this device's budget is not the
+   * household's. The waiting screen takes it from here.
+   *
+   * A failure does not always mean there is no account. `/auth/signup-with-invite`
+   * spends the bridge token, checks the invite, creates the account, sets the
+   * session cookie, and only then claims the invite:
+   *
+   * - A failed invite check (wrong address, dead invite) creates nothing. The
+   *   code is spent and the phrase the user just wrote down opens nothing.
+   * - A failure after the account exists (the claim losing a race, or the
+   *   response lost on the way back) leaves a real account behind, opened by
+   *   that phrase. The server is asked which case this is, and a live session
+   *   goes to the signed-in invite check, which knows what to offer next.
+   */
+  const handleInviteSignup = async () => {
+    if (!challenge || inviteToken === undefined) return;
+    setError(null);
+    setLoading(true);
+
+    try {
+      const material = await buildInviteSignupMaterial(signupPassword, recoveryPhrase);
+      await api.auth.signupWithInvite({
+        ...material.body,
+        authPendingToken: challenge.authPendingToken,
+        inviteToken,
+        // The same 7-day default as an ordinary signup, for the same reason.
+        rememberMe: false,
+      });
+    } catch (err) {
+      const failure = classifyAcceptFailure(err);
+      // Checked before the account is created, so there is nothing to ask about.
+      if (failure.kind === 'wrong-address') {
+        backToEmail();
+        // After `backToEmail`, which clears `error` as part of the reset.
+        setError(
+          'That is not the address this invite was sent to. Enter the address the invite email arrived at, and we will send a new code.',
+        );
+        return;
+      }
+      if (await hasLiveSession()) {
+        discardHeldSecrets();
+        await checkAuth();
+        // The account exists, so this is the claim failing rather than the
+        // check before it. When that failure already says the invite is dead,
+        // say so here: the signed-in check would offer an Accept button whose
+        // only outcome is this same sentence, at one of three accepts an hour.
+        if (failure.kind === 'unusable') {
+          setInviteView(failure);
+          setStep('invite');
+          return;
+        }
+        await showSignedInInvite();
+        return;
+      }
+      if (failure.kind === 'unusable') {
+        discardHeldSecrets();
+        setInviteView(failure);
+        setStep('invite');
+        return;
+      }
+      showFailure(err, 'Could not create your account. Please try again.');
+      return;
+    }
+
+    // Past this line the account exists; see the matching note in handleSignup.
+    setSignupPassword('');
+    setRecoveryPhrase('');
+    await checkAuth();
+    navigate(WAITING_FOR_HANDOFF_PATH, { replace: true });
+  };
+
+  /**
+   * The only call site of accept, and only ever from the button. Every refusal
+   * lands on its own view rather than a generic error, because each one needs
+   * a different next step from the person reading it.
+   */
+  const handleAcceptInvite = async () => {
+    if (inviteToken === undefined) return;
+    setError(null);
+    setLoading(true);
+
+    try {
+      await api.invites.accept(inviteToken);
+    } catch (err) {
+      const failure = classifyAcceptFailure(err);
+      setLoading(false);
+      switch (failure.kind) {
+        case 'wrong-address':
+          setInviteView({ kind: 'wrong-account' });
+          return;
+        case 'has-household':
+        case 'unusable':
+          setInviteView(failure);
+          return;
+        case 'rate-limited':
+          setError('You have tried this too many times. Wait an hour, then try again.');
+          return;
+        case 'other':
+          showFailure(err, 'Could not accept the invite. Please try again.');
+          return;
+      }
+    }
+
+    navigate(WAITING_FOR_HANDOFF_PATH, { replace: true });
+  };
+
+  const handleInviteSignOut = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      await logout();
+    } catch (err) {
+      showFailure(err, 'Could not sign you out. Please try again.');
+      return;
+    }
+    // Most often the wrong person on a shared device, so their address is no
+    // help to whoever signs in next.
+    setEmail('');
+    discardHeldSecrets();
+    // A broken link stays on its dead end: the email step would lead through a
+    // whole signup to a refusal for the missing token.
+    setStep(isInviteLinkBroken ? 'invite' : 'email');
+  };
+
   const handlePassword = async (password: string, rememberMe: boolean) => {
     setError(null);
     setLoading(true);
@@ -295,7 +521,13 @@ export function LoginPage() {
           verifierCandidate,
           rememberMe,
         );
-        unlockKeyVault(await unlockKeyBundle(password, session.keyBundle));
+        // An invitee still waiting for their handoff has no household key, so
+        // there is nothing to unlock. Only invite mode knows where to send
+        // them; a plain sign-in in that state belongs to the waiting screen's
+        // step and still fails here.
+        if (!isInviteMode || session.household) {
+          unlockKeyVault(await unlockKeyBundle(password, session.keyBundle));
+        }
         await checkAuth();
       } else {
         // Already signed in — no bridge token to spend, so this is a local
@@ -303,6 +535,10 @@ export function LoginPage() {
         await unlockWithPassword(password);
       }
 
+      if (isInviteMode) {
+        await showSignedInInvite();
+        return;
+      }
       await goToUnlockedDestination();
     } catch (err) {
       // A wrong password on the sign-in path spends the bridge token, so there
@@ -424,6 +660,7 @@ export function LoginPage() {
       <div className="w-full max-w-lg">
         {step === 'email' && (
           <EmailStep
+            mode={isInviteMode ? 'invite' : 'account'}
             initialEmail={email}
             onSubmit={handleEmail}
             loading={loading}
@@ -458,7 +695,7 @@ export function LoginPage() {
         {step === 'show-recovery-phrase' && (
           <RecoveryPhraseStep
             phrase={recoveryPhrase}
-            onAcknowledge={handleSignup}
+            onAcknowledge={isInviteMode ? handleInviteSignup : handleSignup}
             loading={loading}
             error={error}
           />
@@ -498,6 +735,20 @@ export function LoginPage() {
             mode="reset"
             onSubmit={handleRecoveryPassword}
             onBack={backToEmail}
+            loading={loading}
+            error={error}
+          />
+        )}
+
+        {step === 'invite' && (
+          <InviteStatusStep
+            view={inviteView}
+            // A failed invite signup lands here with no account behind it.
+            signedInEmail={isAuthenticated ? (user?.email ?? email) : null}
+            onAccept={handleAcceptInvite}
+            onRetry={showSignedInInvite}
+            onSignOut={handleInviteSignOut}
+            settingsReachable={isInitialized}
             loading={loading}
             error={error}
           />

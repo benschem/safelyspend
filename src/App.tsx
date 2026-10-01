@@ -19,12 +19,17 @@ const devOnlyRoutes = import.meta.env.DEV
   ? [
       {
         path: 'style-guide',
-        lazy: () => import('@/routes/style-guide').then((m) => ({ Component: m.StyleGuidePage })),
+        lazy: () =>
+          import('@/routes/style-guide').then((routeModule) => ({
+            Component: routeModule.StyleGuidePage,
+          })),
       },
       {
         path: 'error',
         lazy: () =>
-          import('@/routes/error-preview').then((m) => ({ Component: m.ErrorPreviewPage })),
+          import('@/routes/error-preview').then((routeModule) => ({
+            Component: routeModule.ErrorPreviewPage,
+          })),
       },
     ]
   : [];
@@ -34,7 +39,9 @@ const router = createBrowserRouter([
   {
     path: '/',
     lazy: () =>
-      import('@/components/first-run-wizard').then((m) => ({ Component: m.FirstRunWizard })),
+      import('@/components/first-run-wizard').then((routeModule) => ({
+        Component: routeModule.FirstRunWizard,
+      })),
     errorElement: <ErrorBoundary />,
     HydrateFallback,
   },
@@ -42,7 +49,8 @@ const router = createBrowserRouter([
   // it is reachable from inside the app (the header logo links here).
   {
     path: '/welcome',
-    lazy: () => import('@/routes/welcome').then((m) => ({ Component: m.WelcomePage })),
+    lazy: () =>
+      import('@/routes/welcome').then((routeModule) => ({ Component: routeModule.WelcomePage })),
     errorElement: <ErrorBoundary />,
     HydrateFallback,
   },
@@ -55,14 +63,38 @@ const router = createBrowserRouter([
   {
     path: '/check-in',
     lazy: () =>
-      import('@/components/check-in-wizard').then((m) => ({ Component: m.CheckInWizard })),
+      import('@/components/check-in-wizard').then((routeModule) => ({
+        Component: routeModule.CheckInWizard,
+      })),
     errorElement: <ErrorBoundary />,
     HydrateFallback,
   },
   // Login page (outside of RootLayout - full screen)
   {
     path: '/login',
-    lazy: () => import('@/routes/login').then((m) => ({ Component: m.LoginPage })),
+    lazy: () =>
+      import('@/routes/login').then((routeModule) => ({ Component: routeModule.LoginPage })),
+    errorElement: <ErrorBoundary />,
+    HydrateFallback,
+  },
+  // Invite link from the email: the login shell in invite mode
+  {
+    path: '/accept-invite',
+    lazy: () =>
+      import('@/routes/accept-invite').then((routeModule) => ({
+        Component: routeModule.AcceptInvitePage,
+      })),
+    errorElement: <ErrorBoundary />,
+    HydrateFallback,
+  },
+  // Invitee waiting for the other member to hand over the household key.
+  // Outside RootLayout: the account has no household yet, so no app to show.
+  {
+    path: '/household/waiting',
+    lazy: () =>
+      import('@/routes/household-waiting').then((routeModule) => ({
+        Component: routeModule.HouseholdWaitingPage,
+      })),
     errorElement: <ErrorBoundary />,
     HydrateFallback,
   },
@@ -70,7 +102,8 @@ const router = createBrowserRouter([
   // so it must render without app chrome for visitors who aren't set up yet)
   {
     path: '/privacy',
-    lazy: () => import('@/routes/privacy').then((m) => ({ Component: m.PrivacyPage })),
+    lazy: () =>
+      import('@/routes/privacy').then((routeModule) => ({ Component: routeModule.PrivacyPage })),
     errorElement: <ErrorBoundary />,
     HydrateFallback,
   },
@@ -83,26 +116,35 @@ const router = createBrowserRouter([
       // Cash Flow (monthly overview)
       {
         path: 'cash-flow',
-        lazy: () => import('@/routes/cash-flow/index').then((m) => ({ Component: m.CashFlowPage })),
+        lazy: () =>
+          import('@/routes/cash-flow/index').then((routeModule) => ({
+            Component: routeModule.CashFlowPage,
+          })),
       },
 
       // Budget (plan tab only)
       {
         path: 'budget',
-        lazy: () => import('@/routes/budget').then((m) => ({ Component: m.BudgetPage })),
+        lazy: () =>
+          import('@/routes/budget').then((routeModule) => ({ Component: routeModule.BudgetPage })),
       },
 
       // Transactions (standalone page)
       {
         path: 'transactions',
         lazy: () =>
-          import('@/routes/transactions/index').then((m) => ({ Component: m.TransactionsPage })),
+          import('@/routes/transactions/index').then((routeModule) => ({
+            Component: routeModule.TransactionsPage,
+          })),
       },
 
       // Net Wealth (balances overview)
       {
         path: 'net-wealth',
-        lazy: () => import('@/routes/net-wealth').then((m) => ({ Component: m.NetWealthPage })),
+        lazy: () =>
+          import('@/routes/net-wealth').then((routeModule) => ({
+            Component: routeModule.NetWealthPage,
+          })),
       },
 
       // Legacy redirects
@@ -122,7 +164,9 @@ const router = createBrowserRouter([
       {
         path: 'transactions/new',
         lazy: () =>
-          import('@/routes/transactions/new').then((m) => ({ Component: m.TransactionNewPage })),
+          import('@/routes/transactions/new').then((routeModule) => ({
+            Component: routeModule.TransactionNewPage,
+          })),
       },
 
       // Categories - redirect to budget, keep detail page
@@ -130,13 +174,15 @@ const router = createBrowserRouter([
       {
         path: 'categories/:id',
         lazy: () =>
-          import('@/routes/categories/detail').then((m) => ({ Component: m.CategoryDetailPage })),
+          import('@/routes/categories/detail').then((routeModule) => ({
+            Component: routeModule.CategoryDetailPage,
+          })),
       },
       {
         path: 'categories/import-rules',
         lazy: () =>
-          import('@/routes/categories/import-rules').then((m) => ({
-            Component: m.CategoryImportRulesPage,
+          import('@/routes/categories/import-rules').then((routeModule) => ({
+            Component: routeModule.CategoryImportRulesPage,
           })),
       },
 
@@ -144,30 +190,43 @@ const router = createBrowserRouter([
       {
         path: 'savings',
         lazy: () =>
-          import('@/routes/savings/index').then((m) => ({ Component: m.SavingsIndexPage })),
+          import('@/routes/savings/index').then((routeModule) => ({
+            Component: routeModule.SavingsIndexPage,
+          })),
       },
 
       // Insights (track)
       {
         path: 'insights',
-        lazy: () => import('@/routes/insights').then((m) => ({ Component: m.InsightsPage })),
+        lazy: () =>
+          import('@/routes/insights').then((routeModule) => ({
+            Component: routeModule.InsightsPage,
+          })),
       },
 
       // Scenarios (plan)
       {
         path: 'scenarios',
         lazy: () =>
-          import('@/routes/scenarios/index').then((m) => ({ Component: m.ScenariosIndexPage })),
+          import('@/routes/scenarios/index').then((routeModule) => ({
+            Component: routeModule.ScenariosIndexPage,
+          })),
       },
 
       // Settings
       {
         path: 'settings',
-        lazy: () => import('@/routes/settings').then((m) => ({ Component: m.SettingsPage })),
+        lazy: () =>
+          import('@/routes/settings').then((routeModule) => ({
+            Component: routeModule.SettingsPage,
+          })),
       },
       {
         path: 'changelog',
-        lazy: () => import('@/routes/changelog').then((m) => ({ Component: m.ChangelogPage })),
+        lazy: () =>
+          import('@/routes/changelog').then((routeModule) => ({
+            Component: routeModule.ChangelogPage,
+          })),
       },
 
       // Dev-only routes
