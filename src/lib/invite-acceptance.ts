@@ -1,4 +1,4 @@
-import { ApiError, type Household, type ReceivedInvite } from '@/lib/api-client';
+import { ApiError, type KeyBundle, type ReceivedInvite } from '@/lib/api-client';
 
 /**
  * Where an invitee goes once they have an account attached to an invite and
@@ -39,31 +39,62 @@ export const BROKEN_INVITE_LINK_VIEW: InviteView = {
 };
 
 /**
+ * How far an account is through joining a household, read from the member key
+ * rows in its key bundle and nothing else:
+ *
+ * - `awaiting-handoff`: no row. Nobody has handed this account a household key.
+ * - `ready-to-join`: a lone `ecies` row. The key has been handed over, and the
+ *   account has not yet rewrapped it under its own password and phrase.
+ * - `member`: a `pwd` row. The password opens the household key.
+ *
+ * `household` is deliberately not consulted. The worker attaches the household
+ * at the handoff, so it is already set in `ready-to-join`, where the password
+ * still opens nothing. Reading it as "is a member" is how that state gets sent
+ * to an unlock prompt that can only fail.
+ */
+export type HandoffState = 'awaiting-handoff' | 'ready-to-join' | 'member';
+
+export function classifyHandoffState(bundle: KeyBundle): HandoffState {
+  if (bundle.memberKeys.some((row) => row.kekKind === 'pwd')) return 'member';
+  if (bundle.memberKeys.some((row) => row.kekKind === 'ecies')) return 'ready-to-join';
+  return 'awaiting-handoff';
+}
+
+/**
  * Where a signed-in visitor holding an invite link stands, worked out without
  * calling accept.
  *
  * Accept is limited to three calls an hour per user, so it is never spent on
- * finding out. `me()` says whether the account already has a household, and the
- * received list says whether it has already claimed an invite: the worker's
- * `listReceived` returns only invites whose `recipient_user_id` is this
- * account, so an unclaimed one never appears in it.
+ * finding out. The key bundle says how far the account is through joining
+ * (`classifyHandoffState`), and the received list says whether it has already
+ * claimed an invite: the worker's `listReceived` returns only invites whose
+ * `recipient_user_id` is this account, so an unclaimed one never appears in it.
  *
- * A household-less account is not proof that it is waiting. Two states leave
- * one attached to no live invite: the claim failing after `signup-with-invite`
- * created the account, and the invite it claimed being revoked and re-sent
- * (revoke-then-send is how v1 re-sends). Both need the Accept button, and
- * routing them to the waiting screen would strand them there.
+ * An account handed a key it has not rewrapped belongs on the waiting screen,
+ * which is where it finishes joining.
+ *
+ * An account with no key at all is not proof that it is waiting. Two states
+ * leave one attached to no live invite: the claim failing after
+ * `signup-with-invite` created the account, and the invite it claimed being
+ * revoked and re-sent (revoke-then-send is how v1 re-sends). Both need the
+ * Accept button, and routing them to the waiting screen would strand them there.
  */
 export type SignedInInviteState = 'has-household' | 'waiting' | 'can-accept';
 
 export function classifySignedInInvitee(
-  household: Household | null,
+  bundle: KeyBundle,
   received: ReceivedInvite[],
 ): SignedInInviteState {
-  if (household) return 'has-household';
-
-  const hasLiveClaim = received.some((invite) => invite.status === 'accepted_pending_handoff');
-  return hasLiveClaim ? 'waiting' : 'can-accept';
+  switch (classifyHandoffState(bundle)) {
+    case 'member':
+      return 'has-household';
+    case 'ready-to-join':
+      return 'waiting';
+    case 'awaiting-handoff': {
+      const hasLiveClaim = received.some((invite) => invite.status === 'accepted_pending_handoff');
+      return hasLiveClaim ? 'waiting' : 'can-accept';
+    }
+  }
 }
 
 /**

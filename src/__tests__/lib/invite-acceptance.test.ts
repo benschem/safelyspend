@@ -1,6 +1,54 @@
 import { describe, it, expect } from 'vitest';
-import { ApiError, type InviteStatus, type ReceivedInvite } from '@/lib/api-client';
-import { classifyAcceptFailure, classifySignedInInvitee } from '@/lib/invite-acceptance';
+import {
+  ApiError,
+  type InviteStatus,
+  type KekKind,
+  type KeyBundle,
+  type MemberKeyRow,
+  type ReceivedInvite,
+} from '@/lib/api-client';
+import {
+  classifyAcceptFailure,
+  classifyHandoffState,
+  classifySignedInInvitee,
+} from '@/lib/invite-acceptance';
+
+/**
+ * A member key row of the given kind. The wrapped bytes are placeholders: the
+ * classifiers read only `kekKind`, so nothing here needs to open.
+ */
+function memberKeyRow(kekKind: KekKind): MemberKeyRow {
+  const isHandoffRow = kekKind === 'ecies';
+  return {
+    kekKind,
+    kekSalt: null,
+    kekKdfKind: null,
+    kekKdfParams: null,
+    wrappedMasterKey: 'wrapped-master-key',
+    senderUserId: isHandoffRow ? 'sender-user' : null,
+    senderPubkey: isHandoffRow ? 'sender-pubkey' : null,
+  };
+}
+
+/** The household is attached at the handoff, so any bundle with rows has one. */
+function keyBundle(memberKeys: MemberKeyRow[]): KeyBundle {
+  return {
+    user: {
+      id: 'user-1',
+      pubkey: 'user-pubkey',
+      verifierSalt: 'verifier-salt',
+      verifierKdfKind: 1,
+      verifierKdfParams: 'verifier-params',
+    },
+    userKeys: [],
+    household: memberKeys.length > 0 ? { id: 'household-1', name: 'Household' } : null,
+    memberKeys,
+  };
+}
+
+const AWAITING_HANDOFF_BUNDLE = keyBundle([]);
+const READY_TO_JOIN_BUNDLE = keyBundle([memberKeyRow('ecies')]);
+const MEMBER_BUNDLE = keyBundle([memberKeyRow('pwd'), memberKeyRow('recovery')]);
 
 function receivedInvite(status: InviteStatus): ReceivedInvite {
   return {
@@ -16,28 +64,54 @@ function codedError(status: number, code: string) {
   return new ApiError('worker message', status, { error: 'worker message', code });
 }
 
-describe('classifySignedInInvitee', () => {
-  it('reports a household whatever the received list holds', () => {
-    const household = { id: 'household-1', name: 'Household' };
+describe('classifyHandoffState', () => {
+  it('is awaiting a handoff when the bundle holds no member key', () => {
+    expect(classifyHandoffState(AWAITING_HANDOFF_BUNDLE)).toBe('awaiting-handoff');
+  });
 
-    expect(classifySignedInInvitee(household, [])).toBe('has-household');
-    expect(classifySignedInInvitee(household, [receivedInvite('accepted_pending_handoff')])).toBe(
-      'has-household',
+  it('is ready to join once a handoff row has arrived', () => {
+    expect(classifyHandoffState(READY_TO_JOIN_BUNDLE)).toBe('ready-to-join');
+  });
+
+  it('is a member once a password row exists', () => {
+    expect(classifyHandoffState(MEMBER_BUNDLE)).toBe('member');
+  });
+
+  it('does not treat a handed-over key as membership because the household is set', () => {
+    expect(READY_TO_JOIN_BUNDLE.household).not.toBeNull();
+    expect(classifyHandoffState(READY_TO_JOIN_BUNDLE)).not.toBe('member');
+  });
+});
+
+describe('classifySignedInInvitee', () => {
+  it('reports a household for a member, whatever the received list holds', () => {
+    expect(classifySignedInInvitee(MEMBER_BUNDLE, [])).toBe('has-household');
+    expect(
+      classifySignedInInvitee(MEMBER_BUNDLE, [receivedInvite('accepted_pending_handoff')]),
+    ).toBe('has-household');
+  });
+
+  it('sends an account that was handed a key to the waiting screen to finish joining', () => {
+    // The invite is `completed` by now, so no live claim is left in the list.
+    expect(classifySignedInInvitee(READY_TO_JOIN_BUNDLE, [receivedInvite('completed')])).toBe(
+      'waiting',
     );
   });
 
   it('sends an account with a live claim to the waiting screen', () => {
     const received = [receivedInvite('revoked'), receivedInvite('accepted_pending_handoff')];
 
-    expect(classifySignedInInvitee(null, received)).toBe('waiting');
+    expect(classifySignedInInvitee(AWAITING_HANDOFF_BUNDLE, received)).toBe('waiting');
   });
 
   it('offers accept to an account that claimed nothing, as after a failed claim', () => {
-    expect(classifySignedInInvitee(null, [])).toBe('can-accept');
+    expect(classifySignedInInvitee(AWAITING_HANDOFF_BUNDLE, [])).toBe('can-accept');
   });
 
   it('offers accept when the only claimed invite was revoked, as when one is re-sent', () => {
-    expect(classifySignedInInvitee(null, [receivedInvite('revoked')])).toBe('can-accept');
+    expect(classifySignedInInvitee(AWAITING_HANDOFF_BUNDLE, [receivedInvite('revoked')])).toBe(
+      'can-accept',
+    );
   });
 });
 

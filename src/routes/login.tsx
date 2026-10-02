@@ -22,6 +22,7 @@ import { unlockKeyVault } from '@/lib/key-vault';
 import {
   BROKEN_INVITE_LINK_VIEW,
   classifyAcceptFailure,
+  classifyHandoffState,
   classifySignedInInvitee,
   WAITING_FOR_HANDOFF_PATH,
   type InviteView,
@@ -166,8 +167,8 @@ export function LoginPage({ inviteToken }: { inviteToken?: string }) {
     setLoading(false);
 
     try {
-      const [{ household }, { received }] = await Promise.all([api.auth.me(), api.invites.list()]);
-      const state = classifySignedInInvitee(household, received);
+      const [bundle, { received }] = await Promise.all([api.auth.keyBundle(), api.invites.list()]);
+      const state = classifySignedInInvitee(bundle, received);
       if (state === 'waiting') {
         navigate(WAITING_FOR_HANDOFF_PATH, { replace: true });
         return;
@@ -231,6 +232,11 @@ export function LoginPage({ inviteToken }: { inviteToken?: string }) {
    *
    * With an invite link they skip the unlock instead: accepting needs a session
    * but no keys, and a waiting invitee has no household key to unlock with.
+   *
+   * Without one, an account that is still joining a household has no password
+   * row to unlock either, so the key bundle is read first and anyone short of
+   * `member` goes to the waiting screen. If that read fails the unlock prompt
+   * is shown anyway: it fetches the bundle itself and reports its own failure.
    */
   useEffect(() => {
     if (!isAuthenticated || configLoading || step !== 'email') return;
@@ -243,8 +249,38 @@ export function LoginPage({ inviteToken }: { inviteToken?: string }) {
       navigate('/settings', { replace: true });
       return;
     }
-    setEmail((current) => user?.email ?? current);
-    setStep('password');
+
+    // Set by the cleanup, so a read that resolves after the step has moved on
+    // (or after unmount) cannot drag the flow back to the password prompt.
+    let cancelled = false;
+    const showUnlockOrWaiting = async () => {
+      // Holds the email form still while the bundle is read.
+      setLoading(true);
+      let isMember = true;
+      try {
+        isMember = classifyHandoffState(await api.auth.keyBundle()) === 'member';
+      } catch {
+        // Stays a member: the unlock prompt reads the bundle again and reports
+        // the failure itself.
+      }
+      if (cancelled) return;
+
+      setLoading(false);
+      if (!isMember) {
+        navigate(WAITING_FOR_HANDOFF_PATH, { replace: true });
+        return;
+      }
+      setEmail((current) => user?.email ?? current);
+      setStep('password');
+    };
+    void showUnlockOrWaiting();
+
+    return () => {
+      cancelled = true;
+      // A cancelled read returns before releasing the form, and the next run
+      // may stop at a guard above without starting a read of its own.
+      setLoading(false);
+    };
   }, [
     isAuthenticated,
     configLoading,
@@ -521,14 +557,21 @@ export function LoginPage({ inviteToken }: { inviteToken?: string }) {
           verifierCandidate,
           rememberMe,
         );
-        // An invitee still waiting for their handoff has no household key, so
-        // there is nothing to unlock. Only invite mode knows where to send
-        // them; a plain sign-in in that state belongs to the waiting screen's
-        // step and still fails here.
-        if (!isInviteMode || session.household) {
+        // Only a member has a password row to unlock. An invitee who is still
+        // waiting for the household key, or has been handed it and not yet
+        // rewrapped it, has nothing this password opens.
+        const isMember = classifyHandoffState(session.keyBundle) === 'member';
+        if (isMember) {
           unlockKeyVault(await unlockKeyBundle(password, session.keyBundle));
         }
         await checkAuth();
+
+        // Invite mode sorts a non-member out below. A plain sign-in has no
+        // invite to weigh up, so the waiting screen takes it from here.
+        if (!isMember && !isInviteMode) {
+          navigate(WAITING_FOR_HANDOFF_PATH, { replace: true });
+          return;
+        }
       } else {
         // Already signed in — no bridge token to spend, so this is a local
         // unlock against the live session.
