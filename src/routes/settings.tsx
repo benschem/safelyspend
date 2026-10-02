@@ -64,13 +64,8 @@ import { useAppConfig } from '@/hooks/use-app-config';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useSavingsAnchors } from '@/hooks/use-savings-anchors';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
-import {
-  exportAllData,
-  importAllData,
-  fullReset,
-  CURRENT_SCHEMA_VERSION,
-  CURRENT_DATA_VERSION,
-} from '@/lib/db';
+import { downloadBackup } from '@/lib/backup-download';
+import { importAllData, fullReset, CURRENT_SCHEMA_VERSION, CURRENT_DATA_VERSION } from '@/lib/db';
 import { formatCents, formatDate, today } from '@/lib/utils';
 import { currentVersion } from '@/lib/changelog';
 import {
@@ -330,17 +325,7 @@ export function SettingsPage() {
   const handleExportConfirm = async () => {
     setExportWarningOpen(false);
     try {
-      const data = await exportAllData();
-      const json = JSON.stringify(data, null, 2);
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `budget-export-${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      await downloadBackup();
       showMessage('success', 'Data exported successfully.');
     } catch (error) {
       debug.error('db', 'Export failed', error);
