@@ -10,7 +10,9 @@ import {
 import {
   classifyAcceptFailure,
   classifyHandoffState,
+  classifyRewrapFailure,
   classifySignedInInvitee,
+  findJoiningInvite,
 } from '@/lib/invite-acceptance';
 
 /**
@@ -169,5 +171,61 @@ describe('classifyAcceptFailure', () => {
   it('leaves anything else to the caller', () => {
     expect(classifyAcceptFailure(new ApiError('Internal error', 500))).toEqual({ kind: 'other' });
     expect(classifyAcceptFailure(new TypeError('Failed to fetch'))).toEqual({ kind: 'other' });
+  });
+});
+
+describe('findJoiningInvite', () => {
+  it('finds the live claim while the account waits for the key', () => {
+    const claim = receivedInvite('accepted_pending_handoff');
+
+    expect(findJoiningInvite([receivedInvite('revoked'), claim])).toBe(claim);
+  });
+
+  it('finds the completed invite once the key has been handed over', () => {
+    const completed = receivedInvite('completed');
+
+    expect(findJoiningInvite([completed])).toBe(completed);
+  });
+
+  it('prefers the most recent, as after a revoke and re-send', () => {
+    const earlier = { ...receivedInvite('completed'), createdAt: '2026-09-18T00:00:00.000Z' };
+    const later = {
+      ...receivedInvite('accepted_pending_handoff'),
+      createdAt: '2026-09-20T00:00:00.000Z',
+    };
+
+    expect(findJoiningInvite([later, earlier])).toBe(later);
+    expect(findJoiningInvite([earlier, later])).toBe(later);
+  });
+
+  it('finds nothing when every claimed invite was cancelled', () => {
+    expect(findJoiningInvite([receivedInvite('revoked'), receivedInvite('expired')])).toBeNull();
+    expect(findJoiningInvite([])).toBeNull();
+  });
+});
+
+describe('classifyRewrapFailure', () => {
+  it('recognises the hourly limit', () => {
+    expect(classifyRewrapFailure(new ApiError('Too many requests', 429))).toEqual({
+      kind: 'rate-limited',
+    });
+  });
+
+  it('reads a missing handoff as possibly already joined', () => {
+    expect(classifyRewrapFailure(codedError(409, 'NO_PENDING_HANDOFF'))).toEqual({
+      kind: 'already-joined',
+    });
+  });
+
+  it('reads a refused blob as a stale key bundle', () => {
+    expect(classifyRewrapFailure(codedError(400, 'INVALID_BLOB'))).toEqual({
+      kind: 'stale-key-bundle',
+    });
+  });
+
+  it('leaves anything else to the caller', () => {
+    expect(classifyRewrapFailure(codedError(403, 'NOT_OWN_KEYS'))).toEqual({ kind: 'other' });
+    expect(classifyRewrapFailure(new ApiError('Internal error', 500))).toEqual({ kind: 'other' });
+    expect(classifyRewrapFailure(new TypeError('Failed to fetch'))).toEqual({ kind: 'other' });
   });
 });

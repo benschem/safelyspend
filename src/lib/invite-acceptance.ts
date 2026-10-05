@@ -2,9 +2,9 @@ import { ApiError, type KeyBundle, type ReceivedInvite } from '@/lib/api-client'
 
 /**
  * Where an invitee goes once they have an account attached to an invite and
- * are waiting for the other member to hand them the household key. Step 4 of
- * `docs/auth-rewrite/07_invite_flow.md` builds the screen; until then the route
- * is a placeholder.
+ * are waiting for the other member to hand them the household key. The same
+ * screen compares safety numbers and joins once the key arrives
+ * (`src/routes/household-waiting.tsx`).
  */
 export const WAITING_FOR_HANDOFF_PATH = '/household/waiting';
 
@@ -145,4 +145,59 @@ export function classifyAcceptFailure(err: unknown): AcceptFailure {
   }
 
   return err.status === 429 ? { kind: 'rate-limited' } : { kind: 'other' };
+}
+
+/**
+ * The invite an account on the waiting screen is joining through, from its
+ * received list.
+ *
+ * A live claim (`accepted_pending_handoff`) while the account waits for the
+ * key; `completed` once the other member has handed it over, which is when the
+ * worker closes the invite. The most recent wins, because a re-send is a
+ * revoke and a fresh invite, and the revoked one stays in the list.
+ *
+ * Null when neither exists: the invite was cancelled before the handoff.
+ */
+export function findJoiningInvite(received: ReceivedInvite[]): ReceivedInvite | null {
+  const joiningInvites = received.filter(
+    (invite) => invite.status === 'accepted_pending_handoff' || invite.status === 'completed',
+  );
+  if (joiningInvites.length === 0) return null;
+
+  return joiningInvites.reduce((latest, invite) =>
+    invite.createdAt > latest.createdAt ? invite : latest,
+  );
+}
+
+/**
+ * What a refused rewrap means for the join screen, by the worker's answer to
+ * `POST /households/:householdId/members/:userId/rewrap`.
+ *
+ * - `rate-limited`: three attempts an hour per user, so the way on is waiting.
+ * - `already-joined`: 409 `NO_PENDING_HANDOFF`. The handoff row is gone, most
+ *   likely because an earlier attempt landed and its response was lost, or
+ *   another tab finished first. The key bundle says which.
+ * - `stale-key-bundle`: 400 `INVALID_BLOB`. Most likely the password row the
+ *   rewrap was built from changed under it, as when the password is changed on
+ *   another device. Retrying the same body cannot succeed.
+ */
+export type RewrapFailure =
+  | { kind: 'rate-limited' }
+  | { kind: 'already-joined' }
+  | { kind: 'stale-key-bundle' }
+  | { kind: 'other' };
+
+export function classifyRewrapFailure(err: unknown): RewrapFailure {
+  if (!(err instanceof ApiError)) return { kind: 'other' };
+
+  if (err.status === 429) return { kind: 'rate-limited' };
+
+  switch (err.data?.['code']) {
+    case 'NO_PENDING_HANDOFF':
+      return { kind: 'already-joined' };
+    case 'INVALID_BLOB':
+      return { kind: 'stale-key-bundle' };
+  }
+
+  return { kind: 'other' };
 }
