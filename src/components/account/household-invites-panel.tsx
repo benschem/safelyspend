@@ -194,7 +194,7 @@ export function HouseholdInvitesPanel({ senderEmail }: { senderEmail: string }) 
               </p>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                 <div className="flex-1 space-y-2">
-                  <label htmlFor="invite-recipient-email" className="text-sm font-medium">
+                  <label htmlFor="invite-recipient-email" className="block text-sm font-medium">
                     Their email address
                   </label>
                   <Input
