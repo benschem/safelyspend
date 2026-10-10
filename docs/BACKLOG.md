@@ -192,3 +192,16 @@ The missing `role="alert"` on their error blocks is the entry above.
 "The person who invited you" until the next good poll. Cosmetic.
 
 Fix: when the list read fails, keep the `senderEmail` already on screen.
+
+## Worker: issuing an invite does not check the address is an address
+
+`POST /v1/invites` (`worker/src/routes/invites.ts`) accepts any non-empty string
+as `recipientEmail`. The only shape check is the client's
+(`recipientAddressProblem` in `src/lib/invite-sending.ts`), so anything other
+than this app's form can create an invite to a non-address, and the worker then
+tries to email it.
+
+Fix: reject it with a 400 using the pattern `worker/src/routes/auth.ts` already
+has as `EMAIL_REGEX`. Keep the client check: the per-user limit runs before the
+handler, so a typo that reaches the worker still spends one of the five issues
+an hour.

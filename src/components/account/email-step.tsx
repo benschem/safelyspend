@@ -4,8 +4,7 @@ import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { isValidEmailAddress, normaliseEmailAddress } from '@/lib/email-address';
 
 /**
  * Where both branches start. Nothing here reveals whether the address already
@@ -47,12 +46,12 @@ export function EmailStep({
     event.preventDefault();
     setValidationError(null);
 
-    const trimmed = email.trim().toLowerCase();
-    if (!EMAIL_PATTERN.test(trimmed)) {
+    const normalisedEmail = normaliseEmailAddress(email);
+    if (!isValidEmailAddress(normalisedEmail)) {
       setValidationError('Please enter a valid email address.');
       return;
     }
-    onSubmit(trimmed);
+    onSubmit(normalisedEmail);
   };
 
   return (
