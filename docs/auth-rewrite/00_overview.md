@@ -51,8 +51,14 @@ contradictory doc comment needed fixing. Neither phase has been exercised agains
 server.
 
 **The critical path is now 7, then 8, then a thin 10.** Phase 7 is the largest piece of
-work left in the plan and has not started; Phase 8 is the one the whole feature exists
-for. Phase 7 additionally needs Resend configured, two mailboxes and two browsers.
+work left in the plan; Phase 8 is the one the whole feature exists for. Phase 7
+additionally needs Resend configured, two mailboxes and two browsers.
+
+**Phase 7 is four steps of six in** (2026-10-05). The key material, the API client, invite
+signup and the invitee's waiting and join screen are built; the existing member's send,
+list and revoke (step 5) and the sweep that hands over the key (step 6) are not. None of
+it has run against a live server, and the join path cannot run end to end until step 6
+exists. `07_invite_flow.md` carries the step-by-step state.
 
 **Deferred to post-v1** — parked, not abandoned. The reasoning in each doc stays where
 it is:
@@ -105,7 +111,7 @@ Numbering has a gap at 6. Renumbering would break every cross-link here and in t
 - [Phase 3 — Client crypto rewrite](03_client_crypto_rewrite.md) — **built**
 - [Phase 4 — Account creation at cloud-sync opt-in](04_onboarding_rewrite.md) — **built** (2026-09-15; the login branch came with it)
 - [Phase 5 — Cloud login and logout](05_login_unlock_logout.md) — **built** (2026-09-16; unverified against a live server)
-- [Phase 7 — Invite flow (UI + backend + email)](07_invite_flow.md) — **v1**
+- [Phase 7 — Invite flow (UI + backend + email)](07_invite_flow.md) — **v1, in progress** (steps 1–4 of 6 built; unverified against a live server)
 - [Phase 8 — Household concept in app UI (shared vs personal scope)](08_household_ui_scope.md) — **v1, trimmed**
 - [Phase 9 — Landing page rewrite (two passes)](09_landing_page_rewrite.md) — **deferred post-v1**
 - [Phase 10 — Privacy page](10_privacy_page.md) — **v1, accuracy pass only**
