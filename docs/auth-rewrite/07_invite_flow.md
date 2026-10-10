@@ -102,7 +102,7 @@ Each step is its own commit and lands with its tests.
    chosen, so the three-day default lives only in the worker; and the server's
    `inviteePubkeyFingerprint` / `senderPubkeyFingerprint` are typed but must be
    recomputed before display, which the types say in as many words.
-3. **Done, 2026-10-01 (`f76390a`), not yet run against the live API.**
+3. **Done, 2026-10-01 (`f76390a`). Ran in the 2026-10-10 walkthrough.**
    **Invite signup.** `src/routes/accept-invite.tsx` reads the token and hands it to the
    existing `login.tsx` shell, which branches only at the final call: `signupWithInvite`,
    then the waiting screen instead of the setup wizard. A signed-in visitor gets plain
@@ -196,7 +196,7 @@ Each step is its own commit and lands with its tests.
      most handlers in a file with no route tests whose flows have never run live.
      Refactoring after the walkthrough keeps a bug in the refactor distinguishable from
      a bug in the flow, and the walkthrough becomes its regression check.
-4. **Done, 2026-10-05 (`62b23b8`..`41ddfff`), not yet run against the live API.**
+4. **Done, 2026-10-05 (`62b23b8`..`41ddfff`). Ran in the 2026-10-10 walkthrough.**
    **Invitee waiting screen.** Replaces the placeholder step 3 left at
    `/household/waiting`. Polls the key bundle; on arrival shows the safety numbers to
    confirm out-of-band, asks for password and phrase, opens, rewraps, then pulls the
@@ -303,8 +303,8 @@ Each step is its own commit and lands with its tests.
    - **A sender who has deleted their account** leaves `senderPubkey` null, so there is
      nothing to verify and the handoff is refused with a generic message. The proper
      screen is in `../BACKLOG.md`.
-5. **Done, 2026-10-10 (`2f19753`, `0c44a2e` and the panel commit), not yet run against
-   the live API.** **Existing member: send, list, revoke.** A Settings section on
+5. **Done, 2026-10-10 (`2f19753`, `0c44a2e` and the panel commit). Send and list ran in
+   the walkthrough the same day; revoke has not.** **Existing member: send, list, revoke.** A Settings section on
    `use-invites.ts`. Deliberately small — the Settings restructure in `../BACKLOG.md` is
    where it finds its final home.
 
@@ -334,7 +334,7 @@ Each step is its own commit and lands with its tests.
      `APP_URL` is production in `wrangler.toml`, so a local worker emails production
      links unless `.dev.vars` overrides it. A wrong field name in `issue` or `list`
      would first show up there, and could look like a bug in the sweep.
-6. **Done, 2026-10-10, not yet run against the live API.** **Existing member: the
+6. **Done, 2026-10-10. Ran in the walkthrough the same day.** **Existing member: the
    sweep.** Planned to run on **vault unlock**, not only cloud login: the MasterKey most
    often returns through a password unlock against a live session, and a sweep bound to
    login would miss most visits. Pending handoffs → safety-number screen → approve →
@@ -368,7 +368,77 @@ Each step is its own commit and lands with its tests.
    - **No tests.** No decision logic was added that a unit test could hold, and there is
      still no route-rendering harness. The walkthrough is the only check that it works.
 
-Then the two-browser walkthrough (`00_overview.md`, "How each phase will be verified").
+## The two-browser walkthrough, 2026-10-10
+
+**The join path works end to end.** Run by the maintainer in two browsers with two real
+mailboxes, against a local worker (`wrangler dev`, local D1 and R2) sending real email
+through Resend. No invite, handoff, household or vault request failed, so every field
+name in the API client matched the worker.
+
+**It has not run against the deployed worker.** Production does not have this code yet.
+What the local run cannot show is anything that differs there: the real domain's CORS
+and cookie handling, which Phases 4 and 5 already exercised and this phase does not
+change.
+
+What ran, each step checked against the database afterwards:
+
+1. The member signed up and pushed a vault.
+2. The member sent an invite. The emailed link pointed at the local app, the row showed
+   an expiry three days out, and the form hid while the invite was live.
+3. The invitee opened the link and signed up. First live run of `signupWithInvite`. They
+   landed on the waiting screen, which named the sender, showed their own safety number
+   and polled every ten seconds.
+4. The member approved from Settings. The invitee's number in the dialog, computed in the
+   member's browser, matched the invitee's own screen.
+5. The invitee joined with password and phrase: rewrap, then pull, then the shared budget.
+6. The invitee added a transaction and pushed; the member pulled it. Then the invitee
+   signed out and back in and got an ordinary unlock.
+
+Two questions the build left open are answered:
+
+- **`.dev.vars` does replace `APP_URL`.** A local worker emails local links.
+  `../DEVELOPMENT.md` has the setup, which did not exist before this run: the app could
+  not reach a local worker at all.
+- **A `completed` invite that has outlived its joiner does not block a new one.** Seen
+  when the first invitee's account was deleted by hand mid-run: the panel showed the old
+  invite as joined with the form beside it, and the next invite sent.
+
+What the run changed: the emailed link opens in a new tab, form inputs have a visible
+outline, and the invite form's label has its gap. What it found and left is in
+`../BACKLOG.md`: the approval dialog's two numbers read as a pair to compare, the
+member's number is gone once that dialog closes, an invitee who loses their password
+before joining is stuck and takes the household's second place with them, and nothing on
+the sign-in screen says it also creates accounts.
+
+### Still needs testing
+
+None of these has run in a browser. Locally the hourly limits are rows in the
+`rate_limits` table, so a stall can be read, and cleared, instead of waited out.
+
+- **`POST /invites/:token/accept` has never been called.** Every invitee so far signed
+  up from the link. The signed-in invite page's four cases, and its Accept button, are
+  untested: already in a household, the wrong account, a claimed invite, a dead token.
+- **Signing in while waiting.** Before approval it should reach the waiting screen.
+  After approval and before joining it should reach the join screen. Step 4 calls that
+  the usual way in, and the walkthrough went the other way: approval and joining in one
+  session.
+- **Revoke.** Cancelling while the invitee waits should show on their screen within a
+  poll. A cancelled, unopened link should say "cancelled, or already used".
+- **The wrong address at invite signup:** the mismatch sentence, back at the email step.
+- **A wrong phrase, then a wrong password, on the join screen.** Each should get its own
+  sentence, and the worker log should show no rewrap sent. This is the guard against a
+  silently unrecoverable account, so check the log, not only the screen.
+- **"They do not match" on the invitee's side:** the dead end, then Compare again.
+- **The approval row while the vault is locked,** and a vault that locks mid-approval.
+- **The form's own checks:** inviting yourself, and a malformed address.
+- **The lost-response recoveries:** a rewrap whose response is dropped, a pull that fails
+  after joining, and an invite signup that reports failure over a real account. Hard to
+  provoke by hand; they may need the worker stopped at the right moment.
+- **Every rate-limit sentence.** No 429 has been seen.
+- **An invite lapsing after three days,** and a handoff from a sender who has deleted
+  their account.
+- **Safari.** The session cookie is `Secure`, which Safari may refuse on
+  `http://localhost`, so it can only be checked against the deployed site.
 
 **Fingerprint display.** Settled in step 4: 13 Crockford base32 characters. §7.2's six
 groups of five digits predates the 8-byte length and would need more bits than exist.

@@ -56,9 +56,13 @@ additionally needs Resend configured, two mailboxes and two browsers.
 
 **Phase 7 is built, all six steps** (2026-10-10). The key material, the API client, invite
 signup, the invitee's waiting and join screen, the existing member's send, list and
-revoke, and the approval that hands over the key are in. None of it has run against a
-live server: the two-browser walkthrough is next, and is the first time the join path
-runs end to end. `07_invite_flow.md` carries the step-by-step state.
+revoke, and the approval that hands over the key are in.
+
+**The two-browser walkthrough ran the same day and the join path works end to end:**
+invite, sign up from the link, approve, join, and a budget change passing between the two
+people. It ran against a local worker, not the deployed one, and covered the happy path
+only. `07_invite_flow.md` carries the step-by-step state and a "Still needs testing"
+list of the side cases.
 
 **Deferred to post-v1** — parked, not abandoned. The reasoning in each doc stays where
 it is:
@@ -111,7 +115,7 @@ Numbering has a gap at 6. Renumbering would break every cross-link here and in t
 - [Phase 3 — Client crypto rewrite](03_client_crypto_rewrite.md) — **built**
 - [Phase 4 — Account creation at cloud-sync opt-in](04_onboarding_rewrite.md) — **built** (2026-09-15; the login branch came with it)
 - [Phase 5 — Cloud login and logout](05_login_unlock_logout.md) — **built** (2026-09-16; unverified against a live server)
-- [Phase 7 — Invite flow (UI + backend + email)](07_invite_flow.md) — **v1, in progress** (steps 1–5 of 6 built; unverified against a live server)
+- [Phase 7 — Invite flow (UI + backend + email)](07_invite_flow.md) — **built** (2026-10-10; happy path walked through against a local worker, side cases still to test)
 - [Phase 8 — Household concept in app UI (shared vs personal scope)](08_household_ui_scope.md) — **v1, trimmed**
 - [Phase 9 — Landing page rewrite (two passes)](09_landing_page_rewrite.md) — **deferred post-v1**
 - [Phase 10 — Privacy page](10_privacy_page.md) — **v1, accuracy pass only**

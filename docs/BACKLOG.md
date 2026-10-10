@@ -42,6 +42,42 @@ current behaviour, logout keeps the version and clears only the key vault and
 the last-synced timestamp — but it touches every sign-out path in the app,
 which is why it is here rather than in the commit that noticed it.
 
+## Nothing says you have changes to push, or that the household has newer ones
+
+Raised 2026-10-10. Two people can now edit the same vault, and sync is by hand.
+The sidebar says "Synced 2h ago" whether or not anything changed since.
+
+Two states, neither tracked today:
+
+- **You have changes you have not pushed.** Forget, and the other person works
+  on old data.
+- **The household vault is newer than yours.** The worse one. Edit on top of it
+  and the next push answers 409, where the only choices are pull (lose yours)
+  or overwrite (lose theirs). The vault is one blob, so nothing merges.
+
+Likely shape:
+
+- Unpushed changes: an amber dot and "Unsynced changes" on the existing
+  `SyncStatus` in the sidebar. Quiet, because it is the normal state while
+  editing. A banner would be up all session and stop being seen.
+- Vault is newer: a banner with a Pull button. Check on load and on window
+  focus with `api.vault.getMetadata()`, which already returns the version.
+- Pushing automatically after edits would remove the forgetting altogether.
+  Bigger, and conflicts then need a screen of their own. Decide separately.
+
+To build it:
+
+- Track unpushed changes with a Dexie write hook that sets a flag, cleared on a
+  good push or pull. The pull's own import must not set it. It will not notice
+  an edit that is undone, which is fine.
+- `useSync` keeps its state in `useState`, so the sidebar and Settings each
+  hold their own copy and a push from Settings does not update the sidebar.
+  Move the shared parts to one store, as `key-vault.ts` does with
+  `useSyncExternalStore`. Most of the work is here.
+
+Not checked: that a pull replaces local data outright. Read `importAllData`
+first.
+
 ## Settings buries the account, and nobody will find log out
 
 Noticed on the first real run of signup, recovery and deletion against the live API.
@@ -85,6 +121,64 @@ That sentence is also the obligation Phase 10's privacy pass carries, so write i
 
 Bigger than a cleanup and not on the v1 critical path, but it will be the first thing
 the second person in the household trips over, so it wants doing before that.
+
+## There is a way to sign in, and nothing that says sign up
+
+Noticed at the start of the Phase 7 two-browser walkthrough, 2026-10-10.
+
+A new person looks for "Sign up" or "Create account" and finds only sign in. The
+flow does create accounts: `/login` takes an email and a code, and an address
+with no account is carried on into choosing a password and a recovery phrase.
+But nothing says so before the email is entered, so someone without an account
+has no reason to think the sign-in door is theirs.
+
+Directions, not yet decided:
+
+- **Say it on the one screen**: a heading and a line that cover both, such as
+  "Sign in or create an account", and "New here? Enter your email and we will
+  set you up." The cheapest, and keeps the single flow.
+- **A separate "Create account" entrance** that leads into the same flow with
+  its own heading. Matches what people expect to see, at the cost of two
+  entrances that behave identically, and of deciding what each says when the
+  address turns out to be the other kind.
+
+Whichever is chosen, an entrance must not reveal whether an address already has
+an account: the worker answers the same for both until the code is passed, on
+purpose. Belongs with the Settings entry above, since both are about where the
+account is found.
+
+## An invitee who loses their password before joining is stuck, and so is the household
+
+Hit in the Phase 7 walkthrough, 2026-10-10: the invitee signed up in a private
+window, the browser did not keep the generated password, and the member had
+already approved them. **Traced through the worker, not exercised.**
+
+Between signing up and joining, the invitee has their own `user_keys` rows and,
+once approved, a lone `ecies` member key. Joining proves the current password
+against the `pwd` user row before it uploads anything, so without the password
+they cannot join. Nothing else gets them out:
+
+- **Recovery cannot reset it.** `POST /auth/recovery-reset` requires
+  `newMemberKeyPwd`, the household key re-wrapped under the new password. The
+  invitee does not hold the household key yet, so there is nothing to wrap.
+- **They cannot delete the account.** `DELETE /auth/account` needs a full
+  session, which needs the password. A recovery session is refused.
+- **The member cannot undo it.** Revoking a `completed` invite answers 409
+  `INVITE_COMPLETED`, and the household now counts two members, so every new
+  invite answers `HOUSEHOLD_FULL`. The second place is gone for good.
+
+The phrase does still open the invitee's private key, which is all that is
+needed to open the handoff. So the likely fix is to let recovery work in this
+state: a reset that replaces the verifier and the `pwd` user row and leaves the
+member key alone, after which they join with the new password. That means a
+branch in `recovery-reset` (or a sibling route) for a user with no `pwd` member
+row, and the matching branch in `login.tsx` and `buildPasswordResetMaterial`.
+
+A cheaper stopgap is a way out instead of a way through: let the member remove
+someone who has been approved but has not joined, which frees the place for a
+fresh invite.
+
+Until one of them exists, the only repair is by hand in the database.
 
 ## A handoff from a deleted account has no screen of its own
 
@@ -168,6 +262,36 @@ across every form in the app and wants looking at rather than trusting. Either
 restyle `FormError` to match the current block and swap the call sites, or keep
 `Alert` and accept the new look everywhere at once.
 
+## Form labels sit tight against their inputs
+
+Noticed on the invite panel during the Phase 7 walkthrough, 2026-10-10. Only
+that one label was fixed, by adding `block`.
+
+The usual field markup is a wrapper with `space-y-2` (or `space-y-1.5`) holding
+a label and an input. Tailwind 4 writes `space-y` as a bottom margin on every
+child but the last, and here that child is the `<label>`: an inline element,
+whose vertical margins the browser ignores. So the gap the class asks for never
+appears, and the only space is line height.
+
+About 35 places hand-write `<label className="text-sm font-medium">`: the
+account steps, both wizards, the Settings dialogs, `password-dialog.tsx` and
+`import-rules.tsx`. The shared `Label` in `src/components/ui/label.tsx` is
+inline as well, so `FormField` is likely affected. Find the hand-written ones
+with:
+
+```bash
+grep -rn "<label htmlFor" src
+```
+
+**Traced, not measured.** The mechanism comes from how Tailwind 4 defines
+`space-y`; nobody has inspected the computed margins. Confirm on one form first.
+Not every match is a field label: some wrap a checkbox and are fine as they are.
+
+The fix is to add `block` to the shared `Label` and move the hand-written labels
+onto it. It changes the spacing of every form at once, so it wants its own
+commit and a look at each screen. Remove the one-off `block` in
+`household-invites-panel.tsx` when it lands.
+
 ## The account steps' password toggle and focus handling
 
 Noticed reviewing Phase 7 step 4's join form, 2026-10-05. The join form copies
@@ -206,6 +330,29 @@ Fix: when the list read fails, keep the `senderEmail` already on screen.
 - Hide the form when the household is full. Needs the worker to report the member
   count: a `completed` invite outlives the joiner deleting their account.
 
+## The approval dialog shows two numbers and invites comparing them
+
+Found in the Phase 7 walkthrough, 2026-10-10: the maintainer read the dialog's
+two safety numbers as a pair that should be equal, and reported a mismatch on a
+good approval. A member doing this for real would cancel.
+
+`approve-invitee-dialog.tsx` shows the invitee's number and the member's own
+side by side from the start. Only the invitee's is checked at that point,
+against the invitee's screen. The member's own is for afterwards, when the
+invitee's screen shows it and asks them to confirm.
+
+Fix: one number and one instruction per screen, as the invitee's waiting screen
+already does.
+
+1. Before approving: only their number, with "check this matches the number on
+   their screen".
+2. After approving: only yours, with "now read this to them so they can check
+   it".
+
+This narrows the Phase 7 step 4 decision "both safety numbers on both screens",
+which was made for the invitee's side. Left until after the walkthrough's first
+pass, so a failure in the handoff could not be blamed on the change.
+
 ## Approving an invitee: what the first cut leaves out
 
 - Tell the member someone is waiting, wherever they are in the app. Today they
@@ -216,9 +363,24 @@ Fix: when the list read fails, keep the `senderEmail` already on screen.
   can never work.
 - Give "the numbers do not match" its own answer. Today the member cancels and
   is told nothing about what a mismatch means or what to do next.
-- Let the member see their own safety number at any time. Today it shows only
-  inside the approval dialog, so once that closes they cannot read it out to an
-  invitee who has not finished checking.
+- Let the member see their own safety number after the dialog closes. Raised
+  again in the walkthrough, 2026-10-10: the member approves and closes the
+  dialog, the invitee's screen is still asking them to confirm the member's
+  number, and the app shows that number nowhere else. Approve cannot be pressed
+  again to bring it back, because the invite is already `completed`.
+
+  Blocking the dismiss is not the fix. A reload or a closed tab dismisses it
+  anyway, and the invitee may not join for days, which is by design. Make the
+  number retrievable instead: while someone is approved but has not joined, the
+  invite row says so and shows the member's number whenever the vault is
+  unlocked, with "read this to them when they ask". Once they have joined it is
+  a plain joined row.
+
+  Telling the two apart needs the worker to report whether a member has finished
+  joining. The invite becomes `completed` on approval, not on joining, so the
+  panel has no signal today. Without that, show the number in the panel
+  whenever the vault is unlocked. Goes with the one-number-per-screen entry
+  above: after approving, the member's number lives on the row, not in a dialog.
 
 ## Worker: issuing an invite does not check the address is an address
 
@@ -238,6 +400,26 @@ an hour.
 In `src/routes/settings.tsx` the button's label is swapped for a spinner, so a
 screen reader hears an unnamed button. Keep the label beside the spinner, as
 the invite panel's Cancel button does.
+
+## The dev console is noisy on `/login`
+
+Seen in Firefox at the start of the Phase 7 two-browser walkthrough, 2026-10-10.
+None of it broke anything, but four lines of standing noise make a real error
+easy to miss. Only the last is known to be the app's own.
+
+- **`/pa-stats/js/script.manual.js` fails to load.** Expected: the proxy is a
+  Netlify redirect and does not exist in dev (`DEVELOPMENT.md` says so). To
+  quieten it, leave the script tag out of the dev page.
+- **A source map error for `installHook.js.map`.** The React DevTools extension,
+  not the app. Nothing to fix; listed so nobody chases it.
+- **The CSP blocks an `eval` at `util.js:157`** (`script-src` has no
+  `unsafe-eval`, on purpose). Source not traced. Most likely an extension or a
+  dev-only dependency. Check whether it appears in a clean browser profile and
+  in a production build before deciding it matters; the answer is never to add
+  `unsafe-eval`.
+- **"Select is changing from uncontrolled to controlled."** A real React
+  warning: some `Select` starts with an undefined value and is given one later.
+  Not traced to a component. Give it a defined initial value.
 
 ## Forms: move to React 19 form actions
 
