@@ -18,7 +18,9 @@
   --color-muted: hsl(40 15% 94%);
   --color-muted-foreground: hsl(30 5% 42%);
   --color-border: hsl(40 12% 90%);
-  --color-input: hsl(40 12% 90%);
+  /* Darker than --color-border on purpose: a form control's outline needs 3:1
+     contrast against a white panel to be seen. This is 3.03:1. */
+  --color-input: hsl(40 12% 56%);
   --color-primary: hsl(168 55% 34%);
   --color-primary-foreground: hsl(0 0% 100%);
   --color-secondary: hsl(40 15% 94%);
@@ -57,7 +59,8 @@
   --color-muted: hsl(30 8% 17%);
   --color-muted-foreground: hsl(30 5% 55%);
   --color-border: hsl(30 8% 19%);
-  --color-input: hsl(30 8% 19%);
+  /* 3.2:1 against a raised panel, for the same reason as the light value. */
+  --color-input: hsl(30 8% 44%);
   --color-primary: hsl(168 50% 50%);
   --color-primary-foreground: hsl(30 10% 7%);
   --color-secondary: hsl(30 8% 17%);
