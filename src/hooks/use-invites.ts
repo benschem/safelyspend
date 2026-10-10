@@ -26,6 +26,8 @@ interface UseInvitesReturn {
   send: (recipientAddress: string) => Promise<SendInviteOutcome>;
   /** Revoke an invite, which also kills the link in its email. */
   cancel: (inviteId: string) => Promise<CancelInviteOutcome>;
+  /** Read the list again after something outside this hook changed it. Never throws. */
+  refresh: () => Promise<void>;
 }
 
 /**
@@ -117,5 +119,5 @@ export function useInvites(): UseInvitesReturn {
     [refresh],
   );
 
-  return { sentInvitesLoad, retryLoad, send, cancel };
+  return { sentInvitesLoad, retryLoad, send, cancel, refresh };
 }

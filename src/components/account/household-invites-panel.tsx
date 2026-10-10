@@ -1,6 +1,11 @@
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  ApproveInviteeDialog,
+  loadInviteeApproval,
+  type InviteeApproval,
+} from '@/components/account/approve-invitee-dialog';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,6 +20,7 @@ import {
   type RecipientAddressProblem,
   type VisibleSentInvite,
 } from '@/lib/invite-sending';
+import { isVaultUnlocked, subscribeToVaultState } from '@/lib/key-vault';
 import { formatDate } from '@/lib/utils';
 
 const ADDRESS_PROBLEM_WORDING: Record<RecipientAddressProblem, string> = {
@@ -32,6 +38,10 @@ const ISSUE_FAILURE_WORDING: Record<IssueFailure['kind'], string> = {
 
 const CANCEL_FAILURE_WORDING = 'We could not cancel the invite. Please try again.';
 
+// Also shown when nobody is waiting on the invite any more. The list is
+// re-read alongside it, so the row then says where the invite stands.
+const APPROVAL_START_FAILURE_WORDING = 'We could not start the approval. Please try again.';
+
 type InviteState = VisibleSentInvite['state'];
 
 const STATE_BADGE: Record<
@@ -44,12 +54,15 @@ const STATE_BADGE: Record<
   joined: { label: 'Joined', variant: 'success' },
 };
 
-function describeInvite({ invite, state }: VisibleSentInvite): string {
+function describeInvite({ invite, state }: VisibleSentInvite, isUnlocked: boolean): string {
   switch (state) {
     case 'pending':
       return `The link in their email works until ${formatDate(invite.expiresAt)}.`;
     case 'awaiting-approval':
-      return 'They have created their account. You will be asked to approve them the next time you unlock your vault.';
+      // Approving wraps the household key, which only an unlocked vault holds.
+      return isUnlocked
+        ? 'They have created their account and are waiting for you to approve them.'
+        : 'They have created their account. Unlock your vault to approve them.';
     case 'expired':
       return `This invite expired on ${formatDate(invite.expiresAt)}.`;
     case 'joined':
@@ -65,10 +78,11 @@ const CANCEL_LABEL: Record<Exclude<InviteState, 'joined'>, string> = {
 };
 
 /**
- * Where a member invites the one other person who can share their budget, and
- * sees or cancels what they have sent.
+ * Where a member invites the one other person who can share their budget,
+ * sees or cancels what they have sent, and approves someone who has signed up.
  *
- * A first cut: re-sending is Cancel, then Send. `docs/BACKLOG.md` lists what
+ * A first cut: re-sending is Cancel, then Send, and nothing prompts the member
+ * to approve; they come here and press Approve. `docs/BACKLOG.md` lists what
  * was left out.
  *
  * The send form shows only while no invite is live (`hasLiveInvite`). It does
@@ -79,13 +93,16 @@ const CANCEL_LABEL: Record<Exclude<InviteState, 'joined'>, string> = {
  * Holds all of its own state, so it can be lifted out of Settings whole.
  */
 export function HouseholdInvitesPanel({ senderEmail }: { senderEmail: string }) {
-  const { sentInvitesLoad, retryLoad, send, cancel } = useInvites();
+  const { sentInvitesLoad, retryLoad, send, cancel, refresh } = useInvites();
+  const isUnlocked = useSyncExternalStore(subscribeToVaultState, isVaultUnlocked);
   const [recipientInput, setRecipientInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [cancellingInviteId, setCancellingInviteId] = useState<string | null>(null);
+  const [startingApprovalInviteId, setStartingApprovalInviteId] = useState<string | null>(null);
+  const [inviteeApproval, setInviteeApproval] = useState<InviteeApproval | null>(null);
   // One action at a time, so a second click cannot spend a second request.
-  const isActing = isSending || cancellingInviteId !== null;
+  const isActing = isSending || cancellingInviteId !== null || startingApprovalInviteId !== null;
 
   const handleSend = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -121,6 +138,20 @@ export function HouseholdInvitesPanel({ senderEmail }: { senderEmail: string }) 
       return;
     }
     toast('Invite cancelled');
+  };
+
+  const handleStartApproval = async (inviteId: string) => {
+    setError(null);
+    setStartingApprovalInviteId(inviteId);
+    const approval = await loadInviteeApproval(inviteId);
+    setStartingApprovalInviteId(null);
+
+    if (!approval) {
+      setError(APPROVAL_START_FAILURE_WORDING);
+      await refresh();
+      return;
+    }
+    setInviteeApproval(approval);
   };
 
   return (
@@ -192,10 +223,21 @@ export function HouseholdInvitesPanel({ senderEmail }: { senderEmail: string }) 
           <SentInviteRows
             rows={visibleSentInvites(sentInvitesLoad.sent, sentInvitesLoad.readAt)}
             isActing={isActing}
+            isUnlocked={isUnlocked}
             cancellingInviteId={cancellingInviteId}
+            startingApprovalInviteId={startingApprovalInviteId}
             onCancel={(inviteId) => void handleCancel(inviteId)}
+            onApprove={(inviteId) => void handleStartApproval(inviteId)}
           />
         </>
+      )}
+
+      {inviteeApproval && (
+        <ApproveInviteeDialog
+          approval={inviteeApproval}
+          onClose={() => setInviteeApproval(null)}
+          onApprovalSettled={() => void refresh()}
+        />
       )}
     </div>
   );
@@ -204,13 +246,19 @@ export function HouseholdInvitesPanel({ senderEmail }: { senderEmail: string }) 
 function SentInviteRows({
   rows,
   isActing,
+  isUnlocked,
   cancellingInviteId,
+  startingApprovalInviteId,
   onCancel,
+  onApprove,
 }: {
   rows: VisibleSentInvite[];
   isActing: boolean;
+  isUnlocked: boolean;
   cancellingInviteId: string | null;
+  startingApprovalInviteId: string | null;
   onCancel: (inviteId: string) => void;
+  onApprove: (inviteId: string) => void;
 }) {
   if (rows.length === 0) return null;
 
@@ -230,21 +278,36 @@ function SentInviteRows({
                 <span className="truncate text-sm font-medium">{invite.recipientEmail}</span>
                 <Badge variant={badge.variant}>{badge.label}</Badge>
               </div>
-              <p className="text-sm text-muted-foreground">{describeInvite(row)}</p>
+              <p className="text-sm text-muted-foreground">{describeInvite(row, isUnlocked)}</p>
             </div>
             {state !== 'joined' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onCancel(invite.id)}
-                disabled={isActing}
-                className="shrink-0 cursor-pointer"
-              >
-                {/* The label stays beside the spinner, so the button never
-                    loses its name for a screen reader. */}
-                {cancellingInviteId === invite.id && <Loader2 className="h-4 w-4 animate-spin" />}
-                {CANCEL_LABEL[state]}
-              </Button>
+              <div className="flex shrink-0 items-center gap-2">
+                {state === 'awaiting-approval' && isUnlocked && (
+                  <Button
+                    size="sm"
+                    onClick={() => onApprove(invite.id)}
+                    disabled={isActing}
+                    className="cursor-pointer"
+                  >
+                    {startingApprovalInviteId === invite.id && (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    )}
+                    Approve
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onCancel(invite.id)}
+                  disabled={isActing}
+                  className="cursor-pointer"
+                >
+                  {/* The label stays beside the spinner, so the button never
+                      loses its name for a screen reader. */}
+                  {cancellingInviteId === invite.id && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {CANCEL_LABEL[state]}
+                </Button>
+              </div>
             )}
           </div>
         );

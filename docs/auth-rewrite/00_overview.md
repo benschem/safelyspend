@@ -54,11 +54,11 @@ server.
 work left in the plan; Phase 8 is the one the whole feature exists for. Phase 7
 additionally needs Resend configured, two mailboxes and two browsers.
 
-**Phase 7 is five steps of six in** (2026-10-10). The key material, the API client, invite
-signup, the invitee's waiting and join screen and the existing member's send, list and
-revoke are built; the sweep that hands over the key (step 6) is not. None of it has run
-against a live server, and the join path cannot run end to end until step 6 exists.
-`07_invite_flow.md` carries the step-by-step state.
+**Phase 7 is built, all six steps** (2026-10-10). The key material, the API client, invite
+signup, the invitee's waiting and join screen, the existing member's send, list and
+revoke, and the approval that hands over the key are in. None of it has run against a
+live server: the two-browser walkthrough is next, and is the first time the join path
+runs end to end. `07_invite_flow.md` carries the step-by-step state.
 
 **Deferred to post-v1** — parked, not abandoned. The reasoning in each doc stays where
 it is:

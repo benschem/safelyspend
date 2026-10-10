@@ -206,6 +206,20 @@ Fix: when the list read fails, keep the `senderEmail` already on screen.
 - Hide the form when the household is full. Needs the worker to report the member
   count: a `completed` invite outlives the joiner deleting their account.
 
+## Approving an invitee: what the first cut leaves out
+
+- Tell the member someone is waiting, wherever they are in the app. Today they
+  only find out by opening Settings, so an invitee can sit on the waiting screen
+  until one of them thinks to ask the other.
+- Say what went wrong when an approval fails. Today every failure reads "try
+  again", including a cancelled invite and a full household, where trying again
+  can never work.
+- Give "the numbers do not match" its own answer. Today the member cancels and
+  is told nothing about what a mismatch means or what to do next.
+- Let the member see their own safety number at any time. Today it shows only
+  inside the approval dialog, so once that closes they cannot read it out to an
+  invitee who has not finished checking.
+
 ## Worker: issuing an invite does not check the address is an address
 
 `POST /v1/invites` (`worker/src/routes/invites.ts`) accepts any non-empty string

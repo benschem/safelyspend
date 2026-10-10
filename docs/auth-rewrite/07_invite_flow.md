@@ -334,10 +334,39 @@ Each step is its own commit and lands with its tests.
      `APP_URL` is production in `wrangler.toml`, so a local worker emails production
      links unless `.dev.vars` overrides it. A wrong field name in `issue` or `list`
      would first show up there, and could look like a bug in the sweep.
-6. **Existing member: the sweep.** Runs on **vault unlock**, not only cloud login: the
-   MasterKey most often returns through a password unlock against a live session, and a
-   sweep bound to login would miss most visits. Pending handoffs → safety-number screen
-   → approve → wrap → add member.
+6. **Done, 2026-10-10, not yet run against the live API.** **Existing member: the
+   sweep.** Planned to run on **vault unlock**, not only cloud login: the MasterKey most
+   often returns through a password unlock against a live session, and a sweep bound to
+   login would miss most visits. Pending handoffs → safety-number screen → approve →
+   wrap → add member.
+
+   Built as a first cut, smaller than that: an Approve button on the invite panel's
+   awaiting-approval row, and `approve-invitee-dialog.tsx`. `../BACKLOG.md` lists what
+   was left out.
+
+   - **Nothing runs on unlock.** The member opens Settings and presses Approve. Approving
+     needs both people on a call to compare numbers, so a prompt at an arbitrary unlock
+     would mostly be dismissed, and the member is going to Settings on purpose. The cost
+     is that nothing tells a member who never opens Settings that someone is waiting.
+   - **The row no longer promises a prompt.** Locked, it says to unlock the vault to
+     approve them; unlocked, it shows the button. This is the sentence step 5 flagged.
+   - **The dialog stays open after approving,** with both numbers still showing. The
+     invitee's compare screen asks for the member's number next, and the app shows it
+     nowhere else.
+   - **A vault that locks mid-approval leaves the dialog open.** The dialog is the one
+     place that handles it: pressing "The numbers match" says to unlock, and the approved
+     screen keeps both numbers up for the invitee who still needs them.
+   - **Cancel is the whole of "they do not match".** No mismatch screen and no server
+     call. Refusing to wrap is the defence, as on the invitee's side.
+   - **One sentence for every failure, and trying again is safe.** The add-member route
+     answers a repeat as a no-op, so there is no re-read before reporting, unlike the
+     rewrap. The panel re-reads its list after every attempt, so a cancelled invite's
+     row goes.
+   - **Both numbers are computed from the keys:** the invitee's from the key in
+     `/handoffs/pending`, not the fingerprint served beside it, and the member's from
+     the private key in the vault.
+   - **No tests.** No decision logic was added that a unit test could hold, and there is
+     still no route-rendering harness. The walkthrough is the only check that it works.
 
 Then the two-browser walkthrough (`00_overview.md`, "How each phase will be verified").
 
