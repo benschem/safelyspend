@@ -193,6 +193,19 @@ The missing `role="alert"` on their error blocks is the entry above.
 
 Fix: when the list read fails, keep the `senderEmail` already on screen.
 
+## Invite panel: what the first cut leaves out
+
+- Send again button. Today it is Cancel then Send by hand. A button must handle
+  the revoke landing and the issue failing (five issues an hour): the old link is
+  dead and nothing replaced it.
+- One row per address. Drop revoked and declined before picking the newest, and
+  always show every live invite. The other order hides joined rows, and live
+  invites that then cannot be cancelled.
+- Confirm before cancelling someone who has already signed up. It strands their
+  account.
+- Hide the form when the household is full. Needs the worker to report the member
+  count: a `completed` invite outlives the joiner deleting their account.
+
 ## Worker: issuing an invite does not check the address is an address
 
 `POST /v1/invites` (`worker/src/routes/invites.ts`) accepts any non-empty string
@@ -205,3 +218,25 @@ Fix: reject it with a 400 using the pattern `worker/src/routes/auth.ts` already
 has as `EMAIL_REGEX`. Keep the client check: the per-user limit runs before the
 handler, so a typo that reaches the worker still spends one of the five issues
 an hour.
+
+## Active Sessions: the Revoke button loses its name while it works
+
+In `src/routes/settings.tsx` the button's label is swapped for a spinner, so a
+screen reader hears an unnamed button. Keep the label beside the spinner, as
+the invite panel's Cancel button does.
+
+## Forms: move to React 19 form actions
+
+Every form tracks its own loading flag and calls `preventDefault` by hand.
+`useActionState` replaces both, and `useFormStatus` allows one shared submit
+button in place of the spinner block copied into each form.
+
+Use them for new forms. Convert old ones when they are next rewritten, starting
+with `login.tsx` when its state is reworked. Not worth a sweep on its own.
+
+- A form action resets uncontrolled fields when it finishes, even on a returned
+  error. Keep inputs controlled, or a failed submit wipes what was typed.
+- An error thrown in an action reaches the error boundary. Return failures as
+  state instead.
+- Buttons outside a form need `useTransition`; `useActionState` does not cover
+  them.

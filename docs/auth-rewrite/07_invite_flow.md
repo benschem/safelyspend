@@ -303,9 +303,37 @@ Each step is its own commit and lands with its tests.
    - **A sender who has deleted their account** leaves `senderPubkey` null, so there is
      nothing to verify and the handoff is refused with a generic message. The proper
      screen is in `../BACKLOG.md`.
-5. **Existing member: send, list, revoke.** A Settings section on `use-invites.ts`.
-   Deliberately small — the Settings restructure in `../BACKLOG.md` is where it finds its
-   final home.
+5. **Done, 2026-10-10 (`2f19753`, `0c44a2e` and the panel commit), not yet run against
+   the live API.** **Existing member: send, list, revoke.** A Settings section on
+   `use-invites.ts`. Deliberately small — the Settings restructure in `../BACKLOG.md` is
+   where it finds its final home.
+
+   Built as a first cut: an address field, the sent invites, and Cancel. Re-sending is
+   Cancel then Send by hand. `../BACKLOG.md` lists what was left out. The decisions are
+   in `src/lib/invite-sending.ts` and unit-tested; the hook and
+   `household-invites-panel.tsx` have no tests, and nobody has seen the panel render
+   signed in.
+
+   - **Expiry is judged by the clock, not only the status.** The worker's expiry sweep
+     runs only on someone's login, so a timed-out invite can keep saying `open`.
+     `accepted_pending_handoff` is live even past its expiry, as the worker treats it.
+   - **The form hides while an invite is live.** The household holds two, so a second
+     invite can only lose at the handoff, after its recipient has made an account. The
+     worker does not stop it: its pending check is per address.
+   - **The panel never decides the household is full.** A `completed` invite outlives
+     the joiner deleting their account, so the form shows beside a joined row and the
+     worker's 409 `HOUSEHOLD_FULL` is what says no.
+   - **The list is re-read after every action, failed or not,** since a request can
+     land and its response be lost.
+   - **The worker does not check that the address is one.** The client check is the
+     only one, for now; `../BACKLOG.md` has the worker fix.
+   - **The awaiting-approval row promises step 6:** it says the member will be asked to
+     approve them on their next unlock. Check that sentence when step 6 lands.
+   - **The live checks were deferred to the walkthrough:** send, the emailed link's
+     shape, the three-day expiry, cancel killing the link, and both address checks.
+     `APP_URL` is production in `wrangler.toml`, so a local worker emails production
+     links unless `.dev.vars` overrides it. A wrong field name in `issue` or `list`
+     would first show up there, and could look like a bug in the sweep.
 6. **Existing member: the sweep.** Runs on **vault unlock**, not only cloud login: the
    MasterKey most often returns through a password unlock against a live session, and a
    sweep bound to login would miss most visits. Pending handoffs → safety-number screen

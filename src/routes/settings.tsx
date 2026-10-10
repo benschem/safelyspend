@@ -46,6 +46,7 @@ import {
   Loader2,
   ShieldCheck,
 } from 'lucide-react';
+import { HouseholdInvitesPanel } from '@/components/account/household-invites-panel';
 import { PasswordDialog } from '@/components/dialogs/password-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { useSync } from '@/hooks/use-sync';
@@ -961,6 +962,8 @@ export function SettingsPage() {
                     )}
                   </div>
                 </div>
+
+                {user && <HouseholdInvitesPanel senderEmail={user.email} />}
 
                 {/* Active Sessions panel */}
                 <div className="panel">
