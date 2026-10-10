@@ -78,7 +78,10 @@ export function EmailStep({
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        {/* noValidate, so a bad address gets this step's wording rather than
+            the browser's own bubble. The input stays type="email" for the
+            keyboard it brings up on a phone. */}
         <div className="space-y-2">
           <label htmlFor="email" className="text-sm font-medium">
             Email address
