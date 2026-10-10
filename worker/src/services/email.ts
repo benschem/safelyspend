@@ -50,7 +50,9 @@ export async function sendInvite(
     toEmail,
     'You have been invited to share a SafelySpend budget',
     `<p><strong>${escapeHtml(senderEmail)}</strong> has invited you to share their budget on SafelySpend.</p>` +
-      `<p><a href="${acceptUrl}">Accept the invitation</a></p>` +
+      // target="_blank" for mail clients that render the link as written: without it the
+      // app replaces the mailbox tab. Most webmail already opens links in a new tab.
+      `<p><a href="${acceptUrl}" target="_blank" rel="noopener noreferrer">Accept the invitation</a></p>` +
       `<p>If you weren't expecting this, you can safely ignore this email.</p>`,
   );
 }
