@@ -21,6 +21,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.42.0',
+    date: '2026-10-10',
+    changes: [
+      'You can now invite one other person to share your budget, from Settings',
+      'They get an emailed link to create their own account, and you approve them by checking a short safety number together',
+      'Form fields now have a clearer outline',
+      'The privacy page now explains how sharing works and what is stored when you invite someone',
+    ],
+  },
+  {
     version: '0.41.0',
     date: '2026-09-16',
     changes: [
