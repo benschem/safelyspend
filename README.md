@@ -42,13 +42,9 @@ npm install
 npm run dev       # start Vite dev server with hot reload
 ```
 
-To connect to a backend for cloud sync, set the API URL:
+The app works fully offline. Accounts, cloud sync and sharing need a backend, and `npm run dev` expects one at `http://localhost:8787`: run the worker locally as described in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
-```bash
-VITE_API_URL=http://localhost:8787 npm run dev
-```
-
-If `VITE_API_URL` is not set, the frontend defaults to `https://api.safelyspend.app`. Cloud sync features are only available when a backend is reachable.
+The API address comes from `VITE_API_URL`, set in `.env.development` for `npm run dev` and in `.env.production` for `npm run build`. The same value fills the `connect-src` of the Content-Security-Policy in `index.html`, so the page can only call the API it was built for. If you host your own backend, change the address in `.env.production` and in `public/_headers`.
 
 ## Commands
 
@@ -66,5 +62,6 @@ See [`worker/README.md`](worker/README.md) for backend commands.
 ## Documentation
 
 - [DEPLOYMENT.md](DEPLOYMENT.md) — Full deployment guide (Netlify + Cloudflare) and operations handbook (logs, database console, rollbacks)
+- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — Local setup for the frontend and the worker, and testing
 - [worker/README.md](worker/README.md) — Backend API endpoints, database migrations, JWT rotation, disaster recovery
 - [CLAUDE.md](CLAUDE.md) — Codebase architecture, domain model, conventions, and development patterns

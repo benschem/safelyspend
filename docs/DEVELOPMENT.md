@@ -97,7 +97,18 @@ npx wrangler dev
 # → http://localhost:8787
 ```
 
-For the frontend to talk to the local worker, `ENVIRONMENT` must be `"development"` in `wrangler.toml` (this allows CORS from `localhost:5173`).
+The worker reads its local settings from `worker/.dev.vars`, which is gitignored. Create it once from the example and fill in the two secrets:
+
+```bash
+cd worker
+cp .dev.vars.example .dev.vars
+```
+
+Values in `.dev.vars` replace the `[vars]` of the same name in `wrangler.toml`, so the production values there stay untouched. It sets `ENVIRONMENT` to `"development"` (which allows CORS from `localhost:5173`) and `APP_URL` to the Vite dev server, so emailed invite links point at your local app rather than the production site.
+
+The frontend needs no setup: `.env.development` points `npm run dev` at `http://localhost:8787`. The same `VITE_API_URL` fills the `connect-src` of the Content-Security-Policy in `index.html`, so the page is allowed to call whichever API it is pointed at and no other. `.env.production` holds the live address for builds.
+
+The session cookie is `Secure`. Chrome and Firefox accept that on `http://localhost`; Safari may not, so sign-in can appear to do nothing there.
 
 ### Set secrets
 
@@ -225,7 +236,7 @@ On the landing page, click "Try Demo" to load procedurally-generated data. Demo 
 
 ### Testing cloud sync locally
 
-1. Start the worker locally (`cd worker && npx wrangler dev`)
-2. Set `ENVIRONMENT=development` in `wrangler.toml`
-3. The frontend's API client should point to `localhost:8787`
-4. You'll need a valid `RESEND_API_KEY` for OTP emails (or mock the email service)
+1. Create `worker/.dev.vars` (see "Run worker locally") with a valid `RESEND_API_KEY`, since login codes and invites are sent as real emails
+2. Apply the schema to the local database (`cd worker && npm run db:migrate:local`)
+3. Start the worker (`cd worker && npm run dev`)
+4. Start the frontend (`npm run dev`), which already points at `localhost:8787`

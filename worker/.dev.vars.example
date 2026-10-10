@@ -1,0 +1,17 @@
+# Local-only settings for `wrangler dev`. Copy to `.dev.vars` and fill in the secrets.
+# `.dev.vars` is gitignored; this example is not, so never put a real value in here.
+#
+# Values in `.dev.vars` replace the [vars] of the same name in wrangler.toml, which are
+# the production ones.
+
+# Allows CORS from the Vite dev server at http://localhost:5173.
+ENVIRONMENT=development
+
+# Emailed invite links point here instead of at the production site.
+APP_URL=http://localhost:5173
+
+# Any random string. Generate one with: openssl rand -base64 48
+JWT_SECRET=
+
+# From the Resend dashboard. Login codes and invites are sent as real emails.
+RESEND_API_KEY=

@@ -20,11 +20,14 @@ means in detail is in `docs/crypto-design.md`; the schema and endpoint contracts
 
 ```bash
 npm install
-npm run db:migrate:local   # apply D1 migrations to local SQLite
-npm run dev                # start wrangler dev server
+cp .dev.vars.example .dev.vars   # then fill in JWT_SECRET and RESEND_API_KEY
+npm run db:migrate:local         # apply D1 migrations to local SQLite
+npm run dev                      # start wrangler dev server
 ```
 
-The dev server uses local D1 (SQLite) and R2 (filesystem) emulation — no Cloudflare account needed for local work.
+The dev server uses local D1 (SQLite) and R2 (filesystem) emulation — no Cloudflare account needed for local work. It does need a Resend key, because login codes and invites are sent as real emails.
+
+`.dev.vars` is gitignored. Its values replace the `[vars]` of the same name in `wrangler.toml`, so local runs get `ENVIRONMENT=development` (which allows the Vite dev server through CORS) and an `APP_URL` that points emailed links at the local app.
 
 ## Running Tests
 

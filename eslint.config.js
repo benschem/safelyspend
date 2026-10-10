@@ -9,7 +9,8 @@ import prettier from 'eslint-config-prettier';
 
 export default [
   {
-    ignores: ['dist/**', 'node_modules/**'],
+    // .wrangler holds what `wrangler dev` generates while it runs, including bundled code
+    ignores: ['dist/**', 'node_modules/**', '**/.wrangler/**'],
   },
   {
     files: ['**/*.{ts,tsx}'],
