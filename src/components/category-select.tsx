@@ -7,6 +7,9 @@ interface CategorySelectProps {
   onChange: (value: string) => void;
   allowNone?: boolean;
   disabled?: boolean;
+  // Categories to leave out of the list, with the reason shown if one is typed
+  excludeIds?: ReadonlySet<string> | undefined;
+  excludedMessage?: string | undefined;
 }
 
 export function CategorySelect({
@@ -14,26 +17,39 @@ export function CategorySelect({
   onChange,
   allowNone = false,
   disabled = false,
+  excludeIds,
+  excludedMessage,
 }: CategorySelectProps) {
-  const { activeCategories, addCategory } = useCategories();
+  const { categories, activeCategories, getOrCreate } = useCategories();
 
+  // Archived categories are not offered, except the one already selected:
+  // without it the select has no name to show and falls back to the raw id.
   const options = useMemo(
     () =>
-      activeCategories
+      categories
+        .filter((cat) => !cat.isArchived || cat.id === value)
+        .filter((cat) => !excludeIds?.has(cat.id))
         .map((cat) => ({
           value: cat.id,
           label: cat.name,
         }))
         .sort((a, b) => a.label.localeCompare(b.label)),
-    [activeCategories],
+    [categories, value, excludeIds],
+  );
+
+  const excludedNames = useMemo(
+    () => activeCategories.filter((cat) => excludeIds?.has(cat.id)).map((cat) => cat.name),
+    [activeCategories, excludeIds],
   );
 
   const handleCreateNew = useCallback(
     async (name: string) => {
-      const newCategory = await addCategory({ name, isArchived: false });
-      return newCategory.id;
+      // Reuses a category of the same name instead of making a duplicate. Only
+      // null for a blank name, which the select never passes.
+      const categoryId = await getOrCreate(name);
+      return categoryId ?? '';
     },
-    [addCategory],
+    [getOrCreate],
   );
 
   return (
@@ -47,6 +63,8 @@ export function CategorySelect({
       noneLabel="Uncategorised"
       createLabel="Create category"
       disabled={disabled}
+      unavailableLabels={excludedNames}
+      unavailableMessage={excludedMessage}
     />
   );
 }

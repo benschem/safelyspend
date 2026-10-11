@@ -75,7 +75,6 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     categories,
     activeCategories,
     isLoading: categoriesLoading,
-    addCategory,
     updateCategory,
     deleteCategory,
   } = useCategories();
@@ -87,6 +86,10 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     restoreBudgetRule,
   } = useBudgetRules(activeScenarioId);
   const { budgetRules } = useAdjustedBudgets(activeScenarioId);
+  const budgetedCategoryIds = useMemo(
+    () => new Set(budgetRules.map((rule) => rule.categoryId)),
+    [budgetRules],
+  );
   const { savingsGoals, isLoading: savingsLoading } = useSavingsGoals();
   const { allTransactions, isLoading: transactionsLoading } = useTransactions();
 
@@ -861,7 +864,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
         scenarioId={activeScenarioId}
         unallocatedAmount={totals.unallocated}
         hasIncome={totals.income > 0}
-        addCategory={addCategory}
+        budgetedCategoryIds={budgetedCategoryIds}
         setBudgetForCategory={setBudgetForCategory}
       />
 
@@ -877,7 +880,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           canDeleteCategory={editingRow.canDelete}
           unallocatedAmount={totals.unallocated}
           hasIncome={totals.income > 0}
-          addCategory={addCategory}
+          budgetedCategoryIds={budgetedCategoryIds}
           updateCategory={updateCategory}
           deleteCategory={deleteCategory}
           setBudgetForCategory={setBudgetForCategory}
