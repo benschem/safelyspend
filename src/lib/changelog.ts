@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.42.1',
+    date: '2026-10-11',
+    changes: [
+      'Fixed importing bank CSV files, which could fail with "No valid CSV files selected"',
+      'Importing from Up Bank now tells apart matching transactions made in different accounts',
+    ],
+  },
+  {
     version: '0.42.0',
     date: '2026-10-10',
     changes: [
