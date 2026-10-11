@@ -159,12 +159,11 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
   // =========================================================================
 
   const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-    event.target.value = '';
-
-    const file = files[0];
+    // Take the file before resetting the input: the FileList is live, so
+    // Chrome and Safari empty it the moment the input's value is cleared.
+    const file = event.target.files?.[0];
     if (!file) return;
+    event.target.value = '';
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
       setParseErrors(['File too large. Maximum file size is 50MB.']);

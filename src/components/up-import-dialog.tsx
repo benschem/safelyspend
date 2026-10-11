@@ -69,8 +69,10 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
 
   const handleFileSelect = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const files = event.target.files;
-      if (!files || files.length === 0) return;
+      // Copy into an array before resetting the input: the FileList is live, so
+      // Chrome and Safari empty it the moment the input's value is cleared.
+      const selectedFiles = Array.from(event.target.files ?? []);
+      if (selectedFiles.length === 0) return;
 
       // Reset file input so same files can be selected again
       event.target.value = '';
@@ -80,10 +82,7 @@ export function UpImportDialog({ open, onOpenChange }: UpImportDialogProps) {
       const oversizedFiles: string[] = [];
       const validFiles: File[] = [];
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (!file) continue;
-
+      for (const file of selectedFiles) {
         // Check file size first
         if (file.size > MAX_FILE_SIZE_BYTES) {
           oversizedFiles.push(file.name);
