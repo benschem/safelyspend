@@ -44,8 +44,6 @@ interface ForecastRuleDialogProps {
     id: string,
     updates: Partial<Omit<ForecastRule, 'id' | 'userId' | 'createdAt'>>,
   ) => Promise<void>;
-  /** Called after a new rule is created (not on edit) */
-  onRuleCreated?: (rule: ForecastRule) => void;
   /** Pre-fill data when converting from a one-time event */
   prefill?: PrefillData | null;
   /** Restrict to a specific type (hides the type selector) */
@@ -86,7 +84,6 @@ export function ForecastRuleDialog({
   rule,
   addRule,
   updateRule,
-  onRuleCreated,
   prefill,
   restrictType,
   existingRules,
@@ -217,8 +214,7 @@ export function ForecastRuleDialog({
       if (isEditing && rule) {
         await updateRule(rule.id, data);
       } else {
-        const newRule = await addRule(data);
-        onRuleCreated?.(newRule);
+        await addRule(data);
       }
       onOpenChange(false);
     } catch (error) {

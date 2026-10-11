@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.42.3',
+    date: '2026-10-11',
+    changes: [
+      'Adding a fixed expense no longer creates a matching budget, which counted the expense twice in your plan',
+    ],
+  },
+  {
     version: '0.42.2',
     date: '2026-10-11',
     changes: [
