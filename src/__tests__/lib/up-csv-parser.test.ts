@@ -9,7 +9,7 @@ describe('parseUpCsv', () => {
   const makeRow = (overrides: Record<string, string> = {}) => {
     const defaults = {
       Time: '2026-01-15 09:30:00 +11:00',
-      'BSB/Account Number': '123-456/12345678',
+      'BSB / Account Number': '123-456 / 12345678',
       'Account Name': 'Spending',
       'Transaction Type': 'Purchase',
       Payee: 'Coffee Shop',
@@ -130,6 +130,17 @@ describe('parseUpCsv', () => {
 
     expect(result.transactions[0]!.fingerprint).toContain('up:');
     expect(result.transactions[0]!.fingerprint).toContain('coffee shop');
+  });
+
+  it('includes the account in the fingerprint so accounts do not collide', async () => {
+    const csv = rowToCsv([
+      makeRow({ 'BSB / Account Number': '123-456 / 11111111' }),
+      makeRow({ 'BSB / Account Number': '123-456 / 22222222' }),
+    ]);
+    const result = await parseUpCsv(csv);
+
+    expect(result.transactions[0]!.fingerprint).toContain('123-456 / 11111111');
+    expect(result.transactions[0]!.fingerprint).not.toBe(result.transactions[1]!.fingerprint);
   });
 
   it('sanitizes formula injection in description', async () => {

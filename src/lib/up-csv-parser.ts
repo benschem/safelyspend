@@ -2,7 +2,7 @@ import Papa from 'papaparse';
 
 export interface UpCsvRow {
   Time: string;
-  'BSB/Account Number': string;
+  'BSB / Account Number': string;
   'Account Name': string;
   'Transaction Type': string;
   Payee: string;
@@ -189,7 +189,7 @@ export function parseUpCsv(csvContent: string): Promise<ParseResult> {
             notes: sanitizeFormulaInjection(buildNotes(row)),
             fingerprint: createFingerprint(
               row.Time,
-              row['BSB/Account Number'] || '',
+              row['BSB / Account Number'] || '',
               amountCents,
               payee, // Use original for fingerprint to match future imports
             ),
