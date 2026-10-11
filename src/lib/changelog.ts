@@ -21,6 +21,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.42.2',
+    date: '2026-10-11',
+    changes: [
+      'Adding or editing a budget now lets you search your existing categories, or type a new one',
+      'Categories that already have a budget are left out of that list, so one cannot be replaced by accident',
+      'Fixed adding a budget creating a second category with the same name',
+    ],
+  },
+  {
     version: '0.42.1',
     date: '2026-10-11',
     changes: [
