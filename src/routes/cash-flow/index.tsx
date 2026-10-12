@@ -37,7 +37,7 @@ import { cn, formatCents, toMonthlyCents, type CadenceType } from '@/lib/utils';
 import { SpendingPaceCard } from '@/components/cash-flow/spending-pace-card';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { CategoryProgressBar } from '@/components/cash-flow/category-progress-bar';
-import type { ForecastRule } from '@/lib/types';
+import { buildMonthlyLimitsByCategory } from '@/lib/category-limits';
 
 const MONTHS = [
   'January',
@@ -181,12 +181,6 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
     forecastDateRange.endDate,
   );
 
-  // Get expense rules for fixed category detection
-  const expenseRules = useMemo(
-    () => forecastRules.filter((r) => r.type === 'expense'),
-    [forecastRules],
-  );
-
   const savingsRules = useMemo(
     () => forecastRules.filter((r) => r.type === 'savings'),
     [forecastRules],
@@ -232,39 +226,11 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
   const selectedYear = selectedMonth.getFullYear();
   const selectedMonthIndex = selectedMonth.getMonth();
 
-  // Calculate fixed expenses per category for this period
-  const fixedExpensesPerCategory = useMemo(() => {
-    const result: Record<string, { amount: number; rules: ForecastRule[] }> = {};
-
-    for (const rule of expenseRules) {
-      if (rule.categoryId) {
-        if (!result[rule.categoryId]) {
-          result[rule.categoryId] = { amount: 0, rules: [] };
-        }
-        // Convert to monthly
-        const monthlyAmount = toMonthlyCents(rule.amountCents, rule.cadence as CadenceType);
-        const catData = result[rule.categoryId];
-        if (catData) {
-          catData.amount += monthlyAmount;
-          catData.rules.push(rule);
-        }
-      }
-    }
-
-    return result;
-  }, [expenseRules]);
-
-  // Calculate variable budgets per category for this period
-  const variableBudgetsPerCategory = useMemo(() => {
-    const result: Record<string, number> = {};
-
-    for (const rule of budgetRules) {
-      const monthlyAmount = toMonthlyCents(rule.amountCents, rule.cadence as CadenceType);
-      result[rule.categoryId] = monthlyAmount;
-    }
-
-    return result;
-  }, [budgetRules]);
+  // Each category's monthly limit: its fixed expenses plus its variable budget
+  const monthlyLimitsByCategory = useMemo(
+    () => buildMonthlyLimitsByCategory(budgetRules, forecastRules),
+    [budgetRules, forecastRules],
+  );
 
   // Effective date for filtering actuals (today for current period, period end for past)
   const effectiveDate = useMemo(() => {
@@ -325,17 +291,16 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
   // Build category progress data
   const categoryProgress = useMemo(() => {
     const mapItem = (id: string, name: string, spent: number) => {
-      const fixedData = fixedExpensesPerCategory[id];
-      const variableBudget = variableBudgetsPerCategory[id] ?? 0;
-      const isFixedOnly = fixedData && fixedData.amount > 0 && variableBudget === 0;
-      const totalBudget = (fixedData?.amount ?? 0) + variableBudget;
+      const fixedAmount = monthlyLimitsByCategory[id]?.billsCents ?? 0;
+      const variableBudget = monthlyLimitsByCategory[id]?.allowanceCents ?? 0;
+      const isFixedOnly = fixedAmount > 0 && variableBudget === 0;
       return {
         id,
         name: id === 'uncategorized' ? 'Unplanned' : name,
         spent,
-        budget: totalBudget,
+        budget: fixedAmount + variableBudget,
         isFixedOnly,
-        fixedAmount: fixedData?.amount ?? 0,
+        fixedAmount,
         color: colorMap[id] ?? CHART_COLORS.uncategorized,
       };
     };
@@ -351,8 +316,8 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
     );
 
     // Add fixed expense categories that don't have actual spending yet
-    for (const [catId] of Object.entries(fixedExpensesPerCategory)) {
-      if (!spendingCatIds.has(catId)) {
+    for (const [catId, limit] of Object.entries(monthlyLimitsByCategory)) {
+      if (limit.billsCents > 0 && !spendingCatIds.has(catId)) {
         const category = categories.find((c) => c.id === catId);
         if (category && !category.isArchived) {
           result.push(mapItem(catId, category.name, 0));
@@ -371,8 +336,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
     isFuturePeriod,
     forecastExpenses,
     periodSpending,
-    fixedExpensesPerCategory,
-    variableBudgetsPerCategory,
+    monthlyLimitsByCategory,
     colorMap,
     categories,
   ]);
@@ -1020,7 +984,8 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                           Budgeted {formatCents(item.budget)}
                           {(() => {
                             const defaultBudget = defaultBudgetByCategoryMonthly[item.id] ?? 0;
-                            const currentBudget = variableBudgetsPerCategory[item.id] ?? 0;
+                            const currentBudget =
+                              monthlyLimitsByCategory[item.id]?.allowanceCents ?? 0;
                             const delta = currentBudget - defaultBudget;
                             if (!showDeltas || delta === 0) return null;
                             return (
