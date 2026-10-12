@@ -6,6 +6,25 @@ import { generateId, now } from '@/lib/utils';
 
 const USER_ID = 'local';
 
+/**
+ * Refuse a name that another active category already has, ignoring case.
+ * Archived categories do not count, matching getOrCreate. Reads the database
+ * rather than hook state so the check cannot run against a stale list.
+ */
+async function assertNameIsFree(name: string, ownCategoryId: string | null): Promise<void> {
+  const wantedName = name.trim().toLowerCase();
+  const allCategories = await db.categories.toArray();
+  const clash = allCategories.find(
+    (category) =>
+      category.id !== ownCategoryId &&
+      !category.isArchived &&
+      category.name.trim().toLowerCase() === wantedName,
+  );
+  if (clash) {
+    throw new Error(`A category called "${clash.name}" already exists.`);
+  }
+}
+
 export function useCategories() {
   const rawCategories = useLiveQuery(() => db.categories.toArray(), []);
   const categories = useMemo(() => rawCategories ?? [], [rawCategories]);
@@ -13,6 +32,9 @@ export function useCategories() {
   const isLoading = rawCategories === undefined;
 
   const addCategory = useCallback(async (data: CreateEntity<Category>) => {
+    if (!data.isArchived) {
+      await assertNameIsFree(data.name, null);
+    }
     const timestamp = now();
     const newCategory: Category = {
       id: generateId(),
@@ -27,6 +49,12 @@ export function useCategories() {
 
   const updateCategory = useCallback(
     async (id: string, updates: Partial<Omit<Category, 'id' | 'userId' | 'createdAt'>>) => {
+      if (updates.name !== undefined) {
+        const category = await db.categories.get(id);
+        if (category && !category.isArchived) {
+          await assertNameIsFree(updates.name, id);
+        }
+      }
       await db.categories.update(id, { ...updates, updatedAt: now() });
     },
     [],

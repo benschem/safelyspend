@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.43.1',
+    date: '2026-10-12',
+    changes: [
+      'Renaming a category to a name another category already has is now refused, where before it left you with two of the same name',
+    ],
+  },
+  {
     version: '0.43.0',
     date: '2026-10-12',
     changes: [
