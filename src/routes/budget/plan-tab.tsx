@@ -131,9 +131,9 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
   // Forecast rule dialog state
   const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<ForecastRule | null>(null);
-  const [ruleDialogType, setRuleDialogType] = useState<'income' | 'expense' | 'savings' | null>(
-    null,
-  );
+  // The rule and type are set each time the dialog opens and left alone when it
+  // closes, so its title and fields do not change while it fades out
+  const [ruleDialogType, setRuleDialogType] = useState<ForecastRule['type']>('expense');
 
   // Undo-wrapped delete for forecast rules
   const handleDeleteForecastRule = useCallback(
@@ -529,14 +529,6 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     [categoryRows, openEditCategoryDialog],
   );
 
-  const handleRuleDialogClose = useCallback((open: boolean) => {
-    setRuleDialogOpen(open);
-    if (!open) {
-      setEditingRule(null);
-      setRuleDialogType(null);
-    }
-  }, []);
-
   if (isLoading) {
     return null;
   }
@@ -851,12 +843,12 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
       {/* Forecast Rule Dialog */}
       <ForecastRuleDialog
         open={ruleDialogOpen}
-        onOpenChange={handleRuleDialogClose}
+        onOpenChange={setRuleDialogOpen}
         scenarioId={activeScenarioId}
         rule={editingRule}
         addRule={addRule}
         updateRule={updateRule}
-        restrictType={ruleDialogType}
+        type={ruleDialogType}
         existingRules={forecastRules}
       />
     </div>

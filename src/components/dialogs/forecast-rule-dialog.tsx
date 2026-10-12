@@ -46,8 +46,8 @@ interface ForecastRuleDialogProps {
   ) => Promise<void>;
   /** Pre-fill data when converting from a one-time event */
   prefill?: PrefillData | null;
-  /** Restrict to a specific type (hides the type selector) */
-  restrictType?: ForecastType | null;
+  /** The kind of rule being added or edited. Sets the wording and the fields shown. */
+  type: ForecastType;
   existingRules?: ForecastRule[];
 }
 
@@ -108,13 +108,12 @@ export function ForecastRuleDialog({
   addRule,
   updateRule,
   prefill,
-  restrictType,
+  type,
   existingRules,
 }: ForecastRuleDialogProps) {
   const isEditing = !!rule;
 
   // Form state
-  const [type, setType] = useState<ForecastType>('expense');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [cadence, setCadence] = useState<Cadence>('monthly');
@@ -130,7 +129,6 @@ export function ForecastRuleDialog({
     if (open) {
       if (rule) {
         // Editing existing rule
-        setType(rule.type);
         setDescription(rule.description);
         setAmount((rule.amountCents / 100).toFixed(2));
         setCadence(rule.cadence);
@@ -142,7 +140,6 @@ export function ForecastRuleDialog({
         setSavingsGoalId(rule.savingsGoalId ?? '');
       } else if (prefill) {
         // Pre-filling from a one-time event
-        setType(restrictType ?? prefill.type);
         setDescription(prefill.description);
         setAmount((prefill.amountCents / 100).toFixed(2));
         setCadence('monthly'); // Default to monthly
@@ -154,7 +151,6 @@ export function ForecastRuleDialog({
         setSavingsGoalId(prefill.savingsGoalId ?? '');
       } else {
         // New rule from scratch
-        setType(restrictType ?? 'expense');
         setDescription('');
         setAmount('');
         setCadence('monthly');
@@ -167,7 +163,7 @@ export function ForecastRuleDialog({
       }
       setFormError(null);
     }
-  }, [open, rule, prefill, restrictType]);
+  }, [open, rule, prefill]);
 
   // Duplicate detection (only on create)
   const similarRules = useMemo(() => {
@@ -252,12 +248,9 @@ export function ForecastRuleDialog({
   const showMonthOfQuarter = cadence === 'quarterly';
   const showDayOfMonth = cadence === 'monthly' || cadence === 'quarterly' || cadence === 'yearly';
 
-  // With no restricted type the dialog offers all three, so it has no one name
-  const wording = restrictType ? TYPE_WORDING[restrictType] : null;
-  const dialogTitle = `${isEditing ? 'Edit' : 'Add'} ${wording?.title ?? 'Recurring Forecast'}`;
-  const dialogDescription = isEditing
-    ? `Update this ${wording?.noun ?? 'recurring forecast'}.`
-    : (wording?.addDescription ?? 'Add a recurring income, bill, or savings pattern.');
+  const wording = TYPE_WORDING[type];
+  const dialogTitle = `${isEditing ? 'Edit' : 'Add'} ${wording.title}`;
+  const dialogDescription = isEditing ? `Update this ${wording.noun}.` : wording.addDescription;
 
   const similarRule = similarRules[0];
 
@@ -288,23 +281,6 @@ export function ForecastRuleDialog({
               {similarRule.description}&rsquo; for {formatCents(similarRule.amountCents)}{' '}
               {CADENCE_PER_LABELS[similarRule.cadence]}
             </Alert>
-          )}
-
-          {/* Type selector - hidden when type is restricted */}
-          {!restrictType && (
-            <div className="space-y-2">
-              <Label className="select-none">Type</Label>
-              <Select value={type} onValueChange={(v) => setType(v as ForecastType)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="expense">Bill</SelectItem>
-                  <SelectItem value="income">Income</SelectItem>
-                  <SelectItem value="savings">Savings</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           )}
 
           {/* Amount - full width */}

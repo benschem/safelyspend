@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.44.2',
+    date: '2026-10-12',
+    changes: [
+      'Fixed the popup for adding or editing income, a bill or savings briefly changing its title and fields as it closed',
+    ],
+  },
+  {
     version: '0.44.1',
     date: '2026-10-12',
     changes: [
