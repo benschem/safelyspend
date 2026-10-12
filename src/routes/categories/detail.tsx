@@ -156,16 +156,16 @@ export function CategoryDetailPage() {
     [allCategoryTransactions, chartStart, periodEnd],
   );
 
-  // Get budget info
-  // A rule that has ended or not yet started is treated as no budget, to match
-  // the limit below
+  // Get allowance info
+  // A rule that has ended or not yet started is treated as no allowance, to
+  // match the limit below
   const budgetRule = useMemo(() => {
     const ruleForCategory = id ? getRuleForCategory(id) : null;
     if (!ruleForCategory) return null;
     return isRuleActiveBetween(ruleForCategory, periodStart, periodEnd) ? ruleForCategory : null;
   }, [getRuleForCategory, id, periodStart, periodEnd]);
 
-  // This month's limit: the category's fixed expenses plus its budget.
+  // This month's limit: the category's bills plus its allowance.
   // Null when it has neither.
   const monthlyLimit = useMemo(() => {
     if (!id) return null;
@@ -307,7 +307,7 @@ export function CategoryDetailPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             {budgetRule ? (
               <>
-                Budget: {formatCents(budgetRule.amountCents)}/{budgetRule.cadence}
+                Allowance: {formatCents(budgetRule.amountCents)}/{budgetRule.cadence}
                 {budgetRule.cadence !== 'monthly' && (
                   <span className="text-muted-foreground/60">
                     {' '}
@@ -315,14 +315,14 @@ export function CategoryDetailPage() {
                   </span>
                 )}
                 {monthlyFixedExpenses > 0 && (
-                  <> plus {formatCents(monthlyFixedExpenses)} a month in fixed expenses</>
+                  <> plus {formatCents(monthlyFixedExpenses)} a month in bills</>
                 )}
               </>
             ) : monthlyFixedExpenses > 0 ? (
-              <>Fixed expenses: {formatCents(monthlyFixedExpenses)}/mo</>
+              <>Bills: {formatCents(monthlyFixedExpenses)}/mo</>
             ) : (
               <Link to="/budget?tab=plan" className="text-primary hover:underline">
-                No budget set – Set one →
+                No allowance set – Set one →
               </Link>
             )}
           </p>

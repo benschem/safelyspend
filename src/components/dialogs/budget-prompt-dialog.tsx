@@ -46,7 +46,7 @@ export function BudgetPromptDialog({
   // Convert forecast to monthly for comparison
   const forecastMonthly = toMonthlyCents(forecastAmountCents, forecastCadence);
 
-  // Get existing budget info
+  // Get existing allowance info
   const existingMonthly = existingBudget
     ? toMonthlyCents(existingBudget.amountCents, existingBudget.cadence as CadenceType)
     : 0;
@@ -74,10 +74,10 @@ export function BudgetPromptDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Target className="h-5 w-5" />
-            Update Budget?
+            Update Allowance?
           </DialogTitle>
           <DialogDescription>
-            You&apos;ve added a recurring expense. Would you like to update your budget for{' '}
+            You&apos;ve added a bill. Would you like to update your allowance for{' '}
             <span className="font-medium text-foreground">{categoryName}</span>?
           </DialogDescription>
         </DialogHeader>
@@ -86,7 +86,7 @@ export function BudgetPromptDialog({
           {/* Show the math */}
           <div className="rounded-lg bg-muted p-4 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">New expense:</span>
+              <span className="text-muted-foreground">New bill:</span>
               <span className="font-mono">
                 {formatCents(forecastAmountCents)}
                 {CADENCE_SHORT_LABELS[forecastCadence]}
@@ -101,7 +101,7 @@ export function BudgetPromptDialog({
             {existingBudget && (
               <>
                 <div className="mt-2 flex justify-between">
-                  <span className="text-muted-foreground">Current budget:</span>
+                  <span className="text-muted-foreground">Current allowance:</span>
                   <span className="font-mono">
                     {formatCents(existingBudget.amountCents)}
                     {CADENCE_SHORT_LABELS[existingBudget.cadence as CadenceType]}
@@ -133,9 +133,9 @@ export function BudgetPromptDialog({
                   <div className="flex items-center gap-3">
                     <Plus className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <div className="font-medium">Add to existing budget</div>
+                      <div className="font-medium">Add to existing allowance</div>
                       <div className="text-sm text-muted-foreground">
-                        Increase budget to {formatCents(newTotalMonthly)}/mo
+                        Increase allowance to {formatCents(newTotalMonthly)}/mo
                       </div>
                     </div>
                   </div>
@@ -148,9 +148,9 @@ export function BudgetPromptDialog({
                   <div className="flex items-center gap-3">
                     <RefreshCw className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <div className="font-medium">Replace budget</div>
+                      <div className="font-medium">Replace allowance</div>
                       <div className="text-sm text-muted-foreground">
-                        Set budget to {formatCents(forecastMonthly)}/mo
+                        Set allowance to {formatCents(forecastMonthly)}/mo
                       </div>
                     </div>
                   </div>
@@ -165,9 +165,9 @@ export function BudgetPromptDialog({
                 <div className="flex items-center gap-3">
                   <Target className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <div className="font-medium">Create budget</div>
+                    <div className="font-medium">Create allowance</div>
                     <div className="text-sm text-muted-foreground">
-                      Set {categoryName} budget to {formatCents(forecastMonthly)}/mo
+                      Set {categoryName} allowance to {formatCents(forecastMonthly)}/mo
                     </div>
                   </div>
                 </div>

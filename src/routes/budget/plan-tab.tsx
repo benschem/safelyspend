@@ -25,9 +25,16 @@ import {
 } from '@/components/budget/slider-sections';
 import { useWhatIf } from '@/contexts/what-if-context';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
-import type { Cadence, BudgetRule, Category, ForecastRule } from '@/lib/types';
+import type { Cadence, BudgetRule, Category, ForecastRule, ForecastType } from '@/lib/types';
 
 type BudgetPeriod = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly';
+
+// Toast shown after deleting a forecast rule, by what the user calls that type
+const DELETED_RULE_MESSAGES: Record<ForecastType, string> = {
+  income: 'Income deleted',
+  expense: 'Bill deleted',
+  savings: 'Savings contribution deleted',
+};
 
 const FREQUENCY_PER_LABELS: Record<Cadence, string> = {
   weekly: 'per week',
@@ -134,7 +141,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
       const rule = forecastRules.find((r) => r.id === ruleId);
       if (!rule) return;
       await deleteRule(ruleId);
-      toast('Recurring forecast deleted', {
+      toast(DELETED_RULE_MESSAGES[rule.type], {
         action: {
           label: 'Undo',
           onClick: () => {
@@ -153,7 +160,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
       const rule = budgetRules.find((r) => r.id === ruleId);
       if (!rule) return;
       await deleteBudgetRule(ruleId);
-      toast('Budget removed', {
+      toast('Allowance removed', {
         action: {
           label: 'Undo',
           onClick: () => {
@@ -281,7 +288,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     }
   }, []);
 
-  // Calculate fixed expenses per category
+  // Calculate bills per category
   const fixedExpensesPerCategory = useMemo(() => {
     const result: Record<string, { amount: number; rules: ForecastRule[] }> = {};
 
@@ -438,9 +445,9 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     // Always include all segments (even with 0 amount) so Recharts Bar components
     // maintain stable order and new segments don't animate in at the wrong position
     return [
-      { id: 'fixed', name: 'Fixed Expenses', amount: totals.fixed },
+      { id: 'fixed', name: 'Bills', amount: totals.fixed },
       { id: 'savings', name: 'Savings', amount: totals.savings },
-      { id: 'variable', name: 'Budgeted Expenses', amount: totals.variable },
+      { id: 'variable', name: 'Spending Allowances', amount: totals.variable },
       { id: 'surplus', name: 'Surplus', amount: Math.max(0, totals.unallocated) },
     ];
   }, [totals]);
@@ -613,7 +620,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
         />
 
         <BudgetSummaryCard
-          label="Fixed Expenses"
+          label="Bills"
           icon={BanknoteArrowDown}
           tone="expense"
           amountCents={totals.fixed > 0 ? totals.fixed : null}
@@ -626,7 +633,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
         />
 
         <BudgetSummaryCard
-          label="Budgeted Expenses"
+          label="Spending Allowances"
           icon={BanknoteArrowDown}
           tone="expense"
           amountCents={totals.variable > 0 ? totals.variable : null}
@@ -748,7 +755,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
         />
       </div>
 
-      {/* Fixed Expenses Section */}
+      {/* Bills Section */}
       <div
         id="section-fixed"
         ref={(el) => {
@@ -769,7 +776,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
         />
       </div>
 
-      {/* Budgeted Expenses */}
+      {/* Spending Allowances */}
       <div
         id="section-variable"
         ref={(el) => {

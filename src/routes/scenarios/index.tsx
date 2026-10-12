@@ -10,6 +10,7 @@ import { useScenarios } from '@/hooks/use-scenarios';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { db } from '@/lib/db';
+import { pluralise } from '@/lib/utils';
 import { ScenarioDialog } from '@/components/dialogs/scenario-dialog';
 import type { Scenario } from '@/lib/types';
 
@@ -165,11 +166,14 @@ export function ScenariosIndexPage() {
                     </p>
                     <div className="mt-2 text-sm text-muted-foreground">
                       <Link to="/budget?tab=plan" className="hover:text-foreground hover:underline">
-                        {countsByScenario[defaultScenario.id]?.forecasts ?? 0} forecasts
+                        {pluralise(
+                          countsByScenario[defaultScenario.id]?.forecasts ?? 0,
+                          'recurring item',
+                        )}
                       </Link>
                       <span className="mx-2">·</span>
                       <Link to="/budget?tab=plan" className="hover:text-foreground hover:underline">
-                        {countsByScenario[defaultScenario.id]?.budgets ?? 0} budgets
+                        {pluralise(countsByScenario[defaultScenario.id]?.budgets ?? 0, 'allowance')}
                       </Link>
                     </div>
                   </div>
@@ -253,14 +257,14 @@ export function ScenariosIndexPage() {
                               to="/budget?tab=plan"
                               className="hover:text-foreground hover:underline"
                             >
-                              {counts?.forecasts ?? 0} forecasts
+                              {pluralise(counts?.forecasts ?? 0, 'recurring item')}
                             </Link>
                             <span className="mx-2">·</span>
                             <Link
                               to="/budget?tab=plan"
                               className="hover:text-foreground hover:underline"
                             >
-                              {counts?.budgets ?? 0} budgets
+                              {pluralise(counts?.budgets ?? 0, 'allowance')}
                             </Link>
                           </div>
                         </div>

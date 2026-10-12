@@ -582,12 +582,12 @@ export function TransactionsPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => openBudgetDialog(transaction)}
-                        aria-label="Add to budget"
+                        aria-label="Add to allowance"
                       >
                         <Target className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Add to budget</TooltipContent>
+                    <TooltipContent>Add to allowance</TooltipContent>
                   </Tooltip>
                 )}
                 <Tooltip>

@@ -226,7 +226,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
   const selectedYear = selectedMonth.getFullYear();
   const selectedMonthIndex = selectedMonth.getMonth();
 
-  // Each category's monthly limit: its fixed expenses plus its variable budget
+  // Each category's monthly limit: its bills plus its allowance
   const monthlyLimitsByCategory = useMemo(
     () =>
       buildMonthlyLimitsByCategory(
@@ -321,7 +321,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
       mapItem(cat.id, cat.name, cat.amount),
     );
 
-    // Add fixed expense categories that don't have actual spending yet
+    // Add categories with bills that don't have actual spending yet
     for (const [catId, limit] of Object.entries(monthlyLimitsByCategory)) {
       if (limit.billsCents > 0 && !spendingCatIds.has(catId)) {
         const category = categories.find((c) => c.id === catId);
@@ -868,8 +868,8 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
         ) : (
           <div className="space-y-4">
             {categoryProgress.map((item) => {
-              // Fixed-only categories show how much of the fixed amount has been
-              // paid. They have no budget, so the row never uses the word.
+              // Bill-only categories show how much of the bills has been paid.
+              // They have no allowance, so the row never says "budget".
               if (item.isFixedOnly) {
                 const fixedIncomeView = spendingView === 'income' && income > 0;
                 const fixedPercentOfIncome = fixedIncomeView
@@ -894,7 +894,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                         <span className="font-medium">{item.name}</span>
                         <span className="flex items-center gap-1 rounded bg-orange-500/10 px-1.5 py-0.5 text-xs text-orange-600 dark:text-orange-400">
                           <Pin className="h-3 w-3" />
-                          Fixed {formatCents(item.fixedAmount)}
+                          Bills {formatCents(item.fixedAmount)}
                         </span>
                       </div>
                       <span className="font-mono text-muted-foreground">
@@ -976,11 +976,11 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                             <TooltipTrigger>
                               <span className="flex items-center gap-1 rounded bg-orange-500/10 px-1.5 py-0.5 text-xs text-orange-600 dark:text-orange-400">
                                 <Pin className="h-3 w-3" />
-                                {formatCents(item.fixedAmount)} fixed
+                                {formatCents(item.fixedAmount)} bills
                               </span>
                             </TooltipTrigger>
                             <TooltipContent>
-                              Includes {formatCents(item.fixedAmount)} in fixed expenses
+                              Includes {formatCents(item.fixedAmount)} in bills
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -1301,7 +1301,7 @@ function BreakdownTable({
             dimRight
           />
           <TwoColRow
-            label="− Fixed expenses"
+            label="− Bills"
             left={pastActualFixed > 0 ? fmtSigned(pastActualFixed, '−') : '—'}
             right={fixed > 0 ? fmtSigned(fixed, '−') : '—'}
             mobileColumn={mobileColumn}
@@ -1309,7 +1309,7 @@ function BreakdownTable({
             dimRight
           />
           <TwoColRow
-            label="− Variable spending"
+            label="− Day-to-day spending"
             left={
               periodCashFlow.projection.variableActual > 0
                 ? fmtSigned(periodCashFlow.projection.variableActual, '−')
@@ -1416,7 +1416,7 @@ function BreakdownTable({
             dimRight
           />
           <ThreeColRow
-            label="− Fixed expenses"
+            label="− Bills"
             left={
               periodCashFlow.expenses.dueToDate > 0
                 ? fmtSigned(periodCashFlow.expenses.dueToDate, '−')
@@ -1436,7 +1436,7 @@ function BreakdownTable({
             dimRight
           />
           <ThreeColRow
-            label="− Variable spending"
+            label="− Day-to-day spending"
             left={
               periodCashFlow.projection.variableActual > 0
                 ? fmtSigned(periodCashFlow.projection.variableActual, '−')
@@ -1562,7 +1562,7 @@ function BreakdownTable({
             dimRight
           />
           <TwoColRow
-            label="− Fixed expenses"
+            label="− Bills"
             left={
               periodCashFlow.expenses.dueToDate > 0
                 ? fmtSigned(periodCashFlow.expenses.dueToDate, '−')
@@ -1579,7 +1579,7 @@ function BreakdownTable({
             dimRight
           />
           <TwoColRow
-            label="− Variable spending"
+            label="− Day-to-day spending"
             left={
               periodCashFlow.projection.variableActual > 0
                 ? fmtSigned(periodCashFlow.projection.variableActual, '−')
@@ -1665,7 +1665,7 @@ function BreakdownTable({
           href="/budget?section=income"
         />
         <SingleRow
-          label="− Fixed expenses"
+          label="− Bills"
           value={fixed > 0 ? fmtSigned(fixed, '−') : '—'}
           delta={renderDelta(-fixedDelta)}
           className="text-red-600 dark:text-red-400"
@@ -1675,7 +1675,7 @@ function BreakdownTable({
           href="/budget?section=fixed"
         />
         <SingleRow
-          label="− Variable spending"
+          label="− Day-to-day spending"
           value={variable > 0 ? fmtSigned(variable, '−') : '—'}
           delta={renderDelta(-variableDelta)}
           className="text-red-600 dark:text-red-400"

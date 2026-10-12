@@ -234,7 +234,7 @@ export function FixedExpenseSliderSection({
           <CollapsibleTrigger className="flex flex-1 cursor-pointer items-center gap-2">
             {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             <BanknoteArrowDown className="h-4 w-4 text-rose-500" />
-            <span className="font-medium">Fixed Expenses</span>
+            <span className="font-medium">Bills</span>
             <span className="text-sm text-muted-foreground">
               <span
                 className={cn(
@@ -257,7 +257,7 @@ export function FixedExpenseSliderSection({
           <Button
             variant="ghost"
             size="sm"
-            aria-label="Add fixed expense"
+            aria-label="Add bill"
             onClick={(e) => {
               e.stopPropagation();
               onAddClick();
@@ -270,7 +270,7 @@ export function FixedExpenseSliderSection({
           <div className="space-y-4 border-t p-4">
             {expenseRules.length === 0 ? (
               <p className="py-2 text-center text-sm text-muted-foreground">
-                No fixed expenses yet.{' '}
+                No bills yet.{' '}
                 <button
                   onClick={onAddClick}
                   className="cursor-pointer text-primary hover:underline"
@@ -389,7 +389,7 @@ export function BudgetedSpendingSliderSection({
           <CollapsibleTrigger className="flex flex-1 cursor-pointer items-center gap-2">
             {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             <BanknoteArrowDown className="h-4 w-4 text-rose-500" />
-            <span className="font-medium">Budgeted Spending</span>
+            <span className="font-medium">Spending Allowances</span>
             <span className="text-sm text-muted-foreground">
               <span
                 className={cn(
@@ -412,7 +412,7 @@ export function BudgetedSpendingSliderSection({
           <Button
             variant="ghost"
             size="sm"
-            aria-label="Add budget"
+            aria-label="Add allowance"
             onClick={(e) => {
               e.stopPropagation();
               onAddClick();
@@ -425,7 +425,7 @@ export function BudgetedSpendingSliderSection({
           <div className="space-y-3 border-t p-4">
             {activeRules.length === 0 ? (
               <p className="py-2 text-center text-sm text-muted-foreground">
-                No budgets set yet.{' '}
+                No allowances set yet.{' '}
                 <button
                   onClick={onAddClick}
                   className="cursor-pointer text-primary hover:underline"

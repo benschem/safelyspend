@@ -23,7 +23,7 @@ export interface WhatIfAdjustments {
   incomeAdjustments: Record<string, number>;
   /** Budget rule adjustments: categoryId -> cents */
   budgetAdjustments: Record<string, number>;
-  /** Fixed expense forecast rule adjustments: ruleId -> cents */
+  /** Bill (expense forecast rule) adjustments: ruleId -> cents */
   fixedExpenseAdjustments: Record<string, number>;
   /** Savings forecast rule adjustments: ruleId -> cents */
   savingsAdjustments: Record<string, number>;
@@ -60,7 +60,7 @@ interface WhatIfContextValue {
   setIncomeAdjustment: (ruleId: string, cents: number) => void;
   /** Set adjustment for a budget rule (by category) */
   setBudgetAdjustment: (categoryId: string, cents: number) => void;
-  /** Set adjustment for a fixed expense forecast rule */
+  /** Set adjustment for a bill (expense forecast rule) */
   setFixedExpenseAdjustment: (ruleId: string, cents: number) => void;
   /** Set adjustment for a savings forecast rule */
   setSavingsAdjustment: (ruleId: string, cents: number) => void;
@@ -321,13 +321,13 @@ export function WhatIfProvider({ children, activeScenarioId }: WhatIfProviderPro
       result.income.totalDelta += deltaCents;
     }
 
-    // Fixed expense adjustments
+    // Bill adjustments
     for (const [ruleId, adjustedCents] of Object.entries(adjustments.fixedExpenseAdjustments)) {
       const baselineCents = baselineValues.fixedExpenseAdjustments[ruleId] ?? 0;
       const deltaCents = adjustedCents - baselineCents;
       result.fixedExpenses.items.push({
         id: ruleId,
-        name: forecastNameMap[ruleId] ?? 'Fixed Expense',
+        name: forecastNameMap[ruleId] ?? 'Bill',
         baselineCents,
         adjustedCents,
         deltaCents,
@@ -341,7 +341,7 @@ export function WhatIfProvider({ children, activeScenarioId }: WhatIfProviderPro
       const deltaCents = adjustedCents - baselineCents;
       result.budgetExpenses.items.push({
         id: categoryId,
-        name: categoryNameMap[categoryId] ?? 'Budget',
+        name: categoryNameMap[categoryId] ?? 'Allowance',
         baselineCents,
         adjustedCents,
         deltaCents,

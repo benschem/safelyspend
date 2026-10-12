@@ -87,10 +87,10 @@ export function AddToBudgetDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Target className="h-5 w-5" />
-            Add to Budget
+            Add to Allowance
           </DialogTitle>
           <DialogDescription>
-            Create or update a budget based on this transaction.
+            Create or update an allowance based on this transaction.
           </DialogDescription>
         </DialogHeader>
 
@@ -149,7 +149,7 @@ export function AddToBudgetDialog({
             </div>
           </div>
 
-          {/* Update mode if existing budget */}
+          {/* Update mode if existing allowance */}
           {existingBudget && (
             <div className="space-y-2">
               <Label className="select-none">Update Mode</Label>
@@ -186,7 +186,7 @@ export function AddToBudgetDialog({
                     <div>
                       <div className="text-sm font-medium">Replace existing</div>
                       <div className="text-xs text-muted-foreground">
-                        Set budget to {formatCents(amountMonthly)}/mo
+                        Set allowance to {formatCents(amountMonthly)}/mo
                       </div>
                     </div>
                   </div>
@@ -199,7 +199,7 @@ export function AddToBudgetDialog({
           {!existingBudget && amountCents > 0 && (
             <div className="rounded-lg bg-muted p-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">New budget:</span>
+                <span className="text-muted-foreground">New allowance:</span>
                 <span className="font-mono">
                   {formatCents(amountCents)}
                   {CADENCE_SHORT_LABELS[cadence]}
@@ -219,7 +219,9 @@ export function AddToBudgetDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit">{existingBudget ? 'Update Budget' : 'Create Budget'}</Button>
+            <Button type="submit">
+              {existingBudget ? 'Update Allowance' : 'Create Allowance'}
+            </Button>
           </div>
         </form>
       </DialogContent>

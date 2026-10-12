@@ -176,7 +176,7 @@ export function ScenarioDialog({
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground select-none">
-                Copy budget rules and forecast rules from an existing scenario.
+                Copy income, bills, allowances and savings from an existing scenario.
               </p>
             </div>
           )}

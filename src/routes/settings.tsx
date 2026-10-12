@@ -1511,9 +1511,9 @@ export function SettingsPage() {
                       <div>{pendingImport.data.categories.length}</div>
                       <div className="text-muted-foreground">Transactions:</div>
                       <div>{pendingImport.data.transactions.length}</div>
-                      <div className="text-muted-foreground">Budget Rules:</div>
+                      <div className="text-muted-foreground">Allowances:</div>
                       <div>{pendingImport.data.budgetRules.length}</div>
-                      <div className="text-muted-foreground">Forecast Rules:</div>
+                      <div className="text-muted-foreground">Income, bills and savings:</div>
                       <div>{pendingImport.data.forecastRules.length}</div>
                       <div className="text-muted-foreground">Savings Goals:</div>
                       <div>{pendingImport.data.savingsGoals.length}</div>

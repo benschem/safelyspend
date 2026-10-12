@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.44.0',
+    date: '2026-10-12',
+    changes: [
+      'Fixed Expenses are now called Bills, and budgets for a category are now called Spending Allowances',
+    ],
+  },
+  {
     version: '0.43.4',
     date: '2026-10-12',
     changes: [

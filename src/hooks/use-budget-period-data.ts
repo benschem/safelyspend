@@ -189,7 +189,7 @@ function calculatePeriodCashFlow(
     .filter((f) => f.type === 'expense')
     .reduce((sum, f) => sum + f.amountCents, 0);
 
-  // Fixed expenses due up to effective date (for progress tracking)
+  // Bills due up to effective date (for progress tracking)
   const expensesDueToDate = periodForecasts
     .filter((f) => f.type === 'expense' && f.date <= effectiveDate)
     .reduce((sum, f) => sum + f.amountCents, 0);
@@ -348,9 +348,9 @@ function calculateSummary(
 
   const periodMultiplier = viewMode === 'year' ? 12 : viewMode === 'quarter' ? 3 : 1;
 
-  // A category is tracked when it has a budget in this period. Its spending
-  // is judged against the whole limit, fixed expenses included, because a
-  // fixed expense's transaction counts as spending in the category too.
+  // A category is tracked when it has an allowance in this period. Its
+  // spending is judged against the whole limit, bills included, because a
+  // bill's transaction counts as spending in the category too.
   // The helper returns a monthly figure, so this is only exact in month view:
   // over a quarter or year, a rule active for part of it counts for all of it.
   const monthlyLimitsByCategory = buildMonthlyLimitsByCategory(
@@ -421,7 +421,7 @@ function calculatePeriodSpending(
     (t) => t.type === 'expense' && t.date >= periodStart && t.date <= effectiveDate,
   );
 
-  // Each category's budget is its whole limit, fixed expenses included, so it
+  // Each category's budget is its whole limit, bills included, so it
   // matches what the over/on-track counts judge against. The helper returns a
   // monthly figure, so this is only exact in month view.
   const periodMultiplier = viewMode === 'year' ? 12 : viewMode === 'quarter' ? 3 : 1;

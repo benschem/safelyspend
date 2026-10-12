@@ -89,6 +89,14 @@ export function parseCentsFromInput(input: string): number {
 }
 
 /**
+ * A count with its noun, such as "1 bill" or "3 bills".
+ * Only for nouns that take a plain "s".
+ */
+export function pluralise(count: number, singular: string): string {
+  return `${count} ${singular}${count === 1 ? '' : 's'}`;
+}
+
+/**
  * Get the current Australian financial year dates (July 1 - June 30)
  */
 export function getCurrentFinancialYear(): { startDate: string; endDate: string } {

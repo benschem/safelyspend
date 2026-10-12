@@ -29,11 +29,11 @@ interface BurnRateChartProps {
   viewMode?: 'year' | 'quarter' | 'month';
   /** Expected income for the period (in cents) — green zone between budget and income, red above */
   income?: number | undefined;
-  /** Fixed expense schedule from forecast rules — enables smart projection */
+  /** Bill schedule from forecast rules — enables smart projection */
   fixedExpenseSchedule?: { date: string; amount: number }[];
   /** Variable budget total (budget rules only) */
   variableBudget?: number;
-  /** Total fixed expenses for the period */
+  /** Total bills for the period */
   fixedExpensesTotal?: number;
 }
 
@@ -317,7 +317,7 @@ export function BurnRateChart({
     let cumulativeSpend = 0;
     let currentDay = 0;
 
-    // Pre-compute cumulative fixed expenses by day for smart projection
+    // Pre-compute cumulative bills by day for smart projection
     const fixedByDate: Record<string, number> = {};
     if (hasSmartProjection) {
       for (const item of fixedExpenseSchedule!) {
@@ -325,7 +325,7 @@ export function BurnRateChart({
       }
     }
 
-    // Helper: cumulative fixed expenses up to and including a date string
+    // Helper: cumulative bills up to and including a date string
     const cumulativeFixedByDay = (dateStr: string): number => {
       if (!hasSmartProjection) return 0;
       let sum = 0;
@@ -405,7 +405,7 @@ export function BurnRateChart({
 
       let projectedPercent: number;
       if (hasSmartProjection) {
-        // Smart: future fixed expenses on schedule + variable at current pace
+        // Smart: future bills on schedule + variable at current pace
         const futureCumulativeFixed = cumulativeFixedByDay(dateStr);
         const projectedCumulative = futureCumulativeFixed + variableDailyRate * day;
         projectedPercent = referenceAmount > 0 ? (projectedCumulative / referenceAmount) * 100 : 0;
@@ -446,7 +446,7 @@ export function BurnRateChart({
       <div
         className={`flex items-center justify-center text-sm text-muted-foreground ${compact ? 'h-24' : 'h-64'}`}
       >
-        No budget set{compact ? '' : '. Add budget rules to track spending pace'}.
+        No budget set{compact ? '' : '. Add bills or allowances to track spending pace'}.
       </div>
     );
   }

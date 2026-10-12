@@ -51,6 +51,29 @@ interface ForecastRuleDialogProps {
   existingRules?: ForecastRule[];
 }
 
+/**
+ * What each rule type is called on screen. An expense rule is a bill to the
+ * user, and a bill is recurring by definition, so it drops the word.
+ */
+const TYPE_WORDING: Record<ForecastType, { title: string; noun: string; addDescription: string }> =
+  {
+    income: {
+      title: 'Recurring Income',
+      noun: 'recurring income',
+      addDescription: 'Add a recurring income.',
+    },
+    expense: {
+      title: 'Bill',
+      noun: 'bill',
+      addDescription: 'A known amount on a known date. For a spending limit, add an allowance.',
+    },
+    savings: {
+      title: 'Recurring Savings Contribution',
+      noun: 'recurring savings contribution',
+      addDescription: 'Add a recurring savings contribution.',
+    },
+  };
+
 const MONTH_NAMES = [
   'January',
   'February',
@@ -180,7 +203,7 @@ export function ForecastRuleDialog({
     }
 
     if (type === 'expense' && !categoryId) {
-      setFormError('Please select a category for this expense');
+      setFormError('Please select a category for this bill');
       return;
     }
 
@@ -229,25 +252,21 @@ export function ForecastRuleDialog({
   const showMonthOfQuarter = cadence === 'quarterly';
   const showDayOfMonth = cadence === 'monthly' || cadence === 'quarterly' || cadence === 'yearly';
 
+  // With no restricted type the dialog offers all three, so it has no one name
+  const wording = restrictType ? TYPE_WORDING[restrictType] : null;
+  const dialogTitle = `${isEditing ? 'Edit' : 'Add'} ${wording?.title ?? 'Recurring Forecast'}`;
+  const dialogDescription = isEditing
+    ? `Update this ${wording?.noun ?? 'recurring forecast'}.`
+    : (wording?.addDescription ?? 'Add a recurring income, bill, or savings pattern.');
+
+  const similarRule = similarRules[0];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? 'Edit' : 'Add'} Recurring{' '}
-            {restrictType
-              ? restrictType === 'savings'
-                ? 'Savings Contribution'
-                : restrictType.charAt(0).toUpperCase() + restrictType.slice(1)
-              : 'Forecast'}
-          </DialogTitle>
-          <DialogDescription>
-            {isEditing
-              ? `Update this recurring ${restrictType ?? 'forecast'}.`
-              : restrictType
-                ? `Add a recurring ${restrictType === 'savings' ? 'savings contribution' : restrictType}.`
-                : 'Add a recurring income, expense, or savings pattern.'}
-          </DialogDescription>
+          <DialogTitle>{dialogTitle}</DialogTitle>
+          <DialogDescription>{dialogDescription}</DialogDescription>
         </DialogHeader>
 
         <form
@@ -263,11 +282,11 @@ export function ForecastRuleDialog({
             </div>
           )}
 
-          {similarRules.length > 0 && (
+          {similarRule && (
             <Alert variant="warning">
-              A similar recurring {similarRules[0]!.type} exists: &lsquo;
-              {similarRules[0]!.description}&rsquo; for {formatCents(similarRules[0]!.amountCents)}{' '}
-              {CADENCE_PER_LABELS[similarRules[0]!.cadence]}
+              A similar {TYPE_WORDING[similarRule.type].noun} exists: &lsquo;
+              {similarRule.description}&rsquo; for {formatCents(similarRule.amountCents)}{' '}
+              {CADENCE_PER_LABELS[similarRule.cadence]}
             </Alert>
           )}
 
@@ -280,7 +299,7 @@ export function ForecastRuleDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="expense">Expense</SelectItem>
+                  <SelectItem value="expense">Bill</SelectItem>
                   <SelectItem value="income">Income</SelectItem>
                   <SelectItem value="savings">Savings</SelectItem>
                 </SelectContent>
@@ -468,7 +487,7 @@ export function ForecastRuleDialog({
               />
               {type === 'expense' && (
                 <p className="text-xs text-muted-foreground">
-                  Fixed expenses must be assigned to a category
+                  Bills must be assigned to a category
                 </p>
               )}
             </div>

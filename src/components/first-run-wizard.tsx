@@ -506,7 +506,7 @@ function BudgetStep({
     }
     const amountCents = parseCentsFromInput(amount);
     if (amountCents <= 0) {
-      setError('Monthly budget must be greater than $0');
+      setError('Monthly allowance must be greater than $0');
       return;
     }
 
@@ -525,7 +525,7 @@ function BudgetStep({
         <CircleGauge className="h-8 w-8 text-amber-500" />
       </div>
 
-      <h2 className="text-2xl font-bold text-center">Set up your spending budget</h2>
+      <h2 className="text-2xl font-bold text-center">Set up your spending allowances</h2>
       <p className="mt-2 text-center text-muted-foreground">
         Add categories and set a monthly spending limit for each.
       </p>
@@ -551,7 +551,7 @@ function BudgetStep({
 
       {showForm && (
         <div className="mt-6 w-full max-w-md rounded-lg border p-4">
-          <p className="text-sm font-medium">New budget category</p>
+          <p className="text-sm font-medium">New allowance</p>
           {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
           <div className="mt-3 space-y-3">
             <div className="space-y-1 text-left">
@@ -567,7 +567,7 @@ function BudgetStep({
             </div>
             <div className="space-y-1 text-left">
               <label htmlFor="budget-amount" className="text-sm font-medium">
-                Monthly budget ($)
+                Monthly allowance ($)
               </label>
               <Input
                 id="budget-amount"

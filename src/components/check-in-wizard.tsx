@@ -939,14 +939,14 @@ function SummaryStep({ onFinish }: { onFinish: () => void }) {
     if (summary.trackedCount === 0) return null;
     if (summary.overCount > 0) {
       return {
-        text: `${summary.overCount} budget${summary.overCount !== 1 ? 's' : ''} over`,
+        text: `${summary.overCount} ${summary.overCount !== 1 ? 'categories' : 'category'} over budget`,
         color: 'text-red-600 dark:text-red-400',
       };
     }
     if (summary.overspendingCount > 0) {
       return { text: 'Spending fast in some areas', color: 'text-orange-600 dark:text-orange-400' };
     }
-    return { text: 'All budgets on track', color: 'text-green-600 dark:text-green-400' };
+    return { text: 'All categories on track', color: 'text-green-600 dark:text-green-400' };
   }, [summary]);
 
   if (isLoading) {

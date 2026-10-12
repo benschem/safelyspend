@@ -268,7 +268,7 @@ export function useReportsData(scenarioId: string | null, startDate: string, end
         }
       }
 
-      // Each category's limit for this month: its fixed expenses plus its budget
+      // Each category's limit for this month: its bills plus its allowance
       const monthlyLimitsByCategory = buildMonthlyLimitsByCategory(
         budgetRules,
         forecastRules,

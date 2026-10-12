@@ -13,7 +13,7 @@ import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useUndoDelete } from '@/hooks/use-undo-delete';
 import { CategoryDialog } from '@/components/dialogs/category-dialog';
-import { formatCents } from '@/lib/utils';
+import { formatCents, pluralise } from '@/lib/utils';
 import type { BudgetRule, Category } from '@/lib/types';
 
 interface OutletContext {
@@ -33,10 +33,6 @@ interface CategoryRow {
   fixedExpenseCount: number;
 }
 
-function pluralise(count: number, singular: string): string {
-  return `${count} ${singular}${count === 1 ? '' : 's'}`;
-}
-
 /**
  * What a category is used by, as a phrase for the disabled delete tooltip.
  * Empty when nothing uses it, which is what makes it safe to delete.
@@ -44,8 +40,8 @@ function pluralise(count: number, singular: string): string {
 function describeUsage(row: CategoryRow): string {
   const parts: string[] = [];
   if (row.transactionCount > 0) parts.push(pluralise(row.transactionCount, 'transaction'));
-  if (row.fixedExpenseCount > 0) parts.push(pluralise(row.fixedExpenseCount, 'fixed expense'));
-  if (row.budgetRule) parts.push('a budget');
+  if (row.fixedExpenseCount > 0) parts.push(pluralise(row.fixedExpenseCount, 'bill'));
+  if (row.budgetRule) parts.push('an allowance');
   return parts.join(', ');
 }
 
@@ -154,7 +150,7 @@ export function CategoriesIndexPage() {
       },
       {
         id: 'budget',
-        header: 'Budget',
+        header: 'Allowance',
         cell: ({ row }) => {
           const rule = row.original.budgetRule;
           if (!rule) {
@@ -169,7 +165,7 @@ export function CategoriesIndexPage() {
       },
       {
         accessorKey: 'fixedExpenseCount',
-        header: ({ column }) => <SortableHeader column={column}>Fixed expenses</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>Bills</SortableHeader>,
         cell: ({ row }) => {
           const count = row.original.fixedExpenseCount;
           if (count === 0) {
@@ -290,8 +286,7 @@ export function CategoriesIndexPage() {
       ) : categories.length === 0 ? (
         <div className="empty-state">
           <p className="empty-state-text">
-            No categories yet. One is created when you add a budget, a fixed expense or a
-            transaction.
+            No categories yet. One is created when you add an allowance, a bill or a transaction.
           </p>
         </div>
       ) : (

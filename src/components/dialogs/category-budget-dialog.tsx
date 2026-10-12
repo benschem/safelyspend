@@ -183,7 +183,7 @@ export function CategoryBudgetDialog({
       const amountCents = parseCentsFromInput(amount);
 
       if (!isEditing && amountCents <= 0) {
-        setFormError('Please enter a budget limit');
+        setFormError('Please enter an allowance');
         return;
       }
 
@@ -191,7 +191,7 @@ export function CategoryBudgetDialog({
       const isQuarterly = cadence === 'quarterly';
 
       if (amountCents === 0) {
-        // Only reachable in edit mode: clearing the amount removes the budget
+        // Only reachable in edit mode: clearing the amount removes the allowance
         if (existingRule && deleteBudgetRule) {
           await deleteBudgetRule(existingRule.id);
         }
@@ -206,7 +206,7 @@ export function CategoryBudgetDialog({
           isYearlyCadence ? parseInt(monthOfYear) : undefined,
         );
 
-        // The budget was moved to another category, so take it off the old one
+        // The allowance was moved to another category, so take it off the old one
         const movedToAnotherCategory =
           existingRule && existingRule.categoryId !== selectedCategoryId;
         if (movedToAnotherCategory && deleteBudgetRule) {
@@ -218,7 +218,7 @@ export function CategoryBudgetDialog({
       setFormError(
         error instanceof Error
           ? error.message
-          : `Failed to ${isEditing ? 'update' : 'add'} budget. Please try again.`,
+          : `Failed to ${isEditing ? 'update' : 'add'} allowance. Please try again.`,
       );
     }
   };
@@ -255,11 +255,17 @@ export function CategoryBudgetDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit Budget' : 'Add Budget'}</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit Allowance' : 'Add Allowance'}</DialogTitle>
           <DialogDescription>
             {isEditing
-              ? 'Change the category or the budget limit.'
-              : 'Pick a category, or type a new one, and set its budget limit.'}
+              ? 'Change the category or the allowance.'
+              : 'Pick a category, or type a new one, and set its allowance.'}
+            {/* A span, not a p: the description already renders as a paragraph */}
+            {!isEditing && (
+              <span className="mt-1 block text-xs">
+                A limit on day-to-day spending. If you know the amount and the date, add a bill.
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -282,14 +288,14 @@ export function CategoryBudgetDialog({
               value={selectedCategoryId}
               onChange={setSelectedCategoryId}
               excludeIds={otherBudgetedCategoryIds}
-              excludedMessage="This category already has a budget"
+              excludedMessage="This category already has an allowance"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="budget-amount" className="select-none">
-                Budget Limit ($)
+                Allowance ($)
               </Label>
               <Input
                 ref={limitInputRef}
@@ -512,7 +518,7 @@ export function CategoryBudgetDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit">{isEditing ? 'Save Changes' : 'Add Budget'}</Button>
+              <Button type="submit">{isEditing ? 'Save Changes' : 'Add Allowance'}</Button>
             </div>
           </div>
         </form>

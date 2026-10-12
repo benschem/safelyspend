@@ -110,7 +110,7 @@ export function BudgetRuleDialog({
       onOpenChange(false);
     } catch (error) {
       setFormError(
-        error instanceof Error ? error.message : 'Failed to save budget. Please try again.',
+        error instanceof Error ? error.message : 'Failed to save allowance. Please try again.',
       );
     }
   };
