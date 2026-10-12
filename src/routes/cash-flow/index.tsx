@@ -1169,7 +1169,7 @@ interface SummaryCardProps {
   startingBalance: number | null;
   periodCashFlow: {
     income: { expected: number; actual: number };
-    budgeted: { expected: number; actual: number };
+    budgeted: { expected: number };
     savings: { expected: number; actual: number };
     expenses: { expected: number; actual: number; dueToDate: number };
     projection: { variableActual: number; projectedVariable: number; projectedTotal: number };

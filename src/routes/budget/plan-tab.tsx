@@ -458,7 +458,6 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     map['fixed'] = '#b91c1c';
     map['variable'] = '#ef4444';
     map['savings'] = CHART_COLORS.savings;
-    map['unbudgeted'] = CHART_COLORS.available;
     map['surplus'] = '#22c55e';
     return map;
   }, [activeCategories]);

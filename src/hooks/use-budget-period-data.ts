@@ -20,8 +20,7 @@ interface PeriodCashFlow {
   dayOfPeriod: number;
   daysInPeriod: number;
   income: { expected: number; actual: number };
-  budgeted: { expected: number; actual: number };
-  unbudgeted: { unallocated: number; actual: number };
+  budgeted: { expected: number };
   savings: { expected: number; actual: number };
   expenses: { expected: number; actual: number; dueToDate: number };
   net: { projected: number; forecasted: number };
@@ -158,9 +157,6 @@ export function calculatePeriodCashFlow(
     dayOfPeriod = effectiveDateObj.getDate();
   }
 
-  // Get category IDs that have budgets
-  const budgetedCategoryIds = new Set(budgetRules.map((r) => r.categoryId));
-
   // Expected income for full period
   const expectedIncome = periodForecasts
     .filter((f) => f.type === 'income')
@@ -196,23 +192,10 @@ export function calculatePeriodCashFlow(
     .filter((t) => t.type === 'savings' && t.date >= periodStart && t.date <= effectiveDate)
     .reduce((sum, t) => sum + t.amountCents, 0);
 
-  // Actual expenses - split by budgeted vs unbudgeted
-  const expenseTransactionsThisPeriod = allTransactions.filter(
-    (t) => t.type === 'expense' && t.date >= periodStart && t.date <= effectiveDate,
-  );
-
-  const actualBudgetedExpenses = expenseTransactionsThisPeriod
-    .filter((t) => t.categoryId && budgetedCategoryIds.has(t.categoryId))
+  // Actual expenses so far
+  const actualExpenses = allTransactions
+    .filter((t) => t.type === 'expense' && t.date >= periodStart && t.date <= effectiveDate)
     .reduce((sum, t) => sum + t.amountCents, 0);
-
-  const actualUnbudgetedExpenses = expenseTransactionsThisPeriod
-    .filter((t) => !t.categoryId || !budgetedCategoryIds.has(t.categoryId))
-    .reduce((sum, t) => sum + t.amountCents, 0);
-
-  const actualExpenses = actualBudgetedExpenses + actualUnbudgetedExpenses;
-
-  // Unallocated = Income - Budget - Savings
-  const unallocated = Math.round(expectedIncome - totalBudget - expectedSavings);
 
   // Net for period
   const actualNet = actualIncome - actualExpenses - actualSavings;
@@ -254,8 +237,7 @@ export function calculatePeriodCashFlow(
     dayOfPeriod,
     daysInPeriod,
     income: { expected: Math.round(expectedIncome), actual: actualIncome },
-    budgeted: { expected: Math.round(totalBudget), actual: actualBudgetedExpenses },
-    unbudgeted: { unallocated: Math.max(0, unallocated), actual: actualUnbudgetedExpenses },
+    budgeted: { expected: totalBudget },
     savings: { expected: Math.round(expectedSavings), actual: actualSavings },
     expenses: {
       expected: Math.round(expectedExpenses),
