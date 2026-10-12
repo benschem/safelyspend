@@ -10,6 +10,7 @@ import {
   Menu,
   History,
   ClipboardCheck,
+  Tags,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
@@ -139,6 +140,9 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       <NavSection title="Track">
         <NavItem to="/transactions" icon={<History className="h-4 w-4" />} onClick={onNavigate}>
           Transactions
+        </NavItem>
+        <NavItem to="/categories" icon={<Tags className="h-4 w-4" />} onClick={onNavigate}>
+          Categories
         </NavItem>
         <NavItem to="/savings" icon={<PiggyBank className="h-4 w-4" />} onClick={onNavigate}>
           Savings

@@ -284,7 +284,10 @@ export function FixedExpenseSliderSection({
                   <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                     <Tag className="h-3.5 w-3.5" />
                     {group.categoryId ? (
-                      <Link to={`/categories/${group.categoryId}`} className="hover:underline">
+                      <Link
+                        to={`/categories/${group.categoryId}?from=budget`}
+                        className="hover:underline"
+                      >
                         {group.name}
                       </Link>
                     ) : (
@@ -445,7 +448,7 @@ export function BudgetedSpendingSliderSection({
                   <BudgetSlider
                     key={rule.id}
                     label={categoryName}
-                    labelHref={`/categories/${rule.categoryId}`}
+                    labelHref={`/categories/${rule.categoryId}?from=budget`}
                     icon={<Tag className="h-3.5 w-3.5" />}
                     value={value}
                     baseline={baseline}

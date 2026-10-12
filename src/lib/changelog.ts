@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.43.0',
+    date: '2026-10-12',
+    changes: [
+      'Added a Categories page in the sidebar that lists every category with what uses it, where you can rename, archive or delete them',
+      'The back button on a category now returns you to the page you came from, where before it always went to Budget',
+    ],
+  },
+  {
     version: '0.42.4',
     date: '2026-10-12',
     changes: [

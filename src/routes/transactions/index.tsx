@@ -503,7 +503,7 @@ export function TransactionsPage() {
             return <span className="text-muted-foreground">—</span>;
           }
           return (
-            <Link to={`/categories/${categoryId}`} className="hover:underline">
+            <Link to={`/categories/${categoryId}?from=transactions`} className="hover:underline">
               {categoryName}
             </Link>
           );

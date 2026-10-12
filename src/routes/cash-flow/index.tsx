@@ -915,7 +915,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                 return (
                   <Link
                     key={item.id}
-                    to={`/categories/${item.id}`}
+                    to={`/categories/${item.id}?from=cash-flow`}
                     className="block space-y-2 rounded-lg px-2 py-1.5 -mx-2 transition-colors hover:bg-muted/50"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-1 text-sm">
@@ -993,7 +993,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
               return (
                 <Link
                   key={item.id}
-                  to={`/categories/${item.id}`}
+                  to={`/categories/${item.id}?from=cash-flow`}
                   className="block space-y-2 rounded-lg px-2 py-1.5 -mx-2 transition-colors hover:bg-muted/50"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-1 text-sm">

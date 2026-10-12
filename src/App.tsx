@@ -169,8 +169,14 @@ const router = createBrowserRouter([
           })),
       },
 
-      // Categories - redirect to budget, keep detail page
-      { path: 'categories', element: <Navigate to="/budget" replace /> },
+      // Categories (list of every category, then a detail page each)
+      {
+        path: 'categories',
+        lazy: () =>
+          import('@/routes/categories/index').then((routeModule) => ({
+            Component: routeModule.CategoriesIndexPage,
+          })),
+      },
       {
         path: 'categories/:id',
         lazy: () =>

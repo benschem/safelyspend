@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Link, useParams, useOutletContext, useNavigate } from 'react-router';
+import { Link, useParams, useOutletContext, useNavigate, useSearchParams } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -46,6 +46,23 @@ interface OutletContext {
   activeScenarioId: string | null;
 }
 
+interface BackDestination {
+  to: string;
+  label: string;
+}
+
+const DEFAULT_BACK_DESTINATION: BackDestination = {
+  to: '/categories',
+  label: 'Back to Categories',
+};
+
+/** Pages that link here with ?from=<key>, so Back returns to where the visit started */
+const BACK_DESTINATIONS: Record<string, BackDestination> = {
+  budget: { to: '/budget', label: 'Back to Budget' },
+  'cash-flow': { to: '/cash-flow', label: 'Back to Cash Flow' },
+  transactions: { to: '/transactions', label: 'Back to Transactions' },
+};
+
 /**
  * Convert a budget rule's cadence amount to a monthly equivalent
  */
@@ -70,9 +87,11 @@ export function CategoryDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { activeScenarioId } = useOutletContext<OutletContext>();
 
-  // Always link back to budget page
-  const backLink = '/budget';
-  const backLabel = 'Back to Budget';
+  // Go back to the page the link was clicked on, named by ?from= on that link.
+  // Anything else, including a direct visit, goes to the list of every category.
+  const [searchParams] = useSearchParams();
+  const { to: backLink, label: backLabel } =
+    BACK_DESTINATIONS[searchParams.get('from') ?? ''] ?? DEFAULT_BACK_DESTINATION;
 
   const navigate = useNavigate();
 
@@ -228,9 +247,9 @@ export function CategoryDetailPage() {
   const handleDelete = useCallback(async () => {
     if (category) {
       await undoDelete(category, `"${category.name}" deleted`);
-      navigate('/budget');
+      navigate(backLink);
     }
-  }, [category, undoDelete, navigate]);
+  }, [category, undoDelete, navigate, backLink]);
 
   // Loading state
   if (isLoading) {
