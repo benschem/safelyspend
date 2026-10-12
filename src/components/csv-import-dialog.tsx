@@ -529,7 +529,7 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Import from CSV</DialogTitle>
           <DialogDescription>

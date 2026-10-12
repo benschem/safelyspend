@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.43.3',
+    date: '2026-10-12',
+    changes: [
+      'Fixed popups being hidden behind the on-screen keyboard on iPad and iPhone, and made tall popups scroll',
+    ],
+  },
+  {
     version: '0.43.2',
     date: '2026-10-12',
     changes: [

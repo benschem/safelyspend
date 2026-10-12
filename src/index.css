@@ -84,6 +84,13 @@
 }
 
 @layer base {
+  /* The visible part of the screen. lib/visual-viewport.ts overwrites these
+     while the on-screen keyboard is open. */
+  :root {
+    --visual-viewport-height: 100dvh;
+    --visual-viewport-offset-top: 0px;
+  }
+
   * {
     @apply border-border;
   }
@@ -112,6 +119,15 @@
 }
 
 @layer components {
+  /* Centres a fixed dialog in the visible part of the screen rather than the
+     whole page, and scrolls it when it is taller than that - so it stays
+     reachable above the on-screen keyboard. */
+  .dialog-viewport-fit {
+    top: calc(var(--visual-viewport-offset-top) + var(--visual-viewport-height) / 2);
+    max-height: calc(var(--visual-viewport-height) - 2rem);
+    overflow-y: auto;
+  }
+
   /* Page shell - standard max-width container */
   .page-shell {
     @apply mx-auto max-w-6xl;

@@ -4,8 +4,11 @@ import App from './App';
 import { ThemeProvider } from './hooks/use-theme';
 // Installs the Plausible queue stub at boot, before anything can call it.
 import './lib/analytics';
+import { trackVisualViewport } from './lib/visual-viewport';
 import '@fontsource-variable/dm-sans';
 import './index.css';
+
+trackVisualViewport();
 
 const STALE_CHUNK_RELOAD_KEY = 'budget:staleChunkReloadedAt';
 const STALE_CHUNK_RELOAD_COOLDOWN_MS = 10_000;
