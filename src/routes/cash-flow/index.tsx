@@ -228,8 +228,14 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
 
   // Each category's monthly limit: its fixed expenses plus its variable budget
   const monthlyLimitsByCategory = useMemo(
-    () => buildMonthlyLimitsByCategory(budgetRules, forecastRules),
-    [budgetRules, forecastRules],
+    () =>
+      buildMonthlyLimitsByCategory(
+        budgetRules,
+        forecastRules,
+        forecastDateRange.startDate,
+        forecastDateRange.endDate,
+      ),
+    [budgetRules, forecastRules, forecastDateRange],
   );
 
   // Effective date for filtering actuals (today for current period, period end for past)

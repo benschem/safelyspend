@@ -2,7 +2,14 @@ import { useMemo } from 'react';
 import { useAdjustedBudgets, useAdjustedForecasts } from './use-adjusted-values';
 import { useTransactions } from './use-transactions';
 import { useCategories } from './use-categories';
-import type { BudgetRule, Category, Transaction, ExpandedForecast } from '@/lib/types';
+import type {
+  BudgetRule,
+  ForecastRule,
+  Category,
+  Transaction,
+  ExpandedForecast,
+} from '@/lib/types';
+import { buildMonthlyLimitsByCategory, isRuleActiveBetween } from '@/lib/category-limits';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 
 interface PeriodCashFlow {
@@ -287,9 +294,11 @@ function calculateSummary(
   selectedYear: number,
   selectedMonthIndex: number,
   periodStart: string,
+  periodEnd: string,
   effectiveDate: string,
   isCurrentPeriod: boolean,
   budgetRules: BudgetRule[],
+  forecastRules: ForecastRule[],
   periodForecasts: ExpandedForecast[],
   allTransactions: Transaction[],
 ): BudgetSummary {
@@ -339,14 +348,31 @@ function calculateSummary(
 
   const periodMultiplier = viewMode === 'year' ? 12 : viewMode === 'quarter' ? 3 : 1;
 
-  for (const rule of budgetRules) {
-    const periodBudget = toMonthlyAmount(rule.amountCents, rule.cadence) * periodMultiplier;
+  // A category is tracked when it has a budget in this period. Its spending
+  // is judged against the whole limit, fixed expenses included, because a
+  // fixed expense's transaction counts as spending in the category too.
+  // The helper returns a monthly figure, so this is only exact in month view:
+  // over a quarter or year, a rule active for part of it counts for all of it.
+  const monthlyLimitsByCategory = buildMonthlyLimitsByCategory(
+    budgetRules,
+    forecastRules,
+    periodStart,
+    periodEnd,
+  );
+  const trackedCategoryIds = new Set(
+    budgetRules
+      .filter((rule) => isRuleActiveBetween(rule, periodStart, periodEnd))
+      .map((rule) => rule.categoryId),
+  );
+
+  for (const categoryId of trackedCategoryIds) {
+    const periodBudget = (monthlyLimitsByCategory[categoryId]?.totalCents ?? 0) * periodMultiplier;
 
     const spent = allTransactions
       .filter(
         (t) =>
           t.type === 'expense' &&
-          t.categoryId === rule.categoryId &&
+          t.categoryId === categoryId &&
           t.date >= periodStart &&
           t.date <= effectiveDate,
       )
@@ -373,7 +399,7 @@ function calculateSummary(
     overCount,
     overspendingCount,
     goodCount,
-    trackedCount: budgetRules.length,
+    trackedCount: trackedCategoryIds.size,
     totalSavingsForecasted,
   };
 }
@@ -384,8 +410,10 @@ function calculateSummary(
 function calculatePeriodSpending(
   viewMode: 'month' | 'quarter' | 'year',
   periodStart: string,
+  periodEnd: string,
   effectiveDate: string,
   budgetRules: BudgetRule[],
+  forecastRules: ForecastRule[],
   activeCategories: Category[],
   allTransactions: Transaction[],
 ): PeriodSpending {
@@ -393,13 +421,19 @@ function calculatePeriodSpending(
     (t) => t.type === 'expense' && t.date >= periodStart && t.date <= effectiveDate,
   );
 
+  // Each category's budget is its whole limit, fixed expenses included, so it
+  // matches what the over/on-track counts judge against. The helper returns a
+  // monthly figure, so this is only exact in month view.
   const periodMultiplier = viewMode === 'year' ? 12 : viewMode === 'quarter' ? 3 : 1;
+  const monthlyLimitsByCategory = buildMonthlyLimitsByCategory(
+    budgetRules,
+    forecastRules,
+    periodStart,
+    periodEnd,
+  );
   const budgetByCategory = new Map<string, number>();
-  for (const rule of budgetRules) {
-    budgetByCategory.set(
-      rule.categoryId,
-      Math.round(toMonthlyAmount(rule.amountCents, rule.cadence) * periodMultiplier),
-    );
+  for (const [categoryId, limit] of Object.entries(monthlyLimitsByCategory)) {
+    budgetByCategory.set(categoryId, limit.totalCents * periodMultiplier);
   }
 
   const byCategory: Record<string, number> = {};
@@ -581,6 +615,7 @@ export function useBudgetPeriodData({
 
   // Get forecasts for the period (with What-If adjustments applied)
   const {
+    rules: forecastRules,
     expandedForecasts: periodForecasts,
     savingsForecasts,
     isLoading: forecastsLoading,
@@ -631,9 +666,11 @@ export function useBudgetPeriodData({
         selectedYear,
         selectedMonthIndex,
         periodStart,
+        periodEnd,
         effectiveDate,
         isCurrentPeriod,
         budgetRules,
+        forecastRules,
         periodForecasts,
         allTransactions,
       ),
@@ -642,9 +679,11 @@ export function useBudgetPeriodData({
       selectedYear,
       selectedMonthIndex,
       periodStart,
+      periodEnd,
       effectiveDate,
       isCurrentPeriod,
       budgetRules,
+      forecastRules,
       periodForecasts,
       allTransactions,
     ],
@@ -655,12 +694,23 @@ export function useBudgetPeriodData({
       calculatePeriodSpending(
         viewMode,
         periodStart,
+        periodEnd,
         effectiveDate,
         budgetRules,
+        forecastRules,
         activeCategories,
         allTransactions,
       ),
-    [viewMode, periodStart, effectiveDate, budgetRules, activeCategories, allTransactions],
+    [
+      viewMode,
+      periodStart,
+      periodEnd,
+      effectiveDate,
+      budgetRules,
+      forecastRules,
+      activeCategories,
+      allTransactions,
+    ],
   );
 
   const forecastExpenses = useMemo(

@@ -4,8 +4,9 @@ import { useAdjustedBudgets, useAdjustedForecasts } from './use-adjusted-values'
 import { useSavingsGoals } from './use-savings-goals';
 import { useSavingsAnchors } from './use-savings-anchors';
 import { useCategories } from './use-categories';
-import { getMonthsBetween, toMonthlyCents, type CadenceType } from '@/lib/utils';
-import type { Category, Cadence, InterestRateEntry } from '@/lib/types';
+import { buildMonthlyLimitsByCategory } from '@/lib/category-limits';
+import { getMonthsBetween } from '@/lib/utils';
+import type { Category, InterestRateEntry } from '@/lib/types';
 
 export interface MonthlySpending {
   month: string; // YYYY-MM
@@ -65,22 +66,14 @@ export interface GoalMonthlySavings {
   monthlySavings: MonthlySavingsItem[];
 }
 
-/**
- * Hook for computing report data
- */
-/**
- * Calculate budget amount for a single month based on cadence
- */
-function getBudgetForMonth(amountCents: number, cadence: Cadence): number {
-  // Always return the monthly equivalent for consistent chart display
-  return toMonthlyCents(amountCents, cadence as CadenceType);
-}
-
 function localToday(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/**
+ * Hook for computing report data
+ */
 export function useReportsData(scenarioId: string | null, startDate: string, endDate: string) {
   const {
     incomeTransactions,
@@ -97,6 +90,7 @@ export function useReportsData(scenarioId: string | null, startDate: string, end
   const { getActiveAnchor, isLoading: anchorsLoading } = useSavingsAnchors();
   const { categories, activeCategories, isLoading: categoriesLoading } = useCategories();
   const {
+    rules: forecastRules,
     incomeForecasts,
     expenseForecasts,
     savingsForecasts,
@@ -274,20 +268,26 @@ export function useReportsData(scenarioId: string | null, startDate: string, end
         }
       }
 
-      // Calculate budget per category for this month
-      for (const rule of budgetRules) {
-        const budgetAmount = getBudgetForMonth(rule.amountCents, rule.cadence);
-        if (!categories[rule.categoryId]) {
-          categories[rule.categoryId] = { budgeted: 0, actual: 0 };
+      // Each category's limit for this month: its fixed expenses plus its budget
+      const monthlyLimitsByCategory = buildMonthlyLimitsByCategory(
+        budgetRules,
+        forecastRules,
+        monthStart,
+        monthEnd,
+      );
+
+      for (const [categoryId, limit] of Object.entries(monthlyLimitsByCategory)) {
+        if (!categories[categoryId]) {
+          categories[categoryId] = { budgeted: 0, actual: 0 };
         }
-        categories[rule.categoryId]!.budgeted = budgetAmount;
+        categories[categoryId]!.budgeted = limit.totalCents;
       }
 
       result.push({ month, categories });
     }
 
     return result;
-  }, [startDate, endDate, expenseTransactions, expenseForecasts, budgetRules]);
+  }, [startDate, endDate, expenseTransactions, expenseForecasts, budgetRules, forecastRules]);
 
   // Get categories used in budget comparison (have budget or spending)
   const budgetCategories = useMemo(() => {

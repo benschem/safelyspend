@@ -20,12 +20,14 @@ import { PageLoading } from '@/components/page-loading';
 import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
+import { useForecasts } from '@/hooks/use-forecasts';
 import { CategoryDialog } from '@/components/dialogs/category-dialog';
 import { CategoryMonthlyChart } from '@/components/charts/category-monthly-chart';
 import { DescriptionBreakdown } from '@/components/description-breakdown';
+import { buildMonthlyLimitsByCategory, isRuleActiveBetween } from '@/lib/category-limits';
 import { cn, formatCents, formatDate, formatISODate } from '@/lib/utils';
 import { useUndoDelete } from '@/hooks/use-undo-delete';
-import type { Transaction, BudgetRule, Category } from '@/lib/types';
+import type { Transaction, Category } from '@/lib/types';
 
 const MONTHS = [
   'January',
@@ -62,26 +64,6 @@ const BACK_DESTINATIONS: Record<string, BackDestination> = {
   'cash-flow': { to: '/cash-flow', label: 'Back to Cash Flow' },
   transactions: { to: '/transactions', label: 'Back to Transactions' },
 };
-
-/**
- * Convert a budget rule's cadence amount to a monthly equivalent
- */
-function toMonthlyAmount(amountCents: number, cadence: BudgetRule['cadence']): number {
-  switch (cadence) {
-    case 'weekly':
-      return amountCents * 4.33;
-    case 'fortnightly':
-      return amountCents * 2.17;
-    case 'monthly':
-      return amountCents;
-    case 'quarterly':
-      return amountCents / 3;
-    case 'yearly':
-      return amountCents / 12;
-    default:
-      return amountCents;
-  }
-}
 
 export function CategoryDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -138,9 +120,14 @@ export function CategoryDetailPage() {
     restoreCategory,
   } = useCategories();
   const { allTransactions, isLoading: transactionsLoading } = useTransactions();
-  const { getRuleForCategory, isLoading: budgetLoading } = useBudgetRules(activeScenarioId);
+  const {
+    budgetRules,
+    getRuleForCategory,
+    isLoading: budgetLoading,
+  } = useBudgetRules(activeScenarioId);
+  const { rules: forecastRules, isLoading: forecastsLoading } = useForecasts(activeScenarioId);
 
-  const isLoading = categoriesLoading || transactionsLoading || budgetLoading;
+  const isLoading = categoriesLoading || transactionsLoading || budgetLoading || forecastsLoading;
 
   // Find the category
   const category = useMemo(() => categories.find((c) => c.id === id), [categories, id]);
@@ -170,12 +157,29 @@ export function CategoryDetailPage() {
   );
 
   // Get budget info
-  const budgetRule = useMemo(() => (id ? getRuleForCategory(id) : null), [getRuleForCategory, id]);
+  // A rule that has ended or not yet started is treated as no budget, to match
+  // the limit below
+  const budgetRule = useMemo(() => {
+    const ruleForCategory = id ? getRuleForCategory(id) : null;
+    if (!ruleForCategory) return null;
+    return isRuleActiveBetween(ruleForCategory, periodStart, periodEnd) ? ruleForCategory : null;
+  }, [getRuleForCategory, id, periodStart, periodEnd]);
 
-  const monthlyBudget = useMemo(() => {
-    if (!budgetRule) return null;
-    return Math.round(toMonthlyAmount(budgetRule.amountCents, budgetRule.cadence));
-  }, [budgetRule]);
+  // This month's limit: the category's fixed expenses plus its budget.
+  // Null when it has neither.
+  const monthlyLimit = useMemo(() => {
+    if (!id) return null;
+    const limitsByCategory = buildMonthlyLimitsByCategory(
+      budgetRules,
+      forecastRules,
+      periodStart,
+      periodEnd,
+    );
+    return limitsByCategory[id] ?? null;
+  }, [id, budgetRules, forecastRules, periodStart, periodEnd]);
+
+  const monthlyBudget = monthlyLimit ? monthlyLimit.totalCents : null;
+  const monthlyFixedExpenses = monthlyLimit?.billsCents ?? 0;
 
   // Calculate totals
   const thisMonthSpent = useMemo(
@@ -307,10 +311,15 @@ export function CategoryDetailPage() {
                 {budgetRule.cadence !== 'monthly' && (
                   <span className="text-muted-foreground/60">
                     {' '}
-                    ({formatCents(monthlyBudget ?? 0)}/mo)
+                    ({formatCents(monthlyLimit?.allowanceCents ?? 0)}/mo)
                   </span>
                 )}
+                {monthlyFixedExpenses > 0 && (
+                  <> plus {formatCents(monthlyFixedExpenses)} a month in fixed expenses</>
+                )}
               </>
+            ) : monthlyFixedExpenses > 0 ? (
+              <>Fixed expenses: {formatCents(monthlyFixedExpenses)}/mo</>
             ) : (
               <Link to="/budget?tab=plan" className="text-primary hover:underline">
                 No budget set – Set one →

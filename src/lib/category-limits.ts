@@ -13,8 +13,28 @@ export interface CategoryMonthlyLimit {
 }
 
 /**
- * Build every category's monthly limit, keyed by category id. A category with
- * neither a bill nor an allowance has no entry.
+ * Whether a rule applies on at least one day between two dates (inclusive).
+ * A rule with no start date has always applied, and one with no end date
+ * never stops. An empty string counts as no date, as it does where rules are
+ * expanded, because imported data can hold one.
+ */
+export function isRuleActiveBetween(
+  rule: { startDate?: string; endDate?: string },
+  periodStart: string,
+  periodEnd: string,
+): boolean {
+  const startsAfterPeriod = rule.startDate ? rule.startDate > periodEnd : false;
+  const endsBeforePeriod = rule.endDate ? rule.endDate < periodStart : false;
+  return !startsAfterPeriod && !endsBeforePeriod;
+}
+
+/**
+ * Build every category's monthly limit for the month running from monthStart
+ * to monthEnd, keyed by category id. A category with neither a bill nor an
+ * allowance in that month has no entry.
+ *
+ * Rules that ended before the month or start after it are left out. A rule
+ * active for only part of the month still counts in full.
  *
  * Bills are averaged to a monthly figure whatever their cadence, so a $300
  * quarterly bill adds $100 to every month.
@@ -26,6 +46,8 @@ export interface CategoryMonthlyLimit {
 export function buildMonthlyLimitsByCategory(
   budgetRules: BudgetRule[],
   forecastRules: ForecastRule[],
+  monthStart: string,
+  monthEnd: string,
 ): Record<string, CategoryMonthlyLimit> {
   const limitsByCategory: Record<string, CategoryMonthlyLimit> = {};
 
@@ -42,12 +64,15 @@ export function buildMonthlyLimitsByCategory(
   // object's key order, so swapping the two loops would reorder its rows.
   for (const forecastRule of forecastRules) {
     if (forecastRule.type !== 'expense' || !forecastRule.categoryId) continue;
+    if (!isRuleActiveBetween(forecastRule, monthStart, monthEnd)) continue;
 
     const limit = limitFor(forecastRule.categoryId);
     limit.billsCents += toMonthlyCents(forecastRule.amountCents, forecastRule.cadence);
   }
 
   for (const budgetRule of budgetRules) {
+    if (!isRuleActiveBetween(budgetRule, monthStart, monthEnd)) continue;
+
     const limit = limitFor(budgetRule.categoryId);
     limit.allowanceCents += toMonthlyCents(budgetRule.amountCents, budgetRule.cadence);
   }
