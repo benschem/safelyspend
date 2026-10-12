@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.42.4',
+    date: '2026-10-12',
+    changes: [
+      'Fixed expenses on the cash flow page now show how much has been paid, such as "Paid $0 of $2,000", in place of a confusing "0% of budget"',
+      'The bar beside a fixed expense now fills as it is paid, where before it always looked fully paid',
+    ],
+  },
+  {
     version: '0.42.3',
     date: '2026-10-11',
     changes: [

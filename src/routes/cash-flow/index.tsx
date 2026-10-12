@@ -898,7 +898,8 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
         ) : (
           <div className="space-y-4">
             {categoryProgress.map((item) => {
-              // Fixed-only categories show checkmark + "Paid"
+              // Fixed-only categories show how much of the fixed amount has been
+              // paid. They have no budget, so the row never uses the word.
               if (item.isFixedOnly) {
                 const fixedIncomeView = spendingView === 'income' && income > 0;
                 const fixedPercentOfIncome = fixedIncomeView
@@ -907,8 +908,9 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                 const fixedSpentPercentOfIncome = fixedIncomeView
                   ? Math.round((item.spent / income) * 100)
                   : 0;
-                const fixedBudgetPercent =
+                const fixedPaidPercent =
                   item.fixedAmount > 0 ? Math.round((item.spent / item.fixedAmount) * 100) : 0;
+                const isPaidInFull = item.spent >= item.fixedAmount;
 
                 return (
                   <Link
@@ -922,20 +924,17 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                         <span className="font-medium">{item.name}</span>
                         <span className="flex items-center gap-1 rounded bg-orange-500/10 px-1.5 py-0.5 text-xs text-orange-600 dark:text-orange-400">
                           <Pin className="h-3 w-3" />
-                          Fixed
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          Budgeted {formatCents(item.fixedAmount)}
+                          Fixed {formatCents(item.fixedAmount)}
                         </span>
                       </div>
                       <span className="font-mono text-muted-foreground">
                         {fixedIncomeView ? (
                           <>
-                            Spent {formatCents(item.spent)} ({fixedSpentPercentOfIncome}% of income)
+                            Paid {formatCents(item.spent)} ({fixedSpentPercentOfIncome}% of income)
                           </>
                         ) : (
                           <>
-                            Spent {formatCents(item.spent)} ({fixedBudgetPercent}% of budget)
+                            Paid {formatCents(item.spent)} of {formatCents(item.fixedAmount)}
                           </>
                         )}
                       </span>
@@ -962,9 +961,16 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                       </div>
                     ) : (
                       <div className="relative h-2 rounded-full bg-muted">
+                        {/* Filled to the share paid, and green only once paid in full */}
                         <div
-                          className="absolute h-2 rounded-full bg-green-500"
-                          style={{ width: '100%' }}
+                          className={cn(
+                            'absolute h-2 rounded-full',
+                            isPaidInFull && 'bg-green-500',
+                          )}
+                          style={{
+                            width: `${Math.min(fixedPaidPercent, 100)}%`,
+                            backgroundColor: isPaidInFull ? undefined : item.color,
+                          }}
                         />
                       </div>
                     )}
