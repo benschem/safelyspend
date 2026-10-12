@@ -198,8 +198,8 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
               Four totals, then your spending money
             </h3>
             <p className="mt-4 max-w-[58ch] leading-relaxed text-[hsl(40_12%_72%)]">
-              Income at the top. Under it, your bills, your budgets, and what you are putting away
-              each month.
+              Income at the top. Under it, your bills, your allowances, and what you are putting
+              away each month.
             </p>
             <p className="mt-3 max-w-[58ch] leading-relaxed text-[hsl(40_12%_72%)]">
               You enter each one once, with its schedule. Pay every second Thursday, the electricity
@@ -230,13 +230,13 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
           </div>
         </section>
 
-        {/* Fixed vs budgeted expenses */}
+        {/* Bills vs spending allowances */}
         <section className="px-4 py-14">
           <div className="mx-auto max-w-5xl">
             <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,19rem)_minmax(0,32rem)] lg:gap-14">
               <div>
                 <h3 className="text-xl font-semibold tracking-tight">
-                  A bill is a number. A budget is a limit.
+                  A bill is a number. An allowance is a limit.
                 </h3>
                 <p className="mt-4 leading-relaxed text-muted-foreground">
                   Your phone plan and your subscriptions are bills. You know the amount, so the app
@@ -449,7 +449,7 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
                 </p>
                 <p className="mt-3 leading-relaxed text-muted-foreground">
                   Not a straight-line guess: the projection steps on the days your bills fall, and
-                  only the variable spending gets averaged out.
+                  only your day-to-day spending gets averaged out.
                 </p>
               </div>
               <SpendingPaceCard {...SPENDING_PACE} />
@@ -665,7 +665,7 @@ const DEMO_SLIDERS = [
 ];
 
 /**
- * Everything not on a slider (other fixed expenses, variable spending, opening
+ * Everything not on a slider (other bills, day-to-day spending, opening
  * balance) rolled into one constant, so the four sliders below land on the same
  * end-of-month figures used elsewhere on the page.
  */

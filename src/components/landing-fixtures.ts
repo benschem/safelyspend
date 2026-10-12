@@ -80,13 +80,13 @@ export const BUDGET_TOTALS = [
     subtitle: '1 source',
   },
   {
-    label: 'Fixed Expenses',
+    label: 'Bills',
     tone: 'expense' as const,
     amountCents: MONTHLY_FIXED,
     subtitle: shareOfIncome(MONTHLY_FIXED),
   },
   {
-    label: 'Budgeted Expenses',
+    label: 'Spending Allowances',
     tone: 'expense' as const,
     amountCents: MONTHLY_BUDGETED,
     subtitle: shareOfIncome(MONTHLY_BUDGETED),
@@ -102,9 +102,9 @@ export const BUDGET_TOTALS = [
 /** The same totals as a share of income, for the app's own breakdown bar. */
 export const INCOME_BREAKDOWN = {
   segments: [
-    { id: 'fixed', name: 'Fixed Expenses', amount: MONTHLY_FIXED },
+    { id: 'fixed', name: 'Bills', amount: MONTHLY_FIXED },
     { id: 'savings', name: 'Savings', amount: MONTHLY_SAVINGS },
-    { id: 'variable', name: 'Budgeted Expenses', amount: MONTHLY_BUDGETED },
+    { id: 'variable', name: 'Spending Allowances', amount: MONTHLY_BUDGETED },
     { id: 'surplus', name: 'Surplus', amount: MONTHLY_SURPLUS },
   ],
   total: MONTHLY_INCOME,
