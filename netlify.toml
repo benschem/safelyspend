@@ -18,6 +18,15 @@
   to = "https://analytics.rocketzip.com.au/api/event"
   status = 200
 
+# A missing hashed asset is a real 404, not a page. Without this the SPA fallback
+# answers a stale chunk request with index.html and status 200, which the browser
+# rejects as a script and which the /assets/* header below caches for a year.
+# Redirects never shadow a file that exists, so this only fires for missing ones.
+[[redirects]]
+  from = "/assets/*"
+  to = "/404.html"
+  status = 404
+
 # SPA fallback - serve index.html for all routes
 [[redirects]]
   from = "/*"

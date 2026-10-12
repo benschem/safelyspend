@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.43.2',
+    date: '2026-10-12',
+    changes: [
+      'Fixed an error page that could appear when moving between pages after the app had been updated while you had it open',
+    ],
+  },
+  {
     version: '0.43.1',
     date: '2026-10-12',
     changes: [
