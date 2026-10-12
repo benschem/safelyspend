@@ -21,8 +21,7 @@ import { useScenarios } from '@/hooks/use-scenarios';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
 import { useAppConfig } from '@/hooks/use-app-config';
 
-import { useForecasts } from '@/hooks/use-forecasts';
-import { useBudgetRules } from '@/hooks/use-budget-rules';
+import { useAdjustedBudgets, useAdjustedForecasts } from '@/hooks/use-adjusted-values';
 import { useCategories } from '@/hooks/use-categories';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useTransactions } from '@/hooks/use-transactions';
@@ -153,7 +152,9 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
   const { isViewingDefault, defaultBudgetByCategoryMonthly, defaultTotals, defaultScenarioName } =
     useScenarioDiff();
   const { isWhatIfMode } = useWhatIf();
-  const { budgetRules } = useBudgetRules(activeScenarioId);
+  // Rules carry any What-If adjustments, as the totals from useBudgetPeriodData
+  // do, so a category's row and the page totals are built from the same rules
+  const { budgetRules } = useAdjustedBudgets(activeScenarioId);
   const { categories } = useCategories();
   const { savingsGoals } = useSavingsGoals();
   const { allTransactions } = useTransactions();
@@ -175,7 +176,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
     };
   }, [selectedMonth]);
 
-  const { rules: forecastRules } = useForecasts(
+  const { rules: forecastRules } = useAdjustedForecasts(
     activeScenarioId,
     forecastDateRange.startDate,
     forecastDateRange.endDate,

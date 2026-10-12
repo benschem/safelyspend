@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.44.1',
+    date: '2026-10-12',
+    changes: [
+      'The planned day-to-day spending on Cash Flow now adds up to exactly what its category rows show',
+      'Trying a change in What If now moves each category on Cash Flow and its category page, where before only the totals moved',
+    ],
+  },
+  {
     version: '0.44.0',
     date: '2026-10-12',
     changes: [

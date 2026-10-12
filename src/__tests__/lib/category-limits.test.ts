@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { buildMonthlyLimitsByCategory, isRuleActiveBetween } from '@/lib/category-limits';
+import {
+  buildMonthlyLimitsByCategory,
+  isRuleActiveBetween,
+  sumMonthlyAllowanceCents,
+} from '@/lib/category-limits';
 import type { BudgetRule, ForecastRule } from '@/lib/types';
 
 const BASE_FIELDS = {
@@ -198,6 +202,53 @@ describe('buildMonthlyLimitsByCategory', () => {
     );
 
     expect(limits['entertainment']?.billsCents).toBe(4200);
+  });
+});
+
+describe('sumMonthlyAllowanceCents', () => {
+  it('equals the sum of every category allowance from the limits', () => {
+    const allowances = [
+      allowance({ amountCents: 10000, cadence: 'weekly' }),
+      allowance({
+        id: 'allowance-2',
+        categoryId: 'groceries',
+        amountCents: 15000,
+        cadence: 'fortnightly',
+      }),
+      allowance({ id: 'allowance-3', categoryId: 'transport', amountCents: 28000 }),
+    ];
+
+    const limits = buildMonthlyLimitsByCategory(allowances, [bill({})], MONTH_START, MONTH_END);
+    const sumOfRows = Object.values(limits).reduce((sum, limit) => sum + limit.allowanceCents, 0);
+
+    expect(sumMonthlyAllowanceCents(allowances, MONTH_START, MONTH_END)).toBe(sumOfRows);
+  });
+
+  it('converts a weekly allowance as 52 weeks over 12 months', () => {
+    const total = sumMonthlyAllowanceCents(
+      [allowance({ amountCents: 10000, cadence: 'weekly' })],
+      MONTH_START,
+      MONTH_END,
+    );
+
+    expect(total).toBe(43333);
+  });
+
+  it('leaves out an allowance that is not active in the month', () => {
+    const total = sumMonthlyAllowanceCents(
+      [
+        allowance({}),
+        allowance({ id: 'allowance-2', categoryId: 'groceries', endDate: '2026-09-30' }),
+      ],
+      MONTH_START,
+      MONTH_END,
+    );
+
+    expect(total).toBe(10000);
+  });
+
+  it('is zero when there are no allowances', () => {
+    expect(sumMonthlyAllowanceCents([], MONTH_START, MONTH_END)).toBe(0);
   });
 });
 

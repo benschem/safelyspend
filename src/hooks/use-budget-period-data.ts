@@ -9,7 +9,11 @@ import type {
   Transaction,
   ExpandedForecast,
 } from '@/lib/types';
-import { buildMonthlyLimitsByCategory, isRuleActiveBetween } from '@/lib/category-limits';
+import {
+  buildMonthlyLimitsByCategory,
+  isRuleActiveBetween,
+  sumMonthlyAllowanceCents,
+} from '@/lib/category-limits';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 
 interface PeriodCashFlow {
@@ -98,33 +102,14 @@ interface UseBudgetPeriodDataResult {
 }
 
 /**
- * Convert a budget rule's cadence amount to a monthly equivalent
- */
-function toMonthlyAmount(amountCents: number, cadence: BudgetRule['cadence']): number {
-  switch (cadence) {
-    case 'weekly':
-      return amountCents * 4.33;
-    case 'fortnightly':
-      return amountCents * 2.17;
-    case 'monthly':
-      return amountCents;
-    case 'quarterly':
-      return amountCents / 3;
-    case 'yearly':
-      return amountCents / 12;
-    default:
-      return amountCents;
-  }
-}
-
-/**
  * Calculate period cash flow data
  */
-function calculatePeriodCashFlow(
+export function calculatePeriodCashFlow(
   viewMode: 'month' | 'quarter' | 'year',
   selectedYear: number,
   selectedMonthIndex: number,
   periodStart: string,
+  periodEnd: string,
   effectiveDate: string,
   isCurrentPeriod: boolean,
   isFuturePeriod: boolean,
@@ -194,12 +179,12 @@ function calculatePeriodCashFlow(
     .filter((f) => f.type === 'expense' && f.date <= effectiveDate)
     .reduce((sum, f) => sum + f.amountCents, 0);
 
-  // Total budget for period
+  // Total allowances for the period, from the same limits the category rows
+  // use, so the total is the sum of the rows. The helper returns a monthly
+  // figure, so this is only exact in month view.
   const periodMultiplier = viewMode === 'year' ? 12 : viewMode === 'quarter' ? 3 : 1;
-  const totalBudget = budgetRules.reduce(
-    (sum, r) => sum + toMonthlyAmount(r.amountCents, r.cadence) * periodMultiplier,
-    0,
-  );
+  const totalBudget =
+    sumMonthlyAllowanceCents(budgetRules, periodStart, periodEnd) * periodMultiplier;
 
   // Actual income received so far
   const actualIncome = allTransactions
@@ -289,7 +274,7 @@ function calculatePeriodCashFlow(
 /**
  * Calculate budget summary stats
  */
-function calculateSummary(
+export function calculateSummary(
   viewMode: 'month' | 'quarter' | 'year',
   selectedYear: number,
   selectedMonthIndex: number,
@@ -407,7 +392,7 @@ function calculateSummary(
 /**
  * Calculate spending by category
  */
-function calculatePeriodSpending(
+export function calculatePeriodSpending(
   viewMode: 'month' | 'quarter' | 'year',
   periodStart: string,
   periodEnd: string,
@@ -539,10 +524,8 @@ function calculateBurnRateData(
   }));
 
   const periodMultiplier = viewMode === 'year' ? 12 : viewMode === 'quarter' ? 3 : 1;
-  const variableBudget = budgetRules.reduce(
-    (sum, r) => sum + toMonthlyAmount(r.amountCents, r.cadence) * periodMultiplier,
-    0,
-  );
+  const variableBudget =
+    sumMonthlyAllowanceCents(budgetRules, periodStart, periodEnd) * periodMultiplier;
   const expenseForecasts = periodForecasts.filter((f) => f.type === 'expense');
   const fixedExpenseSchedule = expenseForecasts.map((f) => ({
     date: f.date,
@@ -636,6 +619,7 @@ export function useBudgetPeriodData({
         selectedYear,
         selectedMonthIndex,
         periodStart,
+        periodEnd,
         effectiveDate,
         isCurrentPeriod,
         isFuturePeriod,
@@ -649,6 +633,7 @@ export function useBudgetPeriodData({
       selectedYear,
       selectedMonthIndex,
       periodStart,
+      periodEnd,
       effectiveDate,
       isCurrentPeriod,
       isFuturePeriod,

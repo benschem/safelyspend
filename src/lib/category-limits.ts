@@ -83,3 +83,16 @@ export function buildMonthlyLimitsByCategory(
 
   return limitsByCategory;
 }
+
+/**
+ * Every category's allowance for the month, added up. Built from the same
+ * limits the category rows use, so a page's total is the sum of its rows.
+ */
+export function sumMonthlyAllowanceCents(
+  budgetRules: BudgetRule[],
+  monthStart: string,
+  monthEnd: string,
+): number {
+  const limitsByCategory = buildMonthlyLimitsByCategory(budgetRules, [], monthStart, monthEnd);
+  return Object.values(limitsByCategory).reduce((sum, limit) => sum + limit.allowanceCents, 0);
+}

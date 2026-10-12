@@ -19,8 +19,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { PageLoading } from '@/components/page-loading';
 import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
-import { useBudgetRules } from '@/hooks/use-budget-rules';
-import { useForecasts } from '@/hooks/use-forecasts';
+import { useAdjustedBudgets, useAdjustedForecasts } from '@/hooks/use-adjusted-values';
 import { CategoryDialog } from '@/components/dialogs/category-dialog';
 import { CategoryMonthlyChart } from '@/components/charts/category-monthly-chart';
 import { DescriptionBreakdown } from '@/components/description-breakdown';
@@ -120,12 +119,11 @@ export function CategoryDetailPage() {
     restoreCategory,
   } = useCategories();
   const { allTransactions, isLoading: transactionsLoading } = useTransactions();
-  const {
-    budgetRules,
-    getRuleForCategory,
-    isLoading: budgetLoading,
-  } = useBudgetRules(activeScenarioId);
-  const { rules: forecastRules, isLoading: forecastsLoading } = useForecasts(activeScenarioId);
+  // Rules carry any What-If adjustments, so this page judges the category
+  // against the same limit Cash Flow does while a slider is moved
+  const { budgetRules, isLoading: budgetLoading } = useAdjustedBudgets(activeScenarioId);
+  const { rules: forecastRules, isLoading: forecastsLoading } =
+    useAdjustedForecasts(activeScenarioId);
 
   const isLoading = categoriesLoading || transactionsLoading || budgetLoading || forecastsLoading;
 
@@ -160,10 +158,10 @@ export function CategoryDetailPage() {
   // A rule that has ended or not yet started is treated as no allowance, to
   // match the limit below
   const budgetRule = useMemo(() => {
-    const ruleForCategory = id ? getRuleForCategory(id) : null;
+    const ruleForCategory = budgetRules.find((rule) => rule.categoryId === id);
     if (!ruleForCategory) return null;
     return isRuleActiveBetween(ruleForCategory, periodStart, periodEnd) ? ruleForCategory : null;
-  }, [getRuleForCategory, id, periodStart, periodEnd]);
+  }, [budgetRules, id, periodStart, periodEnd]);
 
   // This month's limit: the category's bills plus its allowance.
   // Null when it has neither.

@@ -43,11 +43,13 @@ export function useScenarioDiff() {
     return map;
   }, [defaultBudgetRules]);
 
-  // Monthly budget per category (for comparison in UI)
+  // Monthly budget per category (for comparison in UI). Summed, as the
+  // category limits are, in case imported data holds two rules for a category.
   const defaultBudgetByCategoryMonthly = useMemo(() => {
     const map: Record<string, number> = {};
     for (const rule of defaultBudgetRules ?? []) {
-      map[rule.categoryId] = toMonthlyCents(rule.amountCents, rule.cadence as CadenceType);
+      map[rule.categoryId] =
+        (map[rule.categoryId] ?? 0) + toMonthlyCents(rule.amountCents, rule.cadence as CadenceType);
     }
     return map;
   }, [defaultBudgetRules]);
