@@ -99,3 +99,7 @@ tooling.
 
 Not yet triaged. Add a line here for anything noticed while doing something
 else.
+
+- [bug]     Allowance sliders do not move the Budget page totals _(budget, scenarios)_
+- [bug]     An older app version drops newer fields on a sync pull → work/sync-newer-data.md _(sync)_
+- [bug]     Undo on a removed allowance restores its What If amount _(budget, scenarios)_

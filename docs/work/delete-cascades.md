@@ -55,6 +55,14 @@ on sync, so it is its own `fix:`.
 
 - `deleteCategory` handles transactions and budget rules only. Make it also
   null `categoryId` on forecast rules and delete the category's import rules.
+- `deleteCategory` finds the category's budget rules with
+  `db.budgetRules.where('categoryId')` (`use-categories.ts:67`), and
+  `categoryId` is not an index on that table: `db.ts` indexes `id` and
+  `scenarioId`. Dexie rejects a `where()` on a field with no index, so the
+  delete may fail after the transactions are already unlinked, and the three
+  writes are not in one transaction. Read in the code on 2026-10-13, not run,
+  and no test covers `deleteCategory`. Use `filter()`, or add the index in a
+  new schema version, and wrap the writes in one `db.transaction`.
 - `deleteSavingsGoal` handles transactions and anchors only. Make it also
   delete forecast rules for that goal.
 - `deleteSavingsGoal` (`use-savings-goals.ts:86-140`, read 2026-10-13) makes
