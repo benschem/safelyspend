@@ -1,7 +1,6 @@
 @import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
-@custom-variant what-if (&:where(.what-if, .what-if *));
 
 @theme {
   --font-sans:

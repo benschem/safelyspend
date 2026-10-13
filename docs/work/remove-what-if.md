@@ -1,6 +1,6 @@
 # Remove the What If sliders and keep scenarios as plain plans
 
-- **Status:** in progress, step 2 done. Decisions made 2026-10-13.
+- **Status:** in progress, step 3 done. Decisions made 2026-10-13.
 - **Goal:** the sliders, What If mode, the violet difference figures and the
   comparison against the default plan are gone, and scenarios remain as named
   plans that can be copied, edited and switched between.
@@ -160,14 +160,10 @@ Prettier on the files touched.
 
 ## Not checked
 
-- Why `check-in-wizard.tsx` mounts its own `WhatIfProvider`. Assumed: it sits
-  outside `RootLayout` and uses hooks that call `useWhatIf`. If so the wrapper
-  goes with step 3.
 - Whether `duplicateScenario` in `use-scenarios.ts` has any caller.
 - The other files that show violet (`year-grid.tsx`, `trend-sparkline.tsx`,
   the wizards) use it for "Projected" and icons, read from a search only.
   They are assumed unrelated and left alone.
 - How the tabs in step 5 fit `plan-tab.tsx`. The open states and the
   scroll-to-section were seen in passing, not read through.
-- Steps 2 onwards have not been run. The swap in step 3 is judged safe from reading the
-  hooks, not from a build.
+- Steps 4 onwards have not been run.

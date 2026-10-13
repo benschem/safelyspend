@@ -21,7 +21,6 @@ import { useTransactions } from '@/hooks/use-transactions';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
-import { useWhatIf } from '@/contexts/what-if-context';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 import { today as getToday } from '@/lib/dates';
 import { formatCompactDate, TIMELINE_UNIT_BOUNDS } from '@/lib/utils';
@@ -83,9 +82,8 @@ export function InsightsPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
   const { isViewingDefault } = useScenarioDiff();
-  const { isWhatIfMode } = useWhatIf();
-  // Show purple indicators when viewing non-default scenario OR when there are What-If adjustments
-  const showDeltas = !isViewingDefault || isWhatIfMode;
+  // Show purple indicators when viewing a non-default scenario
+  const showDeltas = !isViewingDefault;
 
   const [searchParams, setSearchParams] = useSearchParams();
   const {
@@ -603,9 +601,7 @@ export function InsightsPage() {
           <p
             className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
           >
-            {isWhatIfMode && isViewingDefault
-              ? 'Based on your adjustments'
-              : `Based on "${activeScenario?.name ?? 'scenario'}"`}
+            {`Based on "${activeScenario?.name ?? 'scenario'}"`}
           </p>
           <BudgetComparisonChart
             monthlyBudgetComparison={monthlyBudgetComparison}
@@ -654,9 +650,7 @@ export function InsightsPage() {
             <p
               className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
             >
-              {isWhatIfMode && isViewingDefault
-                ? 'Based on your adjustments'
-                : `Based on "${activeScenario?.name ?? 'scenario'}"`}
+              {`Based on "${activeScenario?.name ?? 'scenario'}"`}
             </p>
             <CashFlowChart
               monthlyNetFlow={monthlyNetFlow}
@@ -717,9 +711,7 @@ export function InsightsPage() {
             <p
               className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
             >
-              {isWhatIfMode && isViewingDefault
-                ? 'Based on your adjustments'
-                : `Based on "${activeScenario?.name ?? 'scenario'}"`}
+              {`Based on "${activeScenario?.name ?? 'scenario'}"`}
             </p>
 
             {effectiveSavingsView === 'total' ? (

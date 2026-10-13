@@ -21,7 +21,8 @@ import { useScenarios } from '@/hooks/use-scenarios';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
 import { useAppConfig } from '@/hooks/use-app-config';
 
-import { useAdjustedBudgets, useAdjustedForecasts } from '@/hooks/use-adjusted-values';
+import { useBudgetRules } from '@/hooks/use-budget-rules';
+import { useForecasts } from '@/hooks/use-forecasts';
 import { useCategories } from '@/hooks/use-categories';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useTransactions } from '@/hooks/use-transactions';
@@ -29,7 +30,6 @@ import { useTransactions } from '@/hooks/use-transactions';
 import { useBudgetPeriodData } from '@/hooks/use-budget-period-data';
 import { useSavingsAnchors } from '@/hooks/use-savings-anchors';
 import { useCashSurplus } from '@/hooks/use-cash-surplus';
-import { useWhatIf } from '@/contexts/what-if-context';
 import { CashBalanceCard, SavingsGrowthCard } from '@/components/cash-flow/summary-cards';
 import { CHART_COLORS } from '@/lib/chart-colors';
 import { cn, formatCents, toMonthlyCents, type CadenceType } from '@/lib/utils';
@@ -138,10 +138,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
   const { activeScenario } = useScenarios();
   const { isViewingDefault, defaultBudgetByCategoryMonthly, defaultTotals, defaultScenarioName } =
     useScenarioDiff();
-  const { isWhatIfMode } = useWhatIf();
-  // Rules carry any What-If adjustments, as the totals from useBudgetPeriodData
-  // do, so a category's row and the page totals are built from the same rules
-  const { budgetRules } = useAdjustedBudgets(activeScenarioId);
+  const { budgetRules } = useBudgetRules(activeScenarioId);
   const { categories } = useCategories();
   const { savingsGoals } = useSavingsGoals();
   const { allTransactions } = useTransactions();
@@ -162,7 +159,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
     };
   }, [selectedMonth]);
 
-  const { rules: forecastRules } = useAdjustedForecasts(
+  const { rules: forecastRules } = useForecasts(
     activeScenarioId,
     forecastDateRange.startDate,
     forecastDateRange.endDate,
@@ -193,9 +190,9 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
     viewMode: 'month',
   });
 
-  // Show deltas when viewing non-default scenario OR when there are What-If adjustments
-  // but never for past periods — comparing historical actuals to plan deltas is confusing
-  const showDeltas = (!isViewingDefault || isWhatIfMode) && !isPastPeriod;
+  // Show deltas when viewing a non-default scenario, but never for past
+  // periods — comparing historical actuals to plan deltas is confusing
+  const showDeltas = !isViewingDefault && !isPastPeriod;
 
   // Navigation handlers
   const goToPrevious = () => {
@@ -849,9 +846,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
         <p
           className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
         >
-          {isWhatIfMode && isViewingDefault
-            ? 'Based on your adjustments'
-            : `Based on "${activeScenario?.name ?? 'scenario'}"`}
+          {`Based on "${activeScenario?.name ?? 'scenario'}"`}
         </p>
 
         {categoryProgress.length === 0 && savingsProgress.length === 0 ? (

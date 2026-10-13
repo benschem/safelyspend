@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useTransactions } from './use-transactions';
-import { useAdjustedBudgets, useAdjustedForecasts } from './use-adjusted-values';
+import { useBudgetRules } from './use-budget-rules';
+import { useForecasts } from './use-forecasts';
 import { useSavingsGoals } from './use-savings-goals';
 import { useSavingsAnchors } from './use-savings-anchors';
 import { useCategories } from './use-categories';
@@ -81,7 +82,7 @@ export function useReportsData(scenarioId: string | null, startDate: string, end
     expandedBudgets,
     budgetRules,
     isLoading: budgetLoading,
-  } = useAdjustedBudgets(scenarioId, startDate, endDate);
+  } = useBudgetRules(scenarioId, startDate, endDate);
   const { savingsGoals, isLoading: savingsLoading } = useSavingsGoals();
   const { getActiveAnchor, isLoading: anchorsLoading } = useSavingsAnchors();
   const { categories, activeCategories, isLoading: categoriesLoading } = useCategories();
@@ -94,7 +95,7 @@ export function useReportsData(scenarioId: string | null, startDate: string, end
     savingsForecasts: savingsContributions,
     interestForecasts,
     isLoading: forecastsLoading,
-  } = useAdjustedForecasts(scenarioId, startDate, endDate);
+  } = useForecasts(scenarioId, startDate, endDate);
 
   const isLoading =
     transactionsLoading ||

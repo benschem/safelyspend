@@ -136,18 +136,3 @@ export function expandBudgetsByCategory(
   }
   return expandedByCategory;
 }
-
-/**
- * Apply What If adjustments to allowances. An adjustment is the new amount for
- * one allowance, at that allowance's own cadence, keyed by its id.
- */
-export function adjustAllowances(
-  allowances: BudgetRule[],
-  adjustedCentsByAllowanceId: Record<string, number>,
-): BudgetRule[] {
-  return allowances.map((allowance) => {
-    const adjustedCents = adjustedCentsByAllowanceId[allowance.id];
-    if (adjustedCents === undefined) return allowance;
-    return { ...allowance, amountCents: adjustedCents };
-  });
-}

@@ -19,7 +19,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { PageLoading } from '@/components/page-loading';
 import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
-import { useAdjustedBudgets, useAdjustedForecasts } from '@/hooks/use-adjusted-values';
+import { useBudgetRules } from '@/hooks/use-budget-rules';
+import { useForecasts } from '@/hooks/use-forecasts';
 import { CategoryDialog } from '@/components/dialogs/category-dialog';
 import { CategoryMonthlyChart } from '@/components/charts/category-monthly-chart';
 import { DescriptionBreakdown } from '@/components/description-breakdown';
@@ -106,11 +107,8 @@ export function CategoryDetailPage() {
     restoreCategory,
   } = useCategories();
   const { allTransactions, isLoading: transactionsLoading } = useTransactions();
-  // Rules carry any What-If adjustments, so this page judges the category
-  // against the same limit Cash Flow does while a slider is moved
-  const { budgetRules, isLoading: budgetLoading } = useAdjustedBudgets(activeScenarioId);
-  const { rules: forecastRules, isLoading: forecastsLoading } =
-    useAdjustedForecasts(activeScenarioId);
+  const { budgetRules, isLoading: budgetLoading } = useBudgetRules(activeScenarioId);
+  const { rules: forecastRules, isLoading: forecastsLoading } = useForecasts(activeScenarioId);
 
   const isLoading = categoriesLoading || transactionsLoading || budgetLoading || forecastsLoading;
 

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useTransactions } from './use-transactions';
-import { useAdjustedBudgets, useAdjustedForecasts } from './use-adjusted-values';
+import { useBudgetRules } from './use-budget-rules';
+import { useForecasts } from './use-forecasts';
 import { formatISODate } from '@/lib/dates';
 import { getMonthsBetween, toMonthlyCents, type CadenceType } from '@/lib/utils';
 
@@ -97,8 +98,8 @@ export function useMultiPeriodSummary({
   }, [year, centerMonth]);
 
   const { allTransactions, isLoading: transactionsLoading } = useTransactions();
-  const { budgetRules, isLoading: budgetLoading } = useAdjustedBudgets(scenarioId);
-  const { rules: forecastRules, isLoading: forecastsLoading } = useAdjustedForecasts(
+  const { budgetRules, isLoading: budgetLoading } = useBudgetRules(scenarioId);
+  const { rules: forecastRules, isLoading: forecastsLoading } = useForecasts(
     scenarioId,
     startDate,
     endDate,

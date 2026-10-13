@@ -41,7 +41,6 @@ import { useScenarios } from '@/hooks/use-scenarios';
 import { useTransactions } from '@/hooks/use-transactions';
 import { today } from '@/lib/dates';
 import { formatCents, parseCentsFromInput } from '@/lib/utils';
-import { WhatIfProvider } from '@/contexts/what-if-context';
 import type { CheckInCadence } from '@/lib/types';
 
 type CheckInStep = 'welcome' | 'import' | 'savings' | 'savings-confirm' | 'balance' | 'summary';
@@ -1104,7 +1103,6 @@ export function CheckInWizard() {
   } = useAppConfig();
 
   const { savingsGoals } = useSavingsGoals();
-  const { activeScenario } = useScenarios();
   const { getActiveAnchor } = useBalanceAnchors();
   const { allTransactions } = useTransactions();
   const navigate = useNavigate();
@@ -1180,70 +1178,68 @@ export function CheckInWizard() {
   const progressPercent = ((stepIndex + 1) / activeSteps.length) * 100;
 
   return (
-    <WhatIfProvider activeScenarioId={activeScenario?.id ?? null}>
-      <div className="flex min-h-screen flex-col bg-background">
-        {/* Top bar */}
-        <div className="flex items-center justify-between border-b px-4 py-3">
-          <div className="flex items-center gap-3">
-            {stepIndex > 0 && step !== 'summary' && (
-              <Button variant="ghost" size="sm" onClick={goBack}>
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            )}
-            <span className="text-sm font-medium text-muted-foreground">
-              Check-in {stepIndex + 1}/{activeSteps.length}
-            </span>
-          </div>
-          {step !== 'summary' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/', { replace: true })}
-              className="text-muted-foreground"
-            >
-              Exit
+    <div className="flex min-h-screen flex-col bg-background">
+      {/* Top bar */}
+      <div className="flex items-center justify-between border-b px-4 py-3">
+        <div className="flex items-center gap-3">
+          {stepIndex > 0 && step !== 'summary' && (
+            <Button variant="ghost" size="sm" onClick={goBack}>
+              <ArrowLeft className="h-4 w-4" />
             </Button>
           )}
+          <span className="text-sm font-medium text-muted-foreground">
+            Check-in {stepIndex + 1}/{activeSteps.length}
+          </span>
         </div>
+        {step !== 'summary' && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/', { replace: true })}
+            className="text-muted-foreground"
+          >
+            Exit
+          </Button>
+        )}
+      </div>
 
-        {/* Progress bar */}
-        <Progress value={progressPercent} className="h-1 rounded-none" />
+      {/* Progress bar */}
+      <Progress value={progressPercent} className="h-1 rounded-none" />
 
-        {/* Content */}
-        <div className="flex flex-1 items-center justify-center p-6">
-          <div className="w-full max-w-lg">
-            {step === 'welcome' && (
-              <WelcomeStep
-                daysSinceLastCheckIn={daysSinceLastCheckIn}
-                isFirstCheckIn={isFirstCheckIn}
-                currentBalance={currentBalance}
-                hasAnchor={hasAnchor}
-                cadence={checkInCadence as CheckInCadence | null}
-                onCadenceChange={handleCadenceChange}
-                onNext={goNext}
-              />
-            )}
-            {step === 'import' && (
-              <ImportStep onNext={goNext} onSkip={goNext} onInteract={handleInteract} />
-            )}
-            {step === 'savings' && (
-              <SavingsStep onNext={goNext} onSkip={goNext} onInteract={handleInteract} />
-            )}
-            {step === 'savings-confirm' && (
-              <SavingsConfirmStep onNext={goNext} onSkip={goNext} onInteract={handleInteract} />
-            )}
-            {step === 'balance' && (
-              <BalanceStep onNext={goNext} onSkip={goNext} onInteract={handleInteract} />
-            )}
-            {step === 'summary' && <SummaryStep onFinish={handleFinish} />}
-          </div>
-        </div>
-
-        {/* Step dots */}
-        <div className="border-t py-4">
-          <StepDots currentStep={step} steps={activeSteps} />
+      {/* Content */}
+      <div className="flex flex-1 items-center justify-center p-6">
+        <div className="w-full max-w-lg">
+          {step === 'welcome' && (
+            <WelcomeStep
+              daysSinceLastCheckIn={daysSinceLastCheckIn}
+              isFirstCheckIn={isFirstCheckIn}
+              currentBalance={currentBalance}
+              hasAnchor={hasAnchor}
+              cadence={checkInCadence as CheckInCadence | null}
+              onCadenceChange={handleCadenceChange}
+              onNext={goNext}
+            />
+          )}
+          {step === 'import' && (
+            <ImportStep onNext={goNext} onSkip={goNext} onInteract={handleInteract} />
+          )}
+          {step === 'savings' && (
+            <SavingsStep onNext={goNext} onSkip={goNext} onInteract={handleInteract} />
+          )}
+          {step === 'savings-confirm' && (
+            <SavingsConfirmStep onNext={goNext} onSkip={goNext} onInteract={handleInteract} />
+          )}
+          {step === 'balance' && (
+            <BalanceStep onNext={goNext} onSkip={goNext} onInteract={handleInteract} />
+          )}
+          {step === 'summary' && <SummaryStep onFinish={handleFinish} />}
         </div>
       </div>
-    </WhatIfProvider>
+
+      {/* Step dots */}
+      <div className="border-t py-4">
+        <StepDots currentStep={step} steps={activeSteps} />
+      </div>
+    </div>
   );
 }

@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import {
-  adjustAllowances,
   allowanceLabel,
   allowanceMatchKey,
   allowancesForCategory,
@@ -151,28 +150,6 @@ describe('allowanceMatchKey', () => {
   });
 });
 
-describe('adjustAllowances', () => {
-  it('gives each allowance its own adjustment, keyed by its id', () => {
-    const adjusted = adjustAllowances(ALLOWANCES, { lashes: 9000 });
-
-    expect(adjusted.map((adjustedAllowance) => adjustedAllowance.amountCents)).toEqual([
-      9000, 6000, 20000,
-    ]);
-  });
-
-  it('does not treat a category id as an allowance id', () => {
-    const adjusted = adjustAllowances(ALLOWANCES, { 'health-and-beauty': 1 });
-
-    expect(adjusted).toEqual(ALLOWANCES);
-  });
-
-  it('does not change the allowances it was given', () => {
-    adjustAllowances(ALLOWANCES, { lashes: 9000 });
-
-    expect(LASHES.amountCents).toBe(8000);
-  });
-});
-
 describe('expandBudgetsByCategory', () => {
   it('adds up every allowance in a category over the range', () => {
     // October 2026 is 31 days: three fortnights started, and one month
@@ -182,14 +159,6 @@ describe('expandBudgetsByCategory', () => {
       'health-and-beauty': 8000 * 3 + 6000,
       groceries: 20000,
     });
-  });
-
-  it('follows a What If adjustment to one allowance in the category', () => {
-    const adjusted = adjustAllowances(ALLOWANCES, { nails: 7000 });
-
-    const expanded = expandBudgetsByCategory(adjusted, '2026-10-01', '2026-10-31');
-
-    expect(expanded['health-and-beauty']).toBe(8000 * 3 + 7000);
   });
 });
 

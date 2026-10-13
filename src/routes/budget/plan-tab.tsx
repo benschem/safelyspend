@@ -11,7 +11,6 @@ import { sumAllowancesForPeriod } from '@/lib/allowances';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useForecasts } from '@/hooks/use-forecasts';
-import { useAdjustedBudgets, useAdjustedForecasts } from '@/hooks/use-adjusted-values';
 import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
@@ -25,9 +24,8 @@ import { BudgetStatusHero } from '@/components/budget/status-hero';
 import { BudgetSummaryCard } from '@/components/budget/summary-card';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 import { IncomeSection, ExpensesSection, SavingsSection } from '@/components/budget/plan-sections';
-import { useWhatIf } from '@/contexts/what-if-context';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
-import type { Expense, NewExpense } from '@/lib/expenses';
+import type { Expense } from '@/lib/expenses';
 import { replaceExpenseWithOtherKind } from '@/lib/replace-expense';
 import type { Cadence, Category, ForecastRule, ForecastType } from '@/lib/types';
 
@@ -81,13 +79,12 @@ interface PlanTabProps {
 
 export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
   const { activeScenario } = useScenarios();
-  const { isWhatIfMode, clearAdjustment } = useWhatIf();
   const { getTotalDelta, isViewingDefault, defaultScenarioName, defaultTotals } = useScenarioDiff();
-  const showDeltas = !isViewingDefault || isWhatIfMode;
+  const showDeltas = !isViewingDefault;
   const comparedToName = defaultScenarioName;
   const { categories, activeCategories, isLoading: categoriesLoading } = useCategories();
   const {
-    budgetRules: savedBudgetRules,
+    budgetRules,
     getRulesForCategory,
     isLoading: budgetLoading,
     addBudgetRule,
@@ -95,7 +92,6 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     deleteBudgetRule,
     restoreBudgetRule,
   } = useBudgetRules(activeScenarioId);
-  const { budgetRules } = useAdjustedBudgets(activeScenarioId);
   const { savingsGoals, isLoading: savingsLoading } = useSavingsGoals();
   const { allTransactions, isLoading: transactionsLoading } = useTransactions();
 
@@ -120,12 +116,6 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     deleteRule,
     restoreRule,
   } = useForecasts(activeScenarioId, forecastDateRange.startDate, forecastDateRange.endDate);
-
-  const { rules: adjustedForecastRules } = useAdjustedForecasts(
-    activeScenarioId,
-    forecastDateRange.startDate,
-    forecastDateRange.endDate,
-  );
 
   const isLoading =
     categoriesLoading || budgetLoading || forecastsLoading || savingsLoading || transactionsLoading;
@@ -178,16 +168,6 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
       });
     },
     [budgetRules, deleteBudgetRule, restoreBudgetRule],
-  );
-
-  // The replacement has a new id, so a What If adjustment held under the old
-  // one would point at nothing and keep What If mode switched on
-  const handleReplaceExpense = useCallback(
-    async (expense: Expense, replacement: NewExpense) => {
-      await replaceExpenseWithOtherKind(expense, replacement);
-      clearAdjustment(expense.rule.id);
-    },
-    [clearAdjustment],
   );
 
   const handleRemoveExpense = useCallback(
@@ -266,17 +246,11 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     [forecastRules],
   );
 
-  // Adjusted expense rules for display calculations
-  const adjustedExpenseRules = useMemo(
-    () => adjustedForecastRules.filter((r) => r.type === 'expense'),
-    [adjustedForecastRules],
-  );
-
   // Calculate bills per category
   const fixedExpensesPerCategory = useMemo(() => {
     const result: Record<string, { amount: number; rules: ForecastRule[] }> = {};
 
-    for (const rule of adjustedExpenseRules) {
+    for (const rule of expenseRules) {
       if (rule.categoryId) {
         if (!result[rule.categoryId]) {
           result[rule.categoryId] = { amount: 0, rules: [] };
@@ -291,7 +265,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     }
 
     return result;
-  }, [adjustedExpenseRules, breakdownPeriod]);
+  }, [expenseRules, breakdownPeriod]);
 
   // Build category rows
   const categoryRows: CategoryRow[] = useMemo(() => {
@@ -327,8 +301,8 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     // Income and savings come from each rule's amount and cadence, as bills
     // do. Counting real pay dates over the next twelve months would make a
     // fortnightly pay worth more in the months where 27 of them fit.
-    const income = sumForecastRulesForPeriod(adjustedForecastRules, 'income', breakdownPeriod);
-    const savings = sumForecastRulesForPeriod(adjustedForecastRules, 'savings', breakdownPeriod);
+    const income = sumForecastRulesForPeriod(forecastRules, 'income', breakdownPeriod);
+    const savings = sumForecastRulesForPeriod(forecastRules, 'savings', breakdownPeriod);
 
     const totalFixed = categoryRows
       .filter((r) => !r.category.isArchived)
@@ -342,7 +316,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     const unallocated = income - totalSpending - savings;
 
     // Monthly totals for scenario comparison
-    const monthlyIncome = sumForecastRulesForPeriod(adjustedForecastRules, 'income', 'monthly');
+    const monthlyIncome = sumForecastRulesForPeriod(forecastRules, 'income', 'monthly');
     const monthlyFixed = Math.round(
       categoryRows
         .filter((r) => !r.category.isArchived)
@@ -379,7 +353,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           return sum + yearly / 12;
         }, 0),
     );
-    const monthlySavings = sumForecastRulesForPeriod(adjustedForecastRules, 'savings', 'monthly');
+    const monthlySavings = sumForecastRulesForPeriod(forecastRules, 'savings', 'monthly');
     const monthlySurplus = monthlyIncome - monthlyFixed - monthlyVariable - monthlySavings;
 
     return {
@@ -395,7 +369,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
       monthlySavings,
       monthlySurplus,
     };
-  }, [categoryRows, adjustedForecastRules, breakdownPeriod]);
+  }, [categoryRows, forecastRules, breakdownPeriod]);
 
   // Build chart segments
   const budgetBreakdownSegments = useMemo(() => {
@@ -470,23 +444,10 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     setRuleDialogOpen(true);
   }, []);
 
-  // The section lists allowances with any What If adjustment applied. The
-  // dialog edits the saved rule, so an allowance is looked up by id.
-  const openEditExpenseDialog = useCallback(
-    (expense: Expense) => {
-      if (expense.kind === 'bill') {
-        setEditingExpense(expense);
-        setExpenseDialogOpen(true);
-        return;
-      }
-      const savedRule = savedBudgetRules.find((rule) => rule.id === expense.rule.id);
-      if (savedRule) {
-        setEditingExpense({ kind: 'allowance', rule: savedRule });
-        setExpenseDialogOpen(true);
-      }
-    },
-    [savedBudgetRules],
-  );
+  const openEditExpenseDialog = useCallback((expense: Expense) => {
+    setEditingExpense(expense);
+    setExpenseDialogOpen(true);
+  }, []);
 
   if (isLoading) {
     return null;
@@ -764,14 +725,14 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
         unallocatedAmount={totals.unallocated}
         hasIncome={totals.income > 0}
         period={breakdownPeriod}
-        existingAllowances={savedBudgetRules}
+        existingAllowances={budgetRules}
         existingBills={expenseRules}
         spendingAverages={spendingAverages}
         addBudgetRule={addBudgetRule}
         updateBudgetRule={updateBudgetRule}
         addRule={addRule}
         updateRule={updateRule}
-        replaceExpense={handleReplaceExpense}
+        replaceExpense={replaceExpenseWithOtherKind}
         onRemove={handleRemoveExpense}
       />
 

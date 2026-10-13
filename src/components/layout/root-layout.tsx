@@ -5,7 +5,6 @@ import { DemoBanner } from '@/components/demo-banner';
 import { PageErrorBoundary } from '@/components/page-error-boundary';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useAppConfig } from '@/hooks/use-app-config';
-import { WhatIfProvider } from '@/contexts/what-if-context';
 
 export function RootLayout() {
   const location = useLocation();
@@ -28,28 +27,26 @@ export function RootLayout() {
   }
 
   return (
-    <WhatIfProvider activeScenarioId={activeScenarioId}>
-      <div className="flex h-screen flex-col">
-        {/* Skip to main content link for keyboard users */}
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
-        >
-          Skip to main content
-        </a>
-        {isDemo && <DemoBanner />}
-        <AppHeader />
-        <div className="flex flex-1 overflow-hidden">
-          <Sidebar />
-          <div className="flex flex-1 flex-col overflow-hidden">
-            <main id="main-content" className="flex-1 overflow-y-auto p-4 sm:p-6">
-              <PageErrorBoundary>
-                <Outlet context={{ activeScenarioId }} />
-              </PageErrorBoundary>
-            </main>
-          </div>
+    <div className="flex h-screen flex-col">
+      {/* Skip to main content link for keyboard users */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+      >
+        Skip to main content
+      </a>
+      {isDemo && <DemoBanner />}
+      <AppHeader />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <main id="main-content" className="flex-1 overflow-y-auto p-4 sm:p-6">
+            <PageErrorBoundary>
+              <Outlet context={{ activeScenarioId }} />
+            </PageErrorBoundary>
+          </main>
         </div>
       </div>
-    </WhatIfProvider>
+    </div>
   );
 }
