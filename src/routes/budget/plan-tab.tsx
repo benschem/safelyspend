@@ -2,7 +2,8 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { PiggyBank, BanknoteArrowUp, BanknoteArrowDown, ChartPie } from 'lucide-react';
-import { cn, formatCents } from '@/lib/utils';
+import { cn, formatCents, formatISODate } from '@/lib/utils';
+import { averageMonthlySpendingByCategory } from '@/lib/spending-averages';
 import { CHART_COLORS } from '@/lib/chart-colors';
 import { sumForecastRulesForPeriod, toPeriodCents } from '@/lib/plan-amounts';
 import { useScenarios } from '@/hooks/use-scenarios';
@@ -91,6 +92,12 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
   );
   const { savingsGoals, isLoading: savingsLoading } = useSavingsGoals();
   const { allTransactions, isLoading: transactionsLoading } = useTransactions();
+
+  // What each category has cost on average, as a guide when setting allowances
+  const spendingAverages = useMemo(
+    () => averageMonthlySpendingByCategory(allTransactions, formatISODate(new Date())),
+    [allTransactions],
+  );
 
   const forecastDateRange = useMemo(() => {
     const today = new Date();
@@ -724,6 +731,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           onAddClick={() => setAddCategoryDialogOpen(true)}
           onEditBudget={handleEditBudgetRule}
           onDeleteBudget={handleDeleteBudgetRule}
+          spendingAverages={spendingAverages}
           periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
           periodTotal={totals.variable}
           monthlyDelta={showDeltas ? getTotalDelta('budget', totals.monthlyVariable) : undefined}
@@ -759,6 +767,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
         unallocatedAmount={totals.unallocated}
         hasIncome={totals.income > 0}
         budgetedCategoryIds={budgetedCategoryIds}
+        spendingAverages={spendingAverages}
         setBudgetForCategory={setBudgetForCategory}
       />
 
@@ -775,6 +784,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           unallocatedAmount={totals.unallocated}
           hasIncome={totals.income > 0}
           budgetedCategoryIds={budgetedCategoryIds}
+          spendingAverages={spendingAverages}
           updateCategory={updateCategory}
           deleteCategory={deleteCategory}
           setBudgetForCategory={setBudgetForCategory}

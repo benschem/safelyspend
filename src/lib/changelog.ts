@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.46.0',
+    date: '2026-10-13',
+    changes: [
+      'Allowances on the Budget page now show what you have spent on average in that category, so you can tell whether an allowance is realistic',
+    ],
+  },
+  {
     version: '0.45.0',
     date: '2026-10-13',
     changes: [

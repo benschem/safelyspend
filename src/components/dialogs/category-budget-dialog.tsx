@@ -21,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Archive, ArchiveRestore, Trash2 } from 'lucide-react';
 import { CategorySelect } from '@/components/category-select';
 import { parseCentsFromInput, formatCents } from '@/lib/utils';
+import { describeAverageSpending, type SpendingAverages } from '@/lib/spending-averages';
 import type { Cadence, Category, BudgetRule } from '@/lib/types';
 import { db } from '@/lib/db';
 
@@ -40,6 +41,8 @@ interface CategoryBudgetDialogProps {
   hasIncome?: boolean; // Whether there is any income set
   // Categories that already have a budget, left out of the picker
   budgetedCategoryIds?: ReadonlySet<string>;
+  // What each category has cost on average, shown as a guide to the allowance
+  spendingAverages?: SpendingAverages | null;
   // Callbacks
   updateCategory?: (
     id: string,
@@ -95,6 +98,7 @@ export function CategoryBudgetDialog({
   unallocatedAmount,
   hasIncome,
   budgetedCategoryIds,
+  spendingAverages,
   updateCategory,
   deleteCategory,
   setBudgetForCategory,
@@ -227,6 +231,12 @@ export function CategoryBudgetDialog({
   const isQuarterlyCadence = cadence === 'quarterly';
   const isYearlyCadence = cadence === 'yearly';
 
+  const averageSpendingHint = describeAverageSpending(
+    spendingAverages,
+    selectedCategoryId,
+    cadence,
+  );
+
   const handleArchiveToggle = async () => {
     if (category && updateCategory) {
       await updateCategory(category.id, { isArchived: !category.isArchived });
@@ -335,6 +345,10 @@ export function CategoryBudgetDialog({
               </Select>
             </div>
           </div>
+
+          {averageSpendingHint && (
+            <p className="text-xs text-muted-foreground">{averageSpendingHint}</p>
+          )}
 
           {/* Budget impact indicator */}
           {hasIncome &&

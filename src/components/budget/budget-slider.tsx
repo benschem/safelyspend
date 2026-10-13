@@ -50,6 +50,8 @@ interface BudgetSliderProps {
   actions?: ReactNode;
   /** Optional link destination for the label */
   labelHref?: string | undefined;
+  /** Optional muted line under the slider, such as what was spent in the past */
+  hint?: string | null;
 }
 
 const variantStyles: Record<SliderVariant, { track: string; thumb: string; text: string }> = {
@@ -87,6 +89,7 @@ export function BudgetSlider({
   defaultScenarioName = 'Default',
   actions,
   labelHref,
+  hint,
 }: BudgetSliderProps) {
   // Internal state for immediate UI feedback
   const [localValue, setLocalValue] = useState(value);
@@ -331,6 +334,8 @@ export function BudgetSlider({
           />
         )}
       </div>
+
+      {hint && <p className="mt-2 text-xs text-muted-foreground">{hint}</p>}
 
       {/* Limit hint */}
       {isAtLimit && (

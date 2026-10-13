@@ -18,6 +18,7 @@ import { cn, formatCents, type CadenceType } from '@/lib/utils';
 import { BudgetSlider, getSliderRange, getIncomeSliderRange } from './budget-slider';
 import { useWhatIf } from '@/contexts/what-if-context';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
+import { describeAverageSpending, type SpendingAverages } from '@/lib/spending-averages';
 import type { ForecastRule, BudgetRule, Category, SavingsGoal } from '@/lib/types';
 
 function SliderActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
@@ -350,11 +351,14 @@ interface BudgetedSpendingSectionProps {
   periodTotal: number;
   /** Monthly delta from default scenario (current - default) */
   monthlyDelta?: number | undefined;
+  /** What each category has cost on average, shown under its slider */
+  spendingAverages: SpendingAverages | null;
 }
 
 export function BudgetedSpendingSliderSection({
   budgetRules,
   categories,
+  spendingAverages,
   isOpen,
   onOpenChange,
   onAddClick,
@@ -457,6 +461,7 @@ export function BudgetedSpendingSliderSection({
                     step={range.step}
                     onChange={(cents) => setBudgetAdjustment(rule.categoryId, cents)}
                     cadence={rule.cadence as CadenceType}
+                    hint={describeAverageSpending(spendingAverages, rule.categoryId, rule.cadence)}
                     variant="expense"
                     differsFromDefault={differsFromDefault}
                     defaultValue={defaultValue}
