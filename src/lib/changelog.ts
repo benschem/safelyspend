@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.46.2',
+    date: '2026-10-13',
+    changes: [
+      'Removed the "Add to allowance" button on transactions. Allowances are now set in one place, on the Budget page',
+    ],
+  },
+  {
     version: '0.46.1',
     date: '2026-10-13',
     changes: [

@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
-import { Link, useSearchParams, useOutletContext } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,7 +24,6 @@ import {
   Pencil,
   Trash2,
   Plus,
-  Target,
   PiggyBank,
   Banknote,
   ChevronDown,
@@ -38,30 +37,17 @@ import {
   AlertTriangle,
   Settings2,
 } from 'lucide-react';
-import {
-  cn,
-  formatCents,
-  formatDate,
-  today as getToday,
-  toMonthlyCents,
-  type CadenceType,
-} from '@/lib/utils';
+import { cn, formatCents, formatDate, today as getToday } from '@/lib/utils';
 import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
-import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useCategoryRules } from '@/hooks/use-category-rules';
 import { TransactionDialog } from '@/components/dialogs/transaction-dialog';
 import { UpImportDialog } from '@/components/up-import-dialog';
 import { CsvImportDialog } from '@/components/csv-import-dialog';
-import { AddToBudgetDialog } from '@/components/dialogs/add-to-budget-dialog';
 import { BulkCategoryDialog } from '@/components/dialogs/bulk-category-dialog';
 import { DateRangeFilter } from '@/components/date-range-filter';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import type { Cadence, Transaction } from '@/lib/types';
-
-interface OutletContext {
-  activeScenarioId: string | null;
-}
+import type { Transaction } from '@/lib/types';
 
 type FilterType = 'all' | 'income' | 'expense' | 'savings' | 'adjustment';
 type CategoryFilter = 'all' | 'uncategorized' | string;
@@ -81,9 +67,7 @@ const FREQUENCY_PER_LABELS: Record<AverageCadence, string> = {
 
 export function TransactionsPage() {
   const [searchParams] = useSearchParams();
-  const { activeScenarioId } = useOutletContext<OutletContext>();
   const { categories, activeCategories } = useCategories();
-  const { getRuleForCategory, setBudgetForCategory } = useBudgetRules(activeScenarioId);
   const { rules: categoryRules, addRule, getNextPriority } = useCategoryRules();
 
   // Past section date filter state
@@ -119,8 +103,6 @@ export function TransactionsPage() {
   const [upImportOpen, setUpImportOpen] = useState(false);
   const [csvImportOpen, setCsvImportOpen] = useState(false);
   const [importPopoverOpen, setImportPopoverOpen] = useState(false);
-  const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
-  const [budgetTransaction, setBudgetTransaction] = useState<Transaction | null>(null);
   const [bulkCategoryInfo, setBulkCategoryInfo] = useState<{
     description: string;
     categoryId: string;
@@ -313,47 +295,6 @@ export function TransactionsPage() {
       });
     },
     [allTransactions, deleteTransaction, restoreTransaction],
-  );
-
-  const openBudgetDialog = useCallback((transaction: Transaction) => {
-    setBudgetTransaction(transaction);
-    setBudgetDialogOpen(true);
-  }, []);
-
-  const budgetTransactionCategoryName = useMemo(() => {
-    if (!budgetTransaction?.categoryId) return '';
-    return categories.find((c) => c.id === budgetTransaction.categoryId)?.name ?? 'Unknown';
-  }, [budgetTransaction, categories]);
-
-  const existingBudgetForTransaction = useMemo(() => {
-    if (!budgetTransaction?.categoryId) return null;
-    return getRuleForCategory(budgetTransaction.categoryId);
-  }, [budgetTransaction, getRuleForCategory]);
-
-  const handleCreateRecurringBudget = useCallback(
-    async (amountCents: number, cadence: Cadence, updateMode: 'add' | 'replace') => {
-      if (!budgetTransaction?.categoryId) return;
-
-      const existingBudget = getRuleForCategory(budgetTransaction.categoryId);
-      const newMonthly = toMonthlyCents(amountCents, cadence);
-
-      if (updateMode === 'add' && existingBudget) {
-        const existingMonthly = toMonthlyCents(
-          existingBudget.amountCents,
-          existingBudget.cadence as CadenceType,
-        );
-        await setBudgetForCategory(
-          budgetTransaction.categoryId,
-          existingMonthly + newMonthly,
-          'monthly',
-        );
-      } else {
-        await setBudgetForCategory(budgetTransaction.categoryId, newMonthly, 'monthly');
-      }
-
-      setBudgetTransaction(null);
-    },
-    [budgetTransaction, getRuleForCategory, setBudgetForCategory],
   );
 
   const handleCategoryChanged = useCallback(
@@ -569,27 +510,10 @@ export function TransactionsPage() {
         id: 'actions',
         cell: ({ row }) => {
           const transaction = row.original;
-          const canAddToBudget =
-            transaction.type === 'expense' && transaction.categoryId && activeScenarioId;
 
           return (
             <TooltipProvider>
               <div className="flex justify-end gap-1">
-                {canAddToBudget && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openBudgetDialog(transaction)}
-                        aria-label="Add to allowance"
-                      >
-                        <Target className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Add to allowance</TooltipContent>
-                  </Tooltip>
-                )}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -622,13 +546,7 @@ export function TransactionsPage() {
         },
       },
     ],
-    [
-      openEditTransactionDialog,
-      handleDeleteTransaction,
-      getCategoryName,
-      openBudgetDialog,
-      activeScenarioId,
-    ],
+    [openEditTransactionDialog, handleDeleteTransaction, getCategoryName],
   );
 
   if (isLoading) {
@@ -915,15 +833,6 @@ export function TransactionsPage() {
 
       <UpImportDialog open={upImportOpen} onOpenChange={setUpImportOpen} />
       <CsvImportDialog open={csvImportOpen} onOpenChange={setCsvImportOpen} />
-
-      <AddToBudgetDialog
-        open={budgetDialogOpen}
-        onOpenChange={setBudgetDialogOpen}
-        transaction={budgetTransaction}
-        categoryName={budgetTransactionCategoryName}
-        existingBudget={existingBudgetForTransaction}
-        onCreateRecurringBudget={handleCreateRecurringBudget}
-      />
 
       <BulkCategoryDialog
         open={bulkCategoryInfo !== null}
