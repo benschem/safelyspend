@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.46.1',
+    date: '2026-10-13',
+    changes: [
+      'Allowances no longer ask for a day or month, which never changed how an allowance was counted',
+    ],
+  },
+  {
     version: '0.46.0',
     date: '2026-10-13',
     changes: [

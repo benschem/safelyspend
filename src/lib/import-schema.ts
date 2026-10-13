@@ -41,9 +41,6 @@ const budgetRuleSchema = baseEntitySchema.extend({
   categoryId: z.string().min(1),
   amountCents: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
   cadence: cadenceSchema,
-  dayOfWeek: z.number().int().min(0).max(6).optional(),
-  dayOfMonth: z.number().int().min(1).max(31).optional(),
-  monthOfQuarter: z.number().int().min(0).max(2).optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
 });

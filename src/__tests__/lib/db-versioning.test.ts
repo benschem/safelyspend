@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CURRENT_DATA_VERSION } from '@/lib/db';
+import { CURRENT_DATA_VERSION, removeScheduleFieldsFromBudgetRule } from '@/lib/db';
 import { validateImport, budgetDataSchema } from '@/lib/import-schema';
 
 // =============================================================================
@@ -96,6 +96,56 @@ describe('data versioning', () => {
       };
       expect(() => validateImport(currentExport)).not.toThrow();
     });
+  });
+});
+
+// =============================================================================
+// Schema Upgrade Tests
+// =============================================================================
+
+describe('removeScheduleFieldsFromBudgetRule', () => {
+  it('takes the day and month fields off a stored rule and keeps the rest', () => {
+    const storedRule: Record<string, unknown> = {
+      id: '1',
+      userId: 'local',
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      scenarioId: 'scenario-1',
+      categoryId: 'cat-1',
+      amountCents: 10000,
+      cadence: 'quarterly',
+      dayOfWeek: 1,
+      dayOfMonth: 15,
+      monthOfQuarter: 2,
+      monthOfYear: 6,
+      startDate: '2025-07-01',
+    };
+
+    removeScheduleFieldsFromBudgetRule(storedRule);
+
+    expect(storedRule).toEqual({
+      id: '1',
+      userId: 'local',
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      scenarioId: 'scenario-1',
+      categoryId: 'cat-1',
+      amountCents: 10000,
+      cadence: 'quarterly',
+      startDate: '2025-07-01',
+    });
+  });
+
+  it('leaves a rule that never had the fields unchanged', () => {
+    const storedRule: Record<string, unknown> = {
+      id: '1',
+      amountCents: 10000,
+      cadence: 'monthly',
+    };
+
+    removeScheduleFieldsFromBudgetRule(storedRule);
+
+    expect(storedRule).toEqual({ id: '1', amountCents: 10000, cadence: 'monthly' });
   });
 });
 

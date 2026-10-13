@@ -986,7 +986,6 @@ function SetupWizard() {
             categoryId,
             amountCents,
             cadence: 'monthly',
-            dayOfMonth: 1,
           });
         }
       }

@@ -29,6 +29,11 @@ import { STORAGE_KEYS } from './storage-keys';
 //   - New table for point-in-time balance records for savings goals
 //   - Indexes: id, savingsGoalId, [savingsGoalId+date], date
 //
+// Version 4 (App v0.46.1): Remove the day and month fields from budget rules
+//   - dayOfWeek, dayOfMonth, monthOfQuarter and monthOfYear were stored on
+//     allowances and never read. An allowance runs on calendar periods.
+//   - No index changes; an upgrade takes the fields off stored rules
+//
 // IMPORTANT: When adding schema changes:
 // 1. Add a new version() call with the next version number
 // 2. Only define indexes that changed (Dexie merges with previous)
@@ -39,7 +44,26 @@ import { STORAGE_KEYS } from './storage-keys';
 // =============================================================================
 
 /** Current schema version - increment when IndexedDB structure changes */
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
+
+const REMOVED_BUDGET_RULE_FIELDS = [
+  'dayOfWeek',
+  'dayOfMonth',
+  'monthOfQuarter',
+  'monthOfYear',
+] as const;
+
+/**
+ * Take the day and month fields off a stored budget rule, in place.
+ *
+ * Used by the version 4 upgrade. `updatedAt` is left alone on purpose: the
+ * rule means the same thing as before, so it should not look newly edited.
+ */
+export function removeScheduleFieldsFromBudgetRule(storedRule: Record<string, unknown>): void {
+  for (const fieldName of REMOVED_BUDGET_RULE_FIELDS) {
+    delete storedRule[fieldName];
+  }
+}
 
 // App config stored in IndexedDB
 export interface AppConfig {
@@ -99,6 +123,17 @@ export class BudgetDatabase extends Dexie {
     this.version(3).stores({
       savingsAnchors: 'id, savingsGoalId, [savingsGoalId+date], date',
     });
+
+    // Version 4: Take the unused day and month fields off budget rules (App v0.46.1)
+    // No tables or indexes change, so stores() is given nothing
+    this.version(4)
+      .stores({})
+      .upgrade((upgradeTransaction) =>
+        upgradeTransaction
+          .table('budgetRules')
+          .toCollection()
+          .modify(removeScheduleFieldsFromBudgetRule),
+      );
   }
 }
 

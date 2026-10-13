@@ -241,6 +241,40 @@ describe('validateImport', () => {
     expect(() => validateImport(data)).toThrow();
   });
 
+  it('accepts a budget rule from an older backup and drops its day and month fields', () => {
+    // Allowances used to store a day and month that nothing read
+    const ruleFromOlderBackup = {
+      id: '1',
+      userId: 'local',
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      scenarioId: 'scenario-1',
+      categoryId: 'cat-1',
+      amountCents: 10000,
+      cadence: 'quarterly',
+      dayOfWeek: 1,
+      dayOfMonth: 15,
+      monthOfQuarter: 2,
+      monthOfYear: 6,
+    };
+
+    const result = validateImport({
+      ...validMinimalData,
+      budgetRules: [ruleFromOlderBackup],
+    });
+
+    expect(result.budgetRules[0]).toEqual({
+      id: '1',
+      userId: 'local',
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      scenarioId: 'scenario-1',
+      categoryId: 'cat-1',
+      amountCents: 10000,
+      cadence: 'quarterly',
+    });
+  });
+
   it('sanitizes prototype pollution attempts during validation', () => {
     const malicious = JSON.parse(
       JSON.stringify({

@@ -53,39 +53,9 @@ interface CategoryBudgetDialogProps {
     categoryId: string,
     amountCents: number,
     cadence: Cadence,
-    dayOfWeek?: number,
-    dayOfMonth?: number,
-    monthOfQuarter?: number,
-    monthOfYear?: number,
   ) => Promise<void>;
   deleteBudgetRule?: (id: string) => Promise<void>;
 }
-
-// Ordered Monday-first for display, with correct JS dayOfWeek values (0=Sun, 1=Mon, etc.)
-const DAYS_OF_WEEK = [
-  { value: 1, label: 'Mon' },
-  { value: 2, label: 'Tue' },
-  { value: 3, label: 'Wed' },
-  { value: 4, label: 'Thu' },
-  { value: 5, label: 'Fri' },
-  { value: 6, label: 'Sat' },
-  { value: 0, label: 'Sun' },
-];
-const MONTH_OF_QUARTER_LABELS = ['1st month', '2nd month', '3rd month'];
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
 
 export function CategoryBudgetDialog({
   open,
@@ -113,9 +83,6 @@ export function CategoryBudgetDialog({
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [amount, setAmount] = useState('');
   const [cadence, setCadence] = useState<Cadence>('monthly');
-  const [day, setDay] = useState('1');
-  const [monthOfQuarter, setMonthOfQuarter] = useState('0');
-  const [monthOfYear, setMonthOfYear] = useState('0');
   const [formError, setFormError] = useState<string | null>(null);
 
   // The budget being edited belongs to a budgeted category too, and that one
@@ -135,28 +102,15 @@ export function CategoryBudgetDialog({
         if (existingRule) {
           setAmount((existingRule.amountCents / 100).toFixed(2));
           setCadence(existingRule.cadence);
-          if (existingRule.cadence === 'weekly' || existingRule.cadence === 'fortnightly') {
-            setDay(String(existingRule.dayOfWeek ?? 1));
-          } else {
-            setDay(String(existingRule.dayOfMonth ?? 1));
-          }
-          setMonthOfQuarter(String(existingRule.monthOfQuarter ?? 0));
-          setMonthOfYear(String(existingRule.monthOfYear ?? 0));
         } else {
           setAmount('');
           setCadence('monthly');
-          setDay('1');
-          setMonthOfQuarter('0');
-          setMonthOfYear('0');
         }
       } else {
         // Create mode - reset to defaults
         setSelectedCategoryId('');
         setAmount('');
         setCadence('monthly');
-        setDay('1');
-        setMonthOfQuarter('0');
-        setMonthOfYear('0');
       }
       setFormError(null);
     }
@@ -191,24 +145,13 @@ export function CategoryBudgetDialog({
         return;
       }
 
-      const isWeekly = cadence === 'weekly' || cadence === 'fortnightly';
-      const isQuarterly = cadence === 'quarterly';
-
       if (amountCents === 0) {
         // Only reachable in edit mode: clearing the amount removes the allowance
         if (existingRule && deleteBudgetRule) {
           await deleteBudgetRule(existingRule.id);
         }
       } else if (amountCents > 0 && scenarioId) {
-        await setBudgetForCategory(
-          selectedCategoryId,
-          amountCents,
-          cadence,
-          isWeekly ? parseInt(day) : undefined,
-          isWeekly ? undefined : parseInt(day),
-          isQuarterly ? parseInt(monthOfQuarter) : undefined,
-          isYearlyCadence ? parseInt(monthOfYear) : undefined,
-        );
+        await setBudgetForCategory(selectedCategoryId, amountCents, cadence);
 
         // The allowance was moved to another category, so take it off the old one
         const movedToAnotherCategory =
@@ -226,10 +169,6 @@ export function CategoryBudgetDialog({
       );
     }
   };
-
-  const isWeeklyCadence = cadence === 'weekly' || cadence === 'fortnightly';
-  const isQuarterlyCadence = cadence === 'quarterly';
-  const isYearlyCadence = cadence === 'yearly';
 
   const averageSpendingHint = describeAverageSpending(
     spendingAverages,
@@ -321,17 +260,7 @@ export function CategoryBudgetDialog({
 
             <div className="space-y-2">
               <Label className="select-none">Frequency</Label>
-              <Select
-                value={cadence}
-                onValueChange={(v) => {
-                  setCadence(v as Cadence);
-                  if (v === 'weekly' || v === 'fortnightly') {
-                    setDay('1'); // Monday
-                  } else {
-                    setDay('1'); // 1st of month
-                  }
-                }}
-              >
+              <Select value={cadence} onValueChange={(value) => setCadence(value as Cadence)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -375,117 +304,6 @@ export function CategoryBudgetDialog({
                 );
               }
             })()}
-
-          {isYearlyCadence && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="select-none">Month</Label>
-                <Select value={monthOfYear} onValueChange={setMonthOfYear}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MONTH_NAMES.map((name, i) => (
-                      <SelectItem key={i} value={String(i)}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="select-none">Day</Label>
-                <Select value={day} onValueChange={setDay}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                      <SelectItem key={d} value={String(d)}>
-                        {d}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-
-          {isQuarterlyCadence && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="select-none">Month of Quarter</Label>
-                <Select value={monthOfQuarter} onValueChange={setMonthOfQuarter}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MONTH_OF_QUARTER_LABELS.map((label, i) => (
-                      <SelectItem key={i} value={String(i)}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="select-none">Day</Label>
-                <Select value={day} onValueChange={setDay}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                      <SelectItem key={d} value={String(d)}>
-                        {d}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-
-          {isWeeklyCadence && (
-            <div className="space-y-2">
-              <Label className="select-none">Day of Week</Label>
-              <Select value={day} onValueChange={setDay}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DAYS_OF_WEEK.map((d) => (
-                    <SelectItem key={d.value} value={String(d.value)}>
-                      {d.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {!isWeeklyCadence && !isQuarterlyCadence && !isYearlyCadence && (
-            <div className="space-y-2">
-              <Label className="select-none">Day of Month</Label>
-              <Select value={day} onValueChange={setDay}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                    <SelectItem key={d} value={String(d)}>
-                      {d}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {parseInt(day, 10) > 28 && (
-                <p className="text-xs text-muted-foreground">
-                  For shorter months, uses last day of month
-                </p>
-              )}
-            </div>
-          )}
 
           <div className="flex items-center justify-between gap-3 pt-2">
             {/* Left side: Archive/Delete buttons (edit mode only) */}
