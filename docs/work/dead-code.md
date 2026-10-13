@@ -66,7 +66,7 @@ Check that nothing lazy-loads a component by path before deleting it.
 
 ## Also listed elsewhere
 
-- The `prefill` prop on the bill dialog, and the What If fallback names:
+- The `prefill` prop on `ForecastRuleDialog`, and the What If fallback names:
   `bills-rename-loose-ends.md`.
 - `useAdjustedScenarioData` and the stale comment in `summary-cards.tsx`:
   `category-limit-loose-ends.md`.

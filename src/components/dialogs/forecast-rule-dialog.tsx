@@ -19,9 +19,19 @@ import {
 import { Alert } from '@/components/ui/alert';
 import { CategorySelect } from '@/components/category-select';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
+import { ScheduleDayFields } from '@/components/dialogs/schedule-day-fields';
 import { parseCentsFromInput, formatCents, CADENCE_PER_LABELS } from '@/lib/utils';
+import {
+  DEFAULT_SCHEDULE_DAYS,
+  scheduleDaysForCadence,
+  scheduleDaysOf,
+  type ScheduleDays,
+} from '@/lib/cadence';
 import { findSimilarForecastRules } from '@/lib/duplicate-detection';
 import type { ForecastRule, ForecastType, Cadence, CreateEntity } from '@/lib/types';
+
+/** The rule types this dialog edits. An expense rule is edited in ExpenseDialog. */
+export type RecurringRuleType = Exclude<ForecastType, 'expense'>;
 
 /** Pre-fill data for creating a rule from a one-time event */
 interface PrefillData {
@@ -47,58 +57,25 @@ interface ForecastRuleDialogProps {
   /** Pre-fill data when converting from a one-time event */
   prefill?: PrefillData | null;
   /** The kind of rule being added or edited. Sets the wording and the fields shown. */
-  type: ForecastType;
+  type: RecurringRuleType;
   existingRules?: ForecastRule[];
 }
 
 /**
  * What each rule type is called on screen. An expense rule is a bill to the
- * user, and a bill is recurring by definition, so it drops the word.
+ * user, and a bill is recurring by definition, so it drops the word. It is
+ * listed because the similar-rule warning can name one.
  */
-const TYPE_WORDING: Record<ForecastType, { title: string; noun: string; addDescription: string }> =
-  {
-    income: {
-      title: 'Recurring Income',
-      noun: 'recurring income',
-      addDescription: 'Add a recurring income.',
-    },
-    expense: {
-      title: 'Bill',
-      noun: 'bill',
-      addDescription: 'A known amount on a known date. For a spending limit, add an allowance.',
-    },
-    savings: {
-      title: 'Recurring Savings Contribution',
-      noun: 'recurring savings contribution',
-      addDescription: 'Add a recurring savings contribution.',
-    },
-  };
+const TYPE_NOUNS: Record<ForecastType, string> = {
+  income: 'recurring income',
+  expense: 'bill',
+  savings: 'recurring savings contribution',
+};
 
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
-// Ordered Monday-first for display, with correct JS dayOfWeek values (0=Sun, 1=Mon, etc.)
-const DAYS_OF_WEEK = [
-  { value: 1, label: 'Monday' },
-  { value: 2, label: 'Tuesday' },
-  { value: 3, label: 'Wednesday' },
-  { value: 4, label: 'Thursday' },
-  { value: 5, label: 'Friday' },
-  { value: 6, label: 'Saturday' },
-  { value: 0, label: 'Sunday' },
-];
+const TYPE_TITLES: Record<RecurringRuleType, string> = {
+  income: 'Recurring Income',
+  savings: 'Recurring Savings Contribution',
+};
 
 export function ForecastRuleDialog({
   open,
@@ -117,10 +94,7 @@ export function ForecastRuleDialog({
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [cadence, setCadence] = useState<Cadence>('monthly');
-  const [dayOfMonth, setDayOfMonth] = useState('1');
-  const [dayOfWeek, setDayOfWeek] = useState('1');
-  const [monthOfYear, setMonthOfYear] = useState('0');
-  const [monthOfQuarter, setMonthOfQuarter] = useState('0');
+  const [scheduleDays, setScheduleDays] = useState<ScheduleDays>(DEFAULT_SCHEDULE_DAYS);
   const [categoryId, setCategoryId] = useState('');
   const [savingsGoalId, setSavingsGoalId] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
@@ -132,10 +106,7 @@ export function ForecastRuleDialog({
         setDescription(rule.description);
         setAmount((rule.amountCents / 100).toFixed(2));
         setCadence(rule.cadence);
-        setDayOfMonth(String(rule.dayOfMonth ?? 1));
-        setDayOfWeek(String(rule.dayOfWeek ?? 1));
-        setMonthOfYear(String(rule.monthOfYear ?? 0));
-        setMonthOfQuarter(String(rule.monthOfQuarter ?? 0));
+        setScheduleDays(scheduleDaysOf(rule));
         setCategoryId(rule.categoryId ?? '');
         setSavingsGoalId(rule.savingsGoalId ?? '');
       } else if (prefill) {
@@ -143,10 +114,10 @@ export function ForecastRuleDialog({
         setDescription(prefill.description);
         setAmount((prefill.amountCents / 100).toFixed(2));
         setCadence('monthly'); // Default to monthly
-        setDayOfMonth(String(prefill.dayOfMonth ?? 1));
-        setDayOfWeek('1');
-        setMonthOfYear('0');
-        setMonthOfQuarter('0');
+        setScheduleDays({
+          ...DEFAULT_SCHEDULE_DAYS,
+          dayOfMonth: prefill.dayOfMonth ?? DEFAULT_SCHEDULE_DAYS.dayOfMonth,
+        });
         setCategoryId(prefill.categoryId ?? '');
         setSavingsGoalId(prefill.savingsGoalId ?? '');
       } else {
@@ -154,10 +125,7 @@ export function ForecastRuleDialog({
         setDescription('');
         setAmount('');
         setCadence('monthly');
-        setDayOfMonth('1');
-        setDayOfWeek('1');
-        setMonthOfYear('0');
-        setMonthOfQuarter('0');
+        setScheduleDays(DEFAULT_SCHEDULE_DAYS);
         setCategoryId('');
         setSavingsGoalId('');
       }
@@ -181,7 +149,7 @@ export function ForecastRuleDialog({
       return;
     }
 
-    // Description required for income/expense but not for savings
+    // Description required for income but not for savings
     if (type !== 'savings' && !description.trim()) {
       setFormError('Please enter a description');
       return;
@@ -198,11 +166,6 @@ export function ForecastRuleDialog({
       return;
     }
 
-    if (type === 'expense' && !categoryId) {
-      setFormError('Please select a category for this bill');
-      return;
-    }
-
     const data: Parameters<typeof addRule>[0] = {
       scenarioId,
       type,
@@ -212,22 +175,8 @@ export function ForecastRuleDialog({
       cadence,
       categoryId: type === 'savings' ? null : categoryId || null,
       savingsGoalId: type === 'savings' ? savingsGoalId : null,
+      ...scheduleDaysForCadence(cadence, scheduleDays),
     };
-
-    // Add schedule fields based on cadence
-    if (cadence === 'weekly' || cadence === 'fortnightly') {
-      data.dayOfWeek = parseInt(dayOfWeek, 10);
-    } else {
-      data.dayOfMonth = parseInt(dayOfMonth, 10);
-    }
-
-    if (cadence === 'yearly') {
-      data.monthOfYear = parseInt(monthOfYear, 10);
-    }
-
-    if (cadence === 'quarterly') {
-      data.monthOfQuarter = parseInt(monthOfQuarter, 10);
-    }
 
     try {
       if (isEditing && rule) {
@@ -243,14 +192,10 @@ export function ForecastRuleDialog({
     }
   };
 
-  const showDayOfWeek = cadence === 'weekly' || cadence === 'fortnightly';
-  const showMonthOfYear = cadence === 'yearly';
-  const showMonthOfQuarter = cadence === 'quarterly';
-  const showDayOfMonth = cadence === 'monthly' || cadence === 'quarterly' || cadence === 'yearly';
-
-  const wording = TYPE_WORDING[type];
-  const dialogTitle = `${isEditing ? 'Edit' : 'Add'} ${wording.title}`;
-  const dialogDescription = isEditing ? `Update this ${wording.noun}.` : wording.addDescription;
+  const dialogTitle = `${isEditing ? 'Edit' : 'Add'} ${TYPE_TITLES[type]}`;
+  const dialogDescription = isEditing
+    ? `Update this ${TYPE_NOUNS[type]}.`
+    : `Add a ${TYPE_NOUNS[type]}.`;
 
   const similarRule = similarRules[0];
 
@@ -277,7 +222,7 @@ export function ForecastRuleDialog({
 
           {similarRule && (
             <Alert variant="warning">
-              A similar {TYPE_WORDING[similarRule.type].noun} exists: &lsquo;
+              A similar {TYPE_NOUNS[similarRule.type]} exists: &lsquo;
               {similarRule.description}&rsquo; for {formatCents(similarRule.amountCents)}{' '}
               {CADENCE_PER_LABELS[similarRule.cadence]}
             </Alert>
@@ -317,115 +262,7 @@ export function ForecastRuleDialog({
             </Select>
           </div>
 
-          {/* Schedule fields based on cadence */}
-          {showMonthOfYear && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="select-none">Month</Label>
-                <Select value={monthOfYear} onValueChange={setMonthOfYear}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MONTH_NAMES.map((name, i) => (
-                      <SelectItem key={i} value={String(i)}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="select-none">Day</Label>
-                <Select value={dayOfMonth} onValueChange={setDayOfMonth}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                      <SelectItem key={day} value={String(day)}>
-                        {day}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-
-          {showMonthOfQuarter && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="select-none">Month of Quarter</Label>
-                <Select value={monthOfQuarter} onValueChange={setMonthOfQuarter}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0">1st month</SelectItem>
-                    <SelectItem value="1">2nd month</SelectItem>
-                    <SelectItem value="2">3rd month</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="select-none">Day</Label>
-                <Select value={dayOfMonth} onValueChange={setDayOfMonth}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                      <SelectItem key={day} value={String(day)}>
-                        {day}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-
-          {cadence === 'monthly' && showDayOfMonth && !showMonthOfYear && !showMonthOfQuarter && (
-            <div className="space-y-2">
-              <Label className="select-none">Day of Month</Label>
-              <Select value={dayOfMonth} onValueChange={setDayOfMonth}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                    <SelectItem key={day} value={String(day)}>
-                      {day}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {parseInt(dayOfMonth, 10) > 28 && (
-                <p className="text-xs text-muted-foreground">
-                  For shorter months, uses last day of month
-                </p>
-              )}
-            </div>
-          )}
-
-          {showDayOfWeek && (
-            <div className="space-y-2">
-              <Label className="select-none">Day of Week</Label>
-              <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DAYS_OF_WEEK.map((day) => (
-                    <SelectItem key={day.value} value={String(day.value)}>
-                      {day.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <ScheduleDayFields cadence={cadence} days={scheduleDays} onChange={setScheduleDays} />
 
           {/* Description - hidden for savings (uses goal name instead) */}
           {type !== 'savings' && (
@@ -435,7 +272,7 @@ export function ForecastRuleDialog({
               </Label>
               <Input
                 id="rule-description"
-                placeholder="e.g., Salary, Rent, Car payment"
+                placeholder="e.g., Salary"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -451,21 +288,9 @@ export function ForecastRuleDialog({
             <div className="space-y-2">
               <Label className="select-none">
                 Category
-                {type === 'income' && (
-                  <span className="ml-1 font-normal text-muted-foreground">(optional)</span>
-                )}
-                {type === 'expense' && <span className="ml-1 font-normal text-destructive">*</span>}
+                <span className="ml-1 font-normal text-muted-foreground">(optional)</span>
               </Label>
-              <CategorySelect
-                value={categoryId}
-                onChange={setCategoryId}
-                allowNone={type !== 'expense'}
-              />
-              {type === 'expense' && (
-                <p className="text-xs text-muted-foreground">
-                  Bills must be assigned to a category
-                </p>
-              )}
+              <CategorySelect value={categoryId} onChange={setCategoryId} allowNone />
             </div>
           )}
 

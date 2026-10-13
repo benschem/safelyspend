@@ -1,9 +1,8 @@
 # Sync merge plan
 
 - **Status:** not started. Planned 2026-10-12 and 2026-10-13. Nothing in `src`
-  mentions tombstones as of 0.47.1. Lands after `expenses-one-list.md`, as
-  decided by the maintainer on 2026-10-13, so the merge is built against a
-  `BudgetRule` that has a `name` and no `items`.
+  mentions tombstones as of 0.49.0. The merge is built against a `BudgetRule`
+  that has a `name` and no `items`.
 - **Goal:** one Sync button merges both people's edits record by record, so
   two people can edit the household's budget at once and neither loses work.
 - **Touches:** `src/lib/import-schema.ts`, `src/lib/db.ts`, `src/lib/types.ts`,
@@ -131,23 +130,24 @@ The other schemas were not compared with their types.
 - Add `tombstones` to `BudgetBackup` and `import-schema.ts` as optional. Bump
   `CURRENT_DATA_VERSION` to 5. `importAllData` replaces the table with the
   backup's tombstones; `resetDatabase` and `loadDemoData` clear it.
-- `expenses-one-list.md` lands first and takes schema 5 and data 4. Check
-  both constants in `src/lib/db.ts` before bumping.
+- The schema is at 5 and the data at 4 as of 0.49.0. Check both constants in
+  `src/lib/db.ts` before bumping.
 - Cap the array at 500,000 in the schema. Every other array there has a
   `.max()`, and a remote vault that exceeds one fails validation, which stops
   sync for the whole household. Tombstones are never pruned, so the cap sits
   well above the transactions cap of 100,000.
 - A `deleteWithTombstone` helper, used at every delete site, including the
   cascades (`budgetRules` for a category, `savingsAnchors` for a goal).
-  `expenses-one-list.md` adds a delete site: an expense that gains or loses
-  its due date moves between `budgetRules` and `forecastRules`, which deletes
-  one record and adds another.
+  `replaceExpenseWithOtherKind` in `src/lib/replace-expense.ts` is a delete
+  site: an expense that gains or loses its due date moves between
+  `budgetRules` and `forecastRules`, which deletes one record and adds
+  another. Its tests stand in arrays for the tables, so they cover which rows
+  are written and not the rollback when a write fails. That was not simulated
+  in a browser either.
 - Every undo stamps `updatedAt` on the row it puts back. Without it a merge
   deletes again what the user just restored. The places:
   - `restoreRule`, `restoreBudgetRule`, `restoreTransaction` and
-    `restoreCategory` in the hooks;
-  - `allowance-dialog.tsx`, which undoes with a raw
-    `db.categories.put`. Route it through `restoreCategory`.
+    `restoreCategory` in the hooks.
   - Undoing a category delete still restores only the category row, as it
     does today. Its budget rules stay deleted. See `delete-cascades.md`.
 - `deleteSavingsGoal` stamps `updatedAt` on the transactions it edits. It

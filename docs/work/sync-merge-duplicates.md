@@ -12,8 +12,8 @@ people add the same thing before syncing. The merge already repairs the
 default scenario. These are left:
 
 - **Two allowances of one name in a category.** A category can hold several
-  allowances (`expenses-one-list.md`), so a second one is not a mistake in
-  itself. Two people each adding the same allowance leaves two rows, both
+  allowances, so a second one is not a mistake in itself. The expense dialog
+  refuses to make two of one name on one device. Two people each adding the same allowance leaves two rows, both
   listed and both counted, so the category's limit doubles until one is
   removed. The likeliest of these when setting up a budget side by side.
   Decide whether two with the same name, or two with none, are merged or

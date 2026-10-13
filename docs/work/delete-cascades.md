@@ -18,6 +18,18 @@
   unlinking leaves a rule the types do not allow. If refusing is chosen, the
   merge still needs its own answer for a delete that arrives from another
   device.
+- **Refuse to archive a category that still has bills or allowances?**
+  Recommended: yes, with the same "what uses this category" check as delete.
+  Archiving then only hides a category from the pickers and frees its name.
+  Today it also hides the category's allowances on the Budget page and leaves
+  its bills and allowances out of the Budget totals (`plan-tab.tsx`), while
+  Cash Flow keeps counting them: nothing in `use-budget-period-data.ts`,
+  `category-limits.ts` or `bill-set-aside.ts` reads `isArchived`. Read in the
+  code on 2026-10-13, not run. With the guard, the archived filters in
+  `plan-tab.tsx`, `src/lib/expenses.ts` and `cash-flow/index.tsx` have nothing
+  left to act on and can go. A bill already on an archived or deleted category
+  stays listed in the Expenses section so it can be removed. Still to decide:
+  what happens to categories archived before the guard that have rules.
 
 ## Deleting a category can leave rules behind, or take them without saying
 

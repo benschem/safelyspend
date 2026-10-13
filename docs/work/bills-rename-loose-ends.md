@@ -15,8 +15,8 @@ the rename and was deliberately not fixed in it.
   defines itself and never imports `plan-tab.tsx`, so it passes whatever the
   chart shows. Export the segment list from `plan-tab.tsx` and assert on that,
   or delete the test.
-- **The bill dialog still takes a `prefill` prop that nothing passes.**
-  `ForecastRuleDialog` is only rendered from `plan-tab.tsx`. Its untyped
+- **`ForecastRuleDialog` still takes a `prefill` prop that nothing passes.**
+  It edits income and savings, and is only rendered from `plan-tab.tsx`. Its untyped
   branch went in 0.44.2, when it turned out to show for a moment on every
   close. `prefill` and the `PrefillData` type are the same kind of leftover,
   from converting a one-off event into a rule. Remove them.
@@ -38,5 +38,5 @@ the rename and was deliberately not fixed in it.
   `src/contexts/what-if-context.tsx` fill a per-item list that nothing outside
   the context reads. Remove the list or use it.
 - **"Failed to save rule"** in `forecast-rule-dialog.tsx` still uses the
-  internal word. It is a rare error path, and no single word covers income,
-  bills and savings.
+  internal word. It is a rare error path, and no single word covers income
+  and savings.

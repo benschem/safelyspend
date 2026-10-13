@@ -72,6 +72,8 @@ interface WhatIfContextValue {
   saveToCurrentScenario: () => Promise<void>;
   /** Reset all adjustments to baseline */
   resetAdjustments: () => void;
+  /** Drop any adjustment held for one rule, for when that rule is replaced */
+  clearAdjustment: (ruleId: string) => void;
   /** Check if a specific value has been adjusted */
   hasAdjustment: (type: 'income' | 'budget' | 'fixedExpense' | 'savings', id: string) => boolean;
   /** Get the delta for an adjustment (adjusted - baseline) */
@@ -231,6 +233,22 @@ export function WhatIfProvider({ children, activeScenarioId }: WhatIfProviderPro
 
   const resetAdjustments = useCallback(() => {
     setAdjustments(emptyAdjustments);
+  }, []);
+
+  // A rule's id is in at most one of the four lists, so it is taken out of
+  // whichever holds it without the caller saying which kind of rule it was
+  const clearAdjustment = useCallback((ruleId: string) => {
+    const withoutRule = (adjustedCentsByRuleId: Record<string, number>) => {
+      const remaining = { ...adjustedCentsByRuleId };
+      delete remaining[ruleId];
+      return remaining;
+    };
+    setAdjustments((prev) => ({
+      incomeAdjustments: withoutRule(prev.incomeAdjustments),
+      budgetAdjustments: withoutRule(prev.budgetAdjustments),
+      fixedExpenseAdjustments: withoutRule(prev.fixedExpenseAdjustments),
+      savingsAdjustments: withoutRule(prev.savingsAdjustments),
+    }));
   }, []);
 
   const hasAdjustment = useCallback(
@@ -524,6 +542,7 @@ export function WhatIfProvider({ children, activeScenarioId }: WhatIfProviderPro
       saveAsPreset,
       saveToCurrentScenario,
       resetAdjustments,
+      clearAdjustment,
       hasAdjustment,
       getDelta,
       getCategoryDeltas,
@@ -539,6 +558,7 @@ export function WhatIfProvider({ children, activeScenarioId }: WhatIfProviderPro
       saveAsPreset,
       saveToCurrentScenario,
       resetAdjustments,
+      clearAdjustment,
       hasAdjustment,
       getDelta,
       getCategoryDeltas,

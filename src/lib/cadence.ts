@@ -198,3 +198,56 @@ export function expandForecastRule(
   // Filter out excluded dates
   return results.filter((forecast) => !excludedSet.has(forecast.date));
 }
+
+/**
+ * Every day a form can ask for when scheduling a rule. A saved rule keeps only
+ * the ones its cadence uses: see `scheduleDaysForCadence`.
+ */
+export interface ScheduleDays {
+  dayOfWeek: number; // 0-6 (Sunday-Saturday)
+  dayOfMonth: number; // 1-31
+  monthOfYear: number; // 0-11 (Jan-Dec)
+  monthOfQuarter: number; // 0-2
+}
+
+/** What a form starts on for a new rule: Monday, the 1st, January, first month */
+export const DEFAULT_SCHEDULE_DAYS: ScheduleDays = {
+  dayOfWeek: 1,
+  dayOfMonth: 1,
+  monthOfYear: 0,
+  monthOfQuarter: 0,
+};
+
+/** A rule's days for editing, with the form's default for any it does not store */
+export function scheduleDaysOf(
+  rule: Pick<ForecastRule, 'dayOfWeek' | 'dayOfMonth' | 'monthOfYear' | 'monthOfQuarter'>,
+): ScheduleDays {
+  return {
+    dayOfWeek: rule.dayOfWeek ?? DEFAULT_SCHEDULE_DAYS.dayOfWeek,
+    dayOfMonth: rule.dayOfMonth ?? DEFAULT_SCHEDULE_DAYS.dayOfMonth,
+    monthOfYear: rule.monthOfYear ?? DEFAULT_SCHEDULE_DAYS.monthOfYear,
+    monthOfQuarter: rule.monthOfQuarter ?? DEFAULT_SCHEDULE_DAYS.monthOfQuarter,
+  };
+}
+
+/**
+ * The day fields a rule of this cadence stores: a weekday for weekly and
+ * fortnightly, a day of the month for the rest, plus the month for yearly and
+ * the month of the quarter for quarterly.
+ */
+export function scheduleDaysForCadence(
+  cadence: ForecastRule['cadence'],
+  days: ScheduleDays,
+): Partial<ScheduleDays> {
+  switch (cadence) {
+    case 'weekly':
+    case 'fortnightly':
+      return { dayOfWeek: days.dayOfWeek };
+    case 'monthly':
+      return { dayOfMonth: days.dayOfMonth };
+    case 'quarterly':
+      return { dayOfMonth: days.dayOfMonth, monthOfQuarter: days.monthOfQuarter };
+    case 'yearly':
+      return { dayOfMonth: days.dayOfMonth, monthOfYear: days.monthOfYear };
+  }
+}

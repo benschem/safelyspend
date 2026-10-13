@@ -15,11 +15,10 @@ The half about having nowhere to delete one from was answered 2026-10-12: the
 Categories list shows every category, empty ones included, and its bin is
 enabled when nothing uses the category. `deleteCategory` in
 `src/hooks/use-categories.ts` is still the only thing that removes one, called
-from that list, the category detail page and the bin in the Budget page's edit
-dialog. Nothing runs on its own.
+from that list and the category detail page. Nothing runs on its own.
 
 They are still easy to make. The picker creates a category the moment "Create"
-is chosen, so typing a name in Add Allowance or the transaction form and then
+is chosen, so typing a name in Add Expense or the transaction form and then
 cancelling leaves one behind, and someone has to notice it on the list.
 
 Directions, not yet decided:

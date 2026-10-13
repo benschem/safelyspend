@@ -533,7 +533,7 @@ export function formatCompactDate(isoDate: string, includeYear = false): string 
 /**
  * Get ordinal suffix for a day number (1st, 2nd, 3rd, etc.)
  */
-function getOrdinalSuffix(day: number): string {
+export function getOrdinalSuffix(day: number): string {
   if (day > 3 && day < 21) return 'th';
   switch (day % 10) {
     case 1:

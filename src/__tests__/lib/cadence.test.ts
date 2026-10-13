@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { expandForecastRule } from '@/lib/cadence';
+import {
+  DEFAULT_SCHEDULE_DAYS,
+  expandForecastRule,
+  scheduleDaysForCadence,
+  scheduleDaysOf,
+} from '@/lib/cadence';
 import type { ForecastRule } from '@/lib/types';
 
 const THURSDAY = 4;
@@ -191,5 +196,36 @@ describe('expandForecastRule', () => {
       '2026-10-15',
       '2026-12-15',
     ]);
+  });
+});
+
+describe('scheduleDaysForCadence', () => {
+  const days = { dayOfWeek: 5, dayOfMonth: 15, monthOfYear: 2, monthOfQuarter: 1 };
+
+  it('keeps only the weekday for weekly and fortnightly rules', () => {
+    expect(scheduleDaysForCadence('weekly', days)).toEqual({ dayOfWeek: 5 });
+    expect(scheduleDaysForCadence('fortnightly', days)).toEqual({ dayOfWeek: 5 });
+  });
+
+  it('keeps the day of the month for monthly rules', () => {
+    expect(scheduleDaysForCadence('monthly', days)).toEqual({ dayOfMonth: 15 });
+  });
+
+  it('adds the month of the quarter or of the year', () => {
+    expect(scheduleDaysForCadence('quarterly', days)).toEqual({
+      dayOfMonth: 15,
+      monthOfQuarter: 1,
+    });
+    expect(scheduleDaysForCadence('yearly', days)).toEqual({ dayOfMonth: 15, monthOfYear: 2 });
+  });
+});
+
+describe('scheduleDaysOf', () => {
+  it('reads the days a rule stores and defaults the rest', () => {
+    expect(scheduleDaysOf({ dayOfMonth: 20, monthOfYear: 6 })).toEqual({
+      ...DEFAULT_SCHEDULE_DAYS,
+      dayOfMonth: 20,
+      monthOfYear: 6,
+    });
   });
 });

@@ -19,6 +19,13 @@ import { BudgetSlider, getSliderRange, getIncomeSliderRange } from './budget-sli
 import { useWhatIf } from '@/contexts/what-if-context';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
 import { allowanceLabel, sumAllowancesForPeriod } from '@/lib/allowances';
+import {
+  describeBillDue,
+  groupExpensesByCategory,
+  UNCATEGORISED_LABEL,
+  type Expense,
+} from '@/lib/expenses';
+import { sumForecastRulesForPeriod } from '@/lib/plan-amounts';
 import { describeAverageSpending, type SpendingAverages } from '@/lib/spending-averages';
 import type { ForecastRule, BudgetRule, Cadence, Category, SavingsGoal } from '@/lib/types';
 
@@ -177,177 +184,17 @@ export function IncomeSliderSection({
   );
 }
 
-interface FixedExpenseSectionProps {
-  expenseRules: ForecastRule[];
+interface ExpensesSectionProps {
+  /** Expenses with a due date */
+  billRules: ForecastRule[];
+  /** Expenses without one */
+  allowanceRules: BudgetRule[];
   categories: Category[];
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onAddClick: () => void;
-  onEditRule: (rule: ForecastRule) => void;
-  onDeleteRule: (ruleId: string) => void;
-  periodLabel: string;
-  periodTotal: number;
-  /** Monthly delta from default scenario (current - default) */
-  monthlyDelta?: number | undefined;
-}
-
-export function FixedExpenseSliderSection({
-  expenseRules,
-  categories,
-  isOpen,
-  onOpenChange,
-  onAddClick,
-  onEditRule,
-  onDeleteRule,
-  periodLabel,
-  periodTotal,
-  monthlyDelta,
-}: FixedExpenseSectionProps) {
-  const { adjustments, baselineValues, setFixedExpenseAdjustment } = useWhatIf();
-  const { isExpenseDifferent, defaultExpenseByDescription, defaultScenarioName } =
-    useScenarioDiff();
-
-  // Group rules by category
-  const groupedRules = useMemo(() => {
-    const groups = new Map<
-      string,
-      { name: string; categoryId: string | null; rules: ForecastRule[] }
-    >();
-    for (const rule of expenseRules) {
-      const key = rule.categoryId ?? '__uncategorized__';
-      if (!groups.has(key)) {
-        const category = rule.categoryId ? categories.find((c) => c.id === rule.categoryId) : null;
-        groups.set(key, {
-          name: category?.name ?? 'Uncategorized',
-          categoryId: rule.categoryId,
-          rules: [],
-        });
-      }
-      groups.get(key)!.rules.push(rule);
-    }
-    // Sort groups alphabetically by name
-    return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [expenseRules, categories]);
-
-  return (
-    <Collapsible open={isOpen} onOpenChange={onOpenChange} className="mb-4">
-      <div className="overflow-hidden rounded-lg border">
-        <div className="flex items-center justify-between bg-card p-4">
-          <CollapsibleTrigger className="flex flex-1 cursor-pointer items-center gap-2">
-            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            <BanknoteArrowDown className="h-4 w-4 text-rose-500" />
-            <span className="font-medium">Bills</span>
-            <span className="text-sm text-muted-foreground">
-              <span
-                className={cn(
-                  monthlyDelta !== undefined &&
-                    monthlyDelta !== 0 &&
-                    'text-violet-600 dark:text-violet-400',
-                )}
-              >
-                {formatCents(periodTotal)}
-              </span>{' '}
-              {periodLabel}
-              <span
-                className={`ml-1 inline-block min-w-[4.5rem] ${monthlyDelta !== undefined && monthlyDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
-              >
-                ({monthlyDelta !== undefined && monthlyDelta > 0 ? '+' : ''}
-                {formatCents(monthlyDelta ?? 0)})
-              </span>
-            </span>
-          </CollapsibleTrigger>
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label="Add bill"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddClick();
-            }}
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
-        <CollapsibleContent>
-          <div className="space-y-4 border-t p-4">
-            {expenseRules.length === 0 ? (
-              <p className="py-2 text-center text-sm text-muted-foreground">
-                No bills yet.{' '}
-                <button
-                  onClick={onAddClick}
-                  className="cursor-pointer text-primary hover:underline"
-                >
-                  Add one
-                </button>
-              </p>
-            ) : (
-              groupedRules.map((group) => (
-                <div key={group.categoryId ?? '__uncategorized__'}>
-                  <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-                    <Tag className="h-3.5 w-3.5" />
-                    {group.categoryId ? (
-                      <Link
-                        to={`/categories/${group.categoryId}?from=budget`}
-                        className="hover:underline"
-                      >
-                        {group.name}
-                      </Link>
-                    ) : (
-                      group.name
-                    )}
-                  </div>
-                  <div className="space-y-3">
-                    {group.rules.map((rule) => {
-                      const baseline =
-                        baselineValues.fixedExpenseAdjustments[rule.id] ?? rule.amountCents;
-                      const value = adjustments.fixedExpenseAdjustments[rule.id] ?? baseline;
-                      const range = getSliderRange(baseline);
-                      const differsFromDefault = isExpenseDifferent(rule.description, baseline);
-                      const defaultValue = defaultExpenseByDescription[rule.description];
-
-                      return (
-                        <BudgetSlider
-                          key={rule.id}
-                          label={rule.description}
-                          value={value}
-                          baseline={baseline}
-                          min={range.min}
-                          max={range.max}
-                          step={range.step}
-                          onChange={(cents) => setFixedExpenseAdjustment(rule.id, cents)}
-                          cadence={rule.cadence as CadenceType}
-                          variant="expense"
-                          differsFromDefault={differsFromDefault}
-                          defaultValue={defaultValue}
-                          defaultScenarioName={defaultScenarioName}
-                          actions={
-                            <SliderActions
-                              onEdit={() => onEditRule(rule)}
-                              onDelete={() => onDeleteRule(rule.id)}
-                            />
-                          }
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </CollapsibleContent>
-      </div>
-    </Collapsible>
-  );
-}
-
-interface BudgetedSpendingSectionProps {
-  budgetRules: BudgetRule[];
-  categories: Category[];
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  onAddClick: () => void;
-  onEditBudget: (rule: BudgetRule) => void;
-  onDeleteBudget: (ruleId: string) => void;
+  onEditExpense: (expense: Expense) => void;
+  onDeleteExpense: (expense: Expense) => void;
   /** The period the totals are quoted over, which periodLabel names */
   period: Cadence;
   periodLabel: string;
@@ -358,39 +205,35 @@ interface BudgetedSpendingSectionProps {
   spendingAverages: SpendingAverages | null;
 }
 
-export function BudgetedSpendingSliderSection({
-  budgetRules,
+export function ExpensesSliderSection({
+  billRules,
+  allowanceRules,
   categories,
   spendingAverages,
   isOpen,
   onOpenChange,
   onAddClick,
-  onEditBudget,
-  onDeleteBudget,
+  onEditExpense,
+  onDeleteExpense,
   period,
   periodLabel,
   periodTotal,
   monthlyDelta,
-}: BudgetedSpendingSectionProps) {
-  const { adjustments, baselineValues, setBudgetAdjustment } = useWhatIf();
-  const { isBudgetDifferent, getDefaultAllowanceAmount, defaultScenarioName } = useScenarioDiff();
+}: ExpensesSectionProps) {
+  const { adjustments, baselineValues, setFixedExpenseAdjustment, setBudgetAdjustment } =
+    useWhatIf();
+  const {
+    isExpenseDifferent,
+    defaultExpenseByDescription,
+    isBudgetDifferent,
+    getDefaultAllowanceAmount,
+    defaultScenarioName,
+  } = useScenarioDiff();
 
-  // Group rules by category, as the Bills section does. Only active
-  // (non-archived) categories are shown.
-  const groupedRules = useMemo(() => {
-    const groups = new Map<string, { name: string; categoryId: string; rules: BudgetRule[] }>();
-    for (const rule of budgetRules) {
-      const category = categories.find((c) => c.id === rule.categoryId);
-      if (!category || category.isArchived) continue;
-
-      if (!groups.has(category.id)) {
-        groups.set(category.id, { name: category.name, categoryId: category.id, rules: [] });
-      }
-      groups.get(category.id)!.rules.push(rule);
-    }
-    // Sort groups alphabetically by name
-    return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [budgetRules, categories]);
+  const expenseGroups = useMemo(
+    () => groupExpensesByCategory(billRules, allowanceRules, categories),
+    [billRules, allowanceRules, categories],
+  );
 
   return (
     <Collapsible open={isOpen} onOpenChange={onOpenChange} className="mb-4">
@@ -399,7 +242,7 @@ export function BudgetedSpendingSliderSection({
           <CollapsibleTrigger className="flex flex-1 cursor-pointer items-center gap-2">
             {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             <BanknoteArrowDown className="h-4 w-4 text-rose-500" />
-            <span className="font-medium">Spending Allowances</span>
+            <span className="font-medium">Expenses</span>
             <span className="text-sm text-muted-foreground">
               <span
                 className={cn(
@@ -422,7 +265,7 @@ export function BudgetedSpendingSliderSection({
           <Button
             variant="ghost"
             size="sm"
-            aria-label="Add allowance"
+            aria-label="Add expense"
             onClick={(e) => {
               e.stopPropagation();
               onAddClick();
@@ -433,9 +276,9 @@ export function BudgetedSpendingSliderSection({
         </div>
         <CollapsibleContent>
           <div className="space-y-4 border-t p-4">
-            {groupedRules.length === 0 ? (
+            {expenseGroups.length === 0 ? (
               <p className="py-2 text-center text-sm text-muted-foreground">
-                No allowances set yet.{' '}
+                No expenses yet.{' '}
                 <button
                   onClick={onAddClick}
                   className="cursor-pointer text-primary hover:underline"
@@ -444,35 +287,44 @@ export function BudgetedSpendingSliderSection({
                 </button>
               </p>
             ) : (
-              groupedRules.map((group) => {
-                const averageSpendingHint = describeAverageSpending(
-                  spendingAverages,
-                  group.categoryId,
-                  period,
-                );
-                // The rules arrive with any What If adjustment applied. The
-                // heading quotes the saved amounts, as the section's total
-                // above it does, so the headings always add up to that total.
-                const savedRules = group.rules.map((rule) => ({
+              expenseGroups.map((group) => {
+                const averageSpendingHint = group.categoryId
+                  ? describeAverageSpending(spendingAverages, group.categoryId, period)
+                  : null;
+                // The allowances arrive with any What If adjustment applied.
+                // The heading quotes the saved amounts, as the section's total
+                // above it does, so the headings add up to that total.
+                const savedBills = group.bills.map((rule) => ({
+                  ...rule,
+                  amountCents: baselineValues.fixedExpenseAdjustments[rule.id] ?? rule.amountCents,
+                }));
+                const savedAllowances = group.allowances.map((rule) => ({
                   ...rule,
                   amountCents: baselineValues.budgetAdjustments[rule.id] ?? rule.amountCents,
                 }));
+                const groupTotal =
+                  sumForecastRulesForPeriod(savedBills, 'expense', period) +
+                  sumAllowancesForPeriod(savedAllowances, period);
 
                 return (
-                  <div key={group.categoryId}>
+                  <div key={group.categoryId ?? UNCATEGORISED_LABEL}>
                     <div className="mb-2">
                       <div className="flex items-center justify-between gap-2 text-sm font-medium text-muted-foreground">
                         <span className="flex items-center gap-1.5">
                           <Tag className="h-3.5 w-3.5" />
-                          <Link
-                            to={`/categories/${group.categoryId}?from=budget`}
-                            className="hover:underline"
-                          >
-                            {group.name}
-                          </Link>
+                          {group.categoryId ? (
+                            <Link
+                              to={`/categories/${group.categoryId}?from=budget`}
+                              className="hover:underline"
+                            >
+                              {group.name}
+                            </Link>
+                          ) : (
+                            group.name
+                          )}
                         </span>
                         <span className="tabular-nums">
-                          {formatCents(sumAllowancesForPeriod(savedRules, period))} {periodLabel}
+                          {formatCents(groupTotal)} {periodLabel}
                         </span>
                       </div>
                       {averageSpendingHint && (
@@ -480,7 +332,40 @@ export function BudgetedSpendingSliderSection({
                       )}
                     </div>
                     <div className="space-y-3">
-                      {group.rules.map((rule) => {
+                      {group.bills.map((rule) => {
+                        const baseline =
+                          baselineValues.fixedExpenseAdjustments[rule.id] ?? rule.amountCents;
+                        const value = adjustments.fixedExpenseAdjustments[rule.id] ?? baseline;
+                        const range = getSliderRange(baseline);
+                        const differsFromDefault = isExpenseDifferent(rule.description, baseline);
+                        const defaultValue = defaultExpenseByDescription[rule.description];
+
+                        return (
+                          <BudgetSlider
+                            key={rule.id}
+                            label={rule.description}
+                            hint={describeBillDue(rule)}
+                            value={value}
+                            baseline={baseline}
+                            min={range.min}
+                            max={range.max}
+                            step={range.step}
+                            onChange={(cents) => setFixedExpenseAdjustment(rule.id, cents)}
+                            cadence={rule.cadence as CadenceType}
+                            variant="expense"
+                            differsFromDefault={differsFromDefault}
+                            defaultValue={defaultValue}
+                            defaultScenarioName={defaultScenarioName}
+                            actions={
+                              <SliderActions
+                                onEdit={() => onEditExpense({ kind: 'bill', rule })}
+                                onDelete={() => onDeleteExpense({ kind: 'bill', rule })}
+                              />
+                            }
+                          />
+                        );
+                      })}
+                      {group.allowances.map((rule) => {
                         const baseline =
                           baselineValues.budgetAdjustments[rule.id] ?? rule.amountCents;
                         const value = adjustments.budgetAdjustments[rule.id] ?? baseline;
@@ -505,8 +390,8 @@ export function BudgetedSpendingSliderSection({
                             defaultScenarioName={defaultScenarioName}
                             actions={
                               <SliderActions
-                                onEdit={() => onEditBudget(rule)}
-                                onDelete={() => onDeleteBudget(rule.id)}
+                                onEdit={() => onEditExpense({ kind: 'allowance', rule })}
+                                onDelete={() => onDeleteExpense({ kind: 'allowance', rule })}
                               />
                             }
                           />

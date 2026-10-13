@@ -14,28 +14,34 @@ import { useAdjustedBudgets, useAdjustedForecasts } from '@/hooks/use-adjusted-v
 import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
-import { AllowanceDialog } from '@/components/dialogs/allowance-dialog';
-import { ForecastRuleDialog } from '@/components/dialogs/forecast-rule-dialog';
+import { ExpenseDialog } from '@/components/dialogs/expense-dialog';
+import {
+  ForecastRuleDialog,
+  type RecurringRuleType,
+} from '@/components/dialogs/forecast-rule-dialog';
 import { SpendingBreakdownChart } from '@/components/charts/spending-breakdown-chart';
 import { BudgetStatusHero } from '@/components/budget/status-hero';
 import { BudgetSummaryCard } from '@/components/budget/summary-card';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 import {
   IncomeSliderSection,
-  FixedExpenseSliderSection,
-  BudgetedSpendingSliderSection,
+  ExpensesSliderSection,
   SavingsSliderSection,
 } from '@/components/budget/slider-sections';
 import { useWhatIf } from '@/contexts/what-if-context';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
-import type { Cadence, BudgetRule, Category, ForecastRule, ForecastType } from '@/lib/types';
+import type { Expense, NewExpense } from '@/lib/expenses';
+import { replaceExpenseWithOtherKind } from '@/lib/replace-expense';
+import type { Cadence, Category, ForecastRule, ForecastType } from '@/lib/types';
 
 type BudgetPeriod = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly';
+
+const EXPENSE_REMOVED_MESSAGE = 'Expense removed';
 
 // Toast shown after deleting a forecast rule, by what the user calls that type
 const DELETED_RULE_MESSAGES: Record<ForecastType, string> = {
   income: 'Income deleted',
-  expense: 'Bill deleted',
+  expense: EXPENSE_REMOVED_MESSAGE,
   savings: 'Savings contribution deleted',
 };
 
@@ -47,6 +53,18 @@ const FREQUENCY_PER_LABELS: Record<Cadence, string> = {
   yearly: 'per year',
 };
 
+type PlanSection = 'income' | 'expenses' | 'savings';
+
+// The section each ?section= value opens. Bills and allowances are listed
+// together, and links written for either of the old sections still land there.
+const SECTION_FOR_PARAM: Record<string, PlanSection> = {
+  income: 'income',
+  expenses: 'expenses',
+  fixed: 'expenses',
+  variable: 'expenses',
+  savings: 'savings',
+};
+
 interface CategoryRow {
   id: string;
   category: Category;
@@ -55,7 +73,6 @@ interface CategoryRow {
   variableAmount: number;
   totalAmount: number;
   fixedExpenseRules: ForecastRule[];
-  canDelete: boolean;
 }
 
 export type BudgetPeriodValue = BudgetPeriod;
@@ -67,17 +84,11 @@ interface PlanTabProps {
 
 export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
   const { activeScenario } = useScenarios();
-  const { isWhatIfMode } = useWhatIf();
+  const { isWhatIfMode, clearAdjustment } = useWhatIf();
   const { getTotalDelta, isViewingDefault, defaultScenarioName, defaultTotals } = useScenarioDiff();
   const showDeltas = !isViewingDefault || isWhatIfMode;
   const comparedToName = defaultScenarioName;
-  const {
-    categories,
-    activeCategories,
-    isLoading: categoriesLoading,
-    updateCategory,
-    deleteCategory,
-  } = useCategories();
+  const { categories, activeCategories, isLoading: categoriesLoading } = useCategories();
   const {
     budgetRules: savedBudgetRules,
     getRulesForCategory,
@@ -124,17 +135,17 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
   const isLoading =
     categoriesLoading || budgetLoading || forecastsLoading || savingsLoading || transactionsLoading;
 
-  // Allowance dialog state. As with the forecast rule dialog below, the
-  // allowance is set each time the dialog opens and left alone when it closes.
-  const [allowanceDialogOpen, setAllowanceDialogOpen] = useState(false);
-  const [editingAllowance, setEditingAllowance] = useState<BudgetRule | null>(null);
+  // Expense dialog state. As with the forecast rule dialog below, the expense
+  // is set each time the dialog opens and left alone when it closes.
+  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
-  // Forecast rule dialog state
+  // Forecast rule dialog state, for income and savings
   const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<ForecastRule | null>(null);
   // The rule and type are set each time the dialog opens and left alone when it
   // closes, so its title and fields do not change while it fades out
-  const [ruleDialogType, setRuleDialogType] = useState<ForecastRule['type']>('expense');
+  const [ruleDialogType, setRuleDialogType] = useState<RecurringRuleType>('income');
 
   // Undo-wrapped delete for forecast rules
   const handleDeleteForecastRule = useCallback(
@@ -161,7 +172,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
       const rule = budgetRules.find((r) => r.id === ruleId);
       if (!rule) return;
       await deleteBudgetRule(ruleId);
-      toast('Allowance removed', {
+      toast(EXPENSE_REMOVED_MESSAGE, {
         action: {
           label: 'Undo',
           onClick: () => {
@@ -174,32 +185,51 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     [budgetRules, deleteBudgetRule, restoreBudgetRule],
   );
 
+  // The replacement has a new id, so a What If adjustment held under the old
+  // one would point at nothing and keep What If mode switched on
+  const handleReplaceExpense = useCallback(
+    async (expense: Expense, replacement: NewExpense) => {
+      await replaceExpenseWithOtherKind(expense, replacement);
+      clearAdjustment(expense.rule.id);
+    },
+    [clearAdjustment],
+  );
+
+  const handleRemoveExpense = useCallback(
+    (expense: Expense) => {
+      if (expense.kind === 'bill') {
+        handleDeleteForecastRule(expense.rule.id);
+      } else {
+        handleDeleteBudgetRule(expense.rule.id);
+      }
+    },
+    [handleDeleteForecastRule, handleDeleteBudgetRule],
+  );
+
   // Collapsible sections state (reset on nav away, opened via ?section= links)
-  const [budgetedExpensesOpen, setBudgetedExpensesOpen] = useState(false);
   const [incomeOpen, setIncomeOpen] = useState(false);
-  const [fixedExpensesOpen, setFixedExpensesOpen] = useState(false);
+  const [expensesOpen, setExpensesOpen] = useState(false);
   const [savingsOpen, setSavingsOpen] = useState(false);
 
   // Handle ?section= URL param: expand + scroll to matching section
   const [searchParams, setSearchParams] = useSearchParams();
-  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const sectionRefs = useRef<Partial<Record<PlanSection, HTMLDivElement | null>>>({});
 
   useEffect(() => {
     if (isLoading) return; // Wait for content to render before scrolling
 
-    const section = searchParams.get('section');
-    if (!section) return;
+    const sectionParam = searchParams.get('section');
+    if (!sectionParam) return;
 
     // Expand the matching section
-    const sectionMap: Record<string, (open: boolean) => void> = {
+    const section = SECTION_FOR_PARAM[sectionParam];
+    const sectionSetters: Record<PlanSection, (open: boolean) => void> = {
       income: setIncomeOpen,
-      fixed: setFixedExpensesOpen,
-      variable: setBudgetedExpensesOpen,
+      expenses: setExpensesOpen,
       savings: setSavingsOpen,
     };
-    const setter = sectionMap[section];
-    if (setter) {
-      setter(true);
+    if (section) {
+      sectionSetters[section](true);
       // Clear the param so it doesn't re-trigger
       setSearchParams(
         (prev) => {
@@ -214,18 +244,10 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
         sectionRefs.current[section]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     }
-  }, [
-    isLoading,
-    searchParams,
-    setSearchParams,
-    setIncomeOpen,
-    setFixedExpensesOpen,
-    setBudgetedExpensesOpen,
-    setSavingsOpen,
-  ]);
+  }, [isLoading, searchParams, setSearchParams, setIncomeOpen, setExpensesOpen, setSavingsOpen]);
 
   // Expand a section and scroll to it
-  const scrollToSection = useCallback((section: string, setOpen: (open: boolean) => void) => {
+  const scrollToSection = useCallback((section: PlanSection, setOpen: (open: boolean) => void) => {
     setOpen(true);
     requestAnimationFrame(() => {
       sectionRefs.current[section]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -278,10 +300,6 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
 
   // Build category rows
   const categoryRows: CategoryRow[] = useMemo(() => {
-    const categoriesWithTransactions = new Set(
-      allTransactions.filter((t) => t.categoryId).map((t) => t.categoryId),
-    );
-
     const rows = categories.map((category) => {
       const fixedData = fixedExpensesPerCategory[category.id];
       const fixedAmount = fixedData?.amount ?? 0;
@@ -298,7 +316,6 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
         variableAmount,
         totalAmount: fixedAmount + variableAmount,
         fixedExpenseRules: fixedData?.rules ?? [],
-        canDelete: !categoriesWithTransactions.has(category.id),
       };
     });
 
@@ -308,7 +325,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
       }
       return a.categoryName.localeCompare(b.categoryName);
     });
-  }, [categories, allTransactions, getRulesForCategory, fixedExpensesPerCategory, breakdownPeriod]);
+  }, [categories, getRulesForCategory, fixedExpensesPerCategory, breakdownPeriod]);
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -439,41 +456,42 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     });
   }, []);
 
-  const openAddAllowanceDialog = useCallback(() => {
-    setEditingAllowance(null);
-    setAllowanceDialogOpen(true);
+  const openAddExpenseDialog = useCallback(() => {
+    setEditingExpense(null);
+    setExpenseDialogOpen(true);
   }, []);
 
-  const openAddRuleDialog = useCallback((type: 'income' | 'expense' | 'savings') => {
+  const openAddRuleDialog = useCallback((type: RecurringRuleType) => {
     setEditingRule(null);
     setRuleDialogType(type);
     setRuleDialogOpen(true);
   }, []);
 
+  // For income and savings. A bill is edited in the expense dialog.
   const openEditRuleDialog = useCallback((rule: ForecastRule) => {
+    if (rule.type === 'expense') return;
     setEditingRule(rule);
     setRuleDialogType(rule.type);
     setRuleDialogOpen(true);
   }, []);
 
-  // The section lists rules with any What If adjustment applied. The dialog
-  // edits the saved rule, so it is looked up by id.
-  const handleEditBudgetRule = useCallback(
-    (rule: BudgetRule) => {
-      const savedRule = savedBudgetRules.find((r) => r.id === rule.id);
+  // The section lists allowances with any What If adjustment applied. The
+  // dialog edits the saved rule, so an allowance is looked up by id.
+  const openEditExpenseDialog = useCallback(
+    (expense: Expense) => {
+      if (expense.kind === 'bill') {
+        setEditingExpense(expense);
+        setExpenseDialogOpen(true);
+        return;
+      }
+      const savedRule = savedBudgetRules.find((rule) => rule.id === expense.rule.id);
       if (savedRule) {
-        setEditingAllowance(savedRule);
-        setAllowanceDialogOpen(true);
+        setEditingExpense({ kind: 'allowance', rule: savedRule });
+        setExpenseDialogOpen(true);
       }
     },
     [savedBudgetRules],
   );
-
-  // The category the allowance being edited started on, for the dialog's
-  // archive and delete buttons
-  const editingAllowanceRow = editingAllowance
-    ? categoryRows.find((row) => row.id === editingAllowance.categoryId)
-    : undefined;
 
   if (isLoading) {
     return null;
@@ -566,7 +584,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           delta={getTotalDelta('fixed', totals.monthlyFixed)}
           showDelta={showDeltas}
           comparedToName={comparedToName}
-          onClick={() => scrollToSection('fixed', setFixedExpensesOpen)}
+          onClick={() => scrollToSection('expenses', setExpensesOpen)}
         />
 
         <BudgetSummaryCard
@@ -579,7 +597,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           delta={getTotalDelta('budget', totals.monthlyVariable)}
           showDelta={showDeltas}
           comparedToName={comparedToName}
-          onClick={() => scrollToSection('variable', setBudgetedExpensesOpen)}
+          onClick={() => scrollToSection('expenses', setExpensesOpen)}
         />
 
         <BudgetSummaryCard
@@ -692,47 +710,32 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
         />
       </div>
 
-      {/* Bills Section */}
+      {/* Expenses Section: bills and allowances together */}
       <div
-        id="section-fixed"
+        id="section-expenses"
         ref={(el) => {
-          sectionRefs.current['fixed'] = el;
+          sectionRefs.current['expenses'] = el;
         }}
       >
-        <FixedExpenseSliderSection
-          expenseRules={expenseRules}
+        <ExpensesSliderSection
+          billRules={expenseRules}
+          allowanceRules={budgetRules}
           categories={categories}
-          isOpen={fixedExpensesOpen}
-          onOpenChange={setFixedExpensesOpen}
-          onAddClick={() => openAddRuleDialog('expense')}
-          onEditRule={openEditRuleDialog}
-          onDeleteRule={handleDeleteForecastRule}
-          periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
-          periodTotal={totals.fixed}
-          monthlyDelta={showDeltas ? getTotalDelta('fixed', totals.monthlyFixed) : undefined}
-        />
-      </div>
-
-      {/* Spending Allowances */}
-      <div
-        id="section-variable"
-        ref={(el) => {
-          sectionRefs.current['variable'] = el;
-        }}
-      >
-        <BudgetedSpendingSliderSection
-          budgetRules={budgetRules}
-          categories={categories}
-          isOpen={budgetedExpensesOpen}
-          onOpenChange={setBudgetedExpensesOpen}
-          onAddClick={openAddAllowanceDialog}
-          onEditBudget={handleEditBudgetRule}
-          onDeleteBudget={handleDeleteBudgetRule}
+          isOpen={expensesOpen}
+          onOpenChange={setExpensesOpen}
+          onAddClick={openAddExpenseDialog}
+          onEditExpense={openEditExpenseDialog}
+          onDeleteExpense={handleRemoveExpense}
           spendingAverages={spendingAverages}
           period={breakdownPeriod}
           periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
-          periodTotal={totals.variable}
-          monthlyDelta={showDeltas ? getTotalDelta('budget', totals.monthlyVariable) : undefined}
+          periodTotal={totals.totalSpending}
+          monthlyDelta={
+            showDeltas
+              ? getTotalDelta('fixed', totals.monthlyFixed) +
+                getTotalDelta('budget', totals.monthlyVariable)
+              : undefined
+          }
         />
       </div>
 
@@ -757,26 +760,27 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
         />
       </div>
 
-      {/* Allowance Dialog, for add and edit */}
-      <AllowanceDialog
-        open={allowanceDialogOpen}
-        onOpenChange={setAllowanceDialogOpen}
+      {/* Expense Dialog, for adding and editing bills and allowances */}
+      <ExpenseDialog
+        open={expenseDialogOpen}
+        onOpenChange={setExpenseDialogOpen}
         scenarioId={activeScenarioId}
-        allowance={editingAllowance}
-        category={editingAllowanceRow?.category ?? null}
-        canDeleteCategory={editingAllowanceRow?.canDelete ?? false}
+        expense={editingExpense}
         unallocatedAmount={totals.unallocated}
         hasIncome={totals.income > 0}
+        period={breakdownPeriod}
         existingAllowances={savedBudgetRules}
+        existingBills={expenseRules}
         spendingAverages={spendingAverages}
-        updateCategory={updateCategory}
-        deleteCategory={deleteCategory}
         addBudgetRule={addBudgetRule}
         updateBudgetRule={updateBudgetRule}
-        deleteBudgetRule={deleteBudgetRule}
+        addRule={addRule}
+        updateRule={updateRule}
+        replaceExpense={handleReplaceExpense}
+        onRemove={handleRemoveExpense}
       />
 
-      {/* Forecast Rule Dialog */}
+      {/* Forecast Rule Dialog, for income and savings */}
       <ForecastRuleDialog
         open={ruleDialogOpen}
         onOpenChange={setRuleDialogOpen}

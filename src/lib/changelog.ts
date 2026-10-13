@@ -21,6 +21,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.49.0',
+    date: '2026-10-13',
+    changes: [
+      'Bills and spending allowances are now listed together as Expenses on the Budget page, grouped by category with a total for each',
+      'One Add Expense form covers both: turn on "Due on a set date" for a bill, or leave it off for an allowance',
+      'An expense can gain or lose its due date when you edit it',
+    ],
+  },
+  {
     version: '0.48.0',
     date: '2026-10-13',
     changes: [

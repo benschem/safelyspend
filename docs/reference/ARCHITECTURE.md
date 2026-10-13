@@ -34,7 +34,7 @@ These exist independent of any scenario:
 These belong to one scenario:
 
 - **Scenario**: a named plan. One is marked `isDefault`.
-- **BudgetRule**: an allowance, which is a spending limit for a category, with a cadence and an optional `name`. A category can hold several, each at its own cadence, and spending is measured against their total. The allowance dialog refuses a second allowance of the same name in a category, counting no name as a name, because allowances are matched across scenarios by category and name.
+- **BudgetRule**: an allowance, which is a spending limit for a category, with a cadence and an optional `name`. A category can hold several, each at its own cadence, and spending is measured against their total. On the Budget page an allowance and a bill are both an expense, added and edited in one dialog: an expense with a due date is saved as a bill and one without as an allowance, and switching the due date on or off moves it between the two tables under a new id. The expense dialog refuses a second allowance of the same name in a category, counting no name as a name, because allowances are matched across scenarios by category and name.
 - **ForecastRule**: recurring income, a bill, or a savings transfer, with a cadence and the day it lands on.
 
 ### Computed types

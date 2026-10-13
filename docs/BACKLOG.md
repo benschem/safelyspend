@@ -10,7 +10,6 @@ tooling.
 
 ## Now (at most three)
 
-- [feature] One Expenses list for bills and allowances → work/expenses-one-list.md _(budget, bills, scenarios)_
 - [bug]     "Today" is the UTC date → work/dates.md _(cash-flow, import, savings)_
 - [bug]     Balance maths has no single home → work/balances.md _(savings, cash-flow)_
 
@@ -52,7 +51,7 @@ tooling.
 - [bug]     Two categories can end up with the same name → work/category-duplicates.md _(categories)_
 - [polish]  Create a category on save, not on pick → work/empty-categories.md _(categories)_
 - [bug]     Links and redirects that land in the wrong place → work/wrong-links.md _(categories, import, budget)_
-- [polish]  Show a category's bills and allowance as two parts → work/bills-and-allowance-parts.md _(budget, cash-flow)_
+- [polish]  Show a category's bills and allowance as two parts → work/bills-and-allowance-parts.md _(cash-flow)_
 - [cleanup] Loose ends from one category limit → work/category-limit-loose-ends.md _(cash-flow)_
 - [cleanup] Split the Cash Flow page; one table, not four → work/review-findings.md _(cash-flow)_
 - [bug]     A failed import leaves the dialog stuck; two copies of it → work/review-findings.md _(import)_
@@ -103,3 +102,8 @@ else.
 - [bug]     Allowance sliders do not move the Budget page totals _(budget, scenarios)_
 - [bug]     An older app version drops newer fields on a sync pull → work/sync-newer-data.md _(sync)_
 - [bug]     Undo on a removed allowance restores its What If amount _(budget, scenarios)_
+- [cleanup] Merge the budget rules table into forecast rules _(budget, bills, sync)_
+- [polish]  Landing page still sets bills apart from allowances _(landing)_
+- [bug]     A bill in an archived or deleted category is listed but not totalled → work/delete-cascades.md _(budget, categories)_
+- [bug]     Removing an expense leaves its What If adjustment behind _(budget, scenarios)_
+- [bug]     A bill that loses its due date loses its day _(budget, bills)_

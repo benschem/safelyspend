@@ -55,8 +55,7 @@ Touches `src/components/csv-import-dialog.tsx`,
 ## One way to build a form, one amount parser, one way to report a result
 
 Touches `src/components/dialogs/`, `src/routes/transactions/new.tsx`,
-`package.json`. Overlaps `form-errors.md`, `form-labels.md` and
-`expenses-one-list.md`.
+`package.json`. Overlaps `form-errors.md` and `form-labels.md`.
 
 - Five dialogs use a `useState` per field plus an effect that resets them on
   open: forecast rule (`:117-166`), savings goal (`:66-108`), category
