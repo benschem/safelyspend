@@ -11,6 +11,7 @@ tooling.
 ## Now (at most three)
 
 - [bug]     Balance maths has no single home → work/balances.md _(savings, cash-flow)_
+- [polish]  Category page does not say what period each part covers → work/category-page.md _(categories)_
 
 ## Next
 
@@ -37,7 +38,6 @@ tooling.
 ## Later
 
 - [feature] Transactions filters, sort and page live in the URL _(categories)_
-- [polish]  Category page does not say what period each part covers → work/category-page.md _(categories)_
 - [bug]     No floor on Argon2id parameters from the server → work/review-findings.md _(auth)_
 - [bug]     A rolled-back vault looks like a current one → work/review-findings.md _(sync)_
 - [bug]     The "daily" OTP lockout only looks back an hour → work/review-findings.md _(auth)_
@@ -111,3 +111,6 @@ else.
 - [cleanup] Move the frontend to Cloudflare if Netlify forces credit pricing _(tooling)_
 - [cleanup] `KekKind` in `types.ts` is unused; `api-client.ts` has its own _(auth, tooling)_
 - [polish]  An expense with no name becomes "general spending" unannounced _(budget, forms)_
+- [bug]     Interest ignores savings anchors and is worked out four times _(savings)_
+- [bug]     Cash Flow starting balance may ignore adjustments in the period _(cash-flow)_
+- [cleanup] getEarliestAnchorDate in use-savings-anchors.ts has no caller _(tooling)_
