@@ -1,7 +1,7 @@
 /**
  * In-memory holder for the key material a cloud session needs.
  *
- * Lifetime is tab-close or explicit lock (overview Q6), deliberately
+ * Lifetime is tab-close or explicit lock, deliberately
  * independent of the 7-day JWT. Nothing here is persisted: no
  * `sessionStorage`, no IndexedDB, no cookie. Re-opening a tab against a live
  * session re-derives KEK_pwd and unwraps again — one Argon2id, ~216 ms on the
@@ -75,8 +75,8 @@ export function isVaultUnlocked(): boolean {
  * caller imports it bare: `clear()` at a call site says nothing about what is
  * being cleared.
  *
- * Locking the vault does not touch the server session. Q6 makes the JWT and
- * the MasterKey independent *lifetimes*: a session expiring does not lock the
+ * Locking the vault does not touch the server session. The JWT and the
+ * MasterKey have independent *lifetimes*: a session expiring does not lock the
  * vault, and locking does not end the session.
  *
  * The converse does not follow, and that is the half worth stating rather than

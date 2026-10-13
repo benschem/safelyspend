@@ -1,8 +1,8 @@
 /** Byte plumbing shared by the wrapped-key endpoints.
  *
- *  Wire encoding is base64url throughout (Phase 2 design section 11). D1 hands BLOB
- *  columns back as number[] in the Workers runtime and as ArrayBuffer in some others,
- *  so every read goes through blobToBytes rather than trusting one shape.
+ *  Wire encoding is base64url throughout (`docs/reference/api-design.md` section 11).
+ *  D1 hands BLOB columns back as number[] in the Workers runtime and as ArrayBuffer in
+ *  some others, so every read goes through blobToBytes rather than trusting one shape.
  */
 
 import { internal } from './errors.js';

@@ -12,8 +12,10 @@ export const INVITE_STATUSES = [
   'completed',
   'expired',
   'revoked',
-  /** The recipient signed up and chose their own household instead. Q5 makes that
-   *  irreversible, so this is a terminal state, not a pause. Phase 7 sets it. */
+  /** The recipient signed up and chose their own household instead. One household per
+   *  user makes that irreversible, so this is a terminal state, not a pause. Nothing
+   *  sets it yet: joining without the invite link is on the wishlist in
+   *  `docs/BACKLOG.md`. */
   'declined',
 ] as const;
 export type InviteStatus = (typeof INVITE_STATUSES)[number];

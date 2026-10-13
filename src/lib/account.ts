@@ -60,7 +60,7 @@ import type { Kek, MasterKey, PrivateKeyBytes } from './types';
  */
 const DEFAULT_HOUSEHOLD_NAME = 'Household';
 
-/** Phase 4's floor, from `crypto-design.md` section 3.6. No strength meter — deferred, not rejected. */
+/** The password length floor, from `crypto-design.md` section 3.6. No strength meter — deferred, not rejected. */
 export const MINIMUM_PASSWORD_LENGTH = 12;
 
 /**

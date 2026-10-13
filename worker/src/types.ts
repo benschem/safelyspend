@@ -27,8 +27,8 @@ export interface JwtPayload {
   sub: string;
   sid: string;
   email: string;
-  /** Household the user belonged to when the token was signed. One per user in v1
-   *  (Q5). Absent for a user who has signed up against an invite but whose handoff
+  /** Household the user belonged to when the token was signed. One per user in v1.
+   *  Absent for a user who has signed up against an invite but whose handoff
    *  has not completed — they have no household yet. Informational for the client;
    *  server-side scoping reads `householdId` from the context, which the auth
    *  middleware resolves from household_members on every request. */

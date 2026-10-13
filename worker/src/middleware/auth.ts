@@ -91,7 +91,9 @@ export const authMiddleware = createMiddleware<HonoEnv>(async (c, next) => {
  *  derived from it. Confining the session to the key bundle and the reset itself keeps
  *  a mailbox compromise from turning into a download of the household's ciphertext.
  *
- *  Every route except GET /auth/key-bundle and POST /auth/recovery-reset uses this. */
+ *  Every authenticated route uses this except four: GET /auth/key-bundle and POST
+ *  /auth/recovery-reset, which a recovery session exists to reach, and GET /auth/me and
+ *  POST /auth/logout, which are harmless on one. */
 export const requireFullSession = createMiddleware<HonoEnv>(async (c, next) => {
   if (c.get('jwtPayload').rec) {
     throw coded('Finish setting a new password first', 403, 'RECOVERY_SESSION');

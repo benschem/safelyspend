@@ -4,7 +4,7 @@
  *  The optimistic-concurrency machinery is unchanged from the single-user version, but
  *  its meaning is not: a rejected push used to mean your own stale tab, and now
  *  routinely means your partner got there first. What the losing client does about
- *  that is Phase 8's call.
+ *  that is the client's decision, in `src/hooks/use-sync.ts`.
  */
 
 import { generateId } from '../lib/id.js';

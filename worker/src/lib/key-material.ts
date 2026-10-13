@@ -121,9 +121,9 @@ export interface KekMetadata {
 
 /** Cross-column consistency for a kek_kind row (design section 8.2).
  *
- *  Note this rejects kek_kdf_kind=0x01. Phase 2's table admits {0x01, 0x02} for 'pwd',
- *  but Phase 1 section 3.2 reserves 0x01 as never-written, and v2 clients only derive
- *  Argon2id. Accepting a PBKDF2 row would let a client downgrade its own KEK.
+ *  Note this rejects kek_kdf_kind=0x01. `docs/reference/crypto-design.md` section 3.2
+ *  reserves 0x01 as never-written, and v2 clients only derive Argon2id. Accepting a
+ *  PBKDF2 row would let a client downgrade its own KEK.
  */
 export function assertKekMetadata(metadata: KekMetadata): void {
   const { kekKind, kekSalt, kekKdfKind, kekKdfParams } = metadata;

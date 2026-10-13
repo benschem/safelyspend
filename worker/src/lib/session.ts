@@ -37,7 +37,8 @@ export interface SessionClaims {
 /** Sign the session JWT and attach it as the session cookie.
  *
  *  The JWT lifetime and the client's in-memory MasterKey lifetime are independent
- *  (Q6): nothing here touches the key, and clearing the key does not touch this. */
+ *  (`docs/reference/api-design.md` section 2.3): nothing here touches the key, and
+ *  clearing the key does not touch this. */
 export async function issueSessionCookie(
   c: AppContext,
   claims: SessionClaims,

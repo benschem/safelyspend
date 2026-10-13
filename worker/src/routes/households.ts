@@ -120,8 +120,8 @@ households.post('/:householdId/members', addMemberRateLimit, addMemberUserLimit,
       inviteService.completeInviteStatement(c.env.DB, inviteId, user.id, now),
     ]);
   } catch (err) {
-    // UNIQUE(household_members.user_id) is Q5's enforcement: the invitee joined some
-    // household between the check above and this write.
+    // UNIQUE(household_members.user_id) enforces one household per user: the invitee
+    // joined some household between the check above and this write.
     if (err instanceof Error && err.message.includes('UNIQUE constraint failed')) {
       throw coded('That person is already part of a household', 409, 'HOUSEHOLD_FULL');
     }

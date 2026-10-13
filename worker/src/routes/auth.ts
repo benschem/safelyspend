@@ -377,9 +377,9 @@ auth.post('/signup', signupRateLimit, async (c) => {
   }));
 
   // Sweep for invites addressed to this email (crypto-design section 7.4 path 2). The
-  // client shows these as a banner. Note the invite cannot actually be accepted while
-  // Q5 stands, since this user now has a household of their own — see the Phase 2
-  // design notes for the carried issue.
+  // client does not read them, and none can be accepted: this user now has a household
+  // of their own, and a user has only one. See `docs/reference/api-design.md`
+  // section 3.6.
   const pendingInvites = await inviteService.findOpenForEmail(c.env.DB, user.email);
 
   return c.json({
@@ -530,7 +530,8 @@ auth.post(
     const now = new Date().toISOString();
 
     // In-place upserts inside one batch, never delete-then-insert: the old wrap stays
-    // valid right up until the new one is durable (Phase 1 section 3.4).
+    // valid right up until the new one is durable (`docs/reference/crypto-design.md`
+    // section 3.4).
     await c.env.DB.batch([
       upsertUserKeyStatement(c.env.DB, user.id, { ...metadata, wrapped: wrappedPrivKey }, now),
       householdService.upsertMemberKeyStatement(
@@ -628,7 +629,8 @@ auth.post('/recovery-reset', authMiddleware, rewrapRateLimit, async (c) => {
 // POST /auth/logout — clear the server session only
 //
 // Deliberately does not touch the client's in-memory MasterKey, and clearing the
-// MasterKey does not touch this (Q6: the two lifetimes are independent).
+// MasterKey does not touch this. The two lifetimes are independent:
+// `docs/reference/api-design.md` section 2.3.
 auth.post('/logout', authMiddleware, sessionRateLimit, async (c) => {
   const payload = c.get('jwtPayload');
   await deleteSession(c.env.DB, payload.sid);

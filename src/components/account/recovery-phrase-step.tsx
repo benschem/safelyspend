@@ -5,7 +5,7 @@ import { Alert } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 
 /**
- * The recovery phrase moment (overview Q1): display, a copy-to-password-manager
+ * The recovery phrase moment: display, a copy-to-password-manager
  * button, and an acknowledgement checkbox with no way past it.
  *
  * This step cannot be skipped or deferred, and that is not a UX preference.

@@ -17,8 +17,9 @@ import { Checkbox } from '@/components/ui/checkbox';
  *
  * - `sign-in` — no session yet. The password is proved to the server, which
  *   spends the bridge token doing it. There is no second attempt on this
- *   screen; a mistake sends the user back for a fresh code. Phase 1 section 3.3
- *   makes that deliberate, so the copy has to make it predictable.
+ *   screen; a mistake sends the user back for a fresh code. That is
+ *   deliberate (`docs/reference/api-design.md` section 3.3), so the copy has to
+ *   make it predictable.
  * - `unlock` — the session is already live and the password only has to open
  *   the wrapped rows locally. Nothing is spent, so wrong guesses are free and
  *   the session length is not this screen's to decide.

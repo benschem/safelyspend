@@ -26,7 +26,7 @@ describe('base64url encoding', () => {
   });
 
   it('accepts standard base64 on the way in', () => {
-    // Phase 3 may send either spelling; the server should not care which.
+    // A client may send either spelling; the server should not care which.
     expect(base64urlToBytes('++//')).toEqual(base64urlToBytes('--__'));
   });
 

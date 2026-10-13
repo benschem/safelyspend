@@ -139,7 +139,7 @@ describe('KEK metadata consistency', () => {
   });
 
   it('rejects PBKDF2, which is reserved and never written', () => {
-    // Phase 1 section 3.2 reserves 0x01. Accepting it would let a client downgrade
+    // `crypto-design.md` section 3.2 reserves 0x01. Accepting it would let a client downgrade
     // its own key derivation to the algorithm this rewrite exists to leave behind.
     expectInvalidBlob(() =>
       assertKekMetadata({

@@ -87,18 +87,6 @@ With a queue line each. Read 2026-10-13:
   second live query, `db.transactions.toArray()`, beside the ranged one
   (`use-transactions.ts:35`). Not re-read: that `useReportsData` calls it
   twice and `useForecasts` loads the table again.
-- **Comments that cite deleted planning docs.** A search of `src`,
-  `worker/src` and `worker/migrations` for "Phase N", "Q5"-style question
-  numbers and old phase file names finds about 35 lines in 24 files, for
-  example `worker/src/routes/auth.ts:381` and `src/lib/api-client.ts:192`.
-  Each should say the thing itself or point at `docs/reference/`.
-- **Two more stale comments.** The header of `worker/migrations/0001_initial.sql`
-  cites two doc paths that no longer exist. Check that editing an applied
-  migration file is harmless before touching it. And the comment on
-  `requireFullSession` (`worker/src/middleware/auth.ts:94`) says every route
-  but `GET /auth/key-bundle` and `POST /auth/recovery-reset` uses it, where
-  `/auth/me` and `/auth/logout` do not. Reaching those two on a recovery
-  session is harmless, so the comment is what changes.
 
 Without a queue line, as reported:
 

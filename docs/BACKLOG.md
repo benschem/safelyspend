@@ -10,7 +10,6 @@ tooling.
 
 ## Now (at most three)
 
-- [cleanup] Stale comments, about 35 citing deleted planning docs → work/review-findings.md _(tooling, auth)_
 - [feature] Remove the What If sliders, keep scenarios → work/remove-what-if.md _(scenarios)_
 
 ## Next
@@ -114,3 +113,4 @@ else.
 - [cleanup] Landing fixtures format their own dates _(landing)_
 - [cleanup] Work files cite code by line number, about 70 places _(tooling)_
 - [cleanup] Move the frontend to Cloudflare if Netlify forces credit pricing _(tooling)_
+- [cleanup] `KekKind` in `types.ts` is unused; `api-client.ts` has its own _(auth, tooling)_

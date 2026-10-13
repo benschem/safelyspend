@@ -257,8 +257,8 @@ export interface Keypair {
  * Which key opens a wrapped row. Mirrors the `kek_kind` column in `user_keys`
  * and `household_member_keys`.
  *
- * No consumer until Phase 5 reads those columns — it lands here with the rest
- * of the key-material types so the whole vocabulary arrives in one place.
+ * Nothing imports it. `src/lib/api-client.ts` declares its own copy beside the
+ * wire shapes that use it.
  *
  * Salt rules differ per kind and a missing salt is not corruption (section
  * 6.3): `recovery` rows carry no salt because BIP-39 is deterministic from the

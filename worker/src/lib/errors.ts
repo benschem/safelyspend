@@ -41,8 +41,8 @@ export function gone(message: string, code: string): AppError {
   return new AppError(message, 410, code);
 }
 
-/** For the Phase 2 error model (design section 9.1), where the machine code carries
- *  the meaning and the HTTP status alone is not specific enough. */
+/** For the error model in `docs/reference/api-design.md` section 9.1, where the machine
+ *  code carries the meaning and the HTTP status alone is not specific enough. */
 export function coded(message: string, status: number, code: string, data?: unknown): AppError {
   return new AppError(message, status, code, data);
 }

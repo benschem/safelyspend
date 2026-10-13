@@ -141,7 +141,7 @@ invites.post('/:token/accept', acceptRateLimit, acceptUserLimit, async (c) => {
   const user = c.get('user');
   const token = c.req.param('token');
 
-  // Q5: one household per user, so someone who already has one cannot join another.
+  // One household per user, so someone who already has one cannot join another.
   if (c.get('householdId')) {
     throw coded('You are already part of a household', 409, 'HOUSEHOLD_FULL');
   }

@@ -1,6 +1,6 @@
 -- SafelySpend v2 schema. Collapses the four v1 migrations into one
--- household-keyed schema. See docs/auth-rewrite/02_backend_schema_endpoints_design.md
--- section 1, and docs/crypto-design.md section 2 for the key hierarchy this stores.
+-- household-keyed schema. See docs/reference/api-design.md section 1, and
+-- docs/reference/crypto-design.md section 2 for the key hierarchy this stores.
 --
 -- There is no v1 read path and no migration: production held zero vaults and zero
 -- real users when this landed, so the old tables were dropped rather than migrated.
@@ -76,7 +76,7 @@ CREATE TABLE household_members (
   role         TEXT NOT NULL CHECK (role IN ('owner', 'member')),
   joined_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
--- Q5: one household per user in v1. Multi-household work drops this index.
+-- One household per user in v1. Multi-household work drops this index.
 CREATE UNIQUE INDEX idx_household_members_user      ON household_members(user_id);
 CREATE UNIQUE INDEX idx_household_members_user_hh   ON household_members(user_id, household_id);
 CREATE        INDEX idx_household_members_household ON household_members(household_id);

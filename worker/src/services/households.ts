@@ -3,7 +3,7 @@ import { blobToBase64url, blobToBase64urlOrThrow } from '../lib/bytes.js';
 import type { KekKind, WrappedKeyInput } from '../lib/key-material.js';
 import type { Household } from '../types.js';
 
-/** v1 caps a household at two people (Q5: one household per user, one invite each). */
+/** v1 caps a household at two people: one household per user, one invite each. */
 export const MAX_HOUSEHOLD_MEMBERS = 2;
 
 export async function findById(db: D1Database, householdId: string): Promise<Household | null> {
@@ -77,9 +77,10 @@ export function addMemberStatement(
 }
 
 /** Upsert rather than insert: the pwd and recovery rows are rewritten in place by the
- *  Argon2id rolling upgrade, the recovery reset, and the invitee's rewrap. Phase 1
- *  section 3.4 requires the old wrap stay valid until the new one is durable, which an
- *  in-place update inside a batch gives and a delete-then-insert would not. */
+ *  Argon2id rolling upgrade, the recovery reset, and the invitee's rewrap.
+ *  `docs/reference/crypto-design.md` section 3.4 requires the old wrap stay valid until
+ *  the new one is durable, which an in-place update inside a batch gives and a
+ *  delete-then-insert would not. */
 export function upsertMemberKeyStatement(
   db: D1Database,
   householdId: string,

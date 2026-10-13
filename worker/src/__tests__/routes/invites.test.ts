@@ -388,7 +388,7 @@ describe('POST /invites/:token/accept', () => {
 
     const res = await appFetch(authedRequest(`/v1/invites/${token}/accept`, busy.cookie, 'POST'));
 
-    // Q5: one household per user in v1.
+    // One household per user in v1.
     expect(res.status).toBe(409);
     expect(((await res.json()) as { code: string }).code).toBe('HOUSEHOLD_FULL');
   });

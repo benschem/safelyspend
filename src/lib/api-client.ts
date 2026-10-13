@@ -189,9 +189,9 @@ export interface PendingInvite {
 /**
  * Signup returns a session plus any invites already waiting for this address.
  *
- * Phase 7 owns what to do with them. They cannot be accepted as things stand —
- * a signup creates a household, and `UNIQUE(household_members.user_id)` allows
- * only one (`api-design.md` §3.6) — so nothing in v1 reads this field.
+ * They cannot be accepted as things stand: a signup creates a household, and
+ * `UNIQUE(household_members.user_id)` allows only one (`api-design.md` §3.6).
+ * Nothing reads this field.
  */
 export interface SignupResponse extends SessionResponse {
   pendingInvites: PendingInvite[];
@@ -355,7 +355,7 @@ export const api = {
 
     /**
      * Spend the bridge token and prove the password. A mismatch consumes the
-     * token anyway, by design (Phase 1 section 3.3) — the caller has to send
+     * token anyway, by design (`api-design.md` §3.3) — the caller has to send
      * the user back for a fresh code rather than offer a second attempt.
      */
     loginComplete(authPendingToken: string, verifierCandidate: string, rememberMe: boolean) {
@@ -418,15 +418,9 @@ export const api = {
     },
 
     /**
-     * **Unexercised.** Phase 7 is the only caller there will ever be, and it
-     * has not been written, so nothing in `src/` invokes this and nothing has
-     * run it against the live worker. It is here because the endpoint exists
-     * and the shapes were settled alongside `signup`'s.
-     *
-     * The same argument that deleted `password-dialog.tsx`'s create mode
-     * applies to it — code with no call site rots quietly — so treat the field
-     * names below as transcribed from `worker/src/routes/auth.ts`, not as
-     * verified. Phase 7 should check them before trusting them.
+     * Create an account that joins the inviter's household. Called from the
+     * invite signup in `src/routes/login.tsx`. The field names were transcribed
+     * from `worker/src/routes/auth.ts`.
      */
     signupWithInvite(body: SignupWithInviteBody) {
       return request<SignupWithInviteResponse>('/v1/auth/signup-with-invite', {

@@ -30,10 +30,10 @@ interface UseSyncReturn {
    *
    * No OTP and no bridge token: the JWT is what authorises the key-bundle
    * fetch, and the password only has to open the wrapped rows it returns. The
-   * two lifetimes are independent in both directions (overview Q6).
+   * two lifetimes are independent in both directions.
    */
   unlockWithPassword: (password: string) => Promise<void>;
-  /** Drop the MasterKey. Does not touch the server session (overview Q6). */
+  /** Drop the MasterKey. Does not touch the server session. */
   lock: () => void;
   /** Current sync operation status */
   syncStatus: SyncStatus;

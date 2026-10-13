@@ -32,8 +32,8 @@ interface UseAuthReturn {
  * which otherwise keeps `isVaultUnlocked()` true and leaves Settings claiming a
  * cloud connection that no longer exists.
  *
- * Q6 makes the JWT and the MasterKey independent *lifetimes* — a session
- * expiring does not lock the vault, and locking does not end the session. It
+ * The JWT and the MasterKey have independent *lifetimes* — a session
+ * expiring does not lock the vault, and locking does not end the session. That
  * does not make an explicit logout leave decryption keys sitting in memory
  * with nothing left to decrypt against.
  */
