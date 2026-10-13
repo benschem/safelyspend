@@ -43,7 +43,6 @@ export function CreatableSelect({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
   const selectedOption = options.find((opt) => opt.value === value);
@@ -137,15 +136,21 @@ export function CreatableSelect({
     setHighlightedIndex(-1);
   }, [search]);
 
-  // Focus input when popover opens
+  // Clear the search when the popover closes
   useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 0);
-    } else {
+    if (!open) {
       setSearch('');
       setHighlightedIndex(-1);
     }
   }, [open]);
+
+  // Radix focuses the search input when the popover opens. On a touch screen
+  // that raises the on-screen keyboard over the list, so leave focus where it
+  // is and let a tap on the input ask for the keyboard instead.
+  const handleOpenAutoFocus = useCallback((event: Event) => {
+    const isTouchScreen = window.matchMedia('(pointer: coarse)').matches;
+    if (isTouchScreen) event.preventDefault();
+  }, []);
 
   // Scroll highlighted item into view
   useEffect(() => {
@@ -174,10 +179,13 @@ export function CreatableSelect({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] p-0"
+        align="start"
+        onOpenAutoFocus={handleOpenAutoFocus}
+      >
         <div className="flex flex-col">
           <input
-            ref={inputRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={handleKeyDown}

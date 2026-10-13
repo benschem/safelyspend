@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.47.1',
+    date: '2026-10-13',
+    changes: [
+      'Choosing a category on an iPad or phone no longer brings up the keyboard over the list',
+    ],
+  },
+  {
     version: '0.47.0',
     date: '2026-10-13',
     changes: [
