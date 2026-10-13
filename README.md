@@ -13,7 +13,7 @@ User data is stored locally in the browser using IndexedDB. Optional cloud sync 
 - Set budgets with flexible frequencies (weekly, fortnightly, monthly, quarterly, yearly)
 - Compare actual spending to projected spending per category
 - Check how much money is free to spend
-- Simulate budget adjustments with what-if scenarios (e.g. "What happens if I reduce dining out by $100 per month?")
+- Keep alternative plans as scenarios you can copy, edit and switch between (e.g. a plan for after a pay rise)
 - Set and track savings goals with interest rate forecasting
 - Import transactions from CSV (generic or Up Bank format)
 - Periodic check-in wizard for reviewing your finances

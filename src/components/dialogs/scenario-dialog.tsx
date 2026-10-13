@@ -112,7 +112,7 @@ export function ScenarioDialog({
           <DialogDescription>
             {isEditing
               ? 'Update the scenario details.'
-              : 'Create a new budget scenario for "what-if" planning.'}
+              : 'Create a new scenario to try a different plan.'}
           </DialogDescription>
         </DialogHeader>
 

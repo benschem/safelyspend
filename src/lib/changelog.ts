@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.53.0',
+    date: '2026-10-13',
+    changes: [
+      'What If is now called Scenarios in the sidebar and on its page',
+      'The Scenarios page now explains how to try an idea: copy a scenario, switch to it and change it on the Budget page',
+    ],
+  },
+  {
     version: '0.52.1',
     date: '2026-10-13',
     changes: [

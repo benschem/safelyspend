@@ -1,6 +1,6 @@
 # Remove the What If sliders and keep scenarios as plain plans
 
-- **Status:** in progress, step 6 done. Decisions made 2026-10-13.
+- **Status:** in progress, step 7 done. Decisions made 2026-10-13.
 - **Goal:** the sliders, What If mode, the violet difference figures and the
   comparison against the default plan are gone, and scenarios remain as named
   plans that can be copied, edited and switched between.
@@ -168,4 +168,4 @@ Prettier on the files touched.
 - The other files that show violet (`year-grid.tsx`, `trend-sparkline.tsx`,
   the wizards) use it for "Projected" and icons, read from a search only.
   They are assumed unrelated and left alone.
-- Steps 7 and 8 have not been run.
+- Step 8 has not been done.

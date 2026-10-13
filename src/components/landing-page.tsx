@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Link } from 'react-router';
 import { trackLandingPageview } from '@/lib/analytics';
 import { useAuth } from '@/hooks/use-auth';
 import { useAppConfig } from '@/hooks/use-app-config';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
 import {
   ArrowRight,
   ArrowLeftRight,
@@ -21,9 +20,6 @@ import {
   GraduationCap,
   Package,
   PiggyBank,
-  SlidersHorizontal,
-  Sparkles,
-  Star,
   TrendingUp,
 } from 'lucide-react';
 import { formatCents } from '@/lib/utils';
@@ -49,9 +45,6 @@ import {
   CATEGORY_SPEND,
   CHECK_IN,
   MONTHLY_INCOME,
-  MONTHLY_FIXED,
-  MONTHLY_BUDGETED,
-  MONTHLY_SAVINGS,
 } from '@/components/landing-fixtures';
 
 interface LandingPageProps {
@@ -453,20 +446,6 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
           </div>
         </section>
 
-        {/* What-if scenarios, driven by the sliders */}
-        <section className="px-4 py-14">
-          <div className="mx-auto max-w-3xl">
-            <h3 className="text-xl font-semibold tracking-tight">
-              Tweak the budget if it needs it
-            </h3>
-            <p className="mt-3 max-w-[60ch] leading-relaxed text-muted-foreground">
-              Spending ran hot, a bill went up, or you are weighing a car loan. A scenario is a set
-              of numbers you can move without touching the real plan. Pick one and drag the sliders.
-            </p>
-            <ScenarioSliderDemo />
-          </div>
-        </section>
-
         {/* Insights Charts */}
         <section className="px-4 py-14">
           <div className="mx-auto max-w-5xl">
@@ -649,185 +628,6 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
           </Link>
         </p>
       </footer>
-    </div>
-  );
-}
-
-const DEMO_SLIDERS = [
-  { label: 'Salary', min: 0, max: 1180000, step: 2500, variant: 'income' as const },
-  { label: 'Rent', min: 0, max: 364000, step: 2500, variant: 'expense' as const },
-  { label: 'Groceries', min: 0, max: 130000, step: 1000, variant: 'expense' as const },
-  { label: 'Japan Trip', min: 0, max: 100000, step: 1000, variant: 'savings' as const },
-];
-
-/**
- * Everything not on a slider (other bills, day-to-day spending, opening
- * balance) rolled into one constant, so the four sliders below land on the same
- * end-of-month figures used elsewhere on the page.
- */
-const OTHER_MONTHLY_CENTS = -(MONTHLY_FIXED - 182000) - (MONTHLY_BUDGETED - 65000);
-
-const DEMO_SCENARIOS = [
-  {
-    id: 'current',
-    name: 'Current Plan',
-    description: 'The plan you actually live on',
-    values: [MONTHLY_INCOME, 182000, 65000, MONTHLY_SAVINGS],
-  },
-  {
-    id: 'raise',
-    name: 'After the Raise',
-    description: 'A what-if sitting on top of it',
-    values: [637200, 182000, 65000, 70000],
-  },
-] as const;
-
-/** Salary less the three outgoings, plus everything not on a slider. */
-function endOfMonth(values: readonly number[]): number {
-  const [salary = 0, rent = 0, groceries = 0, savings = 0] = values;
-  return salary - rent - groceries - savings + OTHER_MONTHLY_CENTS;
-}
-
-const VARIANT_STYLES = {
-  income: {
-    track: '[&_[data-radix-slider-range]]:bg-green-500',
-    thumb: '[&_[data-radix-slider-thumb]]:border-green-500',
-    text: 'text-green-600 dark:text-green-400',
-  },
-  expense: {
-    track: '[&_[data-radix-slider-range]]:bg-rose-500',
-    thumb: '[&_[data-radix-slider-thumb]]:border-rose-500',
-    text: 'text-rose-600 dark:text-rose-400',
-  },
-  savings: {
-    track: '[&_[data-radix-slider-range]]:bg-blue-500',
-    thumb: '[&_[data-radix-slider-thumb]]:border-blue-500',
-    text: 'text-blue-600 dark:text-blue-400',
-  },
-};
-
-/**
- * Picking a scenario loads its numbers into the sliders; dragging them moves the
- * projected surplus for that scenario only. Mirrors the what-if layer in the app,
- * where adjustments stay in memory until you save them to a scenario.
- */
-function ScenarioSliderDemo() {
-  const [activeId, setActiveId] = useState<string>(DEMO_SCENARIOS[0].id);
-  const [values, setValues] = useState<number[]>([...DEMO_SCENARIOS[0].values]);
-
-  const active = DEMO_SCENARIOS.find((s) => s.id === activeId) ?? DEMO_SCENARIOS[0];
-  const isEdited = values.some((value, i) => value !== active.values[i]);
-  const baseline = endOfMonth(DEMO_SCENARIOS[0].values);
-  const projected = endOfMonth(values);
-  const delta = projected - baseline;
-
-  const selectScenario = (scenario: (typeof DEMO_SCENARIOS)[number]) => {
-    setActiveId(scenario.id);
-    setValues([...scenario.values]);
-  };
-
-  return (
-    <div className="mt-8">
-      <div className="grid gap-4 sm:grid-cols-2">
-        {DEMO_SCENARIOS.map((scenario) => {
-          const isActive = scenario.id === activeId;
-          const isDefault = scenario.id === 'current';
-          const amount = isActive ? projected : endOfMonth(scenario.values);
-          const activeRing = isDefault
-            ? 'border-primary bg-primary/5'
-            : 'border-violet-500 bg-violet-500/5';
-
-          return (
-            <button
-              key={scenario.id}
-              type="button"
-              aria-pressed={isActive}
-              onClick={() => selectScenario(scenario)}
-              className={`flex cursor-pointer flex-col items-start rounded-xl border-2 p-5 text-left transition-colors ${
-                isActive ? activeRing : 'border-border hover:bg-muted/50'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                {isDefault ? (
-                  <Star className="h-5 w-5 fill-amber-500 text-amber-500" />
-                ) : (
-                  <Sparkles className="h-5 w-5 text-violet-500" />
-                )}
-                <span className="font-medium">{scenario.name}</span>
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">{scenario.description}</p>
-              <p className="mt-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                End of month
-              </p>
-              <p className="mt-1 text-2xl font-bold tracking-tight tabular-nums text-green-600 dark:text-green-400">
-                {formatCents(amount)}
-              </p>
-              <p
-                className={`mt-1 text-sm font-medium tabular-nums ${
-                  isDefault ? 'invisible' : 'text-violet-600 dark:text-violet-400'
-                }`}
-              >
-                {delta >= 0 ? '+' : '−'}
-                {formatCents(Math.abs(isActive ? delta : endOfMonth(scenario.values) - baseline))}
-              </p>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="mt-4 rounded-xl border bg-card p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-              <SlidersHorizontal className="h-4 w-4 text-primary" />
-            </div>
-            <span className="text-sm font-medium">{active.name}</span>
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {isEdited ? 'Unsaved changes' : 'Drag a slider to change this scenario'}
-          </span>
-        </div>
-
-        <div className="mt-4 space-y-4">
-          {DEMO_SLIDERS.map((slider, i) => {
-            const styles = VARIANT_STYLES[slider.variant];
-            const value = values[i] ?? 0;
-            return (
-              <div key={slider.label} className="rounded-lg border p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-sm font-medium">{slider.label}</span>
-                  <div className="flex items-center gap-2">
-                    <span className={`font-mono text-sm font-semibold tabular-nums ${styles.text}`}>
-                      {formatCents(value)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">per month</span>
-                  </div>
-                </div>
-                <Slider
-                  aria-label={slider.label}
-                  value={[value]}
-                  min={slider.min}
-                  max={slider.max}
-                  step={slider.step}
-                  onValueChange={([v]) =>
-                    setValues((prev) => {
-                      const next = [...prev];
-                      next[i] = v ?? 0;
-                      return next;
-                    })
-                  }
-                  className={`cursor-pointer ${styles.track} ${styles.thumb}`}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <p className="mt-3 text-sm text-muted-foreground">
-        Nothing you drag is saved until you say so. Keep it as a new scenario, write it into this
-        one, or throw it away.
-      </p>
     </div>
   );
 }

@@ -22,7 +22,6 @@ export default defineConfig({
             '@radix-ui/react-popover',
             '@radix-ui/react-tooltip',
             '@radix-ui/react-scroll-area',
-            '@radix-ui/react-slider',
             '@radix-ui/react-checkbox',
             '@radix-ui/react-radio-group',
             '@radix-ui/react-alert-dialog',

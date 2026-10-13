@@ -116,7 +116,7 @@ export function ScenariosIndexPage() {
             <div className="page-title-icon bg-violet-500/10">
               <Sparkles className="h-5 w-5 text-violet-500" />
             </div>
-            What If
+            Scenarios
           </h1>
           <p className="page-description">
             Explore different budget scenarios to see how changes affect your finances.
@@ -129,14 +129,16 @@ export function ScenariosIndexPage() {
       </div>
 
       <Alert variant="info" className="mb-6">
-        Each scenario has its own budget and savings plan. Use the sliders on the{' '}
+        A scenario is a plan of its own: income, expenses and savings contributions. Your
+        transactions, categories, savings goals and balances are the same in every scenario. To try
+        an idea, add a scenario copied from one you have, switch to it, and change it on the{' '}
         <Link
           to="/budget?tab=plan"
           className="underline hover:text-blue-900 dark:hover:text-blue-100"
         >
           Budget page
-        </Link>{' '}
-        to explore &quot;what if&quot; questions, then save your adjustments as a new scenario.
+        </Link>
+        . Your current plan stays as it is.
       </Alert>
 
       {isLoading ? (
@@ -220,7 +222,7 @@ export function ScenariosIndexPage() {
           {/* Other Scenarios */}
           {otherScenarios.length > 0 && (
             <div>
-              <h3 className="mb-3 text-sm font-medium text-muted-foreground">What-If Scenarios</h3>
+              <h3 className="mb-3 text-sm font-medium text-muted-foreground">Other Scenarios</h3>
               <div className="grid gap-3 sm:grid-cols-2">
                 {otherScenarios.map((scenario) => {
                   const isActive = scenario.id === activeScenarioId;
@@ -344,7 +346,7 @@ export function ScenariosIndexPage() {
           {otherScenarios.length === 0 && (
             <div className="rounded-lg border border-dashed p-6 text-center">
               <p className="text-sm text-muted-foreground">
-                No what-if scenarios yet. Create one to explore budget alternatives.
+                No other scenarios yet. Create one to explore budget alternatives.
               </p>
               <Button variant="outline" className="mt-3" onClick={openAddDialog}>
                 <Plus className="h-4 w-4" />

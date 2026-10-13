@@ -131,7 +131,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           Budget
         </NavItem>
         <NavItem to="/scenarios" icon={<Sparkles className="h-4 w-4" />} onClick={onNavigate}>
-          What If
+          Scenarios
         </NavItem>
       </NavSection>
 
