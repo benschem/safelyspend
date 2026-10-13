@@ -139,6 +139,8 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
   // is set each time the dialog opens and left alone when it closes.
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  // The category a new expense starts in, when added from a category's heading
+  const [newExpenseCategoryId, setNewExpenseCategoryId] = useState<string | null>(null);
 
   // Forecast rule dialog state, for income and savings
   const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
@@ -384,6 +386,13 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
 
   const openAddExpenseDialog = useCallback(() => {
     setEditingExpense(null);
+    setNewExpenseCategoryId(null);
+    setExpenseDialogOpen(true);
+  }, []);
+
+  const openAddExpenseDialogForCategory = useCallback((categoryId: string) => {
+    setEditingExpense(null);
+    setNewExpenseCategoryId(categoryId);
     setExpenseDialogOpen(true);
   }, []);
 
@@ -621,6 +630,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
             allowanceRules={budgetRules}
             categories={categories}
             onAddClick={openAddExpenseDialog}
+            onAddToCategory={openAddExpenseDialogForCategory}
             onEditExpense={openEditExpenseDialog}
             onDeleteExpense={handleRemoveExpense}
             spendingAverages={spendingAverages}
@@ -646,6 +656,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
         onOpenChange={setExpenseDialogOpen}
         scenarioId={activeScenarioId}
         expense={editingExpense}
+        prefilledCategoryId={newExpenseCategoryId}
         unallocatedAmount={totals.unallocated}
         hasIncome={totals.income > 0}
         period={breakdownPeriod}

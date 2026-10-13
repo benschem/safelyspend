@@ -43,6 +43,9 @@ export interface ExpenseGroup {
 /**
  * Group bills and allowances by category, sorted by category name.
  *
+ * Every category that is not archived gets a group, with or without expenses,
+ * so the Budget page can show what has been spent in one that has no plan yet.
+ *
  * An allowance in an archived or missing category is left out. A bill is
  * always listed, under "Uncategorised" when its category no longer exists.
  */
@@ -68,6 +71,10 @@ export function groupExpensesByCategory(
     }
     return group;
   };
+
+  for (const category of categories) {
+    if (!category.isArchived) groupFor(category);
+  }
 
   for (const bill of bills) {
     const category = bill.categoryId ? categoriesById.get(bill.categoryId) : undefined;

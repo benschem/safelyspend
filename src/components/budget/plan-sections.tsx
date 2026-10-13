@@ -1,8 +1,8 @@
 import { useMemo, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { formatCents, CADENCE_PER_LABELS, type CadenceType } from '@/lib/utils';
+import { cn, formatCents, CADENCE_PER_LABELS, type CadenceType } from '@/lib/utils';
 import { allowanceLabel, sumAllowancesForPeriod } from '@/lib/allowances';
 import {
   describeBillDue,
@@ -141,6 +141,8 @@ interface ExpensesSectionProps {
   allowanceRules: BudgetRule[];
   categories: Category[];
   onAddClick: () => void;
+  /** Adds an expense from a category's heading, with that category chosen */
+  onAddToCategory: (categoryId: string) => void;
   onEditExpense: (expense: Expense) => void;
   onDeleteExpense: (expense: Expense) => void;
   /** The period the category totals are quoted over, which periodLabel names */
@@ -156,6 +158,7 @@ export function ExpensesSection({
   categories,
   spendingAverages,
   onAddClick,
+  onAddToCategory,
   onEditExpense,
   onDeleteExpense,
   period,
@@ -179,10 +182,12 @@ export function ExpensesSection({
         const groupTotal =
           sumForecastRulesForPeriod(group.bills, 'expense', period) +
           sumAllowancesForPeriod(group.allowances, period);
+        const hasExpenses = group.bills.length > 0 || group.allowances.length > 0;
+        const { categoryId } = group;
 
         return (
           <div
-            key={group.categoryId ?? UNCATEGORISED_LABEL}
+            key={categoryId ?? UNCATEGORISED_LABEL}
             className="overflow-hidden rounded-lg border"
           >
             <div className="bg-muted/50 px-4 py-3">
@@ -197,15 +202,34 @@ export function ExpensesSection({
                 ) : (
                   <span>{group.name}</span>
                 )}
-                <span className="tabular-nums">
-                  {formatCents(groupTotal)} {periodLabel}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="tabular-nums">
+                    {formatCents(groupTotal)} {periodLabel}
+                  </span>
+                  {categoryId && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => onAddToCategory(categoryId)}
+                            className="cursor-pointer rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                            aria-label={`Add expense to ${group.name}`}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Add expense</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
               </div>
               {averageSpendingHint && (
                 <p className="mt-1 text-sm text-muted-foreground">{averageSpendingHint}</p>
               )}
             </div>
-            <div className="divide-y border-t px-4">
+            <div className={cn('divide-y px-4', hasExpenses && 'border-t')}>
               {group.bills.map((rule) => (
                 <PlanRow
                   key={rule.id}

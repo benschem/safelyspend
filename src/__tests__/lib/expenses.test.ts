@@ -57,10 +57,19 @@ describe('groupExpensesByCategory', () => {
       categories,
     );
 
-    expect(groups).toHaveLength(1);
-    expect(groups[0]?.name).toBe('Phone');
-    expect(groups[0]?.bills.map((rule) => rule.id)).toEqual(['phone-plan']);
-    expect(groups[0]?.allowances.map((rule) => rule.id)).toEqual(['phone-extras']);
+    const phoneGroup = groups.find((group) => group.categoryId === 'cat-phone');
+    expect(phoneGroup?.name).toBe('Phone');
+    expect(phoneGroup?.bills.map((rule) => rule.id)).toEqual(['phone-plan']);
+    expect(phoneGroup?.allowances.map((rule) => rule.id)).toEqual(['phone-extras']);
+  });
+
+  it('gives a category with no expenses an empty group, unless it is archived', () => {
+    const groups = groupExpensesByCategory([], [], categories);
+
+    expect(groups).toEqual([
+      { categoryId: 'cat-food', name: 'Food', bills: [], allowances: [] },
+      { categoryId: 'cat-phone', name: 'Phone', bills: [], allowances: [] },
+    ]);
   });
 
   it('sorts groups by category name', () => {
@@ -80,10 +89,9 @@ describe('groupExpensesByCategory', () => {
       categories,
     );
 
-    expect(groups).toHaveLength(1);
-    expect(groups[0]?.categoryId).toBeNull();
-    expect(groups[0]?.name).toBe(UNCATEGORISED_LABEL);
-    expect(groups[0]?.bills).toHaveLength(2);
+    const uncategorisedGroup = groups.find((group) => group.categoryId === null);
+    expect(uncategorisedGroup?.name).toBe(UNCATEGORISED_LABEL);
+    expect(uncategorisedGroup?.bills).toHaveLength(2);
   });
 
   it('leaves out an allowance in an archived or missing category', () => {
@@ -93,7 +101,8 @@ describe('groupExpensesByCategory', () => {
       categories,
     );
 
-    expect(groups).toEqual([]);
+    expect(groups.flatMap((group) => group.allowances)).toEqual([]);
+    expect(groups.map((group) => group.categoryId)).not.toContain('cat-old');
   });
 
   it('keeps a bill in an archived category', () => {
@@ -103,9 +112,9 @@ describe('groupExpensesByCategory', () => {
       categories,
     );
 
-    expect(groups).toHaveLength(1);
-    expect(groups[0]?.bills).toHaveLength(1);
-    expect(groups[0]?.allowances).toEqual([]);
+    const archivedGroup = groups.find((group) => group.categoryId === 'cat-old');
+    expect(archivedGroup?.bills).toHaveLength(1);
+    expect(archivedGroup?.allowances).toEqual([]);
   });
 });
 

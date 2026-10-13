@@ -41,6 +41,8 @@ interface ExpenseDialogProps {
   scenarioId: string | null;
   // The expense to edit. Left out, the dialog adds a new one.
   expense?: Expense | null;
+  // The category a new expense starts in. Left out, it starts blank.
+  prefilledCategoryId?: string | null;
   // Unallocated income in cents over `period`, for the room-in-budget line
   unallocatedAmount: number;
   hasIncome: boolean;
@@ -75,6 +77,7 @@ export function ExpenseDialog({
   onOpenChange,
   scenarioId,
   expense,
+  prefilledCategoryId,
   unallocatedAmount,
   hasIncome,
   period,
@@ -121,7 +124,7 @@ export function ExpenseDialog({
         setScheduleDays(DEFAULT_SCHEDULE_DAYS);
       } else {
         // Create mode - reset to defaults
-        setCategoryId('');
+        setCategoryId(prefilledCategoryId ?? '');
         setName('');
         setAmount('');
         setCadence('monthly');
@@ -130,7 +133,7 @@ export function ExpenseDialog({
       }
       setFormError(null);
     }
-  }, [open, expense]);
+  }, [open, expense, prefilledCategoryId]);
 
   // A bill much like the one about to be created, whether new or an allowance
   // gaining a due date. Not checked without a due date: an allowance whose
