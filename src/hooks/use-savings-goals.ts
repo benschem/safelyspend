@@ -68,7 +68,8 @@ export function useSavingsGoals() {
         .equals(id)
         .modify((goal) => {
           Object.assign(goal, { ...updates, updatedAt: now() });
-          // Dexie's update() ignores undefined, so explicitly delete cleared optional fields
+          // Dexie's update() type does not take an explicit undefined under
+          // exactOptionalPropertyTypes, so cleared optional fields are deleted here
           if (updates.deadline === undefined && 'deadline' in updates) delete goal.deadline;
           if (updates.annualInterestRate === undefined && 'annualInterestRate' in updates)
             delete goal.annualInterestRate;
