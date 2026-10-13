@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.53.4',
+    date: '2026-10-14',
+    changes: [
+      'Fixed the savings charts in Insights starting too high for a date range that ends in the past',
+    ],
+  },
+  {
     version: '0.53.3',
     date: '2026-10-13',
     changes: [

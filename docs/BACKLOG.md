@@ -10,7 +10,6 @@ tooling.
 
 ## Now (at most three)
 
-- [bug]     Balance maths has no single home → work/balances.md _(savings, cash-flow)_
 - [polish]  Category page does not say what period each part covers → work/category-page.md _(categories)_
 
 ## Next
@@ -116,3 +115,5 @@ else.
 - [cleanup] getEarliestAnchorDate in use-savings-anchors.ts has no caller _(tooling)_
 - [bug]     Confirming the check-in's cash estimate counts today's transactions twice _(cash-flow)_
 - [bug]     Deleting a goal leaves its future-dated transfers out of cash → work/delete-cascades.md _(savings)_
+- [bug]     Savings and cash charts ignore a balance entered part-way through the range _(savings, cash-flow)_
+- [bug]     A goal with no entered balance starts its own savings chart at $0 _(savings)_

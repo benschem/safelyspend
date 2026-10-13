@@ -1,3 +1,4 @@
+import { addDays } from '@/lib/dates';
 import type { BalanceAnchor, SavingsAnchor, Transaction } from '@/lib/types';
 
 /**
@@ -88,4 +89,47 @@ export function savingsBalanceOn(
     balanceCents += transaction.amountCents;
   }
   return balanceCents;
+}
+
+/**
+ * The figure one goal's savings chart starts from, for a date range. The chart
+ * adds each month's transfers in the range to it.
+ *
+ * It is the goal's balance as the range opens: an anchor dated on the first
+ * day, or else the balance at the end of the day before.
+ *
+ * A goal whose first anchor falls inside the range has no known balance
+ * before that anchor. Its figure is the anchor's balance less the range's
+ * transfers dated before the anchor, so the chart reaches the anchor's balance
+ * on the anchor's date. The chart hides the months before it.
+ */
+export function savingsBalanceAtRangeStart(
+  savingsAnchors: SavingsAnchor[],
+  transactions: Transaction[],
+  savingsGoalId: string,
+  startDate: string,
+  endDate: string,
+): number {
+  const goalAnchors = savingsAnchors.filter((anchor) => anchor.savingsGoalId === savingsGoalId);
+
+  const anchorOnStartDate = goalAnchors.find((anchor) => anchor.date === startDate);
+  if (anchorOnStartDate) return anchorOnStartDate.balanceCents;
+
+  const hasAnchorBeforeRange = goalAnchors.some((anchor) => anchor.date < startDate);
+  const firstAnchorInRange = goalAnchors
+    .filter((anchor) => anchor.date > startDate && anchor.date <= endDate)
+    .sort((earlier, later) => earlier.date.localeCompare(later.date))[0];
+
+  if (hasAnchorBeforeRange || !firstAnchorInRange) {
+    return savingsBalanceOn(savingsAnchors, transactions, savingsGoalId, addDays(startDate, -1));
+  }
+
+  let transfersBeforeAnchorCents = 0;
+  for (const transaction of transactions) {
+    if (transaction.type !== 'savings' || transaction.savingsGoalId !== savingsGoalId) continue;
+    if (transaction.date >= startDate && transaction.date < firstAnchorInRange.date) {
+      transfersBeforeAnchorCents += transaction.amountCents;
+    }
+  }
+  return firstAnchorInRange.balanceCents - transfersBeforeAnchorCents;
 }

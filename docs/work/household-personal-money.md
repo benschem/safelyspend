@@ -81,7 +81,7 @@ Shared money is the app as it exists today. Personal money is one new screen.
 
 - Joining a household (`household-join.md`) and two people editing at once
   (`sync-merge.md`). See "Changed since the design was written" for both.
-- Figures that can be trusted (`balances.md`).
+- Figures that can be trusted. Balances come from `src/lib/balances.ts`.
 - The original also listed the auth rewrite's Phase 2 (backend schema and
   endpoints, now described in `docs/reference/api-design.md`) and Phase 3
   (client crypto rewrite).

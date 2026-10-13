@@ -5,7 +5,7 @@ import { useForecasts } from './use-forecasts';
 import { useSavingsGoals } from './use-savings-goals';
 import { useSavingsAnchors } from './use-savings-anchors';
 import { useCategories } from './use-categories';
-import { savingsBalanceOn } from '@/lib/balances';
+import { savingsBalanceAtRangeStart, savingsBalanceOn } from '@/lib/balances';
 import { buildMonthlyLimitsByCategory } from '@/lib/category-limits';
 import { today as getToday } from '@/lib/dates';
 import { getMonthsBetween } from '@/lib/utils';
@@ -447,11 +447,14 @@ export function useReportsData(scenarioId: string | null, startDate: string, end
 
       const currentBalance = savingsBalanceOn(savingsAnchors, allTransactions, goal.id, today);
 
-      // Transactions within the date range for this goal
-      const transactionsInRange = goalTransactions.reduce((sum, t) => sum + t.amountCents, 0);
-
-      // Balance at start of the date range (what was saved before the range)
-      const startingBalance = currentBalance - transactionsInRange;
+      // What the goal's chart starts from as the date range opens
+      const startingBalance = savingsBalanceAtRangeStart(
+        savingsAnchors,
+        allTransactions,
+        goal.id,
+        startDate,
+        endDate,
+      );
 
       let cumulativeActual = 0;
       let cumulativeForecast = 0;

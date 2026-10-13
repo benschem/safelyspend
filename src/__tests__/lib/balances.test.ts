@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { cashBalanceOn, cashEffectCents, findActiveAnchor, savingsBalanceOn } from '@/lib/balances';
+import {
+  cashBalanceOn,
+  cashEffectCents,
+  findActiveAnchor,
+  savingsBalanceAtRangeStart,
+  savingsBalanceOn,
+} from '@/lib/balances';
 import type { BalanceAnchor, SavingsAnchor, Transaction, TransactionType } from '@/lib/types';
 
 const CREATED = '2025-01-01T12:00:00.000Z';
@@ -247,5 +253,124 @@ describe('savingsBalanceOn', () => {
 
   it('is zero for a goal with no anchor and no transfers', () => {
     expect(savingsBalanceOn(anchors, [], 'car', '2025-01-31')).toBe(0);
+  });
+});
+
+describe('savingsBalanceAtRangeStart', () => {
+  const RANGE_START = '2025-07-01';
+  const RANGE_END = '2025-12-31';
+
+  function rangeStartFor(savingsAnchors: SavingsAnchor[], transactions: Transaction[]): number {
+    return savingsBalanceAtRangeStart(
+      savingsAnchors,
+      transactions,
+      'holiday',
+      RANGE_START,
+      RANGE_END,
+    );
+  }
+
+  it('is the balance the day before the range, for a goal anchored before it', () => {
+    const anchors = [savingsAnchor('holiday', '2025-01-01', 50000)];
+    const transactions = [
+      transaction('savings', '2025-03-10', 20000, 'holiday'),
+      transaction('savings', '2025-06-30', 1000, 'holiday'),
+    ];
+
+    expect(rangeStartFor(anchors, transactions)).toBe(71000);
+  });
+
+  it('leaves out transfers inside the range and after it', () => {
+    const anchors = [savingsAnchor('holiday', '2025-01-01', 50000)];
+    const transactions = [
+      transaction('savings', '2025-07-01', 20000, 'holiday'),
+      transaction('savings', '2025-09-10', 20000, 'holiday'),
+      transaction('savings', '2026-02-10', 20000, 'holiday'),
+    ];
+
+    expect(rangeStartFor(anchors, transactions)).toBe(50000);
+  });
+
+  it('is the anchor balance when an anchor is dated on the first day', () => {
+    const anchors = [
+      savingsAnchor('holiday', '2025-01-01', 50000),
+      savingsAnchor('holiday', RANGE_START, 80000),
+    ];
+    const transactions = [transaction('savings', '2025-03-10', 20000, 'holiday')];
+
+    expect(rangeStartFor(anchors, transactions)).toBe(80000);
+  });
+
+  it('is the transfers before the range, for a goal with no anchor', () => {
+    const transactions = [
+      transaction('savings', '2025-03-10', 20000, 'holiday'),
+      transaction('savings', '2025-09-10', 30000, 'holiday'),
+    ];
+
+    expect(rangeStartFor([], transactions)).toBe(20000);
+  });
+
+  it('backs out the transfers before an anchor that falls inside the range', () => {
+    const anchors = [savingsAnchor('holiday', '2025-10-01', 500000)];
+    const transactions = [
+      transaction('savings', '2025-08-10', 20000, 'holiday'),
+      transaction('savings', '2025-11-10', 30000, 'holiday'),
+    ];
+
+    // 500000 - 20000. Adding August's 20000 back reaches 500000 in October
+    expect(rangeStartFor(anchors, transactions)).toBe(480000);
+  });
+
+  it('does not back out a transfer on the anchor date, which the anchor does not include', () => {
+    const anchors = [savingsAnchor('holiday', '2025-10-01', 500000)];
+    const transactions = [transaction('savings', '2025-10-01', 20000, 'holiday')];
+
+    expect(rangeStartFor(anchors, transactions)).toBe(500000);
+  });
+
+  it('ignores transfers before the range when the first anchor is inside it', () => {
+    const anchors = [savingsAnchor('holiday', '2025-10-01', 500000)];
+    const transactions = [transaction('savings', '2025-03-10', 20000, 'holiday')];
+
+    expect(rangeStartFor(anchors, transactions)).toBe(500000);
+  });
+
+  it('uses the earliest of several anchors inside the range', () => {
+    const anchors = [
+      savingsAnchor('holiday', '2025-11-01', 900000),
+      savingsAnchor('holiday', '2025-09-01', 500000),
+    ];
+    const transactions = [transaction('savings', '2025-08-10', 20000, 'holiday')];
+
+    expect(rangeStartFor(anchors, transactions)).toBe(480000);
+  });
+
+  it('ignores an anchor inside the range when the goal has one before it', () => {
+    const anchors = [
+      savingsAnchor('holiday', '2025-01-01', 50000),
+      savingsAnchor('holiday', '2025-10-01', 500000),
+    ];
+
+    expect(rangeStartFor(anchors, [])).toBe(50000);
+  });
+
+  it('ignores an anchor after the range', () => {
+    const anchors = [savingsAnchor('holiday', '2026-03-01', 500000)];
+    const transactions = [transaction('savings', '2025-03-10', 20000, 'holiday')];
+
+    expect(rangeStartFor(anchors, transactions)).toBe(20000);
+  });
+
+  it("leaves out another goal's anchors and transfers", () => {
+    const anchors = [
+      savingsAnchor('holiday', '2025-10-01', 500000),
+      savingsAnchor('car', '2025-01-01', 900000),
+    ];
+    const transactions = [
+      transaction('savings', '2025-08-10', 20000, 'holiday'),
+      transaction('savings', '2025-08-10', 70000, 'car'),
+    ];
+
+    expect(rangeStartFor(anchors, transactions)).toBe(480000);
   });
 });
