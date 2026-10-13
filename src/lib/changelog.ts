@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.54.2',
+    date: '2026-10-14',
+    changes: [
+      'The income breakdown chart on the Budget page now shows Spending Allowances next to Bills, ahead of Savings',
+    ],
+  },
+  {
     version: '0.54.1',
     date: '2026-10-14',
     changes: [

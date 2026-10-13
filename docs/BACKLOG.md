@@ -118,3 +118,4 @@ else.
 - [bug]     Deleting a goal leaves its future-dated transfers out of cash → work/delete-cascades.md _(savings)_
 - [bug]     Savings and cash charts ignore a balance entered part-way through the range _(savings, cash-flow)_
 - [bug]     A goal with no entered balance starts its own savings chart at $0 _(savings)_
+- [cleanup] Breakdown segment list is written twice and its test checks neither _(budget, landing, tooling)_

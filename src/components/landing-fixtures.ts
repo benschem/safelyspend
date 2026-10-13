@@ -99,8 +99,8 @@ export const BUDGET_TOTALS = [
 export const INCOME_BREAKDOWN = {
   segments: [
     { id: 'fixed', name: 'Bills', amount: MONTHLY_FIXED },
-    { id: 'savings', name: 'Savings', amount: MONTHLY_SAVINGS },
     { id: 'variable', name: 'Spending Allowances', amount: MONTHLY_BUDGETED },
+    { id: 'savings', name: 'Savings', amount: MONTHLY_SAVINGS },
     { id: 'surplus', name: 'Surplus', amount: MONTHLY_SURPLUS },
   ],
   total: MONTHLY_INCOME,

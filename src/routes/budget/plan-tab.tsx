@@ -334,8 +334,8 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     // maintain stable order and new segments don't animate in at the wrong position
     return [
       { id: 'fixed', name: 'Bills', amount: totals.fixed },
-      { id: 'savings', name: 'Savings', amount: totals.savings },
       { id: 'variable', name: 'Spending Allowances', amount: totals.variable },
+      { id: 'savings', name: 'Savings', amount: totals.savings },
       { id: 'surplus', name: 'Surplus', amount: Math.max(0, totals.unallocated) },
     ];
   }, [totals]);
