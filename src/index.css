@@ -34,7 +34,9 @@
   --color-sidebar-background: hsl(40 15% 96%);
   --color-sidebar-foreground: hsl(30 10% 12%);
   --color-sidebar-border: hsl(40 12% 90%);
-  --color-sidebar-accent: hsl(40 15% 94%);
+  /* Darker than --color-accent on purpose: the sidebar is itself off-white, so
+     the shared 94% left a selected item only 2% away from its background. */
+  --color-sidebar-accent: hsl(40 12% 89%);
   --color-sidebar-accent-foreground: hsl(30 10% 15%);
 
   /* Semantic tokens */

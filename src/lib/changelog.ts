@@ -21,6 +21,11 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.44.3',
+    date: '2026-10-13',
+    changes: ['Made the page you are on easier to pick out in the sidebar in light mode'],
+  },
+  {
     version: '0.44.2',
     date: '2026-10-12',
     changes: [
