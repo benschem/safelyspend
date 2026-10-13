@@ -36,5 +36,5 @@ dist-ssr
 # TypeScript build info
 tsconfig.tsbuildinfo
 
-# Claude Code
-.claude/
+# Claude Code: the folder is committed, apart from personal settings
+.claude/settings.local.json

@@ -2,6 +2,20 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Work Tracking
+
+**Read [`docs/README.md`](docs/README.md) before starting, planning or noting any work.**
+It is short, and it is the rule for how work is tracked here.
+
+- `docs/BACKLOG.md` is the only list of work, one line per item, in priority order.
+  "Pick up the next thing" means the top line of Now.
+- `docs/work/<slug>.md` holds the detail and the plan for one piece of work.
+- `docs/reference/` describes the project as it is now. Change it in the same commit
+  as the code that makes it untrue.
+- Noticed something unrelated while working? Add one line to Inbox at the bottom of
+  `docs/BACKLOG.md` and carry on. Do not fix it in the current change.
+- Only the maintainer reorders the queue or moves items out of Inbox unless he tells you to explicitly.
+
 ## Build and Development Commands
 
 ```bash
@@ -15,7 +29,7 @@ npx prettier --write "src/**/*.{ts,tsx}"  # Format code
 ### Formatting
 
 **Run Prettier on the files you touched before calling any piece of work
-done** — as the last step before committing, alongside `npm run lint` and
+done**, as the last step before committing, alongside `npm run lint` and
 `npm run build`:
 
 ```bash
@@ -23,8 +37,8 @@ npx prettier --write src/routes/login.tsx src/components/layout/app-header.tsx
 ```
 
 `src/` is fully formatted as of `6c4f000`, so this only ever touches lines you
-wrote. If Prettier does reformat code you didn't write, something has drifted —
-land that as its own `style:` commit rather than burying it in a feature diff.
+wrote. If Prettier does reformat code you didn't write, something has drifted.
+Land that as its own `style:` commit, not inside a feature diff.
 
 Nothing enforces this: there is no pre-commit hook and no CI workflow. Check
 what is still unformatted with:
@@ -33,18 +47,18 @@ what is still unformatted with:
 npx prettier --list-different "src/**/*.{ts,tsx}"
 ```
 
-Nothing enforces this — there is no pre-commit hook and no CI workflow — so it
-only happens if you remember.
-
 ## Architecture Overview
 
-A React 19 + TypeScript budgeting app with local-only persistence. Supports "what-if" scenario planning by separating facts (transactions) from plans (scenarios with rules).
+A React 19 + TypeScript budgeting app. Local-first: budget data lives in IndexedDB in the browser. An optional account keeps an end-to-end encrypted copy in the cloud, shared by a household, through a Cloudflare Worker in `worker/`. Supports "what-if" scenario planning by separating facts (transactions) from plans (scenarios with rules).
 
-**Stack:** React 19, React Router 7, TypeScript, Tailwind CSS 4, shadcn/ui, Vite
+**Stack:** React 19, React Router 7, TypeScript, Tailwind CSS 4, shadcn/ui, Vite, Dexie. Backend: Hono on Cloudflare Workers, D1, R2.
+
+This section is a summary. `docs/reference/ARCHITECTURE.md` is the full picture.
 
 ### Core Concepts
 
 - **Scenarios** contain budget rules and forecast rules (the "plan")
+- **The UI says "allowance" for a budget rule and "bill" for a recurring expense.** The code keeps the older names
 - **Transactions** are global facts that exist independent of scenarios
 - **Date Range** is a view filter - the same transactions can be viewed across different date ranges
 - **Cadence-based rules** expand into individual instances over any date range
@@ -57,8 +71,10 @@ All entities have base fields: `id`, `userId`, `createdAt`, `updatedAt`. Amounts
 - **Category** - Expense categorisation. Has `isArchived` flag.
 - **Transaction** - Actual income/expenses/savings/adjustments (`type: 'income' | 'expense' | 'savings' | 'adjustment'`)
 - **SavingsGoal** - Global savings targets with `targetAmountCents` and optional `deadline`
+- **BalanceAnchor** / **SavingsAnchor** - A known balance on a date, for cash or for one savings goal. A balance is the latest anchor plus the transactions after it
+- **CategoryRule** - Import rule that assigns a category to imported transactions
 
-Note: `adjustment` transactions are used for opening balance and manual corrections.
+Note: the opening balance is a `BalanceAnchor`. `adjustment` transactions are for manual corrections.
 
 #### Scenario-Scoped Entities (plans)
 - **Scenario** - A named set of rules for what-if planning. One is marked `isDefault`.
@@ -72,10 +88,12 @@ Note: `adjustment` transactions are used for opening balance and manual correcti
 
 Rules use a `Cadence` type: `'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly'`
 
+Forecast rules also say which day they land on:
+
 - `dayOfWeek` (0-6) for weekly/fortnightly
 - `dayOfMonth` (1-31) for monthly/quarterly/yearly
 
-Rules expand over any date range to calculate totals or generate individual occurrences.
+A budget rule has a cadence and nothing else. Forecast rules expand over any date range into dated occurrences in `src/lib/cadence.ts`.
 
 ### Key Directories
 
@@ -83,183 +101,111 @@ Rules expand over any date range to calculate totals or generate individual occu
 src/
 ├── components/
 │   ├── ui/           # shadcn components
-│   └── layout/       # Header, Sidebar, RootLayout
-├── hooks/
-│   ├── use-local-storage.ts   # Base persistence hook
-│   ├── use-app-config.ts      # App initialisation state
+│   ├── layout/       # RootLayout, AppHeader, Sidebar
+│   ├── dialogs/      # Entity editing dialogs
+│   ├── charts/       # Recharts visualisations
+│   ├── account/      # Sign-in, signup, recovery and household steps
+│   ├── budget/       # Parts of the Budget page
+│   ├── cash-flow/    # Parts of the Cash Flow page
+│   ├── first-run-wizard.tsx   # Landing page and first-time setup
+│   └── check-in-wizard.tsx    # Periodic review
+├── contexts/
+│   └── what-if-context.tsx    # In-memory What If adjustments
+├── hooks/            # One hook per entity, plus hooks that derive figures
 │   ├── use-scenarios.ts       # Scenario CRUD + active scenario
-│   ├── use-view-state.ts      # Date range selection (defaults to AU financial year)
-│   ├── use-categories.ts
-│   ├── use-budget-rules.ts    # Budget rules with cadence expansion
-│   ├── use-forecasts.ts       # Forecast rules with cadence expansion
-│   ├── use-transactions.ts    # Date range filtering
-│   └── use-savings-goals.ts
-├── routes/
-│   ├── dashboard.tsx
-│   ├── forecast/           # View expanded forecasts
-│   ├── budget.tsx
+│   ├── use-categories.ts, use-transactions.ts, use-savings-goals.ts
+│   ├── use-budget-rules.ts    # Allowances
+│   ├── use-forecasts.ts       # Income, bills and savings transfers
+│   ├── use-balance-anchors.ts, use-savings-anchors.ts
+│   ├── use-budget-period-data.ts   # Cash Flow's figures for a period
+│   ├── use-reports-data.ts    # Insights and savings figures
+│   ├── use-auth.ts, use-sync.ts, use-invites.ts   # Account, cloud sync, household
+│   ├── use-app-config.ts      # App initialisation state
+│   └── use-view-state.ts      # Date range selection (localStorage)
+├── lib/              # Types and pure logic. Calculation belongs here, not in hooks
+│   ├── types.ts            # Domain types
+│   ├── db.ts               # Dexie database, schema versions, export/import
+│   ├── import-schema.ts    # Zod validation for file imports and sync pulls
+│   ├── cadence.ts          # Expanding rules into dated occurrences
+│   ├── category-limits.ts  # A category's limit: bills due plus allowance
+│   ├── bill-set-aside.ts   # Cash already spoken for by bills not yet due
+│   ├── envelope.ts, key-management.ts, key-vault.ts, account.ts   # Encryption and keys
+│   ├── api-client.ts       # Every call to the worker
+│   ├── changelog.ts        # User-facing version history
+│   ├── analytics.ts        # Landing page pageview - the only tracking call
+│   └── utils.ts            # formatCents, cn, generateId, etc.
+├── routes/           # One file or folder per page
+│   ├── net-wealth.tsx
+│   ├── cash-flow/
+│   ├── budget/             # Allowances, bills, income and savings (the plan)
+│   ├── scenarios/          # "What If" in the sidebar
 │   ├── transactions/
-│   ├── categories/
+│   ├── categories/         # List of every category, detail page, import rules
 │   ├── savings/
-│   ├── manage/scenarios/   # Scenario CRUD, duplicate with rules
-│   ├── manage/rules/       # Forecast rule CRUD
+│   ├── insights.tsx
 │   ├── settings.tsx
+│   ├── login.tsx, accept-invite.tsx, household-waiting.tsx   # Outside RootLayout
 │   └── privacy.tsx         # Privacy policy (outside RootLayout)
-├── lib/
-│   ├── types.ts      # Domain types
-│   ├── analytics.ts  # Landing page pageview - the only tracking call
-│   └── utils.ts      # formatCents, cn, generateId, etc.
+├── __tests__/        # Mirrors src/: lib/, hooks/, routes/
 └── App.tsx           # Router configuration
+worker/               # Cloudflare Worker: accounts, households, the encrypted vault
+docs/                 # See docs/README.md
 ```
 
 ### State Management Pattern
 
-Each entity hook wraps `useLocalStorage` and provides CRUD operations:
+Each entity hook reads its table reactively with `useLiveQuery` and writes straight to Dexie:
 
 ```typescript
-const [items, setItems] = useLocalStorage<Type[]>('budget:key', []);
-// add: creates with generateId(), userId, createdAt, updatedAt
-// update: maps and sets updatedAt
-// delete: filters
+const rawItems = useLiveQuery(() => db.items.toArray(), []);
+const items = useMemo(() => rawItems ?? [], [rawItems]);
+const isLoading = rawItems === undefined;
+// add: db.items.add({ id: generateId(), userId: 'local', createdAt, updatedAt, ...data })
+// update: db.items.update(id, { ...updates, updatedAt: now() })
+// delete: db.items.delete(id), plus anything that pointed at it
 ```
 
-**Context passing:** RootLayout passes `{ activeScenarioId, startDate, endDate }` via React Router's outlet context.
+`useLocalStorage` is only for UI preferences such as the date range. Budget data never goes in localStorage.
+
+**Context passing:** RootLayout passes `{ activeScenarioId }` via React Router's outlet context.
 
 ### Navigation Structure
 
-- Header: Scenario selector + Date range picker
+- Header: scenario picker and What If controls
 - Sidebar:
-  - Dashboard (Overview)
-  - Plan: Forecasts, Budgets
+  - Overview: Net Wealth, Cash Flow
+  - Plan: Budget, What If
   - Track: Transactions, Categories, Savings
-  - Manage: Categories, Scenarios, Forecast Rules
+  - Analyse: Insights
   - Settings
 - Landing page footer: link to `/privacy` (rendered outside RootLayout)
 
 ### First-Run Wizard
 
-On first launch (when `budget:appConfig.isInitialized` is false), a wizard prompts for initial spending balance. This creates an `adjustment` transaction for the opening balance.
+On first launch (when the `appConfig` record in IndexedDB has `isInitialized` false), a wizard prompts for the starting cash balance and saves it as a `BalanceAnchor`. Someone who joins a household skips the wizard: pulling the household's vault marks the device initialised.
 
-### UI Component Patterns
+### Rules That Load When Relevant
 
-#### Cards
+Guidance that only matters for some files lives in `.claude/rules/` and loads when
+a matching file is read or edited. It is not repeated here.
 
-Base card style: `rounded-lg border bg-card p-4` (or `rounded-xl` and `p-5` for larger cards)
-
-**Clickable card that navigates (Link):**
-```tsx
-<Link
-  to="/some-page"
-  className="group rounded-xl border bg-card p-5 transition-colors hover:bg-muted/50"
->
-  {/* Card content */}
-  <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-</Link>
-```
-
-**Clickable card that opens dialog/modal (no navigation):**
-```tsx
-<button
-  type="button"
-  onClick={handleClick}
-  className="w-full cursor-pointer text-left rounded-lg transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
->
-  {/* Card content - NO arrow icon */}
-</button>
-```
-
-**Static/disabled card:**
-```tsx
-<div className="rounded-xl border bg-card p-5 opacity-50">
-  {/* Card content */}
-</div>
-```
-
-Key principles:
-- Use `hover:bg-muted/50` for interactive cards (not ring/shadow)
-- Arrow icon only for cards that navigate to another page
-- No arrow for cards that open dialogs/modals
-- Use `group` class to show/hide arrow on hover
-
-#### Interactive Elements
-
-**All clickable elements must have `cursor-pointer`** to provide clear visual feedback that the element is interactive. This applies to:
-- Native `<button>` elements (add `cursor-pointer` class explicitly)
-- Icons with `onClick` handlers
-- Custom toggle buttons, legend items, tab controls
-- Any element that responds to click events
-
-Exception: shadcn `<Button>` component and `<Link>` elements already have proper cursor styling built-in.
-
-```tsx
-// Native button - always add cursor-pointer
-<button
-  onClick={handleClick}
-  className="cursor-pointer rounded px-2 py-1 hover:bg-muted"
->
-  Click me
-</button>
-
-// Icon with onClick - add cursor-pointer
-<X
-  className="h-4 w-4 cursor-pointer opacity-50 hover:opacity-100"
-  onClick={handleClose}
-/>
-
-// shadcn Button - cursor-pointer is built-in (no need to add)
-<Button onClick={handleClick}>Click me</Button>
-```
-
-#### Data Tables
-
-All tables in the app should follow these conventions:
-- **Tooltips on clickable cells** - Any cell that performs an action on click should have a tooltip explaining what it does
-- **cursor-pointer on anything clickable** - All interactive elements in table cells must have `cursor-pointer`
-- Use icon-only action buttons where possible, with tooltips for labels
+- `ui-patterns.md`: cards, `cursor-pointer` and data tables, for anything under
+  `src/components/` and `src/routes/`
+- `schema-versioning.md`: Dexie schema versions and import compatibility, for
+  `src/lib/db.ts`, `src/lib/types.ts` and `src/lib/import-schema.ts`
+- `deployment-doc.md`: why `docs/reference/DEPLOYMENT.md` is committed and what must
+  never go in it, for that file and `README.md`
+- `docs-writing.md`: how to write docs here, for anything under `docs/`, the
+  READMEs, this file and the rules themselves. Read it before creating a new doc
 
 ### Conventions
 
 - All money amounts stored as cents, displayed with `formatCents()`
 - All dates as ISO strings (`YYYY-MM-DD`)
 - Timestamps as ISO strings with time
-- `userId: 'local'` placeholder for future multi-user
+- `userId: 'local'` on every record, a placeholder from before accounts existed. Leave it alone
 - Storage keys prefixed with `budget:`
 - Australian financial year default (July 1 - June 30)
-
-### Schema Versioning
-
-The app uses Dexie (IndexedDB) with versioned schema migrations. **Always consider data migration when making changes.**
-
-**Version numbers:**
-- `CURRENT_SCHEMA_VERSION` in `src/lib/db.ts` - IndexedDB schema version
-- `CURRENT_DATA_VERSION` in `src/lib/db.ts` - Export/import format version
-- `package.json` version - App version for users
-
-**When adding new fields to entities:**
-
-1. **Non-indexed fields** (most cases): Just add to `types.ts` and `import-schema.ts`. No schema version bump needed - Dexie stores full objects.
-
-2. **New indexed fields**: Bump `CURRENT_SCHEMA_VERSION` and add a new `this.version(N)` block in db.ts.
-
-3. **Breaking changes to existing fields**: Requires migration. Add `.upgrade()` function to the new version block.
-
-**Example - Adding a new schema version:**
-```typescript
-// In db.ts constructor
-this.version(2).stores({
-  // Only specify tables/indexes that changed
-  forecastRules: 'id, scenarioId, newIndexedField',
-}).upgrade(tx => {
-  return tx.table('forecastRules').toCollection().modify(rule => {
-    rule.newField = rule.newField ?? 'default';
-  });
-});
-```
-
-**For import compatibility:**
-- Add new optional fields to schemas in `import-schema.ts`
-- Add migration logic in `migrateImportData()` if format changes
-- Bump `CURRENT_DATA_VERSION` if export format changes
 
 ### Versioning and Changelog
 
@@ -270,18 +216,23 @@ Uses **semantic versioning** (MAJOR.MINOR.PATCH):
 - **MINOR**: New features (backwards compatible)
 - **PATCH**: Bug fixes and minor improvements
 
-**After each commit, you must:**
-1. Update `package.json` version appropriately
+**The version bump and changelog entry go in the same commit as the change they
+describe.** Do not make a separate `chore: bump version` commit. One after every
+change is noise, and it leaves the changelog line pointing at a commit that changed
+nothing. History up to 2026-10-11 has them separate and is left as it is.
+
+When a user-visible change is ready to stage:
+1. Bump the version with `npm version <x.y.z> --no-git-tag-version`, which updates
+   `package.json` and `package-lock.json` together without committing or tagging
 2. Add an entry to `src/lib/changelog.ts`
-3. The `currentVersion` export auto-reads from the changelog
+3. Stage both with the change. The `currentVersion` export auto-reads from the changelog
 
 **Changelog guidelines:**
 - Write for non-technical users (no code jargon)
 - Focus on what users can do, not implementation details
 - Keep descriptions to one sentence each
 - Never include security-sensitive information
-- Don't add to changelog until changes are committed
-- **Do NOT** add changelog entries or bump version for demo persona changes or landing page updates
+- **Do NOT** add changelog entries or bump version for demo persona changes, landing page updates or docs-only commits
 
 **Example changelog entry:**
 ```typescript
@@ -297,22 +248,10 @@ Uses **semantic versioning** (MAJOR.MINOR.PATCH):
 
 Users can view the changelog via Settings > "View Changelog".
 
-### Deployment Documentation
-
-`DEPLOYMENT.md` **is committed in this repo**, and `README.md` links to it. This is a
-deliberate exception to the general rule that deploy specifics stay uncommitted.
-
-It contains no secret values — only the procedure (`openssl rand -base64 48`,
-`wrangler secret put`, DNS record shapes). Since the repo is public, a guide that lets
-someone self-host is worth shipping. Keep it that way: **never paste an actual secret,
-key, token or account credential into it.** Values go in `wrangler secret`, names go in
-the doc.
-
 ### Git Commit Messages
 
-Use a plain conventional commit type. Do **not** prefix with `claude:` — commits up to
-2026-09-05 carry that prefix and are left as they are, but it added nothing and is no
-longer used.
+Use a plain conventional commit type. Do **not** prefix with `claude:`. Commits up to
+2026-09-05 carry that prefix and are left as they are.
 
 ```
 feat: add new feature
