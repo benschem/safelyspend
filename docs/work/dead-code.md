@@ -47,7 +47,7 @@ Check that nothing lazy-loads a component by path before deleting it.
 
 - `public/dummyBudgetData.json`: the old `HANDOVER.md` called it a legacy fixture that
   nothing references. The file exists.
-- Unused exports: `useAdjustedScenarioData`, `calculateCompoundInterest`,
+- Unused exports: `calculateCompoundInterest`,
   `calculateInterestEarned`, `fromMonthlyCents`, `formatDuration`,
   `getTransactionsUpTo`. Some still have tests.
 - `budgetComparison` is returned by `useReportsData` and read by no route. It
@@ -57,7 +57,7 @@ Check that nothing lazy-loads a component by path before deleting it.
   duplicate each other, as do the `CadenceType` and `Cadence` types.
 - `handleInteract`, a no-op passed through four steps of the check-in wizard.
 - `earliestAnchorDate`, an unused prop on the savings goal dialog.
-- `SummaryCardProps` in `cash-flow/index.tsx` carries about eight props the
+- `SummaryCardProps` in `cash-flow/index.tsx` carries six props the
   component never reads.
 - `src/routes/transactions/new.tsx`: nothing links to it, and saving on it
   navigates to a route that does not exist. See `wrong-links.md`.
@@ -66,10 +66,8 @@ Check that nothing lazy-loads a component by path before deleting it.
 
 ## Also listed elsewhere
 
-- The `prefill` prop on `ForecastRuleDialog`, and the What If fallback names:
-  `bills-rename-loose-ends.md`.
-- `useAdjustedScenarioData` and the stale comment in `summary-cards.tsx`:
-  `category-limit-loose-ends.md`.
+- The `prefill` prop on `ForecastRuleDialog`: `bills-rename-loose-ends.md`.
+- The stale comment in `summary-cards.tsx`: `category-limit-loose-ends.md`.
 
 ## The check
 

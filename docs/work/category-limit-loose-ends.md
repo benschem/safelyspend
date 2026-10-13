@@ -1,13 +1,10 @@
 # Loose ends from moving every screen to one category limit
 
-- **Status:** not started. Left 2026-10-12. `useAdjustedScenarioData` is also
-  listed in `dead-code.md`.
+- **Status:** not started. Left 2026-10-12.
 - **Goal:** the gaps left by that change are closed: tests for the untested
-  limits, named arguments for the `calculate…` functions, and rule dates
-  honoured in the scenario totals.
+  limits and named arguments for the `calculate…` functions.
 - **Touches:** `src/hooks/use-reports-data.ts`, `src/hooks/use-budget-period-data.ts`,
-  `src/hooks/use-scenario-diff.ts`, `src/routes/categories/detail.tsx`,
-  `src/lib/category-limits.ts`.
+  `src/routes/categories/detail.tsx`, `src/lib/category-limits.ts`.
 
 Left 2026-10-12, from an audit of the change that made the category page, the
 over/on-track counts, Insights and the check-in's "Top spending" take a
@@ -23,12 +20,12 @@ category's limit from `buildMonthlyLimitsByCategory` in
   first, and the limit on `src/routes/categories/detail.tsx`.
 - **Rule start and end dates are honoured in the helper only.** No dialog sets
   them; they arrive through import, so this is rare. For such data an ended
-  allowance drops out of Cash Flow but stays in the default-plan totals in
-  `src/hooks/use-scenario-diff.ts`, which add up every rule.
-  `src/hooks/use-multi-period-summary.ts` does the same, but nothing calls it
-  and `dead-code.md` deletes it. The category page's chart drew this month's
-  limit across all twelve
-  months; fixed in 0.44.6, which gives each month its own limit.
+  allowance drops out of Cash Flow. `src/hooks/use-multi-period-summary.ts`
+  adds up every rule whatever its dates, but nothing calls it and
+  `dead-code.md` deletes it. Not checked: whether the Budget page's totals
+  in `plan-tab.tsx` honour rule dates. The category page's chart drew this
+  month's limit across all twelve months; fixed in 0.44.6, which gives each
+  month its own limit.
 - **`calculateSummary` takes 11 positional arguments**, three of them adjacent
   date strings, so swapping two would still type-check. The other `calculate…`
   functions in that file have the same shape, and `calculatePeriodCashFlow`
@@ -41,9 +38,6 @@ category's limit from `buildMonthlyLimitsByCategory` in
   year would count for all twelve months. Nothing passes a view mode other
   than `month` today. The planned totals in the same file use the helper and
   the multiplier too, so they share the approximation.
-- **`useAdjustedScenarioData` has no callers.** Noticed 2026-10-13. It is
-  exported from `src/hooks/use-adjusted-values.ts` and a search of `src` finds
-  only its definition. Delete it.
 - **The comment at the top of `summary-cards.tsx` is out of date.** Noticed
   2026-10-13. It says the landing page feeds the two cards a fixture; only
   `cash-flow/index.tsx` imports them. Reword it, or drop the claim.

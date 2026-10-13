@@ -9,7 +9,7 @@ Read these first, in this order:
 1. **`src/lib/types.ts`**: every domain type. This is the data dictionary.
 2. **`src/lib/db.ts`**: the Dexie database, its schema versions, and export, import and reset.
 3. **`src/App.tsx`**: every route and its lazy import. Shows the shape of the app.
-4. **`src/components/layout/root-layout.tsx`**: the app shell: the first-run guard, the scenario context and the What If provider.
+4. **`src/components/layout/root-layout.tsx`**: the app shell: the first-run guard and the scenario context.
 5. **`CLAUDE.md`**: commands, conventions and patterns.
 
 [ARCHITECTURE.md](ARCHITECTURE.md) explains how the parts fit together. Work is tracked in [`docs/BACKLOG.md`](../BACKLOG.md); [`docs/README.md`](../README.md) says how.

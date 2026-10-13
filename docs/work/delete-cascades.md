@@ -43,7 +43,7 @@ has a transaction, an allowance or a bill. Three holes remain:
 
 - **Other scenarios.** The page only counts the active one. Its Allowance and Bills
   columns come from `useBudgetRules` and `useForecasts`, which both filter to
-  the active scenario. A category used only in a What If scenario reads as
+  the active scenario. A category used only in another scenario reads as
   empty, the bin is enabled, and deleting it removes that scenario's allowance
   and orphans its bills.
 - **The detail page.** Its Delete checks transactions only (`canDelete`,

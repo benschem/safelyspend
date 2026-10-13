@@ -141,6 +141,17 @@ A category is made where it is first used: the category picker creates one when 
 
 The page (`src/routes/categories/index.tsx`) is for housekeeping: renaming, archiving and deleting. Cash Flow and the category detail page answer how a category is going, so the list shows what is planned for each category and not what was spent.
 
+## Why are scenarios plain plans, with no sliders and no comparison?
+
+**Chosen:** a scenario is a named set of rules that can be copied, edited and switched between. Amounts change only through the edit dialogs, and a page shows the selected scenario's own figures. The violet header is the only sign that a scenario other than the default is showing.
+
+Up to 0.49 the Budget page had a slider on every row, held in memory as "What If" adjustments, and every page showed violet differences from the default plan. Both were removed between 0.50.0 and 0.53.0.
+
+- **People would not touch the sliders.** They could not tell whether moving one would change their figures. Moving one stored nothing, but the header then offered Save on any scenario, the default included, which wrote the adjusted amounts over the real rules.
+- **Every figure had to be right three times:** on the default plan, on another scenario, and with sliders moved. Rows that ignored the sliders and differences that compared a dated month with a monthly average were both found this way.
+
+The way to ask "can we afford this?" is to copy a scenario and edit the copy. Safe to spend, tracked in `docs/BACKLOG.md`, is meant to answer it more directly.
+
 ## Why does calculation live in `src/lib/`, not in hooks?
 
 **Chosen:** anything that works out a number is a pure function in `src/lib/`, and hooks only fetch data and call it.

@@ -334,8 +334,7 @@ reading it, except the Dexie `deleting` hook behaviour, which was checked
 against Dexie's source.
 
 - That every screen copes with the write-back without a reload. In-memory
-  state that holds record ids, such as What If adjustments, may point at rows
-  the merge removed.
+  state that holds record ids may point at rows the merge removed.
 - Whether demo data can be loaded on a signed-in device. The setup wizard
   offers the demo and signup lands on the wizard, so it looks reachable. The
   vault id is lost on demo load either way, which is the safe outcome.

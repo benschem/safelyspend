@@ -91,7 +91,6 @@ With a queue line each. Read 2026-10-13:
 Without a queue line, as reported:
 
 - Errors swallowed at `check-in-wizard.tsx:780` and `settings.tsx:164`.
-- Four copy-paste setters in `what-if-context.tsx:168-230`.
 - `first-run-wizard.tsx:120` says "Nothing is sent to a server". Possibly
   stale now that sync exists; sync is opt-in.
 - Dates in the import schema are `z.string()` with no format check.

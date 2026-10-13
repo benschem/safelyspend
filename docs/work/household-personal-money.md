@@ -59,8 +59,8 @@ kept because a later revisit should start from the argument.
   plans a record-by-record merge and is a prerequisite of this work. Its docs
   step says to correct the description of the old behaviour in this file.
 - **Scenarios.** The design says Scenarios stay as they are, purely
-  household. `remove-what-if.md` (parked) would remove the What If sliders
-  and keep scenarios as plain named plans.
+  household. They are plain named plans; `docs/reference/DECISIONS.md` says
+  why.
 - **Joining.** The design depends on the auth rewrite's Phase 7 invite flow,
   and its Settings pane includes "the invite affordance from Phase 7".
   `household-join.md` replaces the Phase 7 key handoff with a one-time code.

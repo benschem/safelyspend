@@ -10,16 +10,15 @@ tooling.
 
 ## Now (at most three)
 
-- [feature] Remove the What If sliders, keep scenarios → work/remove-what-if.md _(scenarios)_
+- [bug]     Balance maths has no single home → work/balances.md _(savings, cash-flow)_
 
 ## Next
 
-- [bug]     Balance maths has no single home → work/balances.md _(savings, cash-flow)_
+- [feature] Sync merges both people's edits → work/sync-merge.md _(sync)_
 - [bug]     A fortnightly rule can land in the wrong week → work/fortnightly-anchor.md _(bills, cash-flow)_
 - [bug]     With no plan, the cash card says negative and behind → work/cash-card-no-plan.md _(cash-flow, onboarding)_
 - [bug]     Cash Flow compares a dated month with an average → work/cash-flow-averages.md _(cash-flow, scenarios)_
 - [bug]     A future month's planned month end skips the months before → work/future-month-end.md _(cash-flow)_
-- [feature] Sync merges both people's edits → work/sync-merge.md _(sync)_
 - [feature] Show unsynced changes and changes to pull → work/sync-indicator.md _(sync)_
 - [feature] One sync prompt, and sign-in syncs → work/sync-prompt.md _(sync, household)_
 - [bug]     An older app version drops newer fields on a sync pull, prevent pulling if the version is newer → work/sync-newer-data.md _(sync)_
@@ -95,7 +94,7 @@ tooling.
 - [feature] Password strength meter _(auth)_
 - [feature] Upgrade Argon2id parameters on unlock _(auth)_
 - [feature] Turnstile on the login form _(auth)_
-- [feature] Landing page rewrite _(landing)_
+- [feature] Landing page rewrite → work/landing-rewrite.md _(landing)_
 - [cleanup] Move `dates.ts` to Temporal once Safari ships it _(tooling)_
 
 ## Inbox
@@ -103,9 +102,6 @@ tooling.
 Not yet triaged. Add a line here for anything noticed while doing something
 else.
 
-- [bug]     Allowance sliders do not move the Budget page totals _(budget, scenarios)_
-- [bug]     Removing an expense leaves its What If adjustment behind _(budget, scenarios)_
-- [bug]     Undo on a removed allowance restores its What If amount _(budget, scenarios)_
 - [bug]     A bill in an archived or deleted category is listed but not totalled → work/delete-cascades.md _(budget, categories)_
 - [bug]     A bill that loses its due date loses its day _(budget, bills)_
 - [cleanup] Month-end dates are built by hand from a `YYYY-MM` key in six places _(tooling)_
@@ -114,3 +110,4 @@ else.
 - [cleanup] Work files cite code by line number, about 70 places _(tooling)_
 - [cleanup] Move the frontend to Cloudflare if Netlify forces credit pricing _(tooling)_
 - [cleanup] `KekKind` in `types.ts` is unused; `api-client.ts` has its own _(auth, tooling)_
+- [polish]  An expense with no name becomes "general spending" unannounced _(budget, forms)_

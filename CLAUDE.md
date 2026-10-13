@@ -49,7 +49,7 @@ npx prettier --list-different "src/**/*.{ts,tsx}"
 
 ## Architecture Overview
 
-A React 19 + TypeScript budgeting app. Local-first: budget data lives in IndexedDB in the browser. An optional account keeps an end-to-end encrypted copy in the cloud, shared by a household, through a Cloudflare Worker in `worker/`. Supports "what-if" scenario planning by separating facts (transactions) from plans (scenarios with rules).
+A React 19 + TypeScript budgeting app. Local-first: budget data lives in IndexedDB in the browser. An optional account keeps an end-to-end encrypted copy in the cloud, shared by a household, through a Cloudflare Worker in `worker/`. Supports scenario planning by separating facts (transactions) from plans (scenarios with rules).
 
 **Stack:** React 19, React Router 7, TypeScript, Tailwind CSS 4, shadcn/ui, Vite, Dexie. Backend: Hono on Cloudflare Workers, D1, R2.
 
@@ -77,7 +77,7 @@ All entities have base fields: `id`, `userId`, `createdAt`, `updatedAt`. Amounts
 Note: the opening balance is a `BalanceAnchor`. `adjustment` transactions are for manual corrections.
 
 #### Scenario-Scoped Entities (plans)
-- **Scenario** - A named set of rules for what-if planning. One is marked `isDefault`.
+- **Scenario** - A named set of rules: a plan that can be copied, edited and switched between. One is marked `isDefault`.
 - **BudgetRule** - Spending limit for a category with cadence (weekly, fortnightly, monthly, quarterly, yearly) and an optional `name`. A category can hold several, and spending is measured against their total
 - **ForecastRule** - Recurring income/expense/savings patterns with cadence
 
@@ -109,8 +109,6 @@ src/
 │   ├── cash-flow/    # Parts of the Cash Flow page
 │   ├── first-run-wizard.tsx   # Landing page and first-time setup
 │   └── check-in-wizard.tsx    # Periodic review
-├── contexts/
-│   └── what-if-context.tsx    # In-memory What If adjustments
 ├── hooks/            # One hook per entity, plus hooks that derive figures
 │   ├── use-scenarios.ts       # Scenario CRUD + active scenario
 │   ├── use-categories.ts, use-transactions.ts, use-savings-goals.ts
@@ -139,7 +137,7 @@ src/
 │   ├── net-wealth.tsx
 │   ├── cash-flow/
 │   ├── budget/             # Allowances, bills, income and savings (the plan)
-│   ├── scenarios/          # "What If" in the sidebar
+│   ├── scenarios/
 │   ├── transactions/
 │   ├── categories/         # List of every category, detail page, import rules
 │   ├── savings/
@@ -172,10 +170,10 @@ const isLoading = rawItems === undefined;
 
 ### Navigation Structure
 
-- Header: scenario picker and What If controls
+- Header: scenario picker
 - Sidebar:
   - Overview: Net Wealth, Cash Flow
-  - Plan: Budget, What If
+  - Plan: Budget, Scenarios
   - Track: Transactions, Categories, Savings
   - Analyse: Insights
   - Settings

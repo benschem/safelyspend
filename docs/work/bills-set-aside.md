@@ -137,9 +137,6 @@ Checked against the code 2026-10-13, as of 0.47.1.
 - **The Budget page's average is correct and must not change.** `plan-tab.tsx`
   converts to the period the user picks. That page is a plan, where an average
   is the right answer.
-- **Cash Flow and the category page read What-If-adjusted rules on purpose**
-  (`useAdjustedBudgets`, `useAdjustedForecasts`). Keep that; the raw hooks
-  reintroduce a bug fixed in 0.44.1.
 - **Expanding a rule.** `expandForecastRule` in `src/lib/cadence.ts` turns a
   rule into dated occurrences over a range, honouring `startDate`, `endDate`
   and `excludedDates`.
@@ -175,8 +172,8 @@ refactor commit first. Tests are in `src/__tests__/lib/category-limits.test.ts`.
   is stepped, not curved. Not yet looked at in a browser.
 - The category page's wording changed from "a month in bills" to "in bills due
   this month".
-- Not done: Cash Flow's savings progress and its What If differences still
-  compare a dated month with a monthly average. See `cash-flow-averages.md`.
+- Not done: Cash Flow's savings progress still compares a dated month with a
+  monthly average. See `cash-flow-averages.md`.
 - A fortnightly bill lands in the right weeks only by chance. See
   `fortnightly-anchor.md`.
 - The three checks for "is this rule active in a range" were not merged. See
@@ -254,7 +251,6 @@ ahead/behind pill.
   small for more than three or four bills.
 - Shown at $0 when a bill exists but has only just been added. Hidden only
   when there is no quarterly or yearly bill.
-- It reads What-If-adjusted rules, like the rest of Cash Flow.
 - On a future month the balance it sits under leaves out the months in
   between. See `future-month-end.md`.
 - No test added: the repo has no component tests and the function was already

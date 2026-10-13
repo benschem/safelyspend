@@ -4,7 +4,7 @@
 
 SafelySpend is a personal budgeting app that answers one question: **"How much can I safely spend?"**
 
-It separates **facts** (transactions you have already made) from **plans** (scenarios holding bills, income and allowances). You can keep more than one scenario and compare them.
+It separates **facts** (transactions you have already made) from **plans** (scenarios holding bills, income and allowances). You can keep more than one scenario and switch between them.
 
 The app is local-first: all budget data lives in IndexedDB in the browser. An optional account keeps an end-to-end encrypted copy in the cloud, which is how a second device, or a second person in the same household, gets the same budget.
 
@@ -34,7 +34,7 @@ These exist independent of any scenario:
 These belong to one scenario:
 
 - **Scenario**: a named plan. One is marked `isDefault`.
-- **BudgetRule**: an allowance, which is a spending limit for a category, with a cadence and an optional `name`. A category can hold several, each at its own cadence, and spending is measured against their total. On the Budget page an allowance and a bill are both an expense, added and edited in one dialog: an expense with a due date is saved as a bill and one without as an allowance, and switching the due date on or off moves it between the two tables under a new id. The expense dialog refuses a second allowance of the same name in a category, counting no name as a name, because allowances are matched across scenarios by category and name.
+- **BudgetRule**: an allowance, which is a spending limit for a category, with a cadence and an optional `name`. A category can hold several, each at its own cadence, and spending is measured against their total. On the Budget page an allowance and a bill are both an expense, added and edited in one dialog: an expense with a due date is saved as a bill and one without as an allowance, and switching the due date on or off moves it between the two tables under a new id. The expense dialog refuses a second allowance of the same name in a category, counting no name as a name, so two allowances in a category can always be told apart.
 - **ForecastRule**: recurring income, a bill, or a savings transfer, with a cadence and the day it lands on.
 
 ### Computed types
@@ -168,7 +168,6 @@ Route params (for example `/categories/:id`), plus a few query parameters used f
 
 ### React state
 
-- **WhatIfContext**: an in-memory adjustment layer. Components read adjusted values without anything being saved. It wraps the whole `RootLayout`.
 - **Key vault**: `src/lib/key-vault.ts` holds the keys of an unlocked session in memory. Nothing in it is persisted.
 - **Form state**: mostly `useState` per field inside each dialog.
 
@@ -189,48 +188,16 @@ flowchart TD
 
     VS --> ROUTES
 
-    RL --> WIP[WhatIfProvider\nwraps entire layout]
-    WIP -->|useWhatIf| ROUTES
-
     ROUTES -->|write| DB
 
     style DB fill:#e8f4f8,stroke:#2196F3
     style LS fill:#fff3e0,stroke:#FF9800
-    style WIP fill:#f3e5f5,stroke:#9C27B0
 ```
 
 1. **Dexie is the source of truth.** `useLiveQuery()` in the hooks gives reactive data: when the database changes, components re-render.
 2. **RootLayout** reads `activeScenarioId` from `useScenarios()` and passes it to its children through `<Outlet context={}>`.
 3. **Route components** call hooks with `activeScenarioId` to get that scenario's rules.
-4. **WhatIfProvider** wraps the layout, so components can read adjusted values (income, allowances, bills, savings) without saving them.
-5. **useViewState** (localStorage) gives the date range used to filter transactions and expand forecast rules.
-
-## What If system
-
-How a value gets from the database to the screen, with and without adjustments:
-
-```mermaid
-flowchart LR
-    subgraph "Normal read path"
-        DB1[(Dexie)] -->|useLiveQuery| HOOK1[useBudgetRules\nuseForecasts]
-        HOOK1 --> COMP1[Component renders\nbaseline value]
-    end
-
-    subgraph "What-if read path"
-        DB2[(Dexie)] -->|useLiveQuery| HOOK2[useBudgetRules\nuseForecasts]
-        HOOK2 -->|baseline values| WIF[WhatIfContext\nadjustments map]
-        WIF -->|useAdjustedValues| COMP2[Component renders\nadjusted value]
-    end
-
-    subgraph "Save adjustments"
-        WIF -->|saveAsScenario| DB3[(Dexie)]
-    end
-```
-
-- `WhatIfContext` stores adjustments as four `Record<string, number>` maps, each keyed by rule id: `incomeAdjustments`, `fixedExpenseAdjustments` and `savingsAdjustments` by forecast rule, and `budgetAdjustments` by budget rule.
-- Only values that differ from the baseline are stored. No adjustment means "use the real value".
-- "Save as scenario" writes the adjusted values as new rules. "Save" writes them over the current scenario's rules, behind a confirmation.
-- The context resets when the scenario changes.
+4. **useViewState** (localStorage) gives the date range used to filter transactions and expand forecast rules.
 
 ## Accounts, households and cloud sync
 
@@ -354,8 +321,6 @@ Correct, but easy to break. Change them only with a full understanding and with 
 - **`src/lib/envelope.ts`, `src/lib/key-management.ts`**: the encryption format. Vaults encrypted under it now exist, so a format change must still open them.
 - **`worker/src/services/vault.ts`**: optimistic concurrency and orphan cleanup across D1 and R2, which cannot share a transaction.
 - **`worker/src/middleware/auth.ts`, `worker/src/services/auth.ts`**: session verification and rotation, code storage, lockout. Security-critical.
-- **`src/contexts/what-if-context.tsx`**: an in-memory overlay that many components read. Its shape is not obvious.
-
 ## Trade-offs
 
 - **Local-first with optional sync.** Works offline and the person owns their data. The cost is conflict handling, and that clearing browser storage loses a budget that was never synced or exported.
