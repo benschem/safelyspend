@@ -275,16 +275,19 @@ describe('validateImport', () => {
     });
   });
 
-  it('keeps the items of an itemised budget rule', () => {
-    const itemisedRule = {
-      id: '1',
+  it('turns the items of an itemised budget rule from a version 3 backup into rules', () => {
+    const ruleFields = {
       userId: 'local',
       createdAt: '2025-01-01T00:00:00.000Z',
       updatedAt: '2025-01-01T00:00:00.000Z',
       scenarioId: 'scenario-1',
       categoryId: 'cat-1',
+      cadence: 'fortnightly',
+    };
+    const itemisedRule = {
+      ...ruleFields,
+      id: '1',
       amountCents: 14000,
-      cadence: 'monthly',
       items: [
         { id: 'item-1', name: 'Lashes', amountCents: 8000 },
         { id: 'item-2', name: 'Nails', amountCents: 6000 },
@@ -293,10 +296,61 @@ describe('validateImport', () => {
 
     const result = validateImport({
       ...validMinimalData,
+      version: 3,
       budgetRules: [itemisedRule],
     });
 
-    expect(result.budgetRules[0]).toEqual(itemisedRule);
+    expect(result.budgetRules).toEqual([
+      { ...ruleFields, id: '1', name: 'Lashes', amountCents: 8000 },
+      { ...ruleFields, id: '1:item-2', name: 'Nails', amountCents: 6000 },
+    ]);
+    expect(result.version).toBe(CURRENT_DATA_VERSION);
+  });
+
+  it('turns items into rules in a file marked as the current version', () => {
+    const itemisedRule = {
+      id: '1',
+      userId: 'local',
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      scenarioId: 'scenario-1',
+      categoryId: 'cat-1',
+      amountCents: 8000,
+      cadence: 'monthly',
+      items: [{ id: 'item-1', name: 'Lashes', amountCents: 8000 }],
+    };
+
+    const result = validateImport({
+      ...validMinimalData,
+      version: CURRENT_DATA_VERSION,
+      budgetRules: [itemisedRule],
+    });
+
+    expect(result.budgetRules).toHaveLength(1);
+    expect(result.budgetRules[0]).toMatchObject({ id: '1', name: 'Lashes', amountCents: 8000 });
+    expect(result.budgetRules[0]).not.toHaveProperty('items');
+  });
+
+  it('keeps the name of a budget rule', () => {
+    const namedRule = {
+      id: '1',
+      userId: 'local',
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      scenarioId: 'scenario-1',
+      categoryId: 'cat-1',
+      name: 'Lashes',
+      amountCents: 8000,
+      cadence: 'fortnightly',
+    };
+
+    const result = validateImport({
+      ...validMinimalData,
+      version: CURRENT_DATA_VERSION,
+      budgetRules: [namedRule],
+    });
+
+    expect(result.budgetRules[0]).toEqual(namedRule);
   });
 
   it('rejects a budget rule item with no name', () => {
@@ -721,6 +775,6 @@ describe('interest rate schedule validation', () => {
 
 describe('import schema constants', () => {
   it('CURRENT_DATA_VERSION is defined', () => {
-    expect(CURRENT_DATA_VERSION).toBe(3);
+    expect(CURRENT_DATA_VERSION).toBe(4);
   });
 });

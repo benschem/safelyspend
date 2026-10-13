@@ -20,10 +20,6 @@ interface CreatableSelectProps {
   createLabel?: string;
   disabled?: boolean;
   error?: boolean;
-  // Labels that exist but are not offered as options. Typing one must not offer
-  // to create it, or the result would be a duplicate.
-  unavailableLabels?: string[];
-  unavailableMessage?: string | undefined;
 }
 
 export function CreatableSelect({
@@ -37,8 +33,6 @@ export function CreatableSelect({
   createLabel = 'Create',
   disabled = false,
   error = false,
-  unavailableLabels = [],
-  unavailableMessage = 'No options found',
 }: CreatableSelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -56,13 +50,8 @@ export function CreatableSelect({
   // Check if search matches any existing option exactly (case-insensitive)
   const exactMatch = options.some((opt) => opt.label.toLowerCase() === search.toLowerCase());
 
-  // Check if search names something that exists but is not offered here
-  const matchesUnavailable = unavailableLabels.some(
-    (label) => label.toLowerCase() === search.trim().toLowerCase(),
-  );
-
   // Show create option if there's search text and nothing by that name exists
-  const showCreateOption = onCreateNew && search.trim() && !exactMatch && !matchesUnavailable;
+  const showCreateOption = onCreateNew && search.trim() && !exactMatch;
 
   // Build list of all selectable items for keyboard navigation
   const selectableItems = useMemo(() => {
@@ -247,11 +236,7 @@ export function CreatableSelect({
             })}
             {filteredOptions.length === 0 && !showCreateOption && (
               <div className="px-3 py-2 text-sm text-muted-foreground">
-                {matchesUnavailable
-                  ? unavailableMessage
-                  : options.length === 0 && onCreateNew
-                    ? 'Type to create one...'
-                    : 'No options found'}
+                {options.length === 0 && onCreateNew ? 'Type to create one...' : 'No options found'}
               </div>
             )}
             {showCreateOption && (

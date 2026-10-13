@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CURRENT_DATA_VERSION } from './db';
+import { CURRENT_DATA_VERSION, convertItemisedBudgetRule } from './db';
 import { debug } from './debug';
 
 // =============================================================================
@@ -35,7 +35,8 @@ const categorySchema = baseEntitySchema.extend({
   isArchived: z.boolean(),
 });
 
-// Allowance Item - a named part of a budget rule
+// Allowance Item - a named part of a budget rule, in exports older than v4.
+// Still accepted so those validate; migrateImportData turns each into a rule.
 const allowanceItemSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1).max(100),
@@ -46,6 +47,7 @@ const allowanceItemSchema = z.object({
 const budgetRuleSchema = baseEntitySchema.extend({
   scenarioId: z.string().min(1),
   categoryId: z.string().min(1),
+  name: z.string().min(1).max(100).optional(),
   amountCents: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
   cadence: cadenceSchema,
   items: z.array(allowanceItemSchema).max(100).optional(),
@@ -220,6 +222,9 @@ function migrateImportData(data: ValidatedBudgetData): ValidatedBudgetData {
   // v2 -> v3: checkInCadence and lastCheckInDate added (optional, no migration needed)
   // They will be undefined/null for older exports, which is fine
 
+  // v3 -> v4: an allowance split into items becomes one allowance per item.
+  // validateImport does it, for data of any version.
+
   // Update version to current
   migrated.version = CURRENT_DATA_VERSION;
 
@@ -238,7 +243,15 @@ export function validateImport(rawData: unknown): ValidatedBudgetData {
   const validated = budgetDataSchema.parse(sanitized);
 
   // Migrate to current version if needed
-  return migrateImportData(validated);
+  const migrated = migrateImportData(validated);
+
+  // Items are converted whatever version the data claims, so a file marked
+  // current that still carries them does not store a field nothing reads.
+  // The conversion leaves a rule with no items as it was.
+  return {
+    ...migrated,
+    budgetRules: migrated.budgetRules.flatMap(convertItemisedBudgetRule),
+  };
 }
 
 /**

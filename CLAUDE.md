@@ -78,7 +78,7 @@ Note: the opening balance is a `BalanceAnchor`. `adjustment` transactions are fo
 
 #### Scenario-Scoped Entities (plans)
 - **Scenario** - A named set of rules for what-if planning. One is marked `isDefault`.
-- **BudgetRule** - Spending limit per category with cadence (weekly, fortnightly, monthly, quarterly, yearly)
+- **BudgetRule** - Spending limit for a category with cadence (weekly, fortnightly, monthly, quarterly, yearly) and an optional `name`. A category can hold several, and spending is measured against their total
 - **ForecastRule** - Recurring income/expense/savings patterns with cadence
 
 #### Computed Types

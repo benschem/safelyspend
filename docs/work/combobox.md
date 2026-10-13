@@ -17,13 +17,8 @@ answer is its Combobox, which is the `Popover` already in `src/components/ui/`
 plus `Command`, built on the `cmdk` library. `cmdk` is not installed.
 
 What the swap buys: keyboard and screen-reader behaviour that is someone else's
-to maintain, and disabled options for free.
-
-The Add Allowance picker hides categories that already have an allowance, and
-a separate `unavailableLabels` prop stops it offering to create one of them by
-name. Disabled options would have replaced both. `expenses-one-list.md` lets a
-category hold several allowances and stops hiding them, so that reason goes
-when it lands, and the prop with it.
+to maintain. Disabled options come with it, though no picker hides or
+disables an option today.
 
 "Create X" is not built into `cmdk`; it is an extra
 item shown when nothing matches, so that behaviour has to be rebuilt and

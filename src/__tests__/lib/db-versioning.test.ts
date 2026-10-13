@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { CURRENT_DATA_VERSION, removeScheduleFieldsFromBudgetRule } from '@/lib/db';
+import {
+  CURRENT_DATA_VERSION,
+  convertItemisedBudgetRule,
+  removeScheduleFieldsFromBudgetRule,
+} from '@/lib/db';
 import { validateImport, budgetDataSchema } from '@/lib/import-schema';
 
 // =============================================================================
@@ -23,8 +27,8 @@ describe('data versioning', () => {
       expect(CURRENT_DATA_VERSION).toBeGreaterThan(0);
     });
 
-    it('current version is 3', () => {
-      expect(CURRENT_DATA_VERSION).toBe(3);
+    it('current version is 4', () => {
+      expect(CURRENT_DATA_VERSION).toBe(4);
     });
   });
 
@@ -146,6 +150,101 @@ describe('removeScheduleFieldsFromBudgetRule', () => {
     removeScheduleFieldsFromBudgetRule(storedRule);
 
     expect(storedRule).toEqual({ id: '1', amountCents: 10000, cadence: 'monthly' });
+  });
+});
+
+describe('convertItemisedBudgetRule', () => {
+  const ruleFields = {
+    userId: 'local',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-02-01T00:00:00.000Z',
+    scenarioId: 'scenario-1',
+    categoryId: 'health-and-beauty',
+    cadence: 'fortnightly' as const,
+    startDate: '2026-07-01',
+  };
+  const lashes = { id: 'item-lashes', name: 'Lashes', amountCents: 8000 };
+  const nails = { id: 'item-nails', name: 'Nails', amountCents: 6000 };
+
+  it('turns each item into a named rule at the old rule’s cadence and dates', () => {
+    const itemisedRule = {
+      ...ruleFields,
+      id: 'rule-1',
+      amountCents: 14000,
+      items: [lashes, nails],
+    };
+
+    expect(convertItemisedBudgetRule(itemisedRule)).toEqual([
+      { ...ruleFields, id: 'rule-1', name: 'Lashes', amountCents: 8000 },
+      { ...ruleFields, id: 'rule-1:item-nails', name: 'Nails', amountCents: 6000 },
+    ]);
+  });
+
+  it('keeps the total of the old rule', () => {
+    const itemisedRule = {
+      ...ruleFields,
+      id: 'rule-1',
+      amountCents: 14000,
+      items: [lashes, nails],
+    };
+
+    const totalCents = convertItemisedBudgetRule(itemisedRule).reduce(
+      (sum, convertedRule) => sum + convertedRule.amountCents,
+      0,
+    );
+
+    expect(totalCents).toBe(14000);
+  });
+
+  it('gives the copies of one rule in two scenarios different ids', () => {
+    // Copying a plan to a new scenario copied the item ids along with the rule
+    const original = { ...ruleFields, id: 'rule-1', amountCents: 14000, items: [lashes, nails] };
+    const copy = { ...original, id: 'rule-2', scenarioId: 'scenario-2' };
+
+    const convertedIds = [original, copy]
+      .flatMap(convertItemisedBudgetRule)
+      .map((convertedRule) => convertedRule.id);
+
+    expect(new Set(convertedIds).size).toBe(4);
+  });
+
+  it('makes the same records each time it is given the same rule', () => {
+    const itemisedRule = {
+      ...ruleFields,
+      id: 'rule-1',
+      amountCents: 14000,
+      items: [lashes, nails],
+    };
+
+    expect(convertItemisedBudgetRule(itemisedRule)).toEqual(
+      convertItemisedBudgetRule(itemisedRule),
+    );
+  });
+
+  it('returns a rule with no items as it was', () => {
+    const plainRule = { ...ruleFields, id: 'rule-1', amountCents: 14000 };
+
+    expect(convertItemisedBudgetRule(plainRule)).toEqual([plainRule]);
+  });
+
+  it('takes an empty list of items off a rule and keeps its amount', () => {
+    const plainRule = { ...ruleFields, id: 'rule-1', amountCents: 14000 };
+
+    expect(convertItemisedBudgetRule({ ...plainRule, items: [] })).toEqual([plainRule]);
+  });
+
+  it('does not change the rule it was given', () => {
+    const itemisedRule = {
+      ...ruleFields,
+      id: 'rule-1',
+      amountCents: 14000,
+      items: [lashes, nails],
+    };
+
+    convertItemisedBudgetRule(itemisedRule);
+
+    expect(itemisedRule.items).toEqual([lashes, nails]);
+    expect(itemisedRule.amountCents).toBe(14000);
   });
 });
 

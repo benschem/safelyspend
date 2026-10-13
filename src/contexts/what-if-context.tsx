@@ -9,20 +9,20 @@ import {
 } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
-import { isItemisedAllowance } from '@/lib/allowance-items';
+import { adjustAllowances } from '@/lib/allowances';
 import { generateId, now } from '@/lib/utils';
 import type { BudgetRule, ForecastRule, Scenario } from '@/lib/types';
 
 const USER_ID = 'local';
 
 /**
- * Adjustments are stored as ruleId/categoryId -> cents mappings
+ * Adjustments are stored as ruleId -> cents mappings
  * Only stores values that differ from baseline
  */
 export interface WhatIfAdjustments {
   /** Income forecast rule adjustments: ruleId -> cents */
   incomeAdjustments: Record<string, number>;
-  /** Budget rule adjustments: categoryId -> cents */
+  /** Budget rule adjustments: ruleId -> cents */
   budgetAdjustments: Record<string, number>;
   /** Bill (expense forecast rule) adjustments: ruleId -> cents */
   fixedExpenseAdjustments: Record<string, number>;
@@ -59,8 +59,8 @@ interface WhatIfContextValue {
 
   /** Set adjustment for an income forecast rule */
   setIncomeAdjustment: (ruleId: string, cents: number) => void;
-  /** Set adjustment for a budget rule (by category) */
-  setBudgetAdjustment: (categoryId: string, cents: number) => void;
+  /** Set adjustment for a budget rule */
+  setBudgetAdjustment: (ruleId: string, cents: number) => void;
   /** Set adjustment for a bill (expense forecast rule) */
   setFixedExpenseAdjustment: (ruleId: string, cents: number) => void;
   /** Set adjustment for a savings forecast rule */
@@ -131,12 +131,11 @@ export function WhatIfProvider({ children, activeScenarioId }: WhatIfProviderPro
 
     if (!budgetRules || !forecastRules) return baseline;
 
-    // Budget rules are keyed by categoryId
     for (const rule of budgetRules) {
-      baseline.budgetAdjustments[rule.categoryId] = rule.amountCents;
+      baseline.budgetAdjustments[rule.id] = rule.amountCents;
     }
 
-    // Forecast rules are keyed by ruleId and separated by type
+    // Forecast rules are separated by type
     for (const rule of forecastRules) {
       if (rule.type === 'income') {
         baseline.incomeAdjustments[rule.id] = rule.amountCents;
@@ -183,14 +182,14 @@ export function WhatIfProvider({ children, activeScenarioId }: WhatIfProviderPro
   );
 
   const setBudgetAdjustment = useCallback(
-    (categoryId: string, cents: number) => {
-      const baseline = baselineValues.budgetAdjustments[categoryId] ?? 0;
+    (ruleId: string, cents: number) => {
+      const baseline = baselineValues.budgetAdjustments[ruleId] ?? 0;
       setAdjustments((prev) => {
         const next = { ...prev, budgetAdjustments: { ...prev.budgetAdjustments } };
         if (cents === baseline) {
-          delete next.budgetAdjustments[categoryId];
+          delete next.budgetAdjustments[ruleId];
         } else {
-          next.budgetAdjustments[categoryId] = cents;
+          next.budgetAdjustments[ruleId] = cents;
         }
         return next;
       });
@@ -289,6 +288,17 @@ export function WhatIfProvider({ children, activeScenarioId }: WhatIfProviderPro
     return map;
   }, [categories]);
 
+  // What each allowance is called in the comparison: its own name, or its
+  // category's when it has none
+  const allowanceNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const rule of budgetRules ?? []) {
+      const displayName = rule.name ?? categoryNameMap[rule.categoryId];
+      if (displayName !== undefined) map[rule.id] = displayName;
+    }
+    return map;
+  }, [budgetRules, categoryNameMap]);
+
   // Build a map of forecast rule names for display
   const forecastNameMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -336,13 +346,13 @@ export function WhatIfProvider({ children, activeScenarioId }: WhatIfProviderPro
       result.fixedExpenses.totalDelta += deltaCents;
     }
 
-    // Budget adjustments (keyed by categoryId)
-    for (const [categoryId, adjustedCents] of Object.entries(adjustments.budgetAdjustments)) {
-      const baselineCents = baselineValues.budgetAdjustments[categoryId] ?? 0;
+    // Budget adjustments
+    for (const [ruleId, adjustedCents] of Object.entries(adjustments.budgetAdjustments)) {
+      const baselineCents = baselineValues.budgetAdjustments[ruleId] ?? 0;
       const deltaCents = adjustedCents - baselineCents;
       result.budgetExpenses.items.push({
-        id: categoryId,
-        name: categoryNameMap[categoryId] ?? 'Allowance',
+        id: ruleId,
+        name: allowanceNameMap[ruleId] ?? 'Allowance',
         baselineCents,
         adjustedCents,
         deltaCents,
@@ -374,7 +384,7 @@ export function WhatIfProvider({ children, activeScenarioId }: WhatIfProviderPro
       result.savings.totalDelta;
 
     return result;
-  }, [adjustments, baselineValues, categoryNameMap, forecastNameMap]);
+  }, [adjustments, baselineValues, allowanceNameMap, forecastNameMap]);
 
   // Save adjustments to the current scenario (overwrites existing values)
   const saveToCurrentScenario = useCallback(async (): Promise<void> => {
@@ -384,15 +394,13 @@ export function WhatIfProvider({ children, activeScenarioId }: WhatIfProviderPro
 
     const timestamp = now();
 
-    // Update budget rules with adjusted values. An itemised allowance is
-    // skipped: its amount is the sum of its items, which a slider cannot move.
+    // Update budget rules with adjusted values
     const budgetUpdates = budgetRules
-      .filter((rule) => !isItemisedAllowance(rule))
-      .filter((rule) => rule.categoryId in adjustments.budgetAdjustments)
+      .filter((rule) => rule.id in adjustments.budgetAdjustments)
       .map((rule) => ({
         key: rule.id,
         changes: {
-          amountCents: adjustments.budgetAdjustments[rule.categoryId]!,
+          amountCents: adjustments.budgetAdjustments[rule.id]!,
           updatedAt: timestamp,
         },
       }));
@@ -457,16 +465,15 @@ export function WhatIfProvider({ children, activeScenarioId }: WhatIfProviderPro
       };
 
       // Create adjusted budget rules
-      const newBudgetRules: BudgetRule[] = budgetRules.map((rule) => ({
-        ...rule,
+      const newBudgetRules: BudgetRule[] = adjustAllowances(
+        budgetRules,
+        adjustments.budgetAdjustments,
+      ).map((adjustedRule) => ({
+        ...adjustedRule,
         id: generateId(),
         scenarioId: newScenario.id,
         createdAt: timestamp,
         updatedAt: timestamp,
-        // An itemised allowance keeps the sum of its items
-        amountCents: isItemisedAllowance(rule)
-          ? rule.amountCents
-          : (adjustments.budgetAdjustments[rule.categoryId] ?? rule.amountCents),
       }));
 
       // Create adjusted forecast rules

@@ -49,9 +49,8 @@ export function isRuleActiveBetween(
  * Given a range longer than a month, the bills are everything due in that
  * range and the allowance is still one month's worth.
  *
- * Allowances are summed. Only one budget rule per category is meant to exist,
- * but imported data can hold more, and the page totals add up every rule, so
- * summing keeps the rows equal to the total.
+ * Allowances are summed, because a category can hold several, each at its own
+ * cadence.
  */
 export function buildMonthlyLimitsByCategory(
   budgetRules: BudgetRule[],

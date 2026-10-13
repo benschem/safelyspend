@@ -476,7 +476,8 @@ function BudgetEntryCard({ entry, onRemove }: { entry: WizardBudgetEntry; onRemo
   );
 }
 
-function BudgetStep({
+// Exported for its test
+export function BudgetStep({
   budgetEntries,
   onAddEntry,
   onRemoveEntry,
@@ -502,6 +503,17 @@ function BudgetStep({
     setError(null);
     if (!categoryName.trim()) {
       setError('Category name is required');
+      return;
+    }
+    // Each entry becomes an allowance with no name, and a category can hold
+    // only one of those. A repeated new name would also fail part way through
+    // finishing, when the category is created a second time.
+    const enteredName = categoryName.trim().toLowerCase();
+    const isCategoryAlreadyEntered = budgetEntries.some(
+      (entry) => entry.categoryName.trim().toLowerCase() === enteredName,
+    );
+    if (isCategoryAlreadyEntered) {
+      setError('You have already added an allowance for this category');
       return;
     }
     const amountCents = parseCentsFromInput(amount);

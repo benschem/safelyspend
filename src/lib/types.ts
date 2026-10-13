@@ -45,19 +45,14 @@ export type CheckInCadence = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly';
 // Budget Rule - Spending limits per category with cadence
 // -----------------------------------------------------------------------------
 
-/** One named part of an allowance, such as "Lashes" under Health and Beauty */
-export interface AllowanceItem {
-  id: string;
-  name: string;
-  amountCents: number; // At the allowance's own cadence
-}
-
+// A category can hold several, such as "Lashes" every fortnight and "Nails"
+// every month under Health and Beauty. Spending is measured against their total.
 export interface BudgetRule extends BaseEntity {
   scenarioId: string;
   categoryId: string;
-  amountCents: number; // The sum of the items when there are any
+  name?: string; // Optional, omit = the category's general spending
+  amountCents: number;
   cadence: Cadence;
-  items?: AllowanceItem[]; // Optional, omit = an allowance with one plain amount
   startDate?: string; // Optional, omit = always active
   endDate?: string;
 }

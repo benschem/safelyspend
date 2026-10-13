@@ -23,6 +23,7 @@ import { useAdjustedBudgets, useAdjustedForecasts } from '@/hooks/use-adjusted-v
 import { CategoryDialog } from '@/components/dialogs/category-dialog';
 import { CategoryMonthlyChart } from '@/components/charts/category-monthly-chart';
 import { DescriptionBreakdown } from '@/components/description-breakdown';
+import { allowancesForCategory } from '@/lib/allowances';
 import { buildMonthlyLimitsByCategory, isRuleActiveBetween } from '@/lib/category-limits';
 import { cn, formatCents, formatDate, formatISODate } from '@/lib/utils';
 import { useUndoDelete } from '@/hooks/use-undo-delete';
@@ -155,13 +156,17 @@ export function CategoryDetailPage() {
   );
 
   // Get allowance info
-  // A rule that has ended or not yet started is treated as no allowance, to
-  // match the limit below
-  const budgetRule = useMemo(() => {
-    const ruleForCategory = budgetRules.find((rule) => rule.categoryId === id);
-    if (!ruleForCategory) return null;
-    return isRuleActiveBetween(ruleForCategory, periodStart, periodEnd) ? ruleForCategory : null;
-  }, [budgetRules, id, periodStart, periodEnd]);
+  // A rule that has ended or not yet started is left out, to match the limit
+  // below
+  const activeAllowances = useMemo(
+    () =>
+      allowancesForCategory(budgetRules, id ?? '').filter((rule) =>
+        isRuleActiveBetween(rule, periodStart, periodEnd),
+      ),
+    [budgetRules, id, periodStart, periodEnd],
+  );
+  // Set when the category has one allowance, which is quoted as it was entered
+  const onlyAllowance = activeAllowances.length === 1 ? activeAllowances[0] : undefined;
 
   // This month's limit: the bills due this month plus the allowance.
   // Null when it has neither.
@@ -313,14 +318,23 @@ export function CategoryDetailPage() {
             {category.isArchived && <Badge variant="secondary">Archived</Badge>}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            {budgetRule ? (
+            {activeAllowances.length > 0 ? (
               <>
-                Allowance: {formatCents(budgetRule.amountCents)}/{budgetRule.cadence}
-                {budgetRule.cadence !== 'monthly' && (
-                  <span className="text-muted-foreground/60">
-                    {' '}
-                    ({formatCents(monthlyLimit?.allowanceCents ?? 0)}/mo)
-                  </span>
+                {onlyAllowance ? (
+                  <>
+                    Allowance: {formatCents(onlyAllowance.amountCents)}/{onlyAllowance.cadence}
+                    {onlyAllowance.cadence !== 'monthly' && (
+                      <span className="text-muted-foreground/60">
+                        {' '}
+                        ({formatCents(monthlyLimit?.allowanceCents ?? 0)}/mo)
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    Allowances: {formatCents(monthlyLimit?.allowanceCents ?? 0)}/mo from{' '}
+                    {activeAllowances.length} allowances
+                  </>
                 )}
                 {billsDueThisMonth > 0 && (
                   <> plus {formatCents(billsDueThisMonth)} in bills due this month</>

@@ -34,7 +34,7 @@ These exist independent of any scenario:
 These belong to one scenario:
 
 - **Scenario**: a named plan. One is marked `isDefault`.
-- **BudgetRule**: an allowance, which is a spending limit for a category, with a cadence. It can carry named `items`, in which case its amount is their sum.
+- **BudgetRule**: an allowance, which is a spending limit for a category, with a cadence and an optional `name`. A category can hold several, each at its own cadence, and spending is measured against their total. The allowance dialog refuses a second allowance of the same name in a category, counting no name as a name, because allowances are matched across scenarios by category and name.
 - **ForecastRule**: recurring income, a bill, or a savings transfer, with a cadence and the day it lands on.
 
 ### Computed types
@@ -94,6 +94,7 @@ erDiagram
         string id PK
         string scenarioId FK
         string categoryId FK
+        string name "optional"
         int amountCents
         string cadence
     }
@@ -226,9 +227,8 @@ flowchart LR
     end
 ```
 
-- `WhatIfContext` stores adjustments as four `Record<string, number>` maps: `incomeAdjustments`, `fixedExpenseAdjustments` and `savingsAdjustments` are keyed by forecast rule id, and `budgetAdjustments` is keyed by category id. The odd one out exists because a category has one allowance per scenario, so the category is the natural key in the UI.
+- `WhatIfContext` stores adjustments as four `Record<string, number>` maps, each keyed by rule id: `incomeAdjustments`, `fixedExpenseAdjustments` and `savingsAdjustments` by forecast rule, and `budgetAdjustments` by budget rule.
 - Only values that differ from the baseline are stored. No adjustment means "use the real value".
-- An allowance that has been split into items has no slider and is skipped by the adjusted hooks.
 - "Save as scenario" writes the adjusted values as new rules. "Save" writes them over the current scenario's rules, behind a confirmation.
 - The context resets when the scenario changes.
 

@@ -10,7 +10,7 @@ tooling.
 
 ## Now (at most three)
 
-- [feature] Several allowances per category, one Expenses list → work/expenses-one-list.md _(budget, bills, scenarios)_
+- [feature] One Expenses list for bills and allowances → work/expenses-one-list.md _(budget, bills, scenarios)_
 - [bug]     "Today" is the UTC date → work/dates.md _(cash-flow, import, savings)_
 - [bug]     Balance maths has no single home → work/balances.md _(savings, cash-flow)_
 

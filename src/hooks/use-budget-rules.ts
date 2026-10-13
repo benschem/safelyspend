@@ -1,59 +1,23 @@
 import { useCallback, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
-import { resolveAllowanceAmountCents } from '@/lib/allowance-items';
-import type { AllowanceItem, BudgetRule, CreateEntity, Cadence } from '@/lib/types';
+import { allowancesForCategory, expandBudgetsByCategory } from '@/lib/allowances';
+import type { BudgetRule, CreateEntity } from '@/lib/types';
 import { generateId, now } from '@/lib/utils';
 
 const USER_ID = 'local';
 
-/**
- * Calculate how many occurrences of a cadence fall within a date range
- */
-function countOccurrences(cadence: Cadence, startDate: string, endDate: string): number {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-  switch (cadence) {
-    case 'weekly':
-      return Math.ceil(diffDays / 7);
-    case 'fortnightly':
-      return Math.ceil(diffDays / 14);
-    case 'monthly': {
-      const startYear = start.getFullYear();
-      const startMonth = start.getMonth();
-      const endYear = end.getFullYear();
-      const endMonth = end.getMonth();
-      return (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
-    }
-    case 'quarterly': {
-      const startYear = start.getFullYear();
-      const startQuarter = Math.floor(start.getMonth() / 3);
-      const endYear = end.getFullYear();
-      const endQuarter = Math.floor(end.getMonth() / 3);
-      return (endYear - startYear) * 4 + (endQuarter - startQuarter) + 1;
-    }
-    case 'yearly': {
-      return end.getFullYear() - start.getFullYear() + 1;
-    }
-  }
-}
+const OPTIONAL_BUDGET_RULE_FIELDS = ['name', 'startDate', 'endDate'] as const;
+type OptionalBudgetRuleField = (typeof OPTIONAL_BUDGET_RULE_FIELDS)[number];
 
 /**
- * Expand a budget rule over a date range to get the total budget amount
+ * The changes `updateBudgetRule` takes. An optional field given as undefined
+ * is taken off the rule, which is how an allowance loses its name and goes
+ * back to being the category's general spending.
  */
-function expandBudgetRule(rule: BudgetRule, rangeStart: string, rangeEnd: string): number {
-  // Determine effective start/end for the rule
-  const effectiveStart =
-    rule.startDate && rule.startDate > rangeStart ? rule.startDate : rangeStart;
-  const effectiveEnd = rule.endDate && rule.endDate < rangeEnd ? rule.endDate : rangeEnd;
-
-  if (effectiveStart > effectiveEnd) return 0;
-
-  const occurrences = countOccurrences(rule.cadence, effectiveStart, effectiveEnd);
-  return rule.amountCents * occurrences;
-}
+export type BudgetRuleUpdates = Partial<
+  Omit<BudgetRule, 'id' | 'userId' | 'createdAt' | OptionalBudgetRuleField>
+> & { [Field in OptionalBudgetRuleField]?: string | undefined };
 
 /**
  * Hook for managing budget rules with cadence
@@ -75,19 +39,14 @@ export function useBudgetRules(scenarioId: string | null, startDate?: string, en
     (categoryId: string) => {
       if (!startDate || !endDate) return 0;
 
-      const rule = budgetRules.find((br) => br.categoryId === categoryId);
-      if (!rule) return 0;
-
-      return expandBudgetRule(rule, startDate, endDate);
+      return expandBudgetsByCategory(budgetRules, startDate, endDate)[categoryId] ?? 0;
     },
     [budgetRules, startDate, endDate],
   );
 
-  // Get the rule for a category (for display/editing)
-  const getRuleForCategory = useCallback(
-    (categoryId: string) => {
-      return budgetRules.find((br) => br.categoryId === categoryId) ?? null;
-    },
+  // Get every rule for a category (for display/editing)
+  const getRulesForCategory = useCallback(
+    (categoryId: string) => allowancesForCategory(budgetRules, categoryId),
     [budgetRules],
   );
 
@@ -95,58 +54,8 @@ export function useBudgetRules(scenarioId: string | null, startDate?: string, en
   const expandedBudgets = useMemo(() => {
     if (!startDate || !endDate) return {};
 
-    const result: Record<string, number> = {};
-    for (const rule of budgetRules) {
-      result[rule.categoryId] = expandBudgetRule(rule, startDate, endDate);
-    }
-    return result;
+    return expandBudgetsByCategory(budgetRules, startDate, endDate);
   }, [budgetRules, startDate, endDate]);
-
-  // Add or update a budget rule for a category.
-  // The items given are the allowance's whole list: leaving them out, or
-  // passing none, makes it a plain allowance and drops any it had. With items,
-  // the amount stored is their sum.
-  const setBudgetForCategory = useCallback(
-    async (
-      categoryId: string,
-      amountCents: number,
-      cadence: Cadence = 'monthly',
-      items?: AllowanceItem[],
-    ) => {
-      if (!scenarioId) return;
-
-      const existing = allBudgetRules.find(
-        (br) => br.scenarioId === scenarioId && br.categoryId === categoryId,
-      );
-      const hasItems = items !== undefined && items.length > 0;
-      const timestamp = now();
-
-      // Written with put, not update, so that items can be taken off a rule
-      const budgetRule: BudgetRule = existing
-        ? { ...existing, updatedAt: timestamp }
-        : {
-            id: generateId(),
-            userId: USER_ID,
-            createdAt: timestamp,
-            updatedAt: timestamp,
-            scenarioId,
-            categoryId,
-            amountCents,
-            cadence,
-          };
-
-      budgetRule.amountCents = resolveAllowanceAmountCents(amountCents, items);
-      budgetRule.cadence = cadence;
-      if (hasItems) {
-        budgetRule.items = items;
-      } else {
-        delete budgetRule.items;
-      }
-
-      await db.budgetRules.put(budgetRule);
-    },
-    [allBudgetRules, scenarioId],
-  );
 
   const addBudgetRule = useCallback(async (data: CreateEntity<BudgetRule>) => {
     const timestamp = now();
@@ -161,12 +70,21 @@ export function useBudgetRules(scenarioId: string | null, startDate?: string, en
     return newRule;
   }, []);
 
-  const updateBudgetRule = useCallback(
-    async (id: string, updates: Partial<Omit<BudgetRule, 'id' | 'userId' | 'createdAt'>>) => {
-      await db.budgetRules.update(id, { ...updates, updatedAt: now() });
-    },
-    [],
-  );
+  // Written with modify(), not update(): Dexie's update() type does not take
+  // an explicit undefined under exactOptionalPropertyTypes, and an optional
+  // field given as undefined has to come off the stored rule
+  const updateBudgetRule = useCallback(async (id: string, updates: BudgetRuleUpdates) => {
+    const timestamp = now();
+    await db.budgetRules
+      .where('id')
+      .equals(id)
+      .modify((storedRule) => {
+        Object.assign(storedRule, updates, { updatedAt: timestamp });
+        for (const field of OPTIONAL_BUDGET_RULE_FIELDS) {
+          if (field in updates && updates[field] === undefined) delete storedRule[field];
+        }
+      });
+  }, []);
 
   const deleteBudgetRule = useCallback(async (id: string) => {
     await db.budgetRules.delete(id);
@@ -201,8 +119,7 @@ export function useBudgetRules(scenarioId: string | null, startDate?: string, en
     expandedBudgets,
     isLoading,
     getBudgetForCategory,
-    getRuleForCategory,
-    setBudgetForCategory,
+    getRulesForCategory,
     addBudgetRule,
     updateBudgetRule,
     deleteBudgetRule,

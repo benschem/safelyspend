@@ -5,7 +5,7 @@
   of the same name, and existing duplicates can be merged.
 - **Touches:** `src/hooks/use-categories.ts`, `src/routes/categories/index.tsx`,
   `src/routes/categories/detail.tsx`,
-  `src/components/dialogs/category-budget-dialog.tsx`.
+  `src/components/dialogs/allowance-dialog.tsx`.
 
 Noticed 2026-10-11, mostly fixed 2026-10-12. `addCategory` and `updateCategory`
 in `src/hooks/use-categories.ts` now refuse a name another active category
@@ -20,7 +20,7 @@ What is left:
   same name. The check runs on a rename, not on a restore. Closing it means the
   archive and restore buttons have to show an error, and none of the three
   callers catches one today: the Categories list, the category detail page and
-  `category-budget-dialog.tsx`.
+  `allowance-dialog.tsx`.
 - **Existing duplicates.** Anyone who used the old Add Category dialog may
   already have them. The Categories list shows them side by side, and nothing
   merges them. Merge has to repoint transactions, budget rules, forecast rules

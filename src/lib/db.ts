@@ -34,6 +34,11 @@ import { STORAGE_KEYS } from './storage-keys';
 //     allowances and never read. An allowance runs on calendar periods.
 //   - No index changes; an upgrade takes the fields off stored rules
 //
+// Version 5 (App v0.48.0): Several allowances per category
+//   - A budget rule gains an optional name and loses its items. A category
+//     can hold more than one rule.
+//   - No index changes; an upgrade turns each item into a rule of its own
+//
 // IMPORTANT: When adding schema changes:
 // 1. Add a new version() call with the next version number
 // 2. Only define indexes that changed (Dexie merges with previous)
@@ -44,7 +49,7 @@ import { STORAGE_KEYS } from './storage-keys';
 // =============================================================================
 
 /** Current schema version - increment when IndexedDB structure changes */
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
 const REMOVED_BUDGET_RULE_FIELDS = [
   'dayOfWeek',
@@ -63,6 +68,57 @@ export function removeScheduleFieldsFromBudgetRule(storedRule: Record<string, un
   for (const fieldName of REMOVED_BUDGET_RULE_FIELDS) {
     delete storedRule[fieldName];
   }
+}
+
+/** A named part of an allowance, as stored before version 5 */
+interface StoredAllowanceItem {
+  id: string;
+  name: string;
+  amountCents: number;
+}
+
+/**
+ * The parts of a budget rule from before version 5 that the conversion reads.
+ * Loose on purpose, so it fits a row read from IndexedDB and a rule that has
+ * come through import validation.
+ */
+interface RuleThatMayHaveItems {
+  id: string;
+  amountCents: number;
+  name?: string | undefined;
+  items?: StoredAllowanceItem[] | undefined;
+}
+
+/** A budget rule as it may be stored in IndexedDB before the version 5 upgrade */
+type StoredBudgetRule = BudgetRule & { items?: StoredAllowanceItem[] };
+
+/**
+ * Turn a budget rule from before version 5 into the rules that replace it.
+ *
+ * A rule split into items becomes one named rule per item, each at the old
+ * rule's cadence and dates. A rule with no items comes back as it was, less
+ * an empty `items` list if it had one.
+ *
+ * The ids are worked out from the stored ones, so two devices converting the
+ * same rule make the same records. The first item keeps the rule's id. The
+ * others join the rule's id to the item's, because the item's id alone is not
+ * unique: copying a plan to a new scenario copied its item ids with it.
+ *
+ * Used by the version 5 upgrade and by imports of older data. `updatedAt` is
+ * left alone, as it is in the version 4 upgrade.
+ */
+export function convertItemisedBudgetRule<StoredRule extends RuleThatMayHaveItems>(
+  storedRule: StoredRule,
+): Omit<StoredRule, 'items'>[] {
+  const { items, ...ruleWithoutItems } = storedRule;
+  if (items === undefined || items.length === 0) return [ruleWithoutItems];
+
+  return items.map((item, itemIndex) => ({
+    ...ruleWithoutItems,
+    id: itemIndex === 0 ? storedRule.id : `${storedRule.id}:${item.id}`,
+    name: item.name,
+    amountCents: item.amountCents,
+  }));
 }
 
 // App config stored in IndexedDB
@@ -134,13 +190,25 @@ export class BudgetDatabase extends Dexie {
           .toCollection()
           .modify(removeScheduleFieldsFromBudgetRule),
       );
+
+    // Version 5: Each item of an itemised allowance becomes its own rule (App v0.48.0)
+    // The rules are read and written back, because modify() cannot add rows.
+    // Putting the first item under the old rule's id replaces the old rule.
+    this.version(5)
+      .stores({})
+      .upgrade(async (upgradeTransaction) => {
+        const budgetRulesTable = upgradeTransaction.table<StoredBudgetRule, string>('budgetRules');
+        const storedRules = await budgetRulesTable.toArray();
+        const rulesWithItems = storedRules.filter((storedRule) => storedRule.items !== undefined);
+        await budgetRulesTable.bulkPut(rulesWithItems.flatMap(convertItemisedBudgetRule));
+      });
   }
 }
 
 export const db = new BudgetDatabase();
 
 /** Current data export version - increment when export format changes */
-export const CURRENT_DATA_VERSION = 3;
+export const CURRENT_DATA_VERSION = 4;
 
 // Budget backup type for export/import
 export interface BudgetBackup extends BudgetData {

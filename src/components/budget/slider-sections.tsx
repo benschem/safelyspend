@@ -14,72 +14,13 @@ import {
   Tag,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn, formatCents, CADENCE_PER_LABELS, type CadenceType } from '@/lib/utils';
+import { cn, formatCents, type CadenceType } from '@/lib/utils';
 import { BudgetSlider, getSliderRange, getIncomeSliderRange } from './budget-slider';
 import { useWhatIf } from '@/contexts/what-if-context';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
-import { isItemisedAllowance, type ItemisedAllowance } from '@/lib/allowance-items';
+import { allowanceLabel, sumAllowancesForPeriod } from '@/lib/allowances';
 import { describeAverageSpending, type SpendingAverages } from '@/lib/spending-averages';
-import type { ForecastRule, BudgetRule, Category, SavingsGoal } from '@/lib/types';
-
-/**
- * An allowance split into items: the category and its total, then one row per
- * item. It has no slider, because a slider moves the total and the total here
- * is the sum of the items. The amounts are changed in the allowance dialog.
- */
-function ItemisedAllowanceRows({
-  allowance,
-  categoryName,
-  hint,
-  onEdit,
-  onDelete,
-}: {
-  allowance: ItemisedAllowance;
-  categoryName: string;
-  hint: string | null;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <div className="rounded-lg border p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground">
-            <Tag className="h-3.5 w-3.5" />
-          </span>
-          <Link
-            to={`/categories/${allowance.categoryId}?from=budget`}
-            className="font-medium hover:underline"
-          >
-            {categoryName}
-          </Link>
-          <SliderActions onEdit={onEdit} onDelete={onDelete} />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="font-semibold tabular-nums text-rose-600 dark:text-rose-400">
-            {formatCents(allowance.amountCents)}
-          </span>
-          <span className="text-sm text-muted-foreground">
-            {CADENCE_PER_LABELS[allowance.cadence as CadenceType]}
-          </span>
-        </div>
-      </div>
-
-      <ul className="space-y-1 border-t pt-2">
-        {allowance.items.map((item) => (
-          <li key={item.id} className="flex items-center justify-between text-sm">
-            <span>{item.name}</span>
-            <span className="tabular-nums text-muted-foreground">
-              {formatCents(item.amountCents)}
-            </span>
-          </li>
-        ))}
-      </ul>
-
-      {hint && <p className="mt-2 text-xs text-muted-foreground">{hint}</p>}
-    </div>
-  );
-}
+import type { ForecastRule, BudgetRule, Cadence, Category, SavingsGoal } from '@/lib/types';
 
 function SliderActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
   return (
@@ -407,11 +348,13 @@ interface BudgetedSpendingSectionProps {
   onAddClick: () => void;
   onEditBudget: (rule: BudgetRule) => void;
   onDeleteBudget: (ruleId: string) => void;
+  /** The period the totals are quoted over, which periodLabel names */
+  period: Cadence;
   periodLabel: string;
   periodTotal: number;
   /** Monthly delta from default scenario (current - default) */
   monthlyDelta?: number | undefined;
-  /** What each category has cost on average, shown under its slider */
+  /** What each category has cost on average, shown under its heading */
   spendingAverages: SpendingAverages | null;
 }
 
@@ -424,27 +367,30 @@ export function BudgetedSpendingSliderSection({
   onAddClick,
   onEditBudget,
   onDeleteBudget,
+  period,
   periodLabel,
   periodTotal,
   monthlyDelta,
 }: BudgetedSpendingSectionProps) {
   const { adjustments, baselineValues, setBudgetAdjustment } = useWhatIf();
-  const { isBudgetDifferent, defaultBudgetByCategory, defaultScenarioName } = useScenarioDiff();
+  const { isBudgetDifferent, getDefaultAllowanceAmount, defaultScenarioName } = useScenarioDiff();
 
-  // Create a map of categoryId to category for quick lookup
-  const categoryMap = useMemo(() => {
-    const map = new Map<string, Category>();
-    categories.forEach((c) => map.set(c.id, c));
-    return map;
-  }, [categories]);
+  // Group rules by category, as the Bills section does. Only active
+  // (non-archived) categories are shown.
+  const groupedRules = useMemo(() => {
+    const groups = new Map<string, { name: string; categoryId: string; rules: BudgetRule[] }>();
+    for (const rule of budgetRules) {
+      const category = categories.find((c) => c.id === rule.categoryId);
+      if (!category || category.isArchived) continue;
 
-  // Only show rules for active (non-archived) categories
-  const activeRules = useMemo(() => {
-    return budgetRules.filter((rule) => {
-      const category = categoryMap.get(rule.categoryId);
-      return category && !category.isArchived;
-    });
-  }, [budgetRules, categoryMap]);
+      if (!groups.has(category.id)) {
+        groups.set(category.id, { name: category.name, categoryId: category.id, rules: [] });
+      }
+      groups.get(category.id)!.rules.push(rule);
+    }
+    // Sort groups alphabetically by name
+    return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [budgetRules, categories]);
 
   return (
     <Collapsible open={isOpen} onOpenChange={onOpenChange} className="mb-4">
@@ -486,8 +432,8 @@ export function BudgetedSpendingSliderSection({
           </Button>
         </div>
         <CollapsibleContent>
-          <div className="space-y-3 border-t p-4">
-            {activeRules.length === 0 ? (
+          <div className="space-y-4 border-t p-4">
+            {groupedRules.length === 0 ? (
               <p className="py-2 text-center text-sm text-muted-foreground">
                 No allowances set yet.{' '}
                 <button
@@ -498,59 +444,76 @@ export function BudgetedSpendingSliderSection({
                 </button>
               </p>
             ) : (
-              activeRules.map((rule) => {
-                const category = categoryMap.get(rule.categoryId);
-                const categoryName = category?.name ?? 'Unknown';
-
-                if (isItemisedAllowance(rule)) {
-                  return (
-                    <ItemisedAllowanceRows
-                      key={rule.id}
-                      allowance={rule}
-                      categoryName={categoryName}
-                      hint={describeAverageSpending(
-                        spendingAverages,
-                        rule.categoryId,
-                        rule.cadence,
-                      )}
-                      onEdit={() => onEditBudget(rule)}
-                      onDelete={() => onDeleteBudget(rule.id)}
-                    />
-                  );
-                }
-
-                const baseline =
-                  baselineValues.budgetAdjustments[rule.categoryId] ?? rule.amountCents;
-                const value = adjustments.budgetAdjustments[rule.categoryId] ?? baseline;
-                const range = getSliderRange(baseline);
-                const differsFromDefault = isBudgetDifferent(rule.categoryId, baseline);
-                const defaultValue = defaultBudgetByCategory[rule.categoryId];
+              groupedRules.map((group) => {
+                const averageSpendingHint = describeAverageSpending(
+                  spendingAverages,
+                  group.categoryId,
+                  period,
+                );
+                // The rules arrive with any What If adjustment applied. The
+                // heading quotes the saved amounts, as the section's total
+                // above it does, so the headings always add up to that total.
+                const savedRules = group.rules.map((rule) => ({
+                  ...rule,
+                  amountCents: baselineValues.budgetAdjustments[rule.id] ?? rule.amountCents,
+                }));
 
                 return (
-                  <BudgetSlider
-                    key={rule.id}
-                    label={categoryName}
-                    labelHref={`/categories/${rule.categoryId}?from=budget`}
-                    icon={<Tag className="h-3.5 w-3.5" />}
-                    value={value}
-                    baseline={baseline}
-                    min={range.min}
-                    max={range.max}
-                    step={range.step}
-                    onChange={(cents) => setBudgetAdjustment(rule.categoryId, cents)}
-                    cadence={rule.cadence as CadenceType}
-                    hint={describeAverageSpending(spendingAverages, rule.categoryId, rule.cadence)}
-                    variant="expense"
-                    differsFromDefault={differsFromDefault}
-                    defaultValue={defaultValue}
-                    defaultScenarioName={defaultScenarioName}
-                    actions={
-                      <SliderActions
-                        onEdit={() => onEditBudget(rule)}
-                        onDelete={() => onDeleteBudget(rule.id)}
-                      />
-                    }
-                  />
+                  <div key={group.categoryId}>
+                    <div className="mb-2">
+                      <div className="flex items-center justify-between gap-2 text-sm font-medium text-muted-foreground">
+                        <span className="flex items-center gap-1.5">
+                          <Tag className="h-3.5 w-3.5" />
+                          <Link
+                            to={`/categories/${group.categoryId}?from=budget`}
+                            className="hover:underline"
+                          >
+                            {group.name}
+                          </Link>
+                        </span>
+                        <span className="tabular-nums">
+                          {formatCents(sumAllowancesForPeriod(savedRules, period))} {periodLabel}
+                        </span>
+                      </div>
+                      {averageSpendingHint && (
+                        <p className="mt-1 text-xs text-muted-foreground">{averageSpendingHint}</p>
+                      )}
+                    </div>
+                    <div className="space-y-3">
+                      {group.rules.map((rule) => {
+                        const baseline =
+                          baselineValues.budgetAdjustments[rule.id] ?? rule.amountCents;
+                        const value = adjustments.budgetAdjustments[rule.id] ?? baseline;
+                        const range = getSliderRange(baseline);
+                        const differsFromDefault = isBudgetDifferent(rule, baseline);
+                        const defaultValue = getDefaultAllowanceAmount(rule, baseline);
+
+                        return (
+                          <BudgetSlider
+                            key={rule.id}
+                            label={allowanceLabel(rule)}
+                            value={value}
+                            baseline={baseline}
+                            min={range.min}
+                            max={range.max}
+                            step={range.step}
+                            onChange={(cents) => setBudgetAdjustment(rule.id, cents)}
+                            cadence={rule.cadence as CadenceType}
+                            variant="expense"
+                            differsFromDefault={differsFromDefault}
+                            defaultValue={defaultValue}
+                            defaultScenarioName={defaultScenarioName}
+                            actions={
+                              <SliderActions
+                                onEdit={() => onEditBudget(rule)}
+                                onDelete={() => onDeleteBudget(rule.id)}
+                              />
+                            }
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })
             )}

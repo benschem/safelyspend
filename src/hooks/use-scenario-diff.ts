@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { useScenarios } from '@/hooks/use-scenarios';
+import { allowanceMatchKey } from '@/lib/allowances';
+import type { BudgetRule } from '@/lib/types';
 import { toMonthlyCents, type CadenceType } from '@/lib/utils';
 
 /**
@@ -34,17 +36,21 @@ export function useScenarioDiff() {
     [defaultScenario?.id],
   );
 
-  // Build lookup maps for default values
-  const defaultBudgetByCategory = useMemo(() => {
-    const map: Record<string, number> = {};
+  // Build lookup maps for default values. An allowance is matched across
+  // scenarios by its category and name, because rules have different IDs.
+  // Each key holds a list: converted or synced data can have two allowances
+  // of one name in a category, and neither should hide the other.
+  const defaultAllowanceAmountsByMatchKey = useMemo(() => {
+    const map: Record<string, number[]> = {};
     for (const rule of defaultBudgetRules ?? []) {
-      map[rule.categoryId] = rule.amountCents;
+      const matchKey = allowanceMatchKey(rule);
+      map[matchKey] = [...(map[matchKey] ?? []), rule.amountCents];
     }
     return map;
   }, [defaultBudgetRules]);
 
-  // Monthly budget per category (for comparison in UI). Summed, as the
-  // category limits are, in case imported data holds two rules for a category.
+  // Monthly budget per category (for comparison in UI): the total of the
+  // category's allowances, as the category limits are.
   const defaultBudgetByCategoryMonthly = useMemo(() => {
     const map: Record<string, number> = {};
     for (const rule of defaultBudgetRules ?? []) {
@@ -157,13 +163,33 @@ export function useScenarioDiff() {
   };
 
   /**
-   * Check if a budget amount differs from the default scenario.
+   * What the default scenario gives the allowance of the same category and
+   * name. Undefined when it has no such allowance.
+   *
+   * When the default scenario has several of that name, the one with the
+   * current amount is the match, so an unchanged copy does not read as
+   * changed. If none has that amount, the first is used.
+   */
+  const getDefaultAllowanceAmount = (
+    allowance: Pick<BudgetRule, 'categoryId' | 'name'>,
+    currentAmount: number,
+  ): number | undefined => {
+    const defaultAmounts = defaultAllowanceAmountsByMatchKey[allowanceMatchKey(allowance)];
+    if (!defaultAmounts) return undefined;
+    return defaultAmounts.includes(currentAmount) ? currentAmount : defaultAmounts[0];
+  };
+
+  /**
+   * Check if an allowance's amount differs from the default scenario.
    * Returns true if viewing non-default scenario AND value differs.
    */
-  const isBudgetDifferent = (categoryId: string, currentAmount: number): boolean => {
+  const isBudgetDifferent = (
+    allowance: Pick<BudgetRule, 'categoryId' | 'name'>,
+    currentAmount: number,
+  ): boolean => {
     if (isViewingDefault) return false;
-    const defaultAmount = defaultBudgetByCategory[categoryId];
-    // If no default exists, it's different (new budget in this scenario)
+    const defaultAmount = getDefaultAllowanceAmount(allowance, currentAmount);
+    // If no default exists, it's different (new allowance in this scenario)
     if (defaultAmount === undefined) return true;
     return currentAmount !== defaultAmount;
   };
@@ -206,7 +232,7 @@ export function useScenarioDiff() {
     isExpenseDifferent,
     isSavingsDifferent,
     // Raw default values for direct comparison if needed
-    defaultBudgetByCategory,
+    getDefaultAllowanceAmount,
     defaultIncomeByDescription,
     defaultExpenseByDescription,
     defaultSavingsByDescription,

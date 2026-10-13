@@ -146,7 +146,7 @@ The other schemas were not compared with their types.
   deletes again what the user just restored. The places:
   - `restoreRule`, `restoreBudgetRule`, `restoreTransaction` and
     `restoreCategory` in the hooks;
-  - `category-budget-dialog.tsx`, which undoes with a raw
+  - `allowance-dialog.tsx`, which undoes with a raw
     `db.categories.put`. Route it through `restoreCategory`.
   - Undoing a category delete still restores only the category row, as it
     does today. Its budget rules stay deleted. See `delete-cascades.md`.

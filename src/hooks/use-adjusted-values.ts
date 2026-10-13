@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useBudgetRules } from './use-budget-rules';
 import { useForecasts } from './use-forecasts';
 import { useWhatIf } from '@/contexts/what-if-context';
-import { isItemisedAllowance } from '@/lib/allowance-items';
+import { adjustAllowances, expandBudgetsByCategory } from '@/lib/allowances';
 import type { BudgetRule, ForecastRule, ExpandedForecast } from '@/lib/types';
 
 /**
@@ -13,46 +13,27 @@ export function useAdjustedBudgets(
   startDate?: string,
   endDate?: string,
 ) {
-  const { budgetRules, expandedBudgets, isLoading, ...rest } = useBudgetRules(
-    scenarioId,
-    startDate,
-    endDate,
-  );
+  const {
+    budgetRules,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    expandedBudgets,
+    isLoading,
+    ...rest
+  } = useBudgetRules(scenarioId, startDate, endDate);
   const { adjustments } = useWhatIf();
 
-  // Apply adjustments to budget rules. An itemised allowance is left alone:
-  // its amount is the sum of its items and it has no slider, so an adjustment
-  // for it can only be left over from before it was given items.
-  const adjustedRules = useMemo((): BudgetRule[] => {
-    return budgetRules.map((rule) => {
-      const adjustment = adjustments.budgetAdjustments[rule.categoryId];
-      if (adjustment !== undefined && !isItemisedAllowance(rule)) {
-        return { ...rule, amountCents: adjustment };
-      }
-      return rule;
-    });
-  }, [budgetRules, adjustments.budgetAdjustments]);
+  // Apply adjustments to budget rules, each keyed by its rule's id
+  const adjustedRules = useMemo(
+    (): BudgetRule[] => adjustAllowances(budgetRules, adjustments.budgetAdjustments),
+    [budgetRules, adjustments.budgetAdjustments],
+  );
 
-  // Recalculate expanded budgets with adjusted amounts
+  // Expand the adjusted rules, so a category's figure is the total of its
+  // allowances with each one's own adjustment applied
   const adjustedExpandedBudgets = useMemo((): Record<string, number> => {
-    const result: Record<string, number> = {};
-    for (const [categoryId, amount] of Object.entries(expandedBudgets)) {
-      const adjustment = adjustments.budgetAdjustments[categoryId];
-      const rule = budgetRules.find((r) => r.categoryId === categoryId);
-      if (adjustment !== undefined && !isItemisedAllowance(rule)) {
-        // Simple ratio adjustment: if rule was adjusted by X%, expand by same ratio
-        if (rule && rule.amountCents > 0) {
-          const ratio = adjustment / rule.amountCents;
-          result[categoryId] = Math.round(amount * ratio);
-        } else {
-          result[categoryId] = adjustment;
-        }
-      } else {
-        result[categoryId] = amount;
-      }
-    }
-    return result;
-  }, [expandedBudgets, adjustments.budgetAdjustments, budgetRules]);
+    if (!startDate || !endDate) return {};
+    return expandBudgetsByCategory(adjustedRules, startDate, endDate);
+  }, [adjustedRules, startDate, endDate]);
 
   return {
     budgetRules: adjustedRules,

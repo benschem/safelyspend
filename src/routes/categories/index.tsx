@@ -13,6 +13,7 @@ import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useForecasts } from '@/hooks/use-forecasts';
 import { useUndoDelete } from '@/hooks/use-undo-delete';
 import { CategoryDialog } from '@/components/dialogs/category-dialog';
+import { allowancesForCategory, sumAllowancesForPeriod } from '@/lib/allowances';
 import { formatCents, pluralise } from '@/lib/utils';
 import type { BudgetRule, Category } from '@/lib/types';
 
@@ -29,7 +30,7 @@ interface CategoryRow {
   name: string;
   isArchived: boolean;
   transactionCount: number;
-  budgetRule: BudgetRule | null;
+  allowances: BudgetRule[];
   fixedExpenseCount: number;
 }
 
@@ -41,7 +42,7 @@ function describeUsage(row: CategoryRow): string {
   const parts: string[] = [];
   if (row.transactionCount > 0) parts.push(pluralise(row.transactionCount, 'transaction'));
   if (row.fixedExpenseCount > 0) parts.push(pluralise(row.fixedExpenseCount, 'bill'));
-  if (row.budgetRule) parts.push('an allowance');
+  if (row.allowances.length > 0) parts.push(pluralise(row.allowances.length, 'allowance'));
   return parts.join(', ');
 }
 
@@ -94,7 +95,7 @@ export function CategoriesIndexPage() {
           name: category.name,
           isArchived: category.isArchived,
           transactionCount: transactionCounts[category.id] ?? 0,
-          budgetRule: budgetRules.find((rule) => rule.categoryId === category.id) ?? null,
+          allowances: allowancesForCategory(budgetRules, category.id),
           fixedExpenseCount: fixedExpenseCounts[category.id] ?? 0,
         }))
         .sort(
@@ -152,13 +153,18 @@ export function CategoriesIndexPage() {
         id: 'budget',
         header: 'Allowance',
         cell: ({ row }) => {
-          const rule = row.original.budgetRule;
-          if (!rule) {
+          const { allowances } = row.original;
+          const [onlyAllowance] = allowances;
+          if (!onlyAllowance) {
             return <span className="text-muted-foreground">None</span>;
           }
+          // One allowance is quoted as it was entered. Several can run at
+          // different frequencies, so they are quoted as a monthly total.
           return (
             <Link to="/budget" className="hover:underline">
-              {formatCents(rule.amountCents)} {rule.cadence}
+              {allowances.length === 1
+                ? `${formatCents(onlyAllowance.amountCents)} ${onlyAllowance.cadence}`
+                : `${formatCents(sumAllowancesForPeriod(allowances, 'monthly'))} monthly, from ${allowances.length} allowances`}
             </Link>
           );
         },

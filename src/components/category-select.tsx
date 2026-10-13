@@ -7,9 +7,6 @@ interface CategorySelectProps {
   onChange: (value: string) => void;
   allowNone?: boolean;
   disabled?: boolean;
-  // Categories to leave out of the list, with the reason shown if one is typed
-  excludeIds?: ReadonlySet<string> | undefined;
-  excludedMessage?: string | undefined;
 }
 
 export function CategorySelect({
@@ -17,10 +14,8 @@ export function CategorySelect({
   onChange,
   allowNone = false,
   disabled = false,
-  excludeIds,
-  excludedMessage,
 }: CategorySelectProps) {
-  const { categories, activeCategories, getOrCreate } = useCategories();
+  const { categories, getOrCreate } = useCategories();
 
   // Archived categories are not offered, except the one already selected:
   // without it the select has no name to show and falls back to the raw id.
@@ -28,18 +23,12 @@ export function CategorySelect({
     () =>
       categories
         .filter((cat) => !cat.isArchived || cat.id === value)
-        .filter((cat) => !excludeIds?.has(cat.id))
         .map((cat) => ({
           value: cat.id,
           label: cat.name,
         }))
         .sort((a, b) => a.label.localeCompare(b.label)),
-    [categories, value, excludeIds],
-  );
-
-  const excludedNames = useMemo(
-    () => activeCategories.filter((cat) => excludeIds?.has(cat.id)).map((cat) => cat.name),
-    [activeCategories, excludeIds],
+    [categories, value],
   );
 
   const handleCreateNew = useCallback(
@@ -63,8 +52,6 @@ export function CategorySelect({
       noneLabel="Uncategorised"
       createLabel="Create category"
       disabled={disabled}
-      unavailableLabels={excludedNames}
-      unavailableMessage={excludedMessage}
     />
   );
 }

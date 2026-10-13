@@ -6,6 +6,7 @@ import { cn, formatCents, formatISODate } from '@/lib/utils';
 import { averageMonthlySpendingByCategory } from '@/lib/spending-averages';
 import { CHART_COLORS } from '@/lib/chart-colors';
 import { sumForecastRulesForPeriod, toPeriodCents } from '@/lib/plan-amounts';
+import { sumAllowancesForPeriod } from '@/lib/allowances';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useForecasts } from '@/hooks/use-forecasts';
@@ -13,7 +14,7 @@ import { useAdjustedBudgets, useAdjustedForecasts } from '@/hooks/use-adjusted-v
 import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
-import { CategoryBudgetDialog } from '@/components/dialogs/category-budget-dialog';
+import { AllowanceDialog } from '@/components/dialogs/allowance-dialog';
 import { ForecastRuleDialog } from '@/components/dialogs/forecast-rule-dialog';
 import { SpendingBreakdownChart } from '@/components/charts/spending-breakdown-chart';
 import { BudgetStatusHero } from '@/components/budget/status-hero';
@@ -53,7 +54,6 @@ interface CategoryRow {
   fixedAmount: number;
   variableAmount: number;
   totalAmount: number;
-  budgetRule: BudgetRule | null;
   fixedExpenseRules: ForecastRule[];
   canDelete: boolean;
 }
@@ -79,17 +79,15 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     deleteCategory,
   } = useCategories();
   const {
-    getRuleForCategory,
+    budgetRules: savedBudgetRules,
+    getRulesForCategory,
     isLoading: budgetLoading,
-    setBudgetForCategory,
+    addBudgetRule,
+    updateBudgetRule,
     deleteBudgetRule,
     restoreBudgetRule,
   } = useBudgetRules(activeScenarioId);
   const { budgetRules } = useAdjustedBudgets(activeScenarioId);
-  const budgetedCategoryIds = useMemo(
-    () => new Set(budgetRules.map((rule) => rule.categoryId)),
-    [budgetRules],
-  );
   const { savingsGoals, isLoading: savingsLoading } = useSavingsGoals();
   const { allTransactions, isLoading: transactionsLoading } = useTransactions();
 
@@ -126,11 +124,10 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
   const isLoading =
     categoriesLoading || budgetLoading || forecastsLoading || savingsLoading || transactionsLoading;
 
-  // Dialog state
-  const [addCategoryDialogOpen, setAddCategoryDialogOpen] = useState(false);
-  const [editCategoryDialogOpen, setEditCategoryDialogOpen] = useState(false);
-  const [editingRow, setEditingRow] = useState<CategoryRow | null>(null);
-  const [focusLimit, setFocusLimit] = useState(false);
+  // Allowance dialog state. As with the forecast rule dialog below, the
+  // allowance is set each time the dialog opens and left alone when it closes.
+  const [allowanceDialogOpen, setAllowanceDialogOpen] = useState(false);
+  const [editingAllowance, setEditingAllowance] = useState<BudgetRule | null>(null);
 
   // Forecast rule dialog state
   const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
@@ -286,12 +283,12 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     );
 
     const rows = categories.map((category) => {
-      const budgetRule = getRuleForCategory(category.id);
       const fixedData = fixedExpensesPerCategory[category.id];
       const fixedAmount = fixedData?.amount ?? 0;
-      const variableAmount = budgetRule
-        ? toPeriodCents(budgetRule.amountCents, budgetRule.cadence, breakdownPeriod)
-        : 0;
+      const variableAmount = sumAllowancesForPeriod(
+        getRulesForCategory(category.id),
+        breakdownPeriod,
+      );
 
       return {
         id: category.id,
@@ -300,7 +297,6 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
         fixedAmount,
         variableAmount,
         totalAmount: fixedAmount + variableAmount,
-        budgetRule,
         fixedExpenseRules: fixedData?.rules ?? [],
         canDelete: !categoriesWithTransactions.has(category.id),
       };
@@ -312,7 +308,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
       }
       return a.categoryName.localeCompare(b.categoryName);
     });
-  }, [categories, allTransactions, getRuleForCategory, fixedExpensesPerCategory, breakdownPeriod]);
+  }, [categories, allTransactions, getRulesForCategory, fixedExpensesPerCategory, breakdownPeriod]);
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -443,17 +439,9 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     });
   }, []);
 
-  const openEditCategoryDialog = useCallback((row: CategoryRow, shouldFocusLimit = false) => {
-    setEditingRow(row);
-    setFocusLimit(shouldFocusLimit);
-    setEditCategoryDialogOpen(true);
-  }, []);
-  const handleEditDialogClose = useCallback((open: boolean) => {
-    setEditCategoryDialogOpen(open);
-    if (!open) {
-      setEditingRow(null);
-      setFocusLimit(false);
-    }
+  const openAddAllowanceDialog = useCallback(() => {
+    setEditingAllowance(null);
+    setAllowanceDialogOpen(true);
   }, []);
 
   const openAddRuleDialog = useCallback((type: 'income' | 'expense' | 'savings') => {
@@ -468,15 +456,24 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     setRuleDialogOpen(true);
   }, []);
 
+  // The section lists rules with any What If adjustment applied. The dialog
+  // edits the saved rule, so it is looked up by id.
   const handleEditBudgetRule = useCallback(
     (rule: BudgetRule) => {
-      const row = categoryRows.find((r) => r.budgetRule?.id === rule.id);
-      if (row) {
-        openEditCategoryDialog(row, true);
+      const savedRule = savedBudgetRules.find((r) => r.id === rule.id);
+      if (savedRule) {
+        setEditingAllowance(savedRule);
+        setAllowanceDialogOpen(true);
       }
     },
-    [categoryRows, openEditCategoryDialog],
+    [savedBudgetRules],
   );
+
+  // The category the allowance being edited started on, for the dialog's
+  // archive and delete buttons
+  const editingAllowanceRow = editingAllowance
+    ? categoryRows.find((row) => row.id === editingAllowance.categoryId)
+    : undefined;
 
   if (isLoading) {
     return null;
@@ -728,10 +725,11 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           categories={categories}
           isOpen={budgetedExpensesOpen}
           onOpenChange={setBudgetedExpensesOpen}
-          onAddClick={() => setAddCategoryDialogOpen(true)}
+          onAddClick={openAddAllowanceDialog}
           onEditBudget={handleEditBudgetRule}
           onDeleteBudget={handleDeleteBudgetRule}
           spendingAverages={spendingAverages}
+          period={breakdownPeriod}
           periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
           periodTotal={totals.variable}
           monthlyDelta={showDeltas ? getTotalDelta('budget', totals.monthlyVariable) : undefined}
@@ -759,38 +757,24 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
         />
       </div>
 
-      {/* Add Category Dialog */}
-      <CategoryBudgetDialog
-        open={addCategoryDialogOpen}
-        onOpenChange={setAddCategoryDialogOpen}
+      {/* Allowance Dialog, for add and edit */}
+      <AllowanceDialog
+        open={allowanceDialogOpen}
+        onOpenChange={setAllowanceDialogOpen}
         scenarioId={activeScenarioId}
+        allowance={editingAllowance}
+        category={editingAllowanceRow?.category ?? null}
+        canDeleteCategory={editingAllowanceRow?.canDelete ?? false}
         unallocatedAmount={totals.unallocated}
         hasIncome={totals.income > 0}
-        budgetedCategoryIds={budgetedCategoryIds}
+        existingAllowances={savedBudgetRules}
         spendingAverages={spendingAverages}
-        setBudgetForCategory={setBudgetForCategory}
+        updateCategory={updateCategory}
+        deleteCategory={deleteCategory}
+        addBudgetRule={addBudgetRule}
+        updateBudgetRule={updateBudgetRule}
+        deleteBudgetRule={deleteBudgetRule}
       />
-
-      {/* Edit Category Dialog */}
-      {editingRow && (
-        <CategoryBudgetDialog
-          open={editCategoryDialogOpen}
-          onOpenChange={handleEditDialogClose}
-          scenarioId={activeScenarioId}
-          category={editingRow.category}
-          existingRule={editingRow.budgetRule}
-          focusLimit={focusLimit}
-          canDeleteCategory={editingRow.canDelete}
-          unallocatedAmount={totals.unallocated}
-          hasIncome={totals.income > 0}
-          budgetedCategoryIds={budgetedCategoryIds}
-          spendingAverages={spendingAverages}
-          updateCategory={updateCategory}
-          deleteCategory={deleteCategory}
-          setBudgetForCategory={setBudgetForCategory}
-          deleteBudgetRule={deleteBudgetRule}
-        />
-      )}
 
       {/* Forecast Rule Dialog */}
       <ForecastRuleDialog

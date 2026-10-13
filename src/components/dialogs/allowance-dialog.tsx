@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,36 +18,31 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Archive, ArchiveRestore, Plus, Trash2, X } from 'lucide-react';
+import { Archive, ArchiveRestore, Trash2 } from 'lucide-react';
 import { CategorySelect } from '@/components/category-select';
-import { parseCentsFromInput, formatCents, generateId } from '@/lib/utils';
+import { parseCentsFromInput, formatCents } from '@/lib/utils';
+import { isAllowanceNameTaken } from '@/lib/allowances';
 import { describeAverageSpending, type SpendingAverages } from '@/lib/spending-averages';
-import type { AllowanceItem, Cadence, Category, BudgetRule } from '@/lib/types';
+import type { Cadence, Category, BudgetRule, CreateEntity } from '@/lib/types';
+import type { BudgetRuleUpdates } from '@/hooks/use-budget-rules';
 import { db } from '@/lib/db';
 
-/** An allowance item as it is being typed: the amount is still text */
-interface AllowanceItemDraft {
-  id: string;
-  name: string;
-  amount: string;
-}
-
-interface CategoryBudgetDialogProps {
+interface AllowanceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   scenarioId: string | null;
-  // For edit mode
+  // The allowance to edit. Left out, the dialog adds a new one.
+  allowance?: BudgetRule | null;
+  // The category the allowance started on, which the archive and delete
+  // buttons act on
   category?: Category | null;
-  existingRule?: BudgetRule | null;
-  // Focus the limit field when opening
-  focusLimit?: boolean;
-  // Whether this category can be deleted (no transactions)
+  // Whether that category can be deleted (no transactions)
   canDeleteCategory?: boolean;
   // Budget context for overcommitment indicator
   unallocatedAmount?: number; // Current unallocated income in cents
   hasIncome?: boolean; // Whether there is any income set
-  // Categories that already have a budget, left out of the picker
-  budgetedCategoryIds?: ReadonlySet<string>;
+  // Every allowance in the scenario, to keep names unique within a category
+  existingAllowances: BudgetRule[];
   // What each category has cost on average, shown as a guide to the allowance
   spendingAverages?: SpendingAverages | null;
   // Callbacks
@@ -56,121 +51,59 @@ interface CategoryBudgetDialogProps {
     updates: Partial<Omit<Category, 'id' | 'userId' | 'createdAt'>>,
   ) => Promise<void>;
   deleteCategory?: (id: string) => Promise<void>;
-  setBudgetForCategory: (
-    categoryId: string,
-    amountCents: number,
-    cadence: Cadence,
-    items?: AllowanceItem[],
-  ) => Promise<void>;
+  addBudgetRule: (data: CreateEntity<BudgetRule>) => Promise<BudgetRule>;
+  updateBudgetRule: (id: string, updates: BudgetRuleUpdates) => Promise<void>;
   deleteBudgetRule?: (id: string) => Promise<void>;
 }
 
-export function CategoryBudgetDialog({
+export function AllowanceDialog({
   open,
   onOpenChange,
   scenarioId,
+  allowance,
   category,
-  existingRule,
-  focusLimit,
   canDeleteCategory,
   unallocatedAmount,
   hasIncome,
-  budgetedCategoryIds,
+  existingAllowances,
   spendingAverages,
   updateCategory,
   deleteCategory,
-  setBudgetForCategory,
+  addBudgetRule,
+  updateBudgetRule,
   deleteBudgetRule,
-}: CategoryBudgetDialogProps) {
-  const isEditing = !!category;
-  const limitInputRef = useRef<HTMLInputElement>(null);
+}: AllowanceDialogProps) {
+  const isEditing = !!allowance;
 
   // Form state
   // The picker creates a new category as soon as one is typed, so this is
-  // always an existing id. In edit mode it starts on the budget's own category.
+  // always an existing id. In edit mode it starts on the allowance's own category.
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const [cadence, setCadence] = useState<Cadence>('monthly');
-  // The named parts of the allowance. With any, the allowance is their sum
-  // and the amount field is read-only.
-  const [itemDrafts, setItemDrafts] = useState<AllowanceItemDraft[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const isItemised = itemDrafts.length > 0;
-  const itemisedTotalCents = itemDrafts.reduce(
-    (sum, itemDraft) => sum + parseCentsFromInput(itemDraft.amount),
-    0,
-  );
-  const enteredAmountCents = isItemised ? itemisedTotalCents : parseCentsFromInput(amount);
-
-  const addItemDraft = () => {
-    setItemDrafts((drafts) => [...drafts, { id: generateId(), name: '', amount: '' }]);
-  };
-
-  const updateItemDraft = (itemId: string, changes: Partial<Omit<AllowanceItemDraft, 'id'>>) => {
-    setItemDrafts((drafts) =>
-      drafts.map((itemDraft) =>
-        itemDraft.id === itemId ? { ...itemDraft, ...changes } : itemDraft,
-      ),
-    );
-  };
-
-  const removeItemDraft = (itemId: string) => {
-    setItemDrafts((drafts) => drafts.filter((itemDraft) => itemDraft.id !== itemId));
-  };
-
-  // The budget being edited belongs to a budgeted category too, and that one
-  // has to stay in its own picker
-  const otherBudgetedCategoryIds = useMemo(() => {
-    if (!budgetedCategoryIds || !category) return budgetedCategoryIds;
-    const withoutOwnCategory = new Set(budgetedCategoryIds);
-    withoutOwnCategory.delete(category.id);
-    return withoutOwnCategory;
-  }, [budgetedCategoryIds, category]);
+  const enteredAmountCents = parseCentsFromInput(amount);
 
   useEffect(() => {
     if (open) {
-      if (category) {
+      if (allowance) {
         // Edit mode - pre-fill with existing values
-        setSelectedCategoryId(category.id);
-        if (existingRule) {
-          setAmount((existingRule.amountCents / 100).toFixed(2));
-          setCadence(existingRule.cadence);
-          setItemDrafts(
-            (existingRule.items ?? []).map((item) => ({
-              id: item.id,
-              name: item.name,
-              amount: (item.amountCents / 100).toFixed(2),
-            })),
-          );
-        } else {
-          setAmount('');
-          setCadence('monthly');
-          setItemDrafts([]);
-        }
+        setSelectedCategoryId(allowance.categoryId);
+        setName(allowance.name ?? '');
+        setAmount((allowance.amountCents / 100).toFixed(2));
+        setCadence(allowance.cadence);
       } else {
         // Create mode - reset to defaults
         setSelectedCategoryId('');
+        setName('');
         setAmount('');
         setCadence('monthly');
-        setItemDrafts([]);
       }
       setFormError(null);
     }
-  }, [open, category, existingRule]);
-
-  // Focus the limit input when requested
-  useEffect(() => {
-    if (open && focusLimit) {
-      // Small delay to ensure dialog is rendered
-      const timer = setTimeout(() => {
-        limitInputRef.current?.focus();
-        limitInputRef.current?.select();
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-    return undefined;
-  }, [open, focusLimit]);
+  }, [open, allowance]);
 
   const handleSave = async () => {
     setFormError(null);
@@ -180,16 +113,9 @@ export function CategoryBudgetDialog({
       return;
     }
 
-    const items: AllowanceItem[] = itemDrafts.map((itemDraft) => ({
-      id: itemDraft.id,
-      name: itemDraft.name.trim(),
-      amountCents: parseCentsFromInput(itemDraft.amount),
-    }));
-    const hasUnfinishedItem = items.some((item) => item.name === '' || item.amountCents <= 0);
-    if (hasUnfinishedItem) {
-      setFormError('Give every item a name and an amount');
-      return;
-    }
+    // A blank name is stored as no name
+    const trimmedName = name.trim();
+    const allowanceName = trimmedName === '' ? undefined : trimmedName;
 
     try {
       const amountCents = enteredAmountCents;
@@ -201,18 +127,37 @@ export function CategoryBudgetDialog({
 
       if (amountCents === 0) {
         // Only reachable in edit mode: clearing the amount removes the allowance
-        if (existingRule && deleteBudgetRule) {
-          await deleteBudgetRule(existingRule.id);
+        if (allowance && deleteBudgetRule) {
+          await deleteBudgetRule(allowance.id);
         }
-      } else if (amountCents > 0 && scenarioId) {
-        await setBudgetForCategory(selectedCategoryId, amountCents, cadence, items);
+        onOpenChange(false);
+        return;
+      }
 
-        // The allowance was moved to another category, so take it off the old one
-        const movedToAnotherCategory =
-          existingRule && existingRule.categoryId !== selectedCategoryId;
-        if (movedToAnotherCategory && deleteBudgetRule) {
-          await deleteBudgetRule(existingRule.id);
-        }
+      if (isAllowanceNameTaken(existingAllowances, selectedCategoryId, allowanceName, allowance)) {
+        setFormError(
+          allowanceName
+            ? `This category already has an allowance called "${allowanceName}"`
+            : 'This category already has an allowance with no name. Give this one a name',
+        );
+        return;
+      }
+
+      if (allowance) {
+        await updateBudgetRule(allowance.id, {
+          categoryId: selectedCategoryId,
+          name: allowanceName,
+          amountCents,
+          cadence,
+        });
+      } else if (scenarioId) {
+        await addBudgetRule({
+          scenarioId,
+          categoryId: selectedCategoryId,
+          amountCents,
+          cadence,
+          ...(allowanceName !== undefined && { name: allowanceName }),
+        });
       }
       onOpenChange(false);
     } catch (error) {
@@ -262,7 +207,7 @@ export function CategoryBudgetDialog({
           <DialogDescription>
             {isEditing
               ? 'Change the category or the allowance.'
-              : 'Pick a category, or type a new one, and set its allowance.'}
+              : 'Pick a category, or type a new one, and set an allowance for it.'}
             {/* A span, not a p: the description already renders as a paragraph */}
             {!isEditing && (
               <span className="mt-1 block text-xs">
@@ -287,30 +232,38 @@ export function CategoryBudgetDialog({
 
           <div className="space-y-2">
             <Label className="select-none">Category</Label>
-            <CategorySelect
-              value={selectedCategoryId}
-              onChange={setSelectedCategoryId}
-              excludeIds={otherBudgetedCategoryIds}
-              excludedMessage="This category already has an allowance"
+            <CategorySelect value={selectedCategoryId} onChange={setSelectedCategoryId} />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="allowance-name" className="select-none">
+              Name (optional)
+            </Label>
+            <Input
+              id="allowance-name"
+              placeholder="e.g. Lashes"
+              maxLength={100}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
             />
+            <p className="text-xs text-muted-foreground">
+              A category can have several allowances, each with its own amount and frequency.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="budget-amount" className="select-none">
+              <Label htmlFor="allowance-amount" className="select-none">
                 Allowance ($)
               </Label>
               <Input
-                ref={limitInputRef}
-                id="budget-amount"
+                id="allowance-amount"
                 type="number"
                 step="0.01"
                 min="0"
                 placeholder="0.00"
-                value={isItemised ? (itemisedTotalCents / 100).toFixed(2) : amount}
+                value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                readOnly={isItemised}
-                className={isItemised ? 'bg-muted' : undefined}
               />
             </div>
 
@@ -331,60 +284,6 @@ export function CategoryBudgetDialog({
             </div>
           </div>
 
-          {/* Items: the named parts of the allowance */}
-          <div className="space-y-2">
-            {isItemised && (
-              <>
-                <Label className="select-none">Items</Label>
-                {itemDrafts.map((itemDraft) => (
-                  <div key={itemDraft.id} className="flex items-center gap-2">
-                    <Input
-                      aria-label="Item name"
-                      placeholder="Name"
-                      maxLength={100}
-                      value={itemDraft.name}
-                      onChange={(e) => updateItemDraft(itemDraft.id, { name: e.target.value })}
-                      className="flex-1"
-                    />
-                    <Input
-                      aria-label="Item amount"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      value={itemDraft.amount}
-                      onChange={(e) => updateItemDraft(itemDraft.id, { amount: e.target.value })}
-                      className="w-28"
-                    />
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            aria-label="Remove item"
-                            onClick={() => removeItemDraft(itemDraft.id)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Remove item</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                ))}
-                <p className="text-xs text-muted-foreground">
-                  The allowance is the items added together, each at the frequency above.
-                </p>
-              </>
-            )}
-            <Button type="button" variant="outline" size="sm" onClick={addItemDraft}>
-              <Plus className="h-4 w-4" />
-              {isItemised ? 'Add item' : 'Split into items'}
-            </Button>
-          </div>
-
           {averageSpendingHint && (
             <p className="text-xs text-muted-foreground">{averageSpendingHint}</p>
           )}
@@ -394,7 +293,7 @@ export function CategoryBudgetDialog({
             unallocatedAmount !== undefined &&
             (() => {
               const enteredAmount = enteredAmountCents;
-              const existingAmount = existingRule?.amountCents ?? 0;
+              const existingAmount = allowance?.amountCents ?? 0;
               const netChange = enteredAmount - existingAmount;
               const newUnallocated = unallocatedAmount - netChange;
 
