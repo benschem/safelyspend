@@ -1,6 +1,6 @@
 # Remove the What If sliders and keep scenarios as plain plans
 
-- **Status:** in progress, step 1 done. Decisions made 2026-10-13.
+- **Status:** in progress, step 2 done. Decisions made 2026-10-13.
 - **Goal:** the sliders, What If mode, the violet difference figures and the
   comparison against the default plan are gone, and scenarios remain as named
   plans that can be copied, edited and switched between.
