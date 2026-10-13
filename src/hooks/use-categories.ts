@@ -61,12 +61,16 @@ export function useCategories() {
   );
 
   const deleteCategory = useCallback(async (id: string) => {
-    // Nullify categoryId on transactions that reference this category
-    await db.transactions.where('categoryId').equals(id).modify({ categoryId: null });
-    // Delete budget rules that reference this category
-    await db.budgetRules.where('categoryId').equals(id).delete();
-    // Delete the category
-    await db.categories.delete(id);
+    // One transaction, so a failure part way leaves nothing half done
+    await db.transaction('rw', [db.transactions, db.budgetRules, db.categories], async () => {
+      // Nullify categoryId on transactions that reference this category
+      await db.transactions.where('categoryId').equals(id).modify({ categoryId: null });
+      // Delete budget rules that reference this category. categoryId is not an
+      // index on budgetRules, so this filters rather than using where()
+      await db.budgetRules.filter((rule) => rule.categoryId === id).delete();
+      // Delete the category
+      await db.categories.delete(id);
+    });
   }, []);
 
   const restoreCategory = useCallback(async (category: Category) => {

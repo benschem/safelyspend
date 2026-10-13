@@ -21,6 +21,11 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.55.1',
+    date: '2026-10-14',
+    changes: ['Fixed deleting a category, which did nothing when you confirmed it'],
+  },
+  {
     version: '0.55.0',
     date: '2026-10-14',
     changes: [
