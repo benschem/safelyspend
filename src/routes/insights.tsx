@@ -23,6 +23,7 @@ import { useScenarios } from '@/hooks/use-scenarios';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
 import { useWhatIf } from '@/contexts/what-if-context';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
+import { today as getToday } from '@/lib/dates';
 import { formatCompactDate, TIMELINE_UNIT_BOUNDS } from '@/lib/utils';
 import {
   Select,
@@ -362,10 +363,7 @@ export function InsightsPage() {
   const categoryColorMap = useMemo(() => buildCategoryColorMap(allCategoryIds), [allCategoryIds]);
 
   // Determine if viewing past period
-  const today = (() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  })();
+  const today = getToday();
   const isPastOnly = endDate <= today;
 
   // Calculate starting balance for cash flow chart

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useBalanceAnchors } from './use-balance-anchors';
 import { useTransactions } from './use-transactions';
+import { today as getToday } from '@/lib/dates';
 
 interface UseCashSurplusOptions {
   periodEnd: string;
@@ -29,10 +30,7 @@ export function useCashSurplus({
   const { getActiveAnchor } = useBalanceAnchors();
   const { allTransactions } = useTransactions();
 
-  const today = useMemo(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }, []);
+  const today = useMemo(() => getToday(), []);
 
   return useMemo(() => {
     const balanceDate = isPastPeriod ? periodEnd : today;

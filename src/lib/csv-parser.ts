@@ -1,4 +1,5 @@
 import Papa from 'papaparse';
+import { formatISODate, isRealDate } from './dates';
 
 // =============================================================================
 // Types
@@ -193,7 +194,16 @@ export function autoDetectDateFormat(samples: string[]): DateFormatHint {
 // Date parsing
 // =============================================================================
 
+/**
+ * Read a date from a CSV cell as YYYY-MM-DD. Returns an empty string when the
+ * cell cannot be read or names a day that does not exist, such as 31/02/2025.
+ */
 export function parseDate(dateStr: string, format: DateFormatHint): string {
+  const isoDate = readDate(dateStr, format);
+  return isRealDate(isoDate) ? isoDate : '';
+}
+
+function readDate(dateStr: string, format: DateFormatHint): string {
   const trimmed = dateStr.trim();
 
   // Try ISO first (YYYY-MM-DD or YYYY/MM/DD)
@@ -240,7 +250,7 @@ export function parseDate(dateStr: string, format: DateFormatHint): string {
   if (format === 'auto') {
     const date = new Date(trimmed);
     if (!isNaN(date.getTime())) {
-      return date.toISOString().split('T')[0] ?? '';
+      return formatISODate(date);
     }
   }
 

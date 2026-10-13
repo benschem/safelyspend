@@ -24,6 +24,9 @@ rules come from the 2026-10-13 rewrite, which had to undo all of the below.
 - Keep history only where it carries a reason. Keep the reason, drop the story.
 - Finished work leaves the doc. Git and the changelog are the record.
 - Name a file when pointing at one. Not "the entry above", not a quoted title.
+- Point at code by name, never by line number. Write `plannedEnd` in
+  `cash-flow/index.tsx`, not `cash-flow/index.tsx:559`. A line number is
+  wrong after the next edit to that file, and a name can be searched for.
 - Use absolute dates. "Today" is wrong tomorrow.
 - Keep "not checked" notes, in the Status line or a closing paragraph. Say
   what was read in the code and what was only assumed.

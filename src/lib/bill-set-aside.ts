@@ -1,6 +1,6 @@
 import { expandForecastRule } from '@/lib/cadence';
 import type { ForecastRule } from '@/lib/types';
-import { formatISODate } from '@/lib/utils';
+import { addDays, daysBetween, formatISODate, parseLocalDate } from '@/lib/dates';
 
 /**
  * How much of the cash balance is spoken for by one bill that is not due yet.
@@ -21,22 +21,11 @@ export interface BillSetAside {
 // them has been excluded.
 const YEARS_TO_SEARCH = 3;
 
-const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
-
 /** The same day of the year, a number of years away. Negative goes back. */
 function shiftYears(isoDate: string, years: number): string {
-  const [year, month, day] = isoDate.split('-').map(Number);
-  return formatISODate(new Date(year! + years, month! - 1, day));
-}
-
-function dayBefore(isoDate: string): string {
-  const [year, month, day] = isoDate.split('-').map(Number);
-  return formatISODate(new Date(year!, month! - 1, day! - 1));
-}
-
-/** Whole days from one YYYY-MM-DD date to another. Negative if the end is first. */
-function daysBetween(startDate: string, endDate: string): number {
-  return Math.round((Date.parse(endDate) - Date.parse(startDate)) / MILLISECONDS_PER_DAY);
+  const date = parseLocalDate(isoDate);
+  date.setFullYear(date.getFullYear() + years);
+  return formatISODate(date);
 }
 
 /** Only bills with more than a month between due dates build up a reserve */
@@ -61,7 +50,7 @@ function buildUpStartDate(forecastRule: ForecastRule, asOfDate: string): string 
   const earlierDueDates = expandForecastRule(
     forecastRule,
     shiftYears(asOfDate, -YEARS_TO_SEARCH),
-    dayBefore(asOfDate),
+    addDays(asOfDate, -1),
   );
   const previousDueDate = earlierDueDates.at(-1)?.date;
   if (previousDueDate) candidates.push(previousDueDate);

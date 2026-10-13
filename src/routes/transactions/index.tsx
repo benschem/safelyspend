@@ -37,7 +37,8 @@ import {
   AlertTriangle,
   Settings2,
 } from 'lucide-react';
-import { cn, formatCents, formatDate, today as getToday } from '@/lib/utils';
+import { daysBetween, parseLocalDate, today as getToday } from '@/lib/dates';
+import { cn, formatCents, formatDate } from '@/lib/utils';
 import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useCategoryRules } from '@/hooks/use-category-rules';
@@ -56,6 +57,24 @@ type AverageCadence = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'year
 // Default date ranges - Past ends at today
 const getPastDefaultStartDate = () => '';
 const getPastDefaultEndDate = () => getToday();
+
+/**
+ * The earliest and latest dates among some transactions. YYYY-MM-DD strings
+ * sort in date order, so they are compared as text. Needs at least one
+ * transaction.
+ */
+function firstAndLastDates(transactions: Transaction[]): {
+  firstDateStr: string;
+  lastDateStr: string;
+} {
+  let firstDateStr = transactions[0]!.date;
+  let lastDateStr = firstDateStr;
+  for (const transaction of transactions) {
+    if (transaction.date < firstDateStr) firstDateStr = transaction.date;
+    if (transaction.date > lastDateStr) lastDateStr = transaction.date;
+  }
+  return { firstDateStr, lastDateStr };
+}
 
 const FREQUENCY_PER_LABELS: Record<AverageCadence, string> = {
   weekly: 'per week',
@@ -126,14 +145,11 @@ export function TransactionsPage() {
       return { income: 0, expenses: 0, savings: 0, net: 0 };
     }
 
-    const dates = allTransactions.map((t) => new Date(t.date));
-    const firstDate = new Date(Math.min(...dates.map((d) => d.getTime())));
-    const lastDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+    const { firstDateStr, lastDateStr } = firstAndLastDates(allTransactions);
+    const firstDate = parseLocalDate(firstDateStr);
+    const lastDate = parseLocalDate(lastDateStr);
 
-    const daysDiff = Math.max(
-      1,
-      Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)) + 1,
-    );
+    const daysDiff = daysBetween(firstDateStr, lastDateStr) + 1;
 
     let periods: number;
     switch (averageCadence) {
@@ -186,12 +202,10 @@ export function TransactionsPage() {
   // Get date range for track record display
   const transactionDateRange = useMemo(() => {
     if (allTransactions.length === 0) return null;
-    const dates = allTransactions.map((t) => new Date(t.date));
-    const firstDate = new Date(Math.min(...dates.map((d) => d.getTime())));
-    const lastDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+    const { firstDateStr, lastDateStr } = firstAndLastDates(allTransactions);
     return {
-      from: formatDate(firstDate.toISOString().slice(0, 10)),
-      to: formatDate(lastDate.toISOString().slice(0, 10)),
+      from: formatDate(firstDateStr),
+      to: formatDate(lastDateStr),
       count: allTransactions.length,
     };
   }, [allTransactions]);

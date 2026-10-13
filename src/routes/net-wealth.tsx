@@ -18,6 +18,7 @@ import { useScenarios } from '@/hooks/use-scenarios';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
+import { today as getToday } from '@/lib/dates';
 import { formatCents } from '@/lib/utils';
 
 // Global wealth percentiles (approximate, Credit Suisse Global Wealth Report)
@@ -62,10 +63,7 @@ export function NetWealthPage() {
   const { getActiveAnchor } = useBalanceAnchors();
 
   // Fixed date ranges - no user selection
-  const today = (() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  })();
+  const today = getToday();
 
   // Get all transactions for calculations
   const { allTransactions, isLoading: transactionsLoading } = useTransactions();

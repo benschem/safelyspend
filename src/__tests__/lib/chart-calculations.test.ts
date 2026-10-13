@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { formatISODate, getMonthsBetween, toMonthlyCents, fromMonthlyCents } from '@/lib/utils';
+import { formatISODate } from '@/lib/dates';
+import { getMonthsBetween, toMonthlyCents, fromMonthlyCents } from '@/lib/utils';
 
 // =============================================================================
 // formatISODate — Must use LOCAL date components, not UTC

@@ -12,7 +12,7 @@ and the crypto, auth and worker code. An entry marked "Read 2026-10-13" was
 read in the code at 0.47.1 and its line numbers are from then. Every other
 entry is as the sub-review reported it, with 0.44.7 line numbers, and needs
 confirming before it is planned. Other findings have their own files:
-`dates.md`, `balances.md`, `dead-code.md`, `ci.md`, `delete-cascades.md`.
+`balances.md`, `dead-code.md`, `ci.md`, `delete-cascades.md`.
 
 ## Split `SettingsPage`, and one panel for cash and savings anchors
 

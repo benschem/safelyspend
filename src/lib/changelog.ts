@@ -21,6 +21,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.49.1',
+    date: '2026-10-13',
+    changes: [
+      'Fixed new transactions, balances and check-ins defaulting to yesterday when added in the morning',
+      'Fixed the spending pace chart leaving out today and showing days against the wrong date in October',
+      'Fixed the year view on Cash Flow counting one day too many',
+      'Fixed imported dates written in words, such as 15 Jan 2026, landing a day early',
+      'An import now skips a row whose date does not exist, such as 31 February, and tells you which row',
+    ],
+  },
+  {
     version: '0.49.0',
     date: '2026-10-13',
     changes: [

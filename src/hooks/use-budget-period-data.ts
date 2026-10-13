@@ -15,6 +15,7 @@ import {
   sumMonthlyAllowanceCents,
 } from '@/lib/category-limits';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
+import { daysBetween, formatISODate, today as getToday } from '@/lib/dates';
 
 interface PeriodCashFlow {
   dayOfPeriod: number;
@@ -163,6 +164,20 @@ function sumDayToDaySpending(
 }
 
 /**
+ * Which day of the period a date is, counting the period's first day as 1.
+ * A period that is not the current one counts as finished.
+ */
+function dayOfPeriodOn(
+  effectiveDate: string,
+  periodStart: string,
+  isCurrentPeriod: boolean,
+  daysInPeriod: number,
+): number {
+  if (!isCurrentPeriod) return daysInPeriod;
+  return daysBetween(periodStart, effectiveDate) + 1;
+}
+
+/**
  * Calculate period cash flow data
  */
 export function calculatePeriodCashFlow(
@@ -197,27 +212,7 @@ export function calculatePeriodCashFlow(
     daysInPeriod = new Date(selectedYear, selectedMonthIndex + 1, 0).getDate();
   }
 
-  const effectiveDateObj = new Date(effectiveDate);
-  const periodStartDate = new Date(periodStart);
-
-  // Calculate day of period based on view mode
-  let dayOfPeriod: number;
-  if (!isCurrentPeriod) {
-    dayOfPeriod = daysInPeriod;
-  } else if (viewMode === 'year') {
-    dayOfPeriod =
-      Math.ceil(
-        (effectiveDateObj.getTime() - new Date(selectedYear, 0, 1).getTime()) /
-          (1000 * 60 * 60 * 24),
-      ) + 1;
-  } else if (viewMode === 'quarter') {
-    // Days from quarter start to today
-    dayOfPeriod =
-      Math.ceil((effectiveDateObj.getTime() - periodStartDate.getTime()) / (1000 * 60 * 60 * 24)) +
-      1;
-  } else {
-    dayOfPeriod = effectiveDateObj.getDate();
-  }
+  const dayOfPeriod = dayOfPeriodOn(effectiveDate, periodStart, isCurrentPeriod, daysInPeriod);
 
   // Expected income for full period
   const expectedIncome = periodForecasts
@@ -349,26 +344,7 @@ export function calculateSummary(
     daysInPeriod = new Date(selectedYear, selectedMonthIndex + 1, 0).getDate();
   }
 
-  const effectiveDateObj = new Date(effectiveDate);
-  const periodStartDate = new Date(periodStart);
-
-  // Calculate day of period based on view mode
-  let dayOfPeriod: number;
-  if (!isCurrentPeriod) {
-    dayOfPeriod = daysInPeriod;
-  } else if (viewMode === 'year') {
-    dayOfPeriod =
-      Math.ceil(
-        (effectiveDateObj.getTime() - new Date(selectedYear, 0, 1).getTime()) /
-          (1000 * 60 * 60 * 24),
-      ) + 1;
-  } else if (viewMode === 'quarter') {
-    dayOfPeriod =
-      Math.ceil((effectiveDateObj.getTime() - periodStartDate.getTime()) / (1000 * 60 * 60 * 24)) +
-      1;
-  } else {
-    dayOfPeriod = effectiveDateObj.getDate();
-  }
+  const dayOfPeriod = dayOfPeriodOn(effectiveDate, periodStart, isCurrentPeriod, daysInPeriod);
 
   const periodProgress = dayOfPeriod / daysInPeriod;
 
@@ -606,29 +582,27 @@ export function useBudgetPeriodData({
   const { activeCategories, isLoading: categoriesLoading } = useCategories();
 
   // Calculate dates
-  const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const today = getToday();
   const selectedYear = selectedMonth.getFullYear();
   const selectedMonthIndex = selectedMonth.getMonth();
 
   // Calculate quarter start month (0, 3, 6, or 9)
   const quarterStartMonth = Math.floor(selectedMonthIndex / 3) * 3;
   const quarterEndMonth = quarterStartMonth + 2;
-  const lastDayOfQuarter = new Date(selectedYear, quarterEndMonth + 1, 0).getDate();
 
+  // Day 0 of a month is the last day of the month before it
   const periodStart =
     viewMode === 'year'
       ? `${selectedYear}-01-01`
       : viewMode === 'quarter'
-        ? `${selectedYear}-${String(quarterStartMonth + 1).padStart(2, '0')}-01`
-        : `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-01`;
-  const lastDayOfMonth = new Date(selectedYear, selectedMonthIndex + 1, 0).getDate();
+        ? formatISODate(new Date(selectedYear, quarterStartMonth, 1))
+        : formatISODate(new Date(selectedYear, selectedMonthIndex, 1));
   const periodEnd =
     viewMode === 'year'
       ? `${selectedYear}-12-31`
       : viewMode === 'quarter'
-        ? `${selectedYear}-${String(quarterEndMonth + 1).padStart(2, '0')}-${String(lastDayOfQuarter).padStart(2, '0')}`
-        : `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-${String(lastDayOfMonth).padStart(2, '0')}`;
+        ? formatISODate(new Date(selectedYear, quarterEndMonth + 1, 0))
+        : formatISODate(new Date(selectedYear, selectedMonthIndex + 1, 0));
 
   const isCurrentPeriod = today >= periodStart && today <= periodEnd;
   const isFuturePeriod = periodStart > today;

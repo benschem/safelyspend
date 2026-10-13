@@ -38,21 +38,7 @@ import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { CategoryProgressBar } from '@/components/cash-flow/category-progress-bar';
 import { buildMonthlyLimitsByCategory } from '@/lib/category-limits';
 import { calculateBillsSetAside } from '@/lib/bill-set-aside';
-
-const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
+import { formatISODate, MONTH_NAMES, today as getToday } from '@/lib/dates';
 
 interface OutletContext {
   activeScenarioId: string | null;
@@ -170,10 +156,9 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
   const forecastDateRange = useMemo(() => {
     const year = selectedMonth.getFullYear();
     const month = selectedMonth.getMonth();
-    const lastDay = new Date(year, month + 1, 0).getDate();
     return {
-      startDate: `${year}-${String(month + 1).padStart(2, '0')}-01`,
-      endDate: `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
+      startDate: formatISODate(new Date(year, month, 1)),
+      endDate: formatISODate(new Date(year, month + 1, 0)),
     };
   }, [selectedMonth]);
 
@@ -242,10 +227,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
 
   // Effective date for filtering actuals (today for current period, period end for past)
   const effectiveDate = useMemo(() => {
-    if (isCurrentPeriod) {
-      const d = new Date();
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }
+    if (isCurrentPeriod) return getToday();
     return periodEnd;
   }, [isCurrentPeriod, periodEnd]);
 
@@ -595,8 +577,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
 
   // Total savings balance across all goals (anchor + transactions after anchor)
   const totalSavingsBalance = useMemo(() => {
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const todayStr = getToday();
     let total = 0;
     for (const goal of savingsGoals) {
       const anchor = getActiveAnchor(goal.id, todayStr);
@@ -702,7 +683,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
               </div>
               {/* Month grid */}
               <div className="grid grid-cols-3 gap-1">
-                {MONTHS.map((month, index) => {
+                {MONTH_NAMES.map((month, index) => {
                   const isSelected = pickerYear === selectedYear && index === selectedMonthIndex;
                   const isCurrent = pickerYear === now.getFullYear() && index === now.getMonth();
                   return (

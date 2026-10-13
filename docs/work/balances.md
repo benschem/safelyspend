@@ -57,5 +57,5 @@ Line numbers are as of 0.44.7; re-check them.
 
 ## Not in this plan
 
-- Date parsing and "today". See `dates.md`. Do that first: a balance "as of
-  today" depends on it.
+- Date parsing and "today", which live in `src/lib/dates.ts`. A balance "as
+  of today" takes its date from `today()` there.

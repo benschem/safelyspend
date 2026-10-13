@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
+import { parseLocalDate } from '@/lib/dates';
 
 const LAST_UPDATED = '2026-10-10';
 
@@ -26,7 +27,7 @@ export function PrivacyPage() {
 
         <p className="mt-3 text-sm text-muted-foreground">
           Last updated{' '}
-          {new Date(LAST_UPDATED).toLocaleDateString('en-AU', {
+          {parseLocalDate(LAST_UPDATED).toLocaleDateString('en-AU', {
             year: 'numeric',
             month: 'long',
             day: 'numeric',

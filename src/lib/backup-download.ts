@@ -1,8 +1,9 @@
+import { today } from '@/lib/dates';
 import { exportAllData } from '@/lib/db';
 
 /**
  * Save everything this device holds as a JSON file, through the browser's own
- * download: `budget-export-YYYY-MM-DD.json`, dated in UTC.
+ * download: `budget-export-YYYY-MM-DD.json`, dated the day it is saved.
  *
  * The file is the same export Settings imports again, so it is a full backup of
  * the local budget. It is written unencrypted, which is why callers warn before
@@ -20,7 +21,7 @@ export async function downloadBackup(): Promise<void> {
   const blobUrl = URL.createObjectURL(blob);
   const downloadLink = document.createElement('a');
   downloadLink.href = blobUrl;
-  downloadLink.download = `budget-export-${new Date().toISOString().slice(0, 10)}.json`;
+  downloadLink.download = `budget-export-${today()}.json`;
   document.body.appendChild(downloadLink);
   downloadLink.click();
   document.body.removeChild(downloadLink);

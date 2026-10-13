@@ -11,7 +11,8 @@ import {
 } from '@/components/ui/dialog';
 import { Alert } from '@/components/ui/alert';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
-import { today, parseCentsFromInput, formatCents, formatDate } from '@/lib/utils';
+import { today } from '@/lib/dates';
+import { parseCentsFromInput, formatCents, formatDate } from '@/lib/utils';
 import { findSimilarTransactions } from '@/lib/duplicate-detection';
 import type { Transaction, CreateEntity } from '@/lib/types';
 

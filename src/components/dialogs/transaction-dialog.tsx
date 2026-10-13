@@ -20,7 +20,8 @@ import {
 import { Alert } from '@/components/ui/alert';
 import { CategorySelect } from '@/components/category-select';
 import { SavingsGoalSelect } from '@/components/savings-goal-select';
-import { cn, today, parseCentsFromInput, formatCents, formatDate } from '@/lib/utils';
+import { today } from '@/lib/dates';
+import { cn, parseCentsFromInput, formatCents, formatDate } from '@/lib/utils';
 import { findSimilarTransactions } from '@/lib/duplicate-detection';
 import type { Transaction, TransactionType, CreateEntity } from '@/lib/types';
 

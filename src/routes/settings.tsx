@@ -67,7 +67,8 @@ import { useSavingsAnchors } from '@/hooks/use-savings-anchors';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { downloadBackup } from '@/lib/backup-download';
 import { importAllData, fullReset, CURRENT_SCHEMA_VERSION, CURRENT_DATA_VERSION } from '@/lib/db';
-import { formatCents, formatDate, today } from '@/lib/utils';
+import { today } from '@/lib/dates';
+import { formatCents, formatDate } from '@/lib/utils';
 import { currentVersion } from '@/lib/changelog';
 import {
   validateImport,

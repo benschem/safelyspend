@@ -5,6 +5,7 @@ import { useSavingsGoals } from './use-savings-goals';
 import { useSavingsAnchors } from './use-savings-anchors';
 import { useCategories } from './use-categories';
 import { buildMonthlyLimitsByCategory } from '@/lib/category-limits';
+import { today as getToday } from '@/lib/dates';
 import { getMonthsBetween } from '@/lib/utils';
 import type { Category, InterestRateEntry } from '@/lib/types';
 
@@ -66,11 +67,6 @@ export interface GoalMonthlySavings {
   monthlySavings: MonthlySavingsItem[];
 }
 
-function localToday(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 /**
  * Hook for computing report data
  */
@@ -120,7 +116,7 @@ export function useReportsData(scenarioId: string | null, startDate: string, end
   // Monthly spending by category (actual + forecast)
   const monthlySpending = useMemo((): MonthlySpending[] => {
     const months = getMonthsBetween(startDate, endDate);
-    const today = localToday();
+    const today = getToday();
     const result: MonthlySpending[] = [];
 
     for (const month of months) {
@@ -221,7 +217,7 @@ export function useReportsData(scenarioId: string | null, startDate: string, end
   // Monthly budget vs actual per category (includes forecasts for future dates)
   const monthlyBudgetComparison = useMemo((): MonthlyBudgetComparison[] => {
     const months = getMonthsBetween(startDate, endDate);
-    const today = localToday();
+    const today = getToday();
     const result: MonthlyBudgetComparison[] = [];
 
     for (const month of months) {
@@ -300,7 +296,7 @@ export function useReportsData(scenarioId: string | null, startDate: string, end
   // Monthly income vs expenses
   const monthlyNetFlow = useMemo((): MonthlyNetFlow[] => {
     const months = getMonthsBetween(startDate, endDate);
-    const today = localToday();
+    const today = getToday();
     const result: MonthlyNetFlow[] = [];
 
     for (const month of months) {
@@ -369,7 +365,7 @@ export function useReportsData(scenarioId: string | null, startDate: string, end
 
   // Savings goal progress (uses all-time savings, not just date range)
   const { allTransactions } = useTransactions();
-  const todayStr = localToday();
+  const todayStr = getToday();
   const savingsProgress = useMemo((): SavingsProgressItem[] => {
     const allSavings = allTransactions.filter((t) => t.type === 'savings');
 
@@ -413,7 +409,7 @@ export function useReportsData(scenarioId: string | null, startDate: string, end
   // Interest is treated as "actual" since it's earned money on existing balances
   const monthlySavings = useMemo((): MonthlySavingsItem[] => {
     const months = getMonthsBetween(startDate, endDate);
-    const today = localToday();
+    const today = getToday();
     const result: MonthlySavingsItem[] = [];
     let cumulativeActual = 0;
     let cumulativeForecast = 0;
@@ -459,7 +455,7 @@ export function useReportsData(scenarioId: string | null, startDate: string, end
   // Per-goal monthly savings (interest treated as actual)
   const savingsByGoal = useMemo((): GoalMonthlySavings[] => {
     const months = getMonthsBetween(startDate, endDate);
-    const today = localToday();
+    const today = getToday();
 
     // Calculate all-time balance per goal
     const allSavings = allTransactions.filter((t) => t.type === 'savings');

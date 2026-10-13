@@ -1,22 +1,13 @@
 import { useCallback, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type AppConfig } from '@/lib/db';
-import { today } from '@/lib/utils';
+import { daysBetween, today } from '@/lib/dates';
 
 const DEFAULT_CONFIG: AppConfig = {
   id: 'singleton',
   isInitialized: false,
   isDemo: false,
 };
-
-/**
- * Calculate the number of days between two ISO date strings
- */
-function daysBetween(dateA: string, dateB: string): number {
-  const a = new Date(dateA);
-  const b = new Date(dateB);
-  return Math.floor((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
-}
 
 /**
  * Get the number of days for a check-in cadence

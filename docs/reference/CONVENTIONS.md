@@ -25,9 +25,11 @@ const date = '2025-07-01'; // a date
 const timestamp = '2025-07-01T10:30:00.000Z'; // a timestamp
 ```
 
-Use `today()` from utils to get the current date in this format. As of 0.47.1 it returns the UTC date, which is yesterday for part of the morning in Australia; `docs/work/dates.md` is the fix.
+A date means that calendar day wherever the device is. `src/lib/dates.ts` is the only place that turns a date string into a `Date` or back, and it works in local time. Use `today()` for the current date, `parseLocalDate()` and `formatISODate()` to convert, and `daysBetween()` and `addDays()` for arithmetic.
 
-Never parse a date with `new Date('YYYY-MM-DD')`: that reads the string as UTC midnight and is a day out in local time. `src/lib/cadence.ts` has a local-time parser.
+Never parse a date with `new Date('YYYY-MM-DD')`: that reads the string as UTC midnight and is a day out west of UTC. Never cut a date from `toISOString()`: that is the UTC date, which is yesterday for part of the morning in Australia. ESLint rejects the second. Nothing catches the first.
+
+The tests run in `Australia/Sydney`, set in `vitest.config.ts`, so a date bug that depends on the timezone fails on every machine.
 
 ## Logging
 

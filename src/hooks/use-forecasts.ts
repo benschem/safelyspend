@@ -8,7 +8,8 @@ import type {
   SavingsGoal,
   Transaction,
 } from '@/lib/types';
-import { generateId, now, getLastDayOfMonth, formatISODate } from '@/lib/utils';
+import { formatISODate, formatYearMonth, parseLocalDate } from '@/lib/dates';
+import { generateId, now, getLastDayOfMonth } from '@/lib/utils';
 import { getEffectiveRate } from '@/lib/interest-rate';
 import { expandForecastRule } from '@/lib/cadence';
 
@@ -74,8 +75,8 @@ function generateInterestForecasts(
     let balance = currentBalances[goal.id] ?? 0;
 
     // Iterate month by month
-    const start = new Date(rangeStart);
-    const end = new Date(rangeEnd);
+    const start = parseLocalDate(rangeStart);
+    const end = parseLocalDate(rangeEnd);
     let year = start.getFullYear();
     let month = start.getMonth();
 
@@ -85,7 +86,7 @@ function generateInterestForecasts(
 
       if (monthEndDate > end) break;
 
-      const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+      const monthKey = formatYearMonth(monthEndDate);
       const monthDate = formatISODate(monthEndDate);
 
       // Get the effective rate for this month

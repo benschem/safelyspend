@@ -2,7 +2,8 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { PiggyBank, BanknoteArrowUp, BanknoteArrowDown, ChartPie } from 'lucide-react';
-import { cn, formatCents, formatISODate } from '@/lib/utils';
+import { formatISODate } from '@/lib/dates';
+import { cn, formatCents } from '@/lib/utils';
 import { averageMonthlySpendingByCategory } from '@/lib/spending-averages';
 import { CHART_COLORS } from '@/lib/chart-colors';
 import { sumForecastRulesForPeriod, toPeriodCents } from '@/lib/plan-amounts';
@@ -112,9 +113,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     const today = new Date();
     const startDay = new Date(today.getFullYear(), today.getMonth(), 1);
     const endDay = new Date(today.getFullYear() + 1, today.getMonth(), 0);
-    const startDate = `${startDay.getFullYear()}-${String(startDay.getMonth() + 1).padStart(2, '0')}-${String(startDay.getDate()).padStart(2, '0')}`;
-    const endDate = `${endDay.getFullYear()}-${String(endDay.getMonth() + 1).padStart(2, '0')}-${String(endDay.getDate()).padStart(2, '0')}`;
-    return { startDate, endDate };
+    return { startDate: formatISODate(startDay), endDate: formatISODate(endDay) };
   }, []);
 
   const {

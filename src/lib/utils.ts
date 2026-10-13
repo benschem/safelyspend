@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { daysBetween, formatISODate, formatYearMonth, parseLocalDate } from './dates';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -35,22 +36,14 @@ export function centsToDollars(cents: number): number {
 }
 
 /**
- * Format date for display
+ * Format a YYYY-MM-DD date for display
  */
 export function formatDate(isoDate: string): string {
-  return new Date(isoDate).toLocaleDateString('en-AU', {
+  return parseLocalDate(isoDate).toLocaleDateString('en-AU', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
   });
-}
-
-/**
- * Get today's date as ISO string (date only)
- */
-export function today(): string {
-  const iso = new Date().toISOString();
-  return iso.slice(0, 10); // YYYY-MM-DD
 }
 
 /**
@@ -123,13 +116,6 @@ export function getLastDayOfMonth(year: number, month: number): number {
 }
 
 /**
- * Format date as YYYY-MM-DD
- */
-export function formatISODate(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-/**
  * Format a year-month string (YYYY-MM) for display
  */
 export function formatMonth(yearMonth: string): string {
@@ -144,16 +130,14 @@ export function formatMonth(yearMonth: string): string {
  */
 export function getMonthsBetween(startDate: string, endDate: string): string[] {
   const months: string[] = [];
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+  const start = parseLocalDate(startDate);
+  const end = parseLocalDate(endDate);
 
   const current = new Date(start.getFullYear(), start.getMonth(), 1);
   const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
 
   while (current <= endMonth) {
-    const year = current.getFullYear();
-    const month = String(current.getMonth() + 1).padStart(2, '0');
-    months.push(`${year}-${month}`);
+    months.push(formatYearMonth(current));
     current.setMonth(current.getMonth() + 1);
   }
 
@@ -252,8 +236,8 @@ export const CADENCE_PER_LABELS: Record<CadenceType, string> = {
  * e.g., "1 Jul 2025 – 30 Jun 2026" or "Jul 2025 – Jun 2026" if full months
  */
 export function formatDateRange(startDate: string, endDate: string): string {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+  const start = parseLocalDate(startDate);
+  const end = parseLocalDate(endDate);
 
   const startStr = start.toLocaleDateString('en-AU', {
     day: 'numeric',
@@ -497,9 +481,7 @@ export function calculateTimelineDateRange(
  * Format a duration in days as a human-readable string
  */
 export function formatDuration(startDate: string, endDate: string): string {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  const diffDays = daysBetween(startDate, endDate);
 
   if (diffDays < 14) {
     return `${diffDays} days`;
@@ -519,7 +501,7 @@ export function formatDuration(startDate: string, endDate: string): string {
  * Format date for compact display (e.g., "Jan 1" or "Jan 1, 2025")
  */
 export function formatCompactDate(isoDate: string, includeYear = false): string {
-  const date = new Date(isoDate);
+  const date = parseLocalDate(isoDate);
   const options: Intl.DateTimeFormatOptions = {
     day: 'numeric',
     month: 'short',
@@ -551,7 +533,7 @@ export function getOrdinalSuffix(day: number): string {
  * Format date as long format with ordinal: "1st January 2025"
  */
 export function formatLongDate(isoDate: string): string {
-  const date = new Date(isoDate);
+  const date = parseLocalDate(isoDate);
   const day = date.getDate();
   const month = date.toLocaleDateString('en-AU', { month: 'long' });
   const year = date.getFullYear();

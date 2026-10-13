@@ -19,9 +19,7 @@ function getReportsRange(): { start: string; end: string } {
   const now = new Date();
   const startDate = new Date(now.getFullYear(), now.getMonth() - 12, 1);
   const endDate = new Date(now.getFullYear(), now.getMonth() + 24 + 1, 0); // last day of month 24 months out
-  const fmt = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  return { start: fmt(startDate), end: fmt(endDate) };
+  return { start: formatISODate(startDate), end: formatISODate(endDate) };
 }
 
 const REPORTS_RANGE = getReportsRange();
@@ -29,7 +27,8 @@ const REPORTS_RANGE = getReportsRange();
 import { SavingsGoalDialog } from '@/components/dialogs/savings-goal-dialog';
 import { SavingsTransactionDialog } from '@/components/dialogs/savings-transaction-dialog';
 import { SavingsGoalProgressCard } from '@/components/charts';
-import { formatCents, formatMonth, today as getToday } from '@/lib/utils';
+import { formatISODate, formatYearMonth, parseLocalDate, today as getToday } from '@/lib/dates';
+import { formatCents, formatMonth } from '@/lib/utils';
 import { getEffectiveRate } from '@/lib/interest-rate';
 import type { SavingsGoal } from '@/lib/types';
 
@@ -137,8 +136,8 @@ export function SavingsIndexPage() {
     // Planned monthly rate: next 12 months of forecasts
     const totalPlannedSavings = savingsContributions
       .filter((c) => {
-        const contributionDate = new Date(c.date);
-        const todayDate = new Date(today);
+        const contributionDate = parseLocalDate(c.date);
+        const todayDate = parseLocalDate(today);
         const monthsDiff =
           (contributionDate.getFullYear() - todayDate.getFullYear()) * 12 +
           (contributionDate.getMonth() - todayDate.getMonth());
@@ -157,10 +156,10 @@ export function SavingsIndexPage() {
 
       let totalInterest = 0;
       let balance = g.currentBalance;
-      const nowDate = new Date(today);
+      const nowDate = parseLocalDate(today);
       for (let i = 0; i < 12; i++) {
         const simDate = new Date(nowDate.getFullYear(), nowDate.getMonth() + i, 28);
-        const simDateStr = `${simDate.getFullYear()}-${String(simDate.getMonth() + 1).padStart(2, '0')}-${String(simDate.getDate()).padStart(2, '0')}`;
+        const simDateStr = formatISODate(simDate);
         const rate = goalObj ? getEffectiveRate(goalObj, simDateStr) : (g.annualInterestRate ?? 0);
         const monthlyInterest = Math.round(balance * (rate / 100 / 12));
         totalInterest += monthlyInterest;
@@ -183,10 +182,10 @@ export function SavingsIndexPage() {
       if (avgMonthly <= 0 && !hasInterest) continue;
       let bal = g.currentBalance;
       let months = 0;
-      const nowDate = new Date(today);
+      const nowDate = parseLocalDate(today);
       while (bal < g.targetAmount && months < 60) {
         const simDate = new Date(nowDate.getFullYear(), nowDate.getMonth() + months, 28);
-        const simDateStr = `${simDate.getFullYear()}-${String(simDate.getMonth() + 1).padStart(2, '0')}-${String(simDate.getDate()).padStart(2, '0')}`;
+        const simDateStr = formatISODate(simDate);
         const effectiveRate = goalObj
           ? getEffectiveRate(goalObj, simDateStr)
           : (g.annualInterestRate ?? 0);
@@ -197,7 +196,7 @@ export function SavingsIndexPage() {
       }
       if (months >= 60) continue; // Skip if unreachable or >5 years out
       const d = new Date(nowDate.getFullYear(), nowDate.getMonth() + months, 1);
-      const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const month = formatYearMonth(d);
       if (!nextGoalDate || month < nextGoalDate) nextGoalDate = month;
     }
 

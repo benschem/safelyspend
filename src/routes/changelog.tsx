@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Sparkles, ArrowLeft } from 'lucide-react';
 import { changelog, currentVersion } from '@/lib/changelog';
+import { parseLocalDate } from '@/lib/dates';
 
 export function ChangelogPage() {
   return (
@@ -36,7 +37,7 @@ export function ChangelogPage() {
                 </span>
               )}
               <span className="text-sm text-muted-foreground">
-                {new Date(entry.date).toLocaleDateString('en-AU', {
+                {parseLocalDate(entry.date).toLocaleDateString('en-AU', {
                   year: 'numeric',
                   month: 'long',
                   day: 'numeric',

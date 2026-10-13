@@ -34,7 +34,8 @@ import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { useSavingsAnchors } from '@/hooks/use-savings-anchors';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useTransactions } from '@/hooks/use-transactions';
-import { today, formatLongDate, formatCents, parseCentsFromInput } from '@/lib/utils';
+import { today } from '@/lib/dates';
+import { formatLongDate, formatCents, parseCentsFromInput } from '@/lib/utils';
 import { debug } from '@/lib/debug';
 import type { PersonaId } from '@/lib/demo-personas';
 

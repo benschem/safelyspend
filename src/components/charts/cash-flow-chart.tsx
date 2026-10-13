@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
+import { formatYearMonth } from '@/lib/dates';
 import { formatCents, formatCentsShort, formatMonth } from '@/lib/utils';
 import { CHART_COLORS } from '@/lib/chart-colors';
 
@@ -182,10 +183,7 @@ export function CashFlowChart({
   savingsStartingBalance = 0,
   savingsBalanceStartMonth,
 }: CashFlowChartProps) {
-  const currentMonth = (() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  })();
+  const currentMonth = formatYearMonth(new Date());
   const hasCurrentMonth = monthlyNetFlow.some((m) => m.month === currentMonth);
   const hasFutureData = monthlyNetFlow.some((m) => m.month > currentMonth);
 

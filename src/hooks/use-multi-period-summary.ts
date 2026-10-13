@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useTransactions } from './use-transactions';
 import { useAdjustedBudgets, useAdjustedForecasts } from './use-adjusted-values';
+import { formatISODate } from '@/lib/dates';
 import { getMonthsBetween, toMonthlyCents, type CadenceType } from '@/lib/utils';
 
 export interface MonthSummary {
@@ -84,8 +85,8 @@ export function useMultiPeriodSummary({
       const start = new Date(center.getFullYear(), center.getMonth() - 6, 1);
       const end = new Date(center.getFullYear(), center.getMonth() + 7, 0); // Last day of month 6 ahead
       return {
-        startDate: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-01`,
-        endDate: `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`,
+        startDate: formatISODate(start),
+        endDate: formatISODate(end),
       };
     }
     // Full calendar year
@@ -130,7 +131,7 @@ export function useMultiPeriodSummary({
     const today = new Date();
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth();
-    const todayStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const todayStr = formatISODate(today);
 
     const monthKeys = getMonthsBetween(startDate, endDate);
 

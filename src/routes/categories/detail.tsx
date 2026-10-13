@@ -25,24 +25,10 @@ import { CategoryMonthlyChart } from '@/components/charts/category-monthly-chart
 import { DescriptionBreakdown } from '@/components/description-breakdown';
 import { allowancesForCategory } from '@/lib/allowances';
 import { buildMonthlyLimitsByCategory, isRuleActiveBetween } from '@/lib/category-limits';
-import { cn, formatCents, formatDate, formatISODate } from '@/lib/utils';
+import { formatISODate, formatYearMonth, MONTH_NAMES } from '@/lib/dates';
+import { cn, formatCents, formatDate } from '@/lib/utils';
 import { useUndoDelete } from '@/hooks/use-undo-delete';
 import type { Transaction, Category } from '@/lib/types';
-
-const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
 
 interface OutletContext {
   activeScenarioId: string | null;
@@ -86,9 +72,9 @@ export function CategoryDetailPage() {
   const currentYear = now.getFullYear();
   const currentMonthIndex = now.getMonth();
 
-  const periodStart = `${currentYear}-${String(currentMonthIndex + 1).padStart(2, '0')}-01`;
+  const periodStart = formatISODate(new Date(currentYear, currentMonthIndex, 1));
   const lastDayOfMonth = new Date(currentYear, currentMonthIndex + 1, 0).getDate();
-  const periodEnd = `${currentYear}-${String(currentMonthIndex + 1).padStart(2, '0')}-${String(lastDayOfMonth).padStart(2, '0')}`;
+  const periodEnd = formatISODate(new Date(currentYear, currentMonthIndex + 1, 0));
 
   // Calculate last month dates for comparison
   const lastMonthStart = useMemo(
@@ -107,7 +93,7 @@ export function CategoryDetailPage() {
   );
 
   // Period label
-  const periodLabel = `${MONTHS[currentMonthIndex]} ${currentYear}`;
+  const periodLabel = `${MONTH_NAMES[currentMonthIndex]} ${currentYear}`;
   const dayOfMonth = now.getDate();
 
   // Data hooks - get all transactions then filter
@@ -208,7 +194,7 @@ export function CategoryDetailPage() {
     const months: { month: string; actual: number; budget: number | null }[] = [];
     for (let i = 11; i >= 0; i--) {
       const date = new Date(currentYear, currentMonthIndex - i, 1);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthKey = formatYearMonth(date);
       const monthStart = formatISODate(date);
       const monthEnd = formatISODate(new Date(date.getFullYear(), date.getMonth() + 1, 0));
       const limitsByCategory = buildMonthlyLimitsByCategory(

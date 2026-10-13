@@ -363,6 +363,50 @@ describe('calculatePeriodCashFlow', () => {
   });
 });
 
+describe('calculatePeriodCashFlow day of the period', () => {
+  function dayOfPeriodOn(
+    viewMode: 'month' | 'quarter' | 'year',
+    periodStart: string,
+    periodEnd: string,
+    effectiveDate: string,
+  ) {
+    return calculatePeriodCashFlow(
+      viewMode,
+      SELECTED_YEAR,
+      SELECTED_MONTH_INDEX,
+      periodStart,
+      periodEnd,
+      effectiveDate,
+      true,
+      false,
+      [],
+      [],
+      [],
+      [],
+    ).dayOfPeriod;
+  }
+
+  it('is day 1 on the first day of the year', () => {
+    expect(dayOfPeriodOn('year', '2026-01-01', '2026-12-31', '2026-01-01')).toBe(1);
+  });
+
+  it('is day 365 on the last day of the year', () => {
+    expect(dayOfPeriodOn('year', '2026-01-01', '2026-12-31', '2026-12-31')).toBe(365);
+  });
+
+  it('counts from the first day of the quarter', () => {
+    expect(dayOfPeriodOn('quarter', '2026-10-01', '2026-12-31', '2026-11-02')).toBe(33);
+  });
+
+  it('is the day of the month in month view', () => {
+    expect(dayOfPeriodOn('month', MONTH_START, MONTH_END, '2026-10-10')).toBe(10);
+  });
+
+  it('is the whole period once the period has finished', () => {
+    expect(cashFlowFor({}).dayOfPeriod).toBe(31);
+  });
+});
+
 // Nothing links a transaction to the bill it pays, so spending in a category
 // counts towards that category's bills first. These cases hold the day-to-day
 // spending steady at $300 and move only when the $900 bill is paid. The

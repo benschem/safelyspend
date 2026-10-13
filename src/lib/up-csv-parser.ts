@@ -1,4 +1,5 @@
 import Papa from 'papaparse';
+import { formatISODate, isRealDate } from './dates';
 
 export interface UpCsvRow {
   Time: string;
@@ -56,13 +57,12 @@ function parseUpDate(dateStr: string): string {
   // Extract just the date part
   const match = dateStr.match(/^(\d{4}-\d{2}-\d{2})/);
   if (match && match[1]) {
-    return match[1];
+    return isRealDate(match[1]) ? match[1] : '';
   }
   // Fallback: try to parse and format
   const date = new Date(dateStr);
   if (!isNaN(date.getTime())) {
-    const isoDate = date.toISOString().split('T')[0];
-    return isoDate ?? '';
+    return formatISODate(date);
   }
   return '';
 }

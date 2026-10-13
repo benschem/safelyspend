@@ -7,7 +7,8 @@ import {
   PiggyBank,
   Ambulance,
 } from 'lucide-react';
-import { formatCents, formatMonth, today as getToday } from '@/lib/utils';
+import { formatISODate, formatYearMonth, today as getToday } from '@/lib/dates';
+import { formatCents, formatMonth } from '@/lib/utils';
 import { getEffectiveRate } from '@/lib/interest-rate';
 import type { InterestRateEntry, SavingsGoal } from '@/lib/types';
 
@@ -70,7 +71,7 @@ function calculateExpectedCompletion(
   // Simulate month by month
   while (balance < targetAmount && months < maxMonths) {
     const simDate = new Date(now.getFullYear(), now.getMonth() + months, 28);
-    const simDateStr = `${simDate.getFullYear()}-${String(simDate.getMonth() + 1).padStart(2, '0')}-${String(simDate.getDate()).padStart(2, '0')}`;
+    const simDateStr = formatISODate(simDate);
     const effectiveRate = getEffectiveRate(goalForRate, simDateStr);
     const monthlyRate = effectiveRate ? effectiveRate / 100 / 12 : 0;
 
@@ -83,7 +84,7 @@ function calculateExpectedCompletion(
 
   // Calculate the actual month
   const targetDate = new Date(now.getFullYear(), now.getMonth() + months, 1);
-  const targetMonth = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+  const targetMonth = formatYearMonth(targetDate);
 
   return { month: targetMonth, monthsAway: months };
 }

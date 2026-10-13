@@ -1,3 +1,4 @@
+import { daysBetween, parseLocalDate } from '@/lib/dates';
 import { toPeriodCents } from '@/lib/plan-amounts';
 import type { BudgetRule, Cadence } from '@/lib/types';
 
@@ -75,9 +76,9 @@ export function sumAllowancesForPeriod(allowances: BudgetRule[], period: Cadence
  * Calculate how many occurrences of a cadence fall within a date range
  */
 function countOccurrences(cadence: Cadence, startDate: string, endDate: string): number {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  const start = parseLocalDate(startDate);
+  const end = parseLocalDate(endDate);
+  const diffDays = daysBetween(startDate, endDate) + 1;
 
   switch (cadence) {
     case 'weekly':

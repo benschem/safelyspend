@@ -10,7 +10,7 @@ import { SavingsGoalSelect } from '@/components/savings-goal-select';
 import { FormField, FormError } from '@/components/form-field';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { useTransactions } from '@/hooks/use-transactions';
-import { today } from '@/lib/utils';
+import { today } from '@/lib/dates';
 import { transactionFormSchema, parseCents } from '@/lib/schemas';
 import type { TransactionType } from '@/lib/types';
 import { useState } from 'react';

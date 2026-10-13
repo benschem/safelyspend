@@ -10,6 +10,13 @@ import {
   ReferenceLine,
   ReferenceArea,
 } from 'recharts';
+import {
+  addDays,
+  daysBetween,
+  formatYearMonth,
+  parseLocalDate,
+  today as getToday,
+} from '@/lib/dates';
 import { formatCents } from '@/lib/utils';
 import { CHART_COLORS } from '@/lib/chart-colors';
 
@@ -209,11 +216,11 @@ export function BurnRateChart({
   const referenceAmount = income != null && income > 0 ? income : totalBudget;
   const budgetPercent = referenceAmount > 0 ? (totalBudget / referenceAmount) * 100 : 100;
   const chartData = useMemo(() => {
-    const start = new Date(periodStart);
-    const end = new Date(periodEnd);
-    const totalDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const start = parseLocalDate(periodStart);
+    const end = parseLocalDate(periodEnd);
+    const totalDays = daysBetween(periodStart, periodEnd) + 1;
+    const todayStr = getToday();
+    const today = parseLocalDate(todayStr);
 
     // Create a map of date -> spending
     const spendingByDate: Record<string, number> = {};
@@ -238,7 +245,7 @@ export function BurnRateChart({
 
       for (let m = 0; m < totalMonths; m++) {
         const monthDate = new Date(startYear, startMonth + m, 1);
-        const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+        const monthKey = formatYearMonth(monthDate);
         const monthLabel = MONTH_NAMES[monthDate.getMonth()] ?? '';
 
         // Check if this month is in the future
@@ -286,7 +293,7 @@ export function BurnRateChart({
       // Add future months with projection
       for (let m = currentMonthIndex; m < totalMonths; m++) {
         const monthDate = new Date(startYear, startMonth + m, 1);
-        const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+        const monthKey = formatYearMonth(monthDate);
         const monthLabel = MONTH_NAMES[monthDate.getMonth()] ?? '';
 
         const expectedPercent =
@@ -345,11 +352,9 @@ export function BurnRateChart({
 
     // First pass: calculate actual spending up to today
     for (let i = 0; i < totalDays; i++) {
-      const currentDate = new Date(start);
-      currentDate.setDate(currentDate.getDate() + i);
-      const dateStr = currentDate.toISOString().slice(0, 10);
+      const dateStr = addDays(periodStart, i);
       const day = i + 1;
-      const isFuture = currentDate > today;
+      const isFuture = dateStr > todayStr;
 
       if (!isFuture) {
         const dailySpend = spendingByDate[dateStr] ?? 0;
@@ -394,9 +399,7 @@ export function BurnRateChart({
 
     // Second pass: add future days with projection
     for (let i = currentDay; i < totalDays; i++) {
-      const currentDate = new Date(start);
-      currentDate.setDate(currentDate.getDate() + i);
-      const dateStr = currentDate.toISOString().slice(0, 10);
+      const dateStr = addDays(periodStart, i);
       const day = i + 1;
 
       const expectedCumulative = expectedAtDay(day, dateStr);

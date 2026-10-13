@@ -1,13 +1,6 @@
 import type { ExpandedForecast, ForecastRule } from '@/lib/types';
-import { formatISODate, getLastDayOfMonth } from '@/lib/utils';
-
-/**
- * Parse a YYYY-MM-DD string as a local date (not UTC)
- */
-function parseLocalDate(dateStr: string): Date {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  return new Date(year!, month! - 1, day);
-}
+import { formatISODate, parseLocalDate } from '@/lib/dates';
+import { getLastDayOfMonth } from '@/lib/utils';
 
 /**
  * Expand a forecast rule into its dated occurrences between two dates

@@ -14,28 +14,29 @@ negative projected month end with a "behind" pill. Behind what? **Traced
 through the code, not reproduced**, and on the assumption that there were no
 forecast rules.
 
-The pill is projected month end minus planned month end
-(`summary-cards.tsx:115`). With no rules:
+The pill is projected month end minus planned month end (`diff` in
+`summary-cards.tsx`). With no rules:
 
 - **The plan is empty, so it says the balance will not move.** Planned month
   end is the starting balance plus expected income, less bills,
-  allowances and planned savings (`cash-flow/index.tsx:559`). All four come from
-  rules and are zero.
+  allowances and planned savings (`plannedEnd` in `cash-flow/index.tsx`). All
+  four come from rules and are zero.
 - **The projection counts no income.** It adds `income.expected`, which sums
-  forecast rules only (`use-budget-period-data.ts:173`). Pay that has already
-  been imported is ignored unless a rule predicted it.
+  forecast rules only (`expectedIncome` in `calculatePeriodCashFlow`). Pay
+  that has already been imported is ignored unless a rule predicted it.
 - **The projection treats every expense as variable and scales it up.** Fixed
   costs are whatever expense rules say was due, which is nothing, so rent and
-  bills are extrapolated with the groceries (`use-budget-period-data.ts:256`).
-  On the 11th of a 31-day month that is the month's spending times about 2.8.
+  bills are extrapolated with the groceries (`projectedVariable` in
+  `calculatePeriodCashFlow`). On the 11th of a 31-day month that is the
+  month's spending times about 2.8.
 
 So the card reads: starting balance, less nearly three times everything spent
 so far, with no income. The "behind" figure is that whole projected spend. It
 is the first screen a new person sees after importing.
 
 The spending message already handles this state, falling back to "Spent (no
-budget set)" when there are no budget rules (`cash-flow/index.tsx:445`). The
-cash card has no equivalent.
+budget set)" when there are no budget rules (`budgetStatus` in
+`cash-flow/index.tsx`). The cash card has no equivalent.
 
 Directions, not yet decided:
 
@@ -47,12 +48,12 @@ Directions, not yet decided:
   whatever else is chosen, since the word confused the person who wrote it.
 - **Count actual income in the projection**: income received so far plus
   forecast income still to come, as `net.projected` already does
-  (`use-budget-period-data.ts:251`). A change to what the number means for
-  everyone, not only new users, so decide it separately.
+  (`projectedNet` in `calculatePeriodCashFlow`). A change to what the number
+  means for everyone, not only new users, so decide it separately.
 - **Offer to build rules from the import.** Recurring pay and bills are
   visible in a few months of transactions. Bigger; goes with
   `onboarding-questions.md`.
 
 Not checked: whether the wizard's budget step, which creates budget rules but
-no forecast rules (`first-run-wizard.tsx:978`), leaves a new user in a milder
-version of the same state.
+no forecast rules (`addBudgetRule` in `SetupWizard`, `first-run-wizard.tsx`),
+leaves a new user in a milder version of the same state.

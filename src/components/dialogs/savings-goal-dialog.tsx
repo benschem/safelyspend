@@ -22,7 +22,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { today, parseCentsFromInput } from '@/lib/utils';
+import { addDays, today } from '@/lib/dates';
+import { parseCentsFromInput } from '@/lib/utils';
 import type {
   SavingsGoal,
   SavingsAnchor,
@@ -442,9 +443,7 @@ export function SavingsGoalDialog({
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        const tomorrow = new Date();
-                        tomorrow.setDate(tomorrow.getDate() + 1);
-                        const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+                        const tomorrowStr = addDays(today(), 1);
                         setRateSchedule([
                           ...rateSchedule,
                           {

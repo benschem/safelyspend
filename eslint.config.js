@@ -46,6 +46,17 @@ export default [
       'no-undef': 'off',
       // Prevent raw console usage - use debug utility instead
       'no-console': ['error', { allow: ['warn', 'error', 'info'] }],
+      // toISOString() is UTC, so cutting the date off it gives yesterday for
+      // part of each day in Australia
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "CallExpression[callee.property.name=/^(slice|split|substring)$/][callee.object.callee.property.name='toISOString']",
+          message:
+            'This is the UTC date. Use today() or formatISODate() from @/lib/dates for a calendar date.',
+        },
+      ],
     },
     settings: {
       react: {

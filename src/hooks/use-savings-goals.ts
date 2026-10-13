@@ -2,7 +2,8 @@ import { useCallback, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import type { SavingsGoal, CreateEntity } from '@/lib/types';
-import { generateId, now, today } from '@/lib/utils';
+import { today } from '@/lib/dates';
+import { generateId, now } from '@/lib/utils';
 
 const USER_ID = 'local';
 

@@ -1,8 +1,8 @@
+import { addDays, daysBetween } from '@/lib/dates';
 import { toPeriodCents } from '@/lib/plan-amounts';
 import { CADENCE_PER_LABELS, formatCents, pluralise } from '@/lib/utils';
 import type { Cadence, Transaction } from '@/lib/types';
 
-const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
 const DAYS_PER_YEAR = 365;
 const DAYS_PER_MONTH = DAYS_PER_YEAR / 12;
 
@@ -15,18 +15,6 @@ export interface SpendingAverages {
   monthsOfHistory: number;
   /** Average spent per month in each category, in cents */
   monthlyCentsByCategory: Record<string, number>;
-}
-
-function daysFromTo(startDate: string, endDate: string): number {
-  const startTime = Date.parse(`${startDate}T00:00:00Z`);
-  const endTime = Date.parse(`${endDate}T00:00:00Z`);
-  return Math.round((endTime - startTime) / MILLISECONDS_PER_DAY);
-}
-
-function oneYearBefore(date: string): string {
-  const yearAgo = new Date(`${date}T00:00:00Z`);
-  yearAgo.setUTCDate(yearAgo.getUTCDate() - (DAYS_PER_YEAR - 1));
-  return yearAgo.toISOString().slice(0, 10);
 }
 
 /**
@@ -56,10 +44,11 @@ export function averageMonthlySpendingByCategory(
     (earliest, transaction) => (transaction.date < earliest ? transaction.date : earliest),
     todayDate,
   );
-  const yearWindowStart = oneYearBefore(todayDate);
+  // 365 days counting today, so the window starts 364 days back
+  const yearWindowStart = addDays(todayDate, -(DAYS_PER_YEAR - 1));
   const historyStartDate = firstExpenseDate > yearWindowStart ? firstExpenseDate : yearWindowStart;
 
-  const daysOfHistory = daysFromTo(historyStartDate, todayDate) + 1;
+  const daysOfHistory = daysBetween(historyStartDate, todayDate) + 1;
   if (daysOfHistory < MINIMUM_DAYS_OF_HISTORY) return null;
   const exactMonthsOfHistory = daysOfHistory / DAYS_PER_MONTH;
 

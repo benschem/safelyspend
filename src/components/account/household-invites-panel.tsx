@@ -20,6 +20,7 @@ import {
   type RecipientAddressProblem,
   type VisibleSentInvite,
 } from '@/lib/invite-sending';
+import { formatISODate } from '@/lib/dates';
 import { isVaultUnlocked, subscribeToVaultState } from '@/lib/key-vault';
 import { formatDate } from '@/lib/utils';
 
@@ -55,16 +56,19 @@ const STATE_BADGE: Record<
 };
 
 function describeInvite({ invite, state }: VisibleSentInvite, isUnlocked: boolean): string {
+  // The expiry is a moment in time. formatDate takes a calendar date.
+  const expiryDate = formatDate(formatISODate(new Date(invite.expiresAt)));
+
   switch (state) {
     case 'pending':
-      return `The link in their email works until ${formatDate(invite.expiresAt)}.`;
+      return `The link in their email works until ${expiryDate}.`;
     case 'awaiting-approval':
       // Approving wraps the household key, which only an unlocked vault holds.
       return isUnlocked
         ? 'They have created their account and are waiting for you to approve them.'
         : 'They have created their account. Unlock your vault to approve them.';
     case 'expired':
-      return `This invite expired on ${formatDate(invite.expiresAt)}.`;
+      return `This invite expired on ${expiryDate}.`;
     case 'joined':
       return 'Shares this budget with you.';
   }

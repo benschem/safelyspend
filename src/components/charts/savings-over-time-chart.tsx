@@ -8,6 +8,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
+import { formatYearMonth } from '@/lib/dates';
 import { formatCents, formatCentsShort, formatMonth } from '@/lib/utils';
 import { CHART_COLORS } from '@/lib/chart-colors';
 
@@ -125,10 +126,7 @@ export function SavingsOverTimeChart({
   startingBalance = 0,
   balanceStartMonth,
 }: SavingsOverTimeChartProps) {
-  const currentMonth = (() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  })();
+  const currentMonth = formatYearMonth(new Date());
   const hasCurrentMonth = monthlySavings.some((m) => m.month === currentMonth);
 
   // Legend visibility state

@@ -1,4 +1,7 @@
+import { daysBetween } from './dates';
 import type { Transaction, ForecastRule } from './types';
+
+const SIMILAR_WITHIN_DAYS = 3;
 
 /**
  * Find transactions with similar description, amount, and date (within ±3 days).
@@ -14,16 +17,13 @@ export function findSimilarTransactions(
   if (!description.trim() || amountCents <= 0 || !date) return [];
 
   const descLower = description.trim().toLowerCase();
-  const targetDate = new Date(date);
-  const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
 
   return existing.filter((tx) => {
     if (excludeId && tx.id === excludeId) return false;
     if (tx.description.toLowerCase() !== descLower) return false;
     if (Math.abs(tx.amountCents) !== Math.abs(amountCents)) return false;
 
-    const txDate = new Date(tx.date);
-    return Math.abs(txDate.getTime() - targetDate.getTime()) <= threeDaysMs;
+    return Math.abs(daysBetween(date, tx.date)) <= SIMILAR_WITHIN_DAYS;
   });
 }
 

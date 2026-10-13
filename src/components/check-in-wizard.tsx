@@ -39,7 +39,8 @@ import { useCashSurplus } from '@/hooks/use-cash-surplus';
 import { useBudgetPeriodData } from '@/hooks/use-budget-period-data';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useTransactions } from '@/hooks/use-transactions';
-import { formatCents, today, parseCentsFromInput } from '@/lib/utils';
+import { today } from '@/lib/dates';
+import { formatCents, parseCentsFromInput } from '@/lib/utils';
 import { WhatIfProvider } from '@/contexts/what-if-context';
 import type { CheckInCadence } from '@/lib/types';
 

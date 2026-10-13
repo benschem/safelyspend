@@ -7,6 +7,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'happy-dom',
+    // Dates are local, and the date bugs only show when the local date and
+    // the UTC date differ. One fixed zone makes them show on every machine.
+    env: { TZ: 'Australia/Sydney' },
     setupFiles: ['./src/__tests__/setup.ts'],
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     coverage: {
