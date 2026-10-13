@@ -114,3 +114,4 @@ else.
 - [bug]     Interest ignores savings anchors and is worked out four times _(savings)_
 - [bug]     Cash Flow starting balance may ignore adjustments in the period _(cash-flow)_
 - [cleanup] getEarliestAnchorDate in use-savings-anchors.ts has no caller _(tooling)_
+- [bug]     Confirming the check-in's cash estimate counts today's transactions twice _(cash-flow)_

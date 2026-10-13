@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useBalanceAnchors } from './use-balance-anchors';
 import { useTransactions } from './use-transactions';
+import { cashBalanceOn } from '@/lib/balances';
 import { today as getToday } from '@/lib/dates';
 
 interface UseCashSurplusOptions {
@@ -27,32 +28,17 @@ export function useCashSurplus({
   remainingIncome,
   remainingExpenses,
 }: UseCashSurplusOptions): UseCashSurplusResult {
-  const { getActiveAnchor } = useBalanceAnchors();
+  const { anchors: balanceAnchors } = useBalanceAnchors();
   const { allTransactions } = useTransactions();
 
   const today = useMemo(() => getToday(), []);
 
   return useMemo(() => {
     const balanceDate = isPastPeriod ? periodEnd : today;
-    const activeAnchor = getActiveAnchor(balanceDate);
+    const balance = cashBalanceOn(balanceAnchors, allTransactions, balanceDate);
 
-    if (!activeAnchor) {
+    if (balance === null) {
       return { currentBalance: null, cashSurplus: null, hasAnchor: false };
-    }
-
-    // Walk transactions from anchor to balance date
-    const transactionsFromAnchor = allTransactions.filter(
-      (t) => t.date >= activeAnchor.date && t.date <= balanceDate,
-    );
-
-    let balance = activeAnchor.balanceCents;
-    for (const t of transactionsFromAnchor) {
-      if (t.type === 'income' || t.type === 'adjustment') {
-        balance += t.amountCents;
-      } else {
-        // expense and savings both reduce cash
-        balance -= t.amountCents;
-      }
     }
 
     if (isPastPeriod) {
@@ -70,7 +56,7 @@ export function useCashSurplus({
     today,
     isPastPeriod,
     periodEnd,
-    getActiveAnchor,
+    balanceAnchors,
     allTransactions,
     remainingIncome,
     remainingExpenses,

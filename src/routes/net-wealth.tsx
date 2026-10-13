@@ -18,6 +18,7 @@ import { useScenarios } from '@/hooks/use-scenarios';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
+import { cashBalanceOn } from '@/lib/balances';
 import { today as getToday } from '@/lib/dates';
 import { formatCents } from '@/lib/utils';
 
@@ -60,7 +61,7 @@ interface OutletContext {
 export function NetWealthPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
   const { activeScenario } = useScenarios();
-  const { getActiveAnchor } = useBalanceAnchors();
+  const { anchors: balanceAnchors } = useBalanceAnchors();
 
   // Fixed date ranges - no user selection
   const today = getToday();
@@ -86,29 +87,13 @@ export function NetWealthPage() {
       .reduce((sum, t) => sum + t.amountCents, 0);
   }, [emergencyFund, allTransactions]);
 
-  // Get the active anchor for current balance calculation
-  const activeAnchor = getActiveAnchor(today);
+  // Cash right now, or null when no balance has been set on or before today
+  const currentBalance = useMemo(
+    () => cashBalanceOn(balanceAnchors, allTransactions, today),
+    [balanceAnchors, allTransactions, today],
+  );
 
-  // Calculate current balance using anchor-based approach
-  const currentBalance = useMemo(() => {
-    if (!activeAnchor) return null;
-
-    const transactionsFromAnchor = allTransactions.filter(
-      (t) => t.date >= activeAnchor.date && t.date <= today,
-    );
-
-    let balance = activeAnchor.balanceCents;
-    for (const t of transactionsFromAnchor) {
-      if (t.type === 'income' || t.type === 'adjustment') {
-        balance += t.amountCents;
-      } else {
-        balance -= t.amountCents;
-      }
-    }
-    return balance;
-  }, [activeAnchor, allTransactions, today]);
-
-  const hasNoAnchor = !activeAnchor;
+  const hasNoAnchor = currentBalance === null;
 
   // Dummy data for Debt and Investments (to be implemented later)
   const totalDebt = 0;

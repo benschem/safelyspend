@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.53.1',
+    date: '2026-10-13',
+    changes: [
+      'Fixed the cash estimate in the check-in, shown when no cash balance has been set, leaving out money moved to savings',
+    ],
+  },
+  {
     version: '0.53.0',
     date: '2026-10-13',
     changes: [

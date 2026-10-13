@@ -20,7 +20,8 @@ import { useSavingsAnchors } from '@/hooks/use-savings-anchors';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
-import { today as getToday } from '@/lib/dates';
+import { cashBalanceOn } from '@/lib/balances';
+import { addDays, today as getToday } from '@/lib/dates';
 import { formatCompactDate, TIMELINE_UNIT_BOUNDS } from '@/lib/utils';
 import {
   Select,
@@ -359,35 +360,26 @@ export function InsightsPage() {
   const isPastOnly = endDate <= today;
 
   // Calculate starting balance for cash flow chart
-  const { getActiveAnchor, anchors } = useBalanceAnchors();
+  const { anchors } = useBalanceAnchors();
   const { allTransactions } = useTransactions();
 
   const balanceInfo = useMemo(() => {
-    // Get anchor that applies at the start of the report period
-    const anchorBeforeStart = getActiveAnchor(startDate);
+    // The balance the period opens with. An anchor is the balance at the start
+    // of its day, so one dated on the first day is that figure. Otherwise it is
+    // the balance at the end of the day before.
+    const anchorOnStartDate = anchors.find((a) => a.date === startDate);
+    const balanceAtStart = anchorOnStartDate
+      ? anchorOnStartDate.balanceCents
+      : cashBalanceOn(anchors, allTransactions, addDays(startDate, -1));
 
     // Find first anchor within the date range (if any)
     const anchorInRange = anchors
       .filter((a) => a.date >= startDate && a.date <= endDate)
       .sort((a, b) => a.date.localeCompare(b.date))[0];
 
-    if (anchorBeforeStart) {
-      // We have an anchor before the start - calculate balance from period start
-      const transactionsBeforePeriod = allTransactions.filter(
-        (t) => t.date >= anchorBeforeStart.date && t.date < startDate,
-      );
-
-      let balance = anchorBeforeStart.balanceCents;
-      for (const t of transactionsBeforePeriod) {
-        if (t.type === 'income' || t.type === 'adjustment') {
-          balance += t.amountCents;
-        } else {
-          balance -= t.amountCents;
-        }
-      }
-
+    if (balanceAtStart !== null) {
       return {
-        startingBalance: balance,
+        startingBalance: balanceAtStart,
         balanceStartMonth: null, // Start from beginning
         warning: null,
       };
@@ -419,7 +411,7 @@ export function InsightsPage() {
         linkSuffix: 'to see your cash over time.',
       },
     };
-  }, [getActiveAnchor, anchors, allTransactions, startDate, endDate]);
+  }, [anchors, allTransactions, startDate, endDate]);
 
   return (
     <div className="page-shell space-y-6">

@@ -39,6 +39,7 @@ import { useCashSurplus } from '@/hooks/use-cash-surplus';
 import { useBudgetPeriodData } from '@/hooks/use-budget-period-data';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useTransactions } from '@/hooks/use-transactions';
+import { cashBalanceOn, cashEffectCents } from '@/lib/balances';
 import { today } from '@/lib/dates';
 import { formatCents, parseCentsFromInput } from '@/lib/utils';
 import type { CheckInCadence } from '@/lib/types';
@@ -706,40 +707,25 @@ function BalanceStep({
   onSkip: () => void;
   onInteract: () => void;
 }) {
-  const { getActiveAnchor, addAnchor } = useBalanceAnchors();
+  const { anchors: balanceAnchors, addAnchor } = useBalanceAnchors();
   const { allTransactions } = useTransactions();
 
   const todayStr = today();
-  const activeAnchor = getActiveAnchor(todayStr);
 
-  // Calculate current cash balance (from anchor if available, otherwise net of all cash transactions)
+  const anchoredBalance = useMemo(
+    () => cashBalanceOn(balanceAnchors, allTransactions, todayStr),
+    [balanceAnchors, allTransactions, todayStr],
+  );
+  const hasAnchor = anchoredBalance !== null;
+
+  // With no balance set, estimate cash as the net of every transaction up to today
   const currentBalance = useMemo(() => {
-    if (activeAnchor) {
-      const txsFromAnchor = allTransactions.filter(
-        (t) => t.date >= activeAnchor.date && t.date <= todayStr,
-      );
-      let balance = activeAnchor.balanceCents;
-      for (const t of txsFromAnchor) {
-        if (t.type === 'income' || t.type === 'adjustment') {
-          balance += t.amountCents;
-        } else {
-          balance -= t.amountCents;
-        }
-      }
-      return balance;
-    }
-    // No anchor — estimate from all cash transactions
-    let balance = 0;
-    for (const t of allTransactions) {
-      if (t.type === 'income' || t.type === 'adjustment') {
-        balance += t.amountCents;
-      } else if (t.type === 'expense') {
-        balance -= t.amountCents;
-      }
-      // savings transactions don't affect cash balance estimate
-    }
-    return balance;
-  }, [activeAnchor, allTransactions, todayStr]);
+    if (anchoredBalance !== null) return anchoredBalance;
+
+    return allTransactions
+      .filter((transaction) => transaction.date <= todayStr)
+      .reduce((sum, transaction) => sum + cashEffectCents(transaction), 0);
+  }, [anchoredBalance, allTransactions, todayStr]);
 
   const [confirmed, setConfirmed] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -770,7 +756,7 @@ function BalanceStep({
 
   const handleConfirm = async () => {
     // If no anchor exists, create one at the current calculated balance
-    if (!activeAnchor) {
+    if (!hasAnchor) {
       try {
         await addAnchor({
           date: todayStr,
@@ -1103,30 +1089,18 @@ export function CheckInWizard() {
   } = useAppConfig();
 
   const { savingsGoals } = useSavingsGoals();
-  const { getActiveAnchor } = useBalanceAnchors();
+  const { anchors: balanceAnchors } = useBalanceAnchors();
   const { allTransactions } = useTransactions();
   const navigate = useNavigate();
 
   const todayStr = today();
-  const activeAnchor = getActiveAnchor(todayStr);
-  const hasAnchor = activeAnchor !== null;
 
-  // Calculate current cash balance for welcome step
-  const currentBalance = useMemo(() => {
-    if (!activeAnchor) return null;
-    const txsFromAnchor = allTransactions.filter(
-      (t) => t.date >= activeAnchor.date && t.date <= todayStr,
-    );
-    let balance = activeAnchor.balanceCents;
-    for (const t of txsFromAnchor) {
-      if (t.type === 'income' || t.type === 'adjustment') {
-        balance += t.amountCents;
-      } else {
-        balance -= t.amountCents;
-      }
-    }
-    return balance;
-  }, [activeAnchor, allTransactions, todayStr]);
+  // Current cash balance for the welcome step, or null when no balance has been set
+  const currentBalance = useMemo(
+    () => cashBalanceOn(balanceAnchors, allTransactions, todayStr),
+    [balanceAnchors, allTransactions, todayStr],
+  );
+  const hasAnchor = currentBalance !== null;
 
   // No-op - we always mark check-in complete now, but steps still call this
   const handleInteract = useCallback(() => {}, []);
