@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useBudgetRules } from './use-budget-rules';
 import { useForecasts } from './use-forecasts';
 import { useWhatIf } from '@/contexts/what-if-context';
+import { isItemisedAllowance } from '@/lib/allowance-items';
 import type { BudgetRule, ForecastRule, ExpandedForecast } from '@/lib/types';
 
 /**
@@ -19,11 +20,13 @@ export function useAdjustedBudgets(
   );
   const { adjustments } = useWhatIf();
 
-  // Apply adjustments to budget rules
+  // Apply adjustments to budget rules. An itemised allowance is left alone:
+  // its amount is the sum of its items and it has no slider, so an adjustment
+  // for it can only be left over from before it was given items.
   const adjustedRules = useMemo((): BudgetRule[] => {
     return budgetRules.map((rule) => {
       const adjustment = adjustments.budgetAdjustments[rule.categoryId];
-      if (adjustment !== undefined) {
+      if (adjustment !== undefined && !isItemisedAllowance(rule)) {
         return { ...rule, amountCents: adjustment };
       }
       return rule;
@@ -35,9 +38,9 @@ export function useAdjustedBudgets(
     const result: Record<string, number> = {};
     for (const [categoryId, amount] of Object.entries(expandedBudgets)) {
       const adjustment = adjustments.budgetAdjustments[categoryId];
-      if (adjustment !== undefined) {
+      const rule = budgetRules.find((r) => r.categoryId === categoryId);
+      if (adjustment !== undefined && !isItemisedAllowance(rule)) {
         // Simple ratio adjustment: if rule was adjusted by X%, expand by same ratio
-        const rule = budgetRules.find((r) => r.categoryId === categoryId);
         if (rule && rule.amountCents > 0) {
           const ratio = adjustment / rule.amountCents;
           result[categoryId] = Math.round(amount * ratio);

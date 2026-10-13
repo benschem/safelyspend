@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
+import { isItemisedAllowance } from '@/lib/allowance-items';
 import { generateId, now } from '@/lib/utils';
 import type { BudgetRule, ForecastRule, Scenario } from '@/lib/types';
 
@@ -383,8 +384,10 @@ export function WhatIfProvider({ children, activeScenarioId }: WhatIfProviderPro
 
     const timestamp = now();
 
-    // Update budget rules with adjusted values
+    // Update budget rules with adjusted values. An itemised allowance is
+    // skipped: its amount is the sum of its items, which a slider cannot move.
     const budgetUpdates = budgetRules
+      .filter((rule) => !isItemisedAllowance(rule))
       .filter((rule) => rule.categoryId in adjustments.budgetAdjustments)
       .map((rule) => ({
         key: rule.id,
@@ -460,7 +463,10 @@ export function WhatIfProvider({ children, activeScenarioId }: WhatIfProviderPro
         scenarioId: newScenario.id,
         createdAt: timestamp,
         updatedAt: timestamp,
-        amountCents: adjustments.budgetAdjustments[rule.categoryId] ?? rule.amountCents,
+        // An itemised allowance keeps the sum of its items
+        amountCents: isItemisedAllowance(rule)
+          ? rule.amountCents
+          : (adjustments.budgetAdjustments[rule.categoryId] ?? rule.amountCents),
       }));
 
       // Create adjusted forecast rules

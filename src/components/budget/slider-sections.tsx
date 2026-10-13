@@ -14,12 +14,72 @@ import {
   Tag,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn, formatCents, type CadenceType } from '@/lib/utils';
+import { cn, formatCents, CADENCE_PER_LABELS, type CadenceType } from '@/lib/utils';
 import { BudgetSlider, getSliderRange, getIncomeSliderRange } from './budget-slider';
 import { useWhatIf } from '@/contexts/what-if-context';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
+import { isItemisedAllowance, type ItemisedAllowance } from '@/lib/allowance-items';
 import { describeAverageSpending, type SpendingAverages } from '@/lib/spending-averages';
 import type { ForecastRule, BudgetRule, Category, SavingsGoal } from '@/lib/types';
+
+/**
+ * An allowance split into items: the category and its total, then one row per
+ * item. It has no slider, because a slider moves the total and the total here
+ * is the sum of the items. The amounts are changed in the allowance dialog.
+ */
+function ItemisedAllowanceRows({
+  allowance,
+  categoryName,
+  hint,
+  onEdit,
+  onDelete,
+}: {
+  allowance: ItemisedAllowance;
+  categoryName: string;
+  hint: string | null;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="rounded-lg border p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground">
+            <Tag className="h-3.5 w-3.5" />
+          </span>
+          <Link
+            to={`/categories/${allowance.categoryId}?from=budget`}
+            className="font-medium hover:underline"
+          >
+            {categoryName}
+          </Link>
+          <SliderActions onEdit={onEdit} onDelete={onDelete} />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="font-semibold tabular-nums text-rose-600 dark:text-rose-400">
+            {formatCents(allowance.amountCents)}
+          </span>
+          <span className="text-sm text-muted-foreground">
+            {CADENCE_PER_LABELS[allowance.cadence as CadenceType]}
+          </span>
+        </div>
+      </div>
+
+      <ul className="space-y-1 border-t pt-2">
+        {allowance.items.map((item) => (
+          <li key={item.id} className="flex items-center justify-between text-sm">
+            <span>{item.name}</span>
+            <span className="tabular-nums text-muted-foreground">
+              {formatCents(item.amountCents)}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {hint && <p className="mt-2 text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
 
 function SliderActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
   return (
@@ -441,6 +501,24 @@ export function BudgetedSpendingSliderSection({
               activeRules.map((rule) => {
                 const category = categoryMap.get(rule.categoryId);
                 const categoryName = category?.name ?? 'Unknown';
+
+                if (isItemisedAllowance(rule)) {
+                  return (
+                    <ItemisedAllowanceRows
+                      key={rule.id}
+                      allowance={rule}
+                      categoryName={categoryName}
+                      hint={describeAverageSpending(
+                        spendingAverages,
+                        rule.categoryId,
+                        rule.cadence,
+                      )}
+                      onEdit={() => onEditBudget(rule)}
+                      onDelete={() => onDeleteBudget(rule.id)}
+                    />
+                  );
+                }
+
                 const baseline =
                   baselineValues.budgetAdjustments[rule.categoryId] ?? rule.amountCents;
                 const value = adjustments.budgetAdjustments[rule.categoryId] ?? baseline;

@@ -35,12 +35,20 @@ const categorySchema = baseEntitySchema.extend({
   isArchived: z.boolean(),
 });
 
+// Allowance Item - a named part of a budget rule
+const allowanceItemSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1).max(100),
+  amountCents: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+});
+
 // Budget Rule
 const budgetRuleSchema = baseEntitySchema.extend({
   scenarioId: z.string().min(1),
   categoryId: z.string().min(1),
   amountCents: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
   cadence: cadenceSchema,
+  items: z.array(allowanceItemSchema).max(100).optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
 });

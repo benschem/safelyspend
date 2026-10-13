@@ -275,6 +275,48 @@ describe('validateImport', () => {
     });
   });
 
+  it('keeps the items of an itemised budget rule', () => {
+    const itemisedRule = {
+      id: '1',
+      userId: 'local',
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      scenarioId: 'scenario-1',
+      categoryId: 'cat-1',
+      amountCents: 14000,
+      cadence: 'monthly',
+      items: [
+        { id: 'item-1', name: 'Lashes', amountCents: 8000 },
+        { id: 'item-2', name: 'Nails', amountCents: 6000 },
+      ],
+    };
+
+    const result = validateImport({
+      ...validMinimalData,
+      budgetRules: [itemisedRule],
+    });
+
+    expect(result.budgetRules[0]).toEqual(itemisedRule);
+  });
+
+  it('rejects a budget rule item with no name', () => {
+    const ruleWithUnnamedItem = {
+      id: '1',
+      userId: 'local',
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      scenarioId: 'scenario-1',
+      categoryId: 'cat-1',
+      amountCents: 8000,
+      cadence: 'monthly',
+      items: [{ id: 'item-1', name: '', amountCents: 8000 }],
+    };
+
+    expect(() =>
+      validateImport({ ...validMinimalData, budgetRules: [ruleWithUnnamedItem] }),
+    ).toThrow();
+  });
+
   it('sanitizes prototype pollution attempts during validation', () => {
     const malicious = JSON.parse(
       JSON.stringify({

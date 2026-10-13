@@ -1,7 +1,8 @@
 import { useCallback, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
-import type { BudgetRule, CreateEntity, Cadence } from '@/lib/types';
+import { resolveAllowanceAmountCents } from '@/lib/allowance-items';
+import type { AllowanceItem, BudgetRule, CreateEntity, Cadence } from '@/lib/types';
 import { generateId, now } from '@/lib/utils';
 
 const USER_ID = 'local';
@@ -101,38 +102,48 @@ export function useBudgetRules(scenarioId: string | null, startDate?: string, en
     return result;
   }, [budgetRules, startDate, endDate]);
 
-  // Add or update a budget rule for a category
+  // Add or update a budget rule for a category.
+  // The items given are the allowance's whole list: leaving them out, or
+  // passing none, makes it a plain allowance and drops any it had. With items,
+  // the amount stored is their sum.
   const setBudgetForCategory = useCallback(
-    async (categoryId: string, amountCents: number, cadence: Cadence = 'monthly') => {
+    async (
+      categoryId: string,
+      amountCents: number,
+      cadence: Cadence = 'monthly',
+      items?: AllowanceItem[],
+    ) => {
       if (!scenarioId) return;
 
       const existing = allBudgetRules.find(
         (br) => br.scenarioId === scenarioId && br.categoryId === categoryId,
       );
+      const hasItems = items !== undefined && items.length > 0;
+      const timestamp = now();
 
-      if (existing) {
-        // Update existing
-        const updates: Partial<BudgetRule> = {
-          amountCents,
-          cadence,
-          updatedAt: now(),
-        };
-        await db.budgetRules.update(existing.id, updates);
+      // Written with put, not update, so that items can be taken off a rule
+      const budgetRule: BudgetRule = existing
+        ? { ...existing, updatedAt: timestamp }
+        : {
+            id: generateId(),
+            userId: USER_ID,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            scenarioId,
+            categoryId,
+            amountCents,
+            cadence,
+          };
+
+      budgetRule.amountCents = resolveAllowanceAmountCents(amountCents, items);
+      budgetRule.cadence = cadence;
+      if (hasItems) {
+        budgetRule.items = items;
       } else {
-        // Create new
-        const timestamp = now();
-        const newBudgetRule: BudgetRule = {
-          id: generateId(),
-          userId: USER_ID,
-          createdAt: timestamp,
-          updatedAt: timestamp,
-          scenarioId,
-          categoryId,
-          amountCents,
-          cadence,
-        };
-        await db.budgetRules.add(newBudgetRule);
+        delete budgetRule.items;
       }
+
+      await db.budgetRules.put(budgetRule);
     },
     [allBudgetRules, scenarioId],
   );

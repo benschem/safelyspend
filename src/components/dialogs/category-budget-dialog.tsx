@@ -18,12 +18,19 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Archive, ArchiveRestore, Trash2 } from 'lucide-react';
+import { Archive, ArchiveRestore, Plus, Trash2, X } from 'lucide-react';
 import { CategorySelect } from '@/components/category-select';
-import { parseCentsFromInput, formatCents } from '@/lib/utils';
+import { parseCentsFromInput, formatCents, generateId } from '@/lib/utils';
 import { describeAverageSpending, type SpendingAverages } from '@/lib/spending-averages';
-import type { Cadence, Category, BudgetRule } from '@/lib/types';
+import type { AllowanceItem, Cadence, Category, BudgetRule } from '@/lib/types';
 import { db } from '@/lib/db';
+
+/** An allowance item as it is being typed: the amount is still text */
+interface AllowanceItemDraft {
+  id: string;
+  name: string;
+  amount: string;
+}
 
 interface CategoryBudgetDialogProps {
   open: boolean;
@@ -53,6 +60,7 @@ interface CategoryBudgetDialogProps {
     categoryId: string,
     amountCents: number,
     cadence: Cadence,
+    items?: AllowanceItem[],
   ) => Promise<void>;
   deleteBudgetRule?: (id: string) => Promise<void>;
 }
@@ -83,7 +91,33 @@ export function CategoryBudgetDialog({
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [amount, setAmount] = useState('');
   const [cadence, setCadence] = useState<Cadence>('monthly');
+  // The named parts of the allowance. With any, the allowance is their sum
+  // and the amount field is read-only.
+  const [itemDrafts, setItemDrafts] = useState<AllowanceItemDraft[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const isItemised = itemDrafts.length > 0;
+  const itemisedTotalCents = itemDrafts.reduce(
+    (sum, itemDraft) => sum + parseCentsFromInput(itemDraft.amount),
+    0,
+  );
+  const enteredAmountCents = isItemised ? itemisedTotalCents : parseCentsFromInput(amount);
+
+  const addItemDraft = () => {
+    setItemDrafts((drafts) => [...drafts, { id: generateId(), name: '', amount: '' }]);
+  };
+
+  const updateItemDraft = (itemId: string, changes: Partial<Omit<AllowanceItemDraft, 'id'>>) => {
+    setItemDrafts((drafts) =>
+      drafts.map((itemDraft) =>
+        itemDraft.id === itemId ? { ...itemDraft, ...changes } : itemDraft,
+      ),
+    );
+  };
+
+  const removeItemDraft = (itemId: string) => {
+    setItemDrafts((drafts) => drafts.filter((itemDraft) => itemDraft.id !== itemId));
+  };
 
   // The budget being edited belongs to a budgeted category too, and that one
   // has to stay in its own picker
@@ -102,15 +136,24 @@ export function CategoryBudgetDialog({
         if (existingRule) {
           setAmount((existingRule.amountCents / 100).toFixed(2));
           setCadence(existingRule.cadence);
+          setItemDrafts(
+            (existingRule.items ?? []).map((item) => ({
+              id: item.id,
+              name: item.name,
+              amount: (item.amountCents / 100).toFixed(2),
+            })),
+          );
         } else {
           setAmount('');
           setCadence('monthly');
+          setItemDrafts([]);
         }
       } else {
         // Create mode - reset to defaults
         setSelectedCategoryId('');
         setAmount('');
         setCadence('monthly');
+        setItemDrafts([]);
       }
       setFormError(null);
     }
@@ -137,8 +180,19 @@ export function CategoryBudgetDialog({
       return;
     }
 
+    const items: AllowanceItem[] = itemDrafts.map((itemDraft) => ({
+      id: itemDraft.id,
+      name: itemDraft.name.trim(),
+      amountCents: parseCentsFromInput(itemDraft.amount),
+    }));
+    const hasUnfinishedItem = items.some((item) => item.name === '' || item.amountCents <= 0);
+    if (hasUnfinishedItem) {
+      setFormError('Give every item a name and an amount');
+      return;
+    }
+
     try {
-      const amountCents = parseCentsFromInput(amount);
+      const amountCents = enteredAmountCents;
 
       if (!isEditing && amountCents <= 0) {
         setFormError('Please enter an allowance');
@@ -151,7 +205,7 @@ export function CategoryBudgetDialog({
           await deleteBudgetRule(existingRule.id);
         }
       } else if (amountCents > 0 && scenarioId) {
-        await setBudgetForCategory(selectedCategoryId, amountCents, cadence);
+        await setBudgetForCategory(selectedCategoryId, amountCents, cadence, items);
 
         // The allowance was moved to another category, so take it off the old one
         const movedToAnotherCategory =
@@ -253,8 +307,10 @@ export function CategoryBudgetDialog({
                 step="0.01"
                 min="0"
                 placeholder="0.00"
-                value={amount}
+                value={isItemised ? (itemisedTotalCents / 100).toFixed(2) : amount}
                 onChange={(e) => setAmount(e.target.value)}
+                readOnly={isItemised}
+                className={isItemised ? 'bg-muted' : undefined}
               />
             </div>
 
@@ -275,6 +331,60 @@ export function CategoryBudgetDialog({
             </div>
           </div>
 
+          {/* Items: the named parts of the allowance */}
+          <div className="space-y-2">
+            {isItemised && (
+              <>
+                <Label className="select-none">Items</Label>
+                {itemDrafts.map((itemDraft) => (
+                  <div key={itemDraft.id} className="flex items-center gap-2">
+                    <Input
+                      aria-label="Item name"
+                      placeholder="Name"
+                      maxLength={100}
+                      value={itemDraft.name}
+                      onChange={(e) => updateItemDraft(itemDraft.id, { name: e.target.value })}
+                      className="flex-1"
+                    />
+                    <Input
+                      aria-label="Item amount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={itemDraft.amount}
+                      onChange={(e) => updateItemDraft(itemDraft.id, { amount: e.target.value })}
+                      className="w-28"
+                    />
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Remove item"
+                            onClick={() => removeItemDraft(itemDraft.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Remove item</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                ))}
+                <p className="text-xs text-muted-foreground">
+                  The allowance is the items added together, each at the frequency above.
+                </p>
+              </>
+            )}
+            <Button type="button" variant="outline" size="sm" onClick={addItemDraft}>
+              <Plus className="h-4 w-4" />
+              {isItemised ? 'Add item' : 'Split into items'}
+            </Button>
+          </div>
+
           {averageSpendingHint && (
             <p className="text-xs text-muted-foreground">{averageSpendingHint}</p>
           )}
@@ -283,7 +393,7 @@ export function CategoryBudgetDialog({
           {hasIncome &&
             unallocatedAmount !== undefined &&
             (() => {
-              const enteredAmount = parseCentsFromInput(amount);
+              const enteredAmount = enteredAmountCents;
               const existingAmount = existingRule?.amountCents ?? 0;
               const netChange = enteredAmount - existingAmount;
               const newUnallocated = unallocatedAmount - netChange;

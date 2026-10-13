@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.47.0',
+    date: '2026-10-13',
+    changes: [
+      'An allowance can now be split into named items, such as lashes and nails under one category, and the items add up to the allowance',
+    ],
+  },
+  {
     version: '0.46.2',
     date: '2026-10-13',
     changes: [
