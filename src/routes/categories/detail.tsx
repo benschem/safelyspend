@@ -153,7 +153,7 @@ export function CategoryDetailPage() {
     return limitsByCategory[id] ?? null;
   }, [id, budgetRules, forecastRules, periodStart, periodEnd]);
 
-  const monthlyBudget = monthlyLimit ? monthlyLimit.totalCents : null;
+  const monthlyBudget = monthlyLimit?.totalCents ?? null;
   const billsDueThisMonth = monthlyLimit?.billsCents ?? 0;
   const monthlyAllowance = monthlyLimit?.allowanceCents ?? 0;
 
@@ -209,14 +209,6 @@ export function CategoryDetailPage() {
     return months;
   }, [chartTransactions, currentYear, currentMonthIndex, budgetRules, forecastRules, id]);
 
-  // Budget calculations
-  const budgetUsedPercent =
-    monthlyBudget && monthlyBudget > 0 ? Math.round((thisMonthSpent / monthlyBudget) * 100) : null;
-  const isOverBudget = budgetUsedPercent !== null && budgetUsedPercent > 100;
-
-  // Expected progress (how much of the month has passed)
-  const expectedProgress = Math.round((dayOfMonth / lastDayOfMonth) * 100);
-
   // vs Last Month calculation
   const vsLastMonth =
     lastMonthSpent > 0
@@ -225,7 +217,8 @@ export function CategoryDetailPage() {
         ? 100
         : 0;
 
-  // What Where It Went's shares are a share of: the same 12 months as the chart
+  // Spent across the chart's 12 months: the total beside the chart, and what
+  // Where It Went's shares are a share of
   const chartSpent = useMemo(
     () => chartTransactions.reduce((sum, t) => sum + t.amountCents, 0),
     [chartTransactions],
@@ -346,97 +339,55 @@ export function CategoryDetailPage() {
         </div>
       </div>
 
-      {/* The two parts of this month's budget */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border bg-card p-5">
-          <p className="text-sm text-muted-foreground">Bills due this month</p>
-          <p className="mt-1 text-2xl font-semibold">{formatCents(billsDueThisMonth)}</p>
-        </div>
-
-        <div className="rounded-xl border bg-card p-5">
-          <p className="text-sm text-muted-foreground">Allowance</p>
-          {activeAllowances.length === 0 ? (
-            <>
-              <p className="mt-1 text-2xl font-semibold text-muted-foreground">—</p>
-              <Link
-                to="/budget?section=expenses"
-                className="mt-2 inline-flex items-center gap-1 text-sm text-primary hover:underline"
-              >
-                Set one
-                <ArrowRight className="h-3 w-3" />
-              </Link>
-            </>
-          ) : (
-            <>
-              <p className="mt-1 text-2xl font-semibold">
-                {formatCents(monthlyAllowance)}
-                <span className="text-sm font-normal text-muted-foreground">/mo</span>
-              </p>
-              {allowanceAsEntered && (
-                <p className="mt-2 text-sm text-muted-foreground">{allowanceAsEntered}</p>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* This month: spent, against the budget and against last month */}
+      {/* This month: the two parts of the budget, then spent and how that compares to last month */}
       <div className="rounded-xl border bg-card p-5">
         <PanelHeading title={periodLabel} period={`Day ${dayOfMonth} of ${lastDayOfMonth}`} />
-        <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-3 sm:gap-6">
+        <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+          {/* Bills due */}
+          <div>
+            <p className="text-sm text-muted-foreground">Bills due</p>
+            <p className="mt-1 text-2xl font-semibold">{formatCents(billsDueThisMonth)}</p>
+          </div>
+
+          {/* Allowance */}
+          <div>
+            <p className="text-sm text-muted-foreground">Allowance</p>
+            {activeAllowances.length === 0 ? (
+              <>
+                <p className="mt-1 text-2xl font-semibold text-muted-foreground">—</p>
+                <Link
+                  to="/budget?section=expenses"
+                  className="mt-2 inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                >
+                  Set one
+                  <ArrowRight className="h-3 w-3" />
+                </Link>
+              </>
+            ) : (
+              <>
+                <p className="mt-1 text-2xl font-semibold">
+                  {formatCents(monthlyAllowance)}
+                  <span className="text-sm font-normal text-muted-foreground">/mo</span>
+                </p>
+                {allowanceAsEntered && (
+                  <p className="mt-2 text-sm text-muted-foreground">{allowanceAsEntered}</p>
+                )}
+              </>
+            )}
+          </div>
+
           {/* Spent */}
           <div>
             <p className="text-sm text-muted-foreground">Spent</p>
             <p className="mt-1 text-2xl font-semibold">{formatCents(thisMonthSpent)}</p>
+            {monthlyBudget !== null && (
+              <p className="mt-2 text-sm text-muted-foreground">
+                of {formatCents(monthlyBudget)} budget
+              </p>
+            )}
             <p className="mt-2 text-sm text-muted-foreground">
               {periodTransactions.length} transaction{periodTransactions.length !== 1 ? 's' : ''}
             </p>
-          </div>
-
-          {/* vs Budget */}
-          <div>
-            <p className="text-sm text-muted-foreground">vs Budget</p>
-            {monthlyBudget === null ? (
-              <>
-                <p className="mt-1 text-2xl font-semibold text-muted-foreground">—</p>
-                <p className="mt-2 text-sm text-muted-foreground">No budget set</p>
-              </>
-            ) : (
-              <>
-                <p
-                  className={cn(
-                    'mt-1 text-2xl font-semibold',
-                    isOverBudget ? 'text-red-600' : 'text-foreground',
-                  )}
-                >
-                  {budgetUsedPercent}%
-                </p>
-                {/* Progress bar */}
-                <div className="mt-3 relative h-2 rounded-full bg-muted">
-                  <div
-                    className={cn(
-                      'h-2 rounded-full transition-all',
-                      isOverBudget ? 'bg-red-500' : 'bg-green-500',
-                    )}
-                    style={{ width: `${Math.min(budgetUsedPercent ?? 0, 100)}%` }}
-                  />
-                  {/* Expected progress marker */}
-                  <div
-                    className="absolute top-0 h-2 w-0.5 bg-foreground/50"
-                    style={{ left: `${expectedProgress}%` }}
-                  />
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {formatCents(thisMonthSpent)} of {formatCents(monthlyBudget)}
-                  {!isOverBudget && (
-                    <span className="text-muted-foreground/70">
-                      {' '}
-                      · {formatCents(monthlyBudget - thisMonthSpent)} left
-                    </span>
-                  )}
-                </p>
-              </>
-            )}
           </div>
 
           {/* vs Last Month */}
@@ -467,7 +418,13 @@ export function CategoryDetailPage() {
 
       {/* Spending Over Time Chart */}
       <div className="rounded-xl border bg-card p-6">
-        <PanelHeading title="Monthly Spending" period="last 12 months" className="mb-4" />
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <PanelHeading title="Monthly Spending" period="last 12 months" />
+          <p className="text-sm text-muted-foreground">
+            Total spent{' '}
+            <span className="font-semibold text-foreground">{formatCents(chartSpent)}</span>
+          </p>
+        </div>
         <CategoryMonthlyChart monthlyData={monthlySpending} currentMonth={today.slice(0, 7)} />
       </div>
 
