@@ -329,6 +329,53 @@ function generateInterestForecasts(
   return results;
 }
 
+export interface ForecastsByType {
+  incomeForecasts: ExpandedForecast[];
+  expenseForecasts: ExpandedForecast[];
+  /** Savings contributions from rules. Never holds interest. */
+  savingsForecasts: ExpandedForecast[];
+  /** Interest each savings goal is expected to earn, one entry per goal per month */
+  interestForecasts: ExpandedForecast[];
+}
+
+/**
+ * Split dated forecasts into income, bills and savings contributions, and work
+ * out the interest each savings goal should earn over the same range.
+ *
+ * Interest is kept in a list of its own. A savings contribution is money that
+ * leaves the spending account; interest is money the bank adds to the savings
+ * account. Adding the two together overstates what has to be set aside.
+ *
+ * With no date range there is nothing to forecast, so there is no interest.
+ */
+export function groupForecastsByType(
+  expandedForecasts: ExpandedForecast[],
+  savingsGoals: SavingsGoal[],
+  savingsTransactions: Transaction[],
+  startDate?: string,
+  endDate?: string,
+): ForecastsByType {
+  const savingsForecasts = expandedForecasts.filter((forecast) => forecast.type === 'savings');
+
+  const interestForecasts =
+    startDate && endDate
+      ? generateInterestForecasts(
+          savingsGoals,
+          savingsTransactions,
+          savingsForecasts,
+          startDate,
+          endDate,
+        )
+      : [];
+
+  return {
+    incomeForecasts: expandedForecasts.filter((forecast) => forecast.type === 'income'),
+    expenseForecasts: expandedForecasts.filter((forecast) => forecast.type === 'expense'),
+    savingsForecasts,
+    interestForecasts,
+  };
+}
+
 /**
  * Hook for managing forecast rules
  */
@@ -372,39 +419,18 @@ export function useForecasts(scenarioId: string | null, startDate?: string, endD
     return expanded;
   }, [rules, startDate, endDate]);
 
-  // Filter expanded forecasts by type
-  const incomeForecasts = useMemo(
-    () => expandedForecasts.filter((f) => f.type === 'income'),
-    [expandedForecasts],
+  // Split by type, with forecast interest kept apart from savings contributions
+  const { incomeForecasts, expenseForecasts, savingsForecasts, interestForecasts } = useMemo(
+    () =>
+      groupForecastsByType(
+        expandedForecasts,
+        savingsGoals,
+        savingsTransactions,
+        startDate,
+        endDate,
+      ),
+    [expandedForecasts, savingsGoals, savingsTransactions, startDate, endDate],
   );
-  const expenseForecasts = useMemo(
-    () => expandedForecasts.filter((f) => f.type === 'expense'),
-    [expandedForecasts],
-  );
-
-  // Get base savings forecasts (without interest)
-  const baseSavingsForecasts = useMemo(
-    () => expandedForecasts.filter((f) => f.type === 'savings'),
-    [expandedForecasts],
-  );
-
-  // Generate interest forecasts and combine with base savings
-  const savingsForecasts = useMemo(() => {
-    if (!startDate || !endDate) return baseSavingsForecasts;
-
-    const interestForecasts = generateInterestForecasts(
-      savingsGoals,
-      savingsTransactions,
-      baseSavingsForecasts,
-      startDate,
-      endDate,
-    );
-
-    // Combine and sort
-    const combined = [...baseSavingsForecasts, ...interestForecasts];
-    combined.sort((a, b) => a.date.localeCompare(b.date));
-    return combined;
-  }, [baseSavingsForecasts, savingsGoals, savingsTransactions, startDate, endDate]);
 
   // CRUD for rules
   const addRule = useCallback(async (data: CreateEntity<ForecastRule>) => {
@@ -477,6 +503,7 @@ export function useForecasts(scenarioId: string | null, startDate?: string, endD
     incomeForecasts,
     expenseForecasts,
     savingsForecasts,
+    interestForecasts,
     // Rule CRUD
     addRule,
     updateRule,

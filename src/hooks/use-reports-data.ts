@@ -93,7 +93,10 @@ export function useReportsData(scenarioId: string | null, startDate: string, end
     rules: forecastRules,
     incomeForecasts,
     expenseForecasts,
-    savingsForecasts,
+    // Contributions only. Interest comes back as its own list, and the charts
+    // show it as earned money, not as a forecast.
+    savingsForecasts: savingsContributions,
+    interestForecasts,
     isLoading: forecastsLoading,
   } = useAdjustedForecasts(scenarioId, startDate, endDate);
 
@@ -104,17 +107,6 @@ export function useReportsData(scenarioId: string | null, startDate: string, end
     anchorsLoading ||
     categoriesLoading ||
     forecastsLoading;
-
-  // Separate savings forecasts into contributions and interest
-  // Interest is shown as "actual" (earned money) not forecast in charts
-  const savingsContributions = useMemo(
-    () => savingsForecasts.filter((f) => f.sourceType !== 'interest'),
-    [savingsForecasts],
-  );
-  const interestForecasts = useMemo(
-    () => savingsForecasts.filter((f) => f.sourceType === 'interest'),
-    [savingsForecasts],
-  );
 
   // Get category lookup map
   const categoryMap = useMemo(() => {

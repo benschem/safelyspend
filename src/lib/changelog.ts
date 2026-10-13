@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.44.5',
+    date: '2026-10-13',
+    changes: [
+      'Interest earned on a savings goal is no longer counted as money you plan to set aside on Cash Flow and in the check-in, so the planned and projected month end no longer read too low',
+    ],
+  },
+  {
     version: '0.44.4',
     date: '2026-10-13',
     changes: [
