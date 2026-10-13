@@ -1,6 +1,6 @@
 # Remove the What If sliders and keep scenarios as plain plans
 
-- **Status:** in progress, step 4 done. Decisions made 2026-10-13.
+- **Status:** in progress, step 5 done. Decisions made 2026-10-13.
 - **Goal:** the sliders, What If mode, the violet difference figures and the
   comparison against the default plan are gone, and scenarios remain as named
   plans that can be copied, edited and switched between.
@@ -90,9 +90,9 @@ Copying a scenario does not depend on the sliders: `ScenarioDialog` has a
 
 ## Proposed
 
-- **Versions.** 0.51.0 with step 4 (the comparison goes). The tabs in step 5
-  and the rename in step 6 each need a version, or ride with whichever
-  commit they are staged with.
+- **Version for step 6.** Step 4 is 0.51.0 and step 5 is 0.52.0. The rename
+  in step 6 needs a version of its own, since no other commit is left for it
+  to ride with.
 
 ## Steps
 

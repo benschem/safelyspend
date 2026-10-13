@@ -1,9 +1,18 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { toast } from 'sonner';
-import { PiggyBank, BanknoteArrowUp, BanknoteArrowDown, ChartPie } from 'lucide-react';
+import {
+  PiggyBank,
+  BanknoteArrowUp,
+  BanknoteArrowDown,
+  ChartPie,
+  Plus,
+  type LucideIcon,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatISODate } from '@/lib/dates';
-import { formatCents } from '@/lib/utils';
+import { cn, formatCents } from '@/lib/utils';
 import { averageMonthlySpendingByCategory } from '@/lib/spending-averages';
 import { CHART_COLORS } from '@/lib/chart-colors';
 import { sumForecastRulesForPeriod, toPeriodCents } from '@/lib/plan-amounts';
@@ -48,6 +57,16 @@ const FREQUENCY_PER_LABELS: Record<Cadence, string> = {
 };
 
 type PlanSection = 'income' | 'expenses' | 'savings';
+
+interface PlanTabConfig {
+  section: PlanSection;
+  label: string;
+  icon: LucideIcon;
+  iconColour: string;
+  totalCents: number;
+  addLabel: string;
+  onAddClick: () => void;
+}
 
 // The section each ?section= value opens. Bills and allowances are listed
 // together, and links written for either of the old sections still land there.
@@ -177,14 +196,20 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     [handleDeleteForecastRule, handleDeleteBudgetRule],
   );
 
-  // Collapsible sections state (reset on nav away, opened via ?section= links)
-  const [incomeOpen, setIncomeOpen] = useState(false);
-  const [expensesOpen, setExpensesOpen] = useState(false);
-  const [savingsOpen, setSavingsOpen] = useState(false);
+  // The tab showing (reset on nav away, chosen via ?section= links)
+  const [selectedSection, setSelectedSection] = useState<PlanSection>('expenses');
+  const planTabsRef = useRef<HTMLDivElement | null>(null);
 
-  // Handle ?section= URL param: expand + scroll to matching section
+  // Show a section's tab and scroll to the tabs
+  const showSection = useCallback((section: PlanSection) => {
+    setSelectedSection(section);
+    requestAnimationFrame(() => {
+      planTabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, []);
+
+  // Handle ?section= URL param: show the matching tab and scroll to it
   const [searchParams, setSearchParams] = useSearchParams();
-  const sectionRefs = useRef<Partial<Record<PlanSection, HTMLDivElement | null>>>({});
 
   useEffect(() => {
     if (isLoading) return; // Wait for content to render before scrolling
@@ -192,15 +217,8 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     const sectionParam = searchParams.get('section');
     if (!sectionParam) return;
 
-    // Expand the matching section
     const section = SECTION_FOR_PARAM[sectionParam];
-    const sectionSetters: Record<PlanSection, (open: boolean) => void> = {
-      income: setIncomeOpen,
-      expenses: setExpensesOpen,
-      savings: setSavingsOpen,
-    };
     if (section) {
-      sectionSetters[section](true);
       // Clear the param so it doesn't re-trigger
       setSearchParams(
         (prev) => {
@@ -210,20 +228,9 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
         },
         { replace: true },
       );
-      // Scroll to section after DOM update
-      requestAnimationFrame(() => {
-        sectionRefs.current[section]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
+      showSection(section);
     }
-  }, [isLoading, searchParams, setSearchParams, setIncomeOpen, setExpensesOpen, setSavingsOpen]);
-
-  // Expand a section and scroll to it
-  const scrollToSection = useCallback((section: PlanSection, setOpen: (open: boolean) => void) => {
-    setOpen(true);
-    requestAnimationFrame(() => {
-      sectionRefs.current[section]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  }, []);
+  }, [isLoading, searchParams, setSearchParams, showSection]);
 
   // Chart visibility state
   const [hiddenSegments, setHiddenSegments] = useState<Set<string>>(new Set());
@@ -403,6 +410,40 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     return null;
   }
 
+  // One tab per section of the plan, each with its total and what its Add button opens
+  const incomePlanTab: PlanTabConfig = {
+    section: 'income',
+    label: 'Income',
+    icon: BanknoteArrowUp,
+    iconColour: 'text-green-500',
+    totalCents: totals.income,
+    addLabel: 'Add income',
+    onAddClick: () => openAddRuleDialog('income'),
+  };
+  const planTabs: PlanTabConfig[] = [
+    incomePlanTab,
+    {
+      section: 'expenses',
+      label: 'Expenses',
+      icon: BanknoteArrowDown,
+      iconColour: 'text-rose-500',
+      totalCents: totals.totalSpending,
+      addLabel: 'Add expense',
+      onAddClick: openAddExpenseDialog,
+    },
+    {
+      section: 'savings',
+      label: 'Savings',
+      icon: PiggyBank,
+      iconColour: 'text-blue-500',
+      totalCents: totals.savings,
+      addLabel: 'Add savings contribution',
+      onAddClick: () => openAddRuleDialog('savings'),
+    },
+  ];
+  const selectedPlanTab =
+    planTabs.find((planTab) => planTab.section === selectedSection) ?? incomePlanTab;
+
   // Cards only quote a share of income when both figures are present.
   const shareOfIncome = (amount: number): string | undefined =>
     totals.income > 0 && amount > 0
@@ -461,7 +502,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
               ? `${incomeRules.length} source${incomeRules.length !== 1 ? 's' : ''}`
               : undefined
           }
-          onClick={() => scrollToSection('income', setIncomeOpen)}
+          onClick={() => showSection('income')}
         />
 
         <BudgetSummaryCard
@@ -470,7 +511,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           tone="expense"
           amountCents={totals.fixed > 0 ? totals.fixed : null}
           subtitle={shareOfIncome(totals.fixed)}
-          onClick={() => scrollToSection('expenses', setExpensesOpen)}
+          onClick={() => showSection('expenses')}
         />
 
         <BudgetSummaryCard
@@ -479,7 +520,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           tone="expense"
           amountCents={totals.variable > 0 ? totals.variable : null}
           subtitle={shareOfIncome(totals.variable)}
-          onClick={() => scrollToSection('expenses', setExpensesOpen)}
+          onClick={() => showSection('expenses')}
         />
 
         <BudgetSummaryCard
@@ -488,7 +529,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           tone="savings"
           amountCents={totals.savings}
           subtitle={shareOfIncome(totals.savings)}
-          onClick={() => scrollToSection('savings', setSavingsOpen)}
+          onClick={() => showSection('savings')}
         />
       </div>
 
@@ -533,67 +574,71 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
         <div className="h-px flex-1 bg-border" />
       </div>
 
-      {/* Income Sources Section */}
-      <div
-        id="section-income"
-        ref={(el) => {
-          sectionRefs.current['income'] = el;
-        }}
+      {/* Income, expenses and savings, one tab each */}
+      <Tabs
+        ref={planTabsRef}
+        value={selectedSection}
+        onValueChange={(section) => setSelectedSection(section as PlanSection)}
+        className="mb-4 scroll-mt-4"
       >
-        <IncomeSection
-          incomeRules={incomeRules}
-          isOpen={incomeOpen}
-          onOpenChange={setIncomeOpen}
-          onAddClick={() => openAddRuleDialog('income')}
-          onEditRule={openEditRuleDialog}
-          onDeleteRule={handleDeleteForecastRule}
-          periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
-          periodTotal={totals.income}
-        />
-      </div>
+        <div className="mb-4 flex items-end justify-between gap-3 border-b">
+          <TabsList className="-mb-px overflow-x-auto border-b-0">
+            {planTabs.map((planTab) => (
+              <TabsTrigger key={planTab.section} value={planTab.section} className="gap-2">
+                <planTab.icon className={cn('h-4 w-4', planTab.iconColour)} />
+                {planTab.label}
+                <span className="font-normal text-muted-foreground tabular-nums">
+                  {formatCents(planTab.totalCents)}
+                  <span className="hidden sm:inline"> {FREQUENCY_PER_LABELS[breakdownPeriod]}</span>
+                </span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mb-1 shrink-0"
+            onClick={selectedPlanTab.onAddClick}
+          >
+            <Plus className="h-4 w-4" />
+            <span className="sr-only sm:not-sr-only">{selectedPlanTab.addLabel}</span>
+          </Button>
+        </div>
 
-      {/* Expenses Section: bills and allowances together */}
-      <div
-        id="section-expenses"
-        ref={(el) => {
-          sectionRefs.current['expenses'] = el;
-        }}
-      >
-        <ExpensesSection
-          billRules={expenseRules}
-          allowanceRules={budgetRules}
-          categories={categories}
-          isOpen={expensesOpen}
-          onOpenChange={setExpensesOpen}
-          onAddClick={openAddExpenseDialog}
-          onEditExpense={openEditExpenseDialog}
-          onDeleteExpense={handleRemoveExpense}
-          spendingAverages={spendingAverages}
-          period={breakdownPeriod}
-          periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
-          periodTotal={totals.totalSpending}
-        />
-      </div>
+        <TabsContent value="income">
+          <IncomeSection
+            incomeRules={incomeRules}
+            onAddClick={() => openAddRuleDialog('income')}
+            onEditRule={openEditRuleDialog}
+            onDeleteRule={handleDeleteForecastRule}
+          />
+        </TabsContent>
 
-      {/* Savings Contributions Section */}
-      <div
-        id="section-savings"
-        ref={(el) => {
-          sectionRefs.current['savings'] = el;
-        }}
-      >
-        <SavingsSection
-          savingsRules={savingsRules}
-          savingsGoals={savingsGoals}
-          isOpen={savingsOpen}
-          onOpenChange={setSavingsOpen}
-          onAddClick={() => openAddRuleDialog('savings')}
-          onEditRule={openEditRuleDialog}
-          onDeleteRule={handleDeleteForecastRule}
-          periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
-          periodTotal={totals.savings}
-        />
-      </div>
+        {/* Bills and allowances together */}
+        <TabsContent value="expenses">
+          <ExpensesSection
+            billRules={expenseRules}
+            allowanceRules={budgetRules}
+            categories={categories}
+            onAddClick={openAddExpenseDialog}
+            onEditExpense={openEditExpenseDialog}
+            onDeleteExpense={handleRemoveExpense}
+            spendingAverages={spendingAverages}
+            period={breakdownPeriod}
+            periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
+          />
+        </TabsContent>
+
+        <TabsContent value="savings">
+          <SavingsSection
+            savingsRules={savingsRules}
+            savingsGoals={savingsGoals}
+            onAddClick={() => openAddRuleDialog('savings')}
+            onEditRule={openEditRuleDialog}
+            onDeleteRule={handleDeleteForecastRule}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Expense Dialog, for adding and editing bills and allowances */}
       <ExpenseDialog

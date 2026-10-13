@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.52.0',
+    date: '2026-10-13',
+    changes: [
+      'Income, expenses and savings on the Budget page are now tabs, each showing its total',
+      'One Add button beside the tabs adds to whichever tab you are on',
+    ],
+  },
+  {
     version: '0.51.0',
     date: '2026-10-13',
     changes: [
