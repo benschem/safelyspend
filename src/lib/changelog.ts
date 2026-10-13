@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.44.4',
+    date: '2026-10-13',
+    changes: [
+      'Fixed income on the Budget page reading too high in some months when you are paid weekly or fortnightly',
+      'Interest earned on a savings goal is no longer counted as savings you set aside on the Budget page',
+    ],
+  },
+  {
     version: '0.44.3',
     date: '2026-10-13',
     changes: ['Made the page you are on easier to pick out in the sidebar in light mode'],

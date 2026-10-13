@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { PiggyBank, BanknoteArrowUp, BanknoteArrowDown, ChartPie } from 'lucide-react';
 import { cn, formatCents } from '@/lib/utils';
 import { CHART_COLORS } from '@/lib/chart-colors';
+import { sumForecastRulesForPeriod, toPeriodCents } from '@/lib/plan-amounts';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useBudgetRules } from '@/hooks/use-budget-rules';
 import { useForecasts } from '@/hooks/use-forecasts';
@@ -109,11 +110,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     restoreRule,
   } = useForecasts(activeScenarioId, forecastDateRange.startDate, forecastDateRange.endDate);
 
-  const {
-    rules: adjustedForecastRules,
-    savingsForecasts,
-    incomeForecasts,
-  } = useAdjustedForecasts(
+  const { rules: adjustedForecastRules } = useAdjustedForecasts(
     activeScenarioId,
     forecastDateRange.startDate,
     forecastDateRange.endDate,
@@ -254,40 +251,6 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     [adjustedForecastRules],
   );
 
-  // Normalize amounts to selected period
-  const toPeriod = useCallback((amount: number, cadence: Cadence, period: BudgetPeriod): number => {
-    let yearly: number;
-    switch (cadence) {
-      case 'weekly':
-        yearly = amount * 52;
-        break;
-      case 'fortnightly':
-        yearly = amount * 26;
-        break;
-      case 'monthly':
-        yearly = amount * 12;
-        break;
-      case 'quarterly':
-        yearly = amount * 4;
-        break;
-      case 'yearly':
-        yearly = amount;
-        break;
-    }
-    switch (period) {
-      case 'weekly':
-        return Math.round(yearly / 52);
-      case 'fortnightly':
-        return Math.round(yearly / 26);
-      case 'monthly':
-        return Math.round(yearly / 12);
-      case 'quarterly':
-        return Math.round(yearly / 4);
-      case 'yearly':
-        return yearly;
-    }
-  }, []);
-
   // Calculate bills per category
   const fixedExpensesPerCategory = useMemo(() => {
     const result: Record<string, { amount: number; rules: ForecastRule[] }> = {};
@@ -297,7 +260,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
         if (!result[rule.categoryId]) {
           result[rule.categoryId] = { amount: 0, rules: [] };
         }
-        const periodAmount = toPeriod(rule.amountCents, rule.cadence, breakdownPeriod);
+        const periodAmount = toPeriodCents(rule.amountCents, rule.cadence, breakdownPeriod);
         const catData = result[rule.categoryId];
         if (catData) {
           catData.amount += periodAmount;
@@ -307,7 +270,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     }
 
     return result;
-  }, [adjustedExpenseRules, toPeriod, breakdownPeriod]);
+  }, [adjustedExpenseRules, breakdownPeriod]);
 
   // Build category rows
   const categoryRows: CategoryRow[] = useMemo(() => {
@@ -320,7 +283,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
       const fixedData = fixedExpensesPerCategory[category.id];
       const fixedAmount = fixedData?.amount ?? 0;
       const variableAmount = budgetRule
-        ? toPeriod(budgetRule.amountCents, budgetRule.cadence, breakdownPeriod)
+        ? toPeriodCents(budgetRule.amountCents, budgetRule.cadence, breakdownPeriod)
         : 0;
 
       return {
@@ -342,25 +305,15 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
       }
       return a.categoryName.localeCompare(b.categoryName);
     });
-  }, [
-    categories,
-    allTransactions,
-    getRuleForCategory,
-    fixedExpensesPerCategory,
-    toPeriod,
-    breakdownPeriod,
-  ]);
+  }, [categories, allTransactions, getRuleForCategory, fixedExpensesPerCategory, breakdownPeriod]);
 
   // Calculate totals
   const totals = useMemo(() => {
-    const yearlyIncome = incomeForecasts.reduce((sum, f) => sum + f.amountCents, 0);
-    const periodIncome: Record<BudgetPeriod, number> = {
-      weekly: Math.round(yearlyIncome / 52),
-      fortnightly: Math.round(yearlyIncome / 26),
-      monthly: Math.round(yearlyIncome / 12),
-      quarterly: Math.round(yearlyIncome / 4),
-      yearly: yearlyIncome,
-    };
+    // Income and savings come from each rule's amount and cadence, as bills
+    // do. Counting real pay dates over the next twelve months would make a
+    // fortnightly pay worth more in the months where 27 of them fit.
+    const income = sumForecastRulesForPeriod(adjustedForecastRules, 'income', breakdownPeriod);
+    const savings = sumForecastRulesForPeriod(adjustedForecastRules, 'savings', breakdownPeriod);
 
     const totalFixed = categoryRows
       .filter((r) => !r.category.isArchived)
@@ -370,22 +323,11 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
       .filter((r) => !r.category.isArchived)
       .reduce((sum, r) => sum + r.variableAmount, 0);
 
-    const yearlySavings = savingsForecasts.reduce((sum, f) => sum + f.amountCents, 0);
-    const periodSavings: Record<BudgetPeriod, number> = {
-      weekly: Math.round(yearlySavings / 52),
-      fortnightly: Math.round(yearlySavings / 26),
-      monthly: Math.round(yearlySavings / 12),
-      quarterly: Math.round(yearlySavings / 4),
-      yearly: yearlySavings,
-    };
-
-    const income = periodIncome[breakdownPeriod];
-    const savings = periodSavings[breakdownPeriod];
     const totalSpending = totalFixed + totalVariable;
     const unallocated = income - totalSpending - savings;
 
     // Monthly totals for scenario comparison
-    const monthlyIncome = periodIncome.monthly;
+    const monthlyIncome = sumForecastRulesForPeriod(adjustedForecastRules, 'income', 'monthly');
     const monthlyFixed = Math.round(
       categoryRows
         .filter((r) => !r.category.isArchived)
@@ -422,7 +364,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           return sum + yearly / 12;
         }, 0),
     );
-    const monthlySavings = periodSavings.monthly;
+    const monthlySavings = sumForecastRulesForPeriod(adjustedForecastRules, 'savings', 'monthly');
     const monthlySurplus = monthlyIncome - monthlyFixed - monthlyVariable - monthlySavings;
 
     return {
@@ -438,7 +380,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
       monthlySavings,
       monthlySurplus,
     };
-  }, [categoryRows, incomeForecasts, savingsForecasts, breakdownPeriod]);
+  }, [categoryRows, adjustedForecastRules, breakdownPeriod]);
 
   // Build chart segments
   const budgetBreakdownSegments = useMemo(() => {
