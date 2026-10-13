@@ -2,19 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { Link, useParams, useOutletContext, useNavigate, useSearchParams } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  ArrowLeft,
-  Pencil,
-  Archive,
-  ArchiveRestore,
-  Receipt,
-  TrendingUp,
-  TrendingDown,
-  Target,
-  ArrowRight,
-  Tag,
-  Trash2,
-} from 'lucide-react';
+import { ArrowLeft, Pencil, Archive, ArchiveRestore, ArrowRight, Tag, Trash2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PageLoading } from '@/components/page-loading';
 import { useCategories } from '@/hooks/use-categories';
@@ -167,6 +155,17 @@ export function CategoryDetailPage() {
 
   const monthlyBudget = monthlyLimit ? monthlyLimit.totalCents : null;
   const billsDueThisMonth = monthlyLimit?.billsCents ?? 0;
+  const monthlyAllowance = monthlyLimit?.allowanceCents ?? 0;
+
+  // The line under the Allowance card's monthly figure: one allowance that is
+  // not monthly is quoted as it was entered, and several are counted. A single
+  // monthly allowance needs no line, because the figure already says it.
+  const allowanceAsEntered =
+    activeAllowances.length > 1
+      ? `from ${activeAllowances.length} allowances`
+      : onlyAllowance && onlyAllowance.cadence !== 'monthly'
+        ? `${formatCents(onlyAllowance.amountCents)}/${onlyAllowance.cadence}`
+        : null;
 
   // Calculate totals
   const thisMonthSpent = useMemo(
@@ -312,37 +311,6 @@ export function CategoryDetailPage() {
             <h1 className="page-title">{category.name}</h1>
             {category.isArchived && <Badge variant="secondary">Archived</Badge>}
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {activeAllowances.length > 0 ? (
-              <>
-                {onlyAllowance ? (
-                  <>
-                    Allowance: {formatCents(onlyAllowance.amountCents)}/{onlyAllowance.cadence}
-                    {onlyAllowance.cadence !== 'monthly' && (
-                      <span className="text-muted-foreground/60">
-                        {' '}
-                        ({formatCents(monthlyLimit?.allowanceCents ?? 0)}/mo)
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    Allowances: {formatCents(monthlyLimit?.allowanceCents ?? 0)}/mo from{' '}
-                    {activeAllowances.length} allowances
-                  </>
-                )}
-                {billsDueThisMonth > 0 && (
-                  <> plus {formatCents(billsDueThisMonth)} in bills due this month</>
-                )}
-              </>
-            ) : billsDueThisMonth > 0 ? (
-              <>Bills due this month: {formatCents(billsDueThisMonth)}</>
-            ) : (
-              <Link to="/budget?tab=plan" className="text-primary hover:underline">
-                No allowance set – Set one →
-              </Link>
-            )}
-          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setDialogOpen(true)}>
@@ -378,132 +346,122 @@ export function CategoryDetailPage() {
         </div>
       </div>
 
-      {/* Current Month Label */}
-      <div className="flex items-center gap-2">
-        <h2 className="text-lg font-semibold">{periodLabel}</h2>
-        <span className="text-sm text-muted-foreground">
-          · Day {dayOfMonth} of {lastDayOfMonth}
-        </span>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {/* This Month */}
+      {/* The two parts of this month's budget */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="rounded-xl border bg-card p-5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
-            <Receipt className="h-5 w-5 text-red-500" />
-          </div>
-          <p className="mt-4 text-sm text-muted-foreground">Spent</p>
-          <p className="mt-1 text-2xl font-semibold">{formatCents(thisMonthSpent)}</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {periodTransactions.length} transaction{periodTransactions.length !== 1 ? 's' : ''}
-          </p>
+          <p className="text-sm text-muted-foreground">Bills due this month</p>
+          <p className="mt-1 text-2xl font-semibold">{formatCents(billsDueThisMonth)}</p>
         </div>
 
-        {/* vs Budget */}
         <div className="rounded-xl border bg-card p-5">
-          <div
-            className={cn(
-              'flex h-10 w-10 items-center justify-center rounded-full',
-              monthlyBudget === null
-                ? 'bg-slate-500/10'
-                : isOverBudget
-                  ? 'bg-red-500/10'
-                  : 'bg-green-500/10',
-            )}
-          >
-            {monthlyBudget === null ? (
-              <Target className="h-5 w-5 text-slate-500" />
-            ) : isOverBudget ? (
-              <TrendingDown className="h-5 w-5 text-red-500" />
-            ) : (
-              <Target className="h-5 w-5 text-green-500" />
-            )}
-          </div>
-          <p className="mt-4 text-sm text-muted-foreground">vs Budget</p>
-          {monthlyBudget === null ? (
+          <p className="text-sm text-muted-foreground">Allowance</p>
+          {activeAllowances.length === 0 ? (
             <>
               <p className="mt-1 text-2xl font-semibold text-muted-foreground">—</p>
-              <p className="mt-2 text-sm text-muted-foreground">No budget set</p>
+              <Link
+                to="/budget?section=expenses"
+                className="mt-2 inline-flex items-center gap-1 text-sm text-primary hover:underline"
+              >
+                Set one
+                <ArrowRight className="h-3 w-3" />
+              </Link>
             </>
           ) : (
             <>
-              <p
-                className={cn(
-                  'mt-1 text-2xl font-semibold',
-                  isOverBudget ? 'text-red-600' : 'text-foreground',
-                )}
-              >
-                {budgetUsedPercent}%
+              <p className="mt-1 text-2xl font-semibold">
+                {formatCents(monthlyAllowance)}
+                <span className="text-sm font-normal text-muted-foreground">/mo</span>
               </p>
-              {/* Progress bar */}
-              <div className="mt-3 relative h-2 rounded-full bg-muted">
-                <div
-                  className={cn(
-                    'h-2 rounded-full transition-all',
-                    isOverBudget ? 'bg-red-500' : 'bg-green-500',
-                  )}
-                  style={{ width: `${Math.min(budgetUsedPercent ?? 0, 100)}%` }}
-                />
-                {/* Expected progress marker */}
-                <div
-                  className="absolute top-0 h-2 w-0.5 bg-foreground/50"
-                  style={{ left: `${expectedProgress}%` }}
-                />
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {formatCents(thisMonthSpent)} of {formatCents(monthlyBudget)}
-                {!isOverBudget && (
-                  <span className="text-muted-foreground/70">
-                    {' '}
-                    · {formatCents(monthlyBudget - thisMonthSpent)} left
-                  </span>
-                )}
-              </p>
+              {allowanceAsEntered && (
+                <p className="mt-2 text-sm text-muted-foreground">{allowanceAsEntered}</p>
+              )}
             </>
           )}
         </div>
+      </div>
 
-        {/* vs Last Month */}
-        <div className="rounded-xl border bg-card p-5">
-          <div
-            className={cn(
-              'flex h-10 w-10 items-center justify-center rounded-full',
-              vsLastMonth > 0
-                ? 'bg-red-500/10'
-                : vsLastMonth < 0
-                  ? 'bg-green-500/10'
-                  : 'bg-slate-500/10',
-            )}
-          >
-            {vsLastMonth > 0 ? (
-              <TrendingUp className="h-5 w-5 text-red-500" />
-            ) : vsLastMonth < 0 ? (
-              <TrendingDown className="h-5 w-5 text-green-500" />
+      {/* This month: spent, against the budget and against last month */}
+      <div className="rounded-xl border bg-card p-5">
+        <PanelHeading title={periodLabel} period={`Day ${dayOfMonth} of ${lastDayOfMonth}`} />
+        <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-3 sm:gap-6">
+          {/* Spent */}
+          <div>
+            <p className="text-sm text-muted-foreground">Spent</p>
+            <p className="mt-1 text-2xl font-semibold">{formatCents(thisMonthSpent)}</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {periodTransactions.length} transaction{periodTransactions.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+
+          {/* vs Budget */}
+          <div>
+            <p className="text-sm text-muted-foreground">vs Budget</p>
+            {monthlyBudget === null ? (
+              <>
+                <p className="mt-1 text-2xl font-semibold text-muted-foreground">—</p>
+                <p className="mt-2 text-sm text-muted-foreground">No budget set</p>
+              </>
             ) : (
-              <TrendingUp className="h-5 w-5 text-slate-500" />
+              <>
+                <p
+                  className={cn(
+                    'mt-1 text-2xl font-semibold',
+                    isOverBudget ? 'text-red-600' : 'text-foreground',
+                  )}
+                >
+                  {budgetUsedPercent}%
+                </p>
+                {/* Progress bar */}
+                <div className="mt-3 relative h-2 rounded-full bg-muted">
+                  <div
+                    className={cn(
+                      'h-2 rounded-full transition-all',
+                      isOverBudget ? 'bg-red-500' : 'bg-green-500',
+                    )}
+                    style={{ width: `${Math.min(budgetUsedPercent ?? 0, 100)}%` }}
+                  />
+                  {/* Expected progress marker */}
+                  <div
+                    className="absolute top-0 h-2 w-0.5 bg-foreground/50"
+                    style={{ left: `${expectedProgress}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {formatCents(thisMonthSpent)} of {formatCents(monthlyBudget)}
+                  {!isOverBudget && (
+                    <span className="text-muted-foreground/70">
+                      {' '}
+                      · {formatCents(monthlyBudget - thisMonthSpent)} left
+                    </span>
+                  )}
+                </p>
+              </>
             )}
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">vs Last Month</p>
-          <p
-            className={cn(
-              'mt-1 text-2xl font-semibold',
-              vsLastMonth > 0
-                ? 'text-red-600'
-                : vsLastMonth < 0
-                  ? 'text-green-600'
-                  : 'text-muted-foreground',
-            )}
-          >
-            {vsLastMonth === 0 ? '—' : `${vsLastMonth > 0 ? '+' : ''}${vsLastMonth}%`}
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {lastMonthSpent === 0 ? (
-              'No spending last month'
-            ) : (
-              <>{formatCents(lastMonthSpent)} last month</>
-            )}
-          </p>
+
+          {/* vs Last Month */}
+          <div>
+            <p className="text-sm text-muted-foreground">vs Last Month</p>
+            <p
+              className={cn(
+                'mt-1 text-2xl font-semibold',
+                vsLastMonth > 0
+                  ? 'text-red-600'
+                  : vsLastMonth < 0
+                    ? 'text-green-600'
+                    : 'text-muted-foreground',
+              )}
+            >
+              {vsLastMonth === 0 ? '—' : `${vsLastMonth > 0 ? '+' : ''}${vsLastMonth}%`}
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {lastMonthSpent === 0 ? (
+                'No spending last month'
+              ) : (
+                <>{formatCents(lastMonthSpent)} last month</>
+              )}
+            </p>
+          </div>
         </div>
       </div>
 

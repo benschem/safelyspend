@@ -10,8 +10,6 @@ tooling.
 
 ## Now (at most three)
 
-- [polish]  Category page does not say what period each part covers → work/category-page.md _(categories)_
-
 ## Next
 
 - [feature] Sync merges both people's edits → work/sync-merge.md _(sync)_

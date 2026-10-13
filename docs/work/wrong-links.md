@@ -4,9 +4,8 @@
 - **Goal:** every link and redirect listed below lands where it says.
 - **Touches:** `src/routes/transactions/index.tsx`,
   `src/routes/categories/import-rules.tsx`,
-  `src/routes/categories/detail.tsx`, `src/routes/categories/index.tsx`,
-  `src/routes/budget/plan-tab.tsx`, `src/App.tsx`,
-  `src/routes/transactions/new.tsx`.
+  `src/routes/categories/index.tsx`, `src/routes/budget/plan-tab.tsx`,
+  `src/App.tsx`, `src/routes/transactions/new.tsx`.
 
 Found 2026-10-12 while making the category detail page's Back link return to
 the page it was opened from. **Traced through the code, not clicked through.**
@@ -21,13 +20,11 @@ the page it was opened from. **Traced through the code, not clicked through.**
   when an allowance, a bill or a transaction is added, and drop the link.
 - **Links to Budget land at the top of the page.** Budget already opens and
   scrolls to a section given `?section=income`, `fixed`, `variable` or
-  `savings` (`plan-tab.tsx:182`). Three links should use it: "No budget set"
-  on the category detail page (`variable`), and the allowance and bill
-  cells on the Categories list (`variable` and `fixed`).
+  `savings` (`plan-tab.tsx:182`). Two links should use it: the allowance and
+  bill cells on the Categories list (`variable` and `fixed`).
 - **`?tab=plan` does nothing.** The Budget page reads only `tab=overview`
-  (`budget/index.tsx:28`). Three redirects in `App.tsx`, five links on
-  Scenarios and one on the category detail page still carry it. Harmless;
-  remove it when next in those files.
+  (`budget/index.tsx:28`). Three redirects in `App.tsx` and five links on
+  Scenarios still carry it. Harmless; remove it when next in those files.
 - **Saving on `/transactions/new` goes to a route that does not exist.**
   `transactions/new.tsx:73` navigates to `/transactions/<id>` and `App.tsx`
   defines no such path. Not checked: whether anything still links to

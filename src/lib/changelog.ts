@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.54.1',
+    date: '2026-10-14',
+    changes: [
+      'A category page now shows its bills due this month and its allowance as two cards that add up to its budget',
+      "This month's spending on a category page now sits in one card with the month's name on it",
+    ],
+  },
+  {
     version: '0.54.0',
     date: '2026-10-14',
     changes: [
