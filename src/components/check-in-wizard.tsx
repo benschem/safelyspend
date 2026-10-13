@@ -39,7 +39,7 @@ import { useCashSurplus } from '@/hooks/use-cash-surplus';
 import { useBudgetPeriodData } from '@/hooks/use-budget-period-data';
 import { useScenarios } from '@/hooks/use-scenarios';
 import { useTransactions } from '@/hooks/use-transactions';
-import { cashBalanceOn, cashEffectCents } from '@/lib/balances';
+import { cashBalanceOn, cashEffectCents, savingsBalanceOn } from '@/lib/balances';
 import { today } from '@/lib/dates';
 import { formatCents, parseCentsFromInput } from '@/lib/utils';
 import type { CheckInCadence } from '@/lib/types';
@@ -389,33 +389,17 @@ function SavingsTransactionCard({
 
 function useSavingsGoalsWithBalance() {
   const { savingsGoals } = useSavingsGoals();
-  const { getActiveAnchor: getSavingsAnchor } = useSavingsAnchors();
+  const { anchors: savingsAnchors, getActiveAnchor: getSavingsAnchor } = useSavingsAnchors();
   const { allTransactions } = useTransactions();
   const todayStr = today();
 
   const goalsWithBalance = useMemo(() => {
-    const allSavings = allTransactions.filter((t) => t.type === 'savings');
-    return savingsGoals.map((goal) => {
-      const activeAnchor = getSavingsAnchor(goal.id, todayStr);
-      let currentBalance: number;
-      if (activeAnchor) {
-        const after = allSavings.filter(
-          (t) => t.savingsGoalId === goal.id && t.date > activeAnchor.date,
-        );
-        currentBalance =
-          activeAnchor.balanceCents + after.reduce((sum, t) => sum + t.amountCents, 0);
-      } else {
-        currentBalance = allSavings
-          .filter((t) => t.savingsGoalId === goal.id)
-          .reduce((sum, t) => sum + t.amountCents, 0);
-      }
-      return {
-        ...goal,
-        currentBalance,
-        hasAnchor: activeAnchor !== null,
-      };
-    });
-  }, [savingsGoals, allTransactions, getSavingsAnchor, todayStr]);
+    return savingsGoals.map((goal) => ({
+      ...goal,
+      currentBalance: savingsBalanceOn(savingsAnchors, allTransactions, goal.id, todayStr),
+      hasAnchor: getSavingsAnchor(goal.id, todayStr) !== null,
+    }));
+  }, [savingsGoals, allTransactions, savingsAnchors, getSavingsAnchor, todayStr]);
 
   return { savingsGoals, goalsWithBalance };
 }
@@ -889,31 +873,19 @@ function SummaryStep({ onFinish }: { onFinish: () => void }) {
 
   // Savings totals
   const { savingsGoals } = useSavingsGoals();
-  const { getActiveAnchor: getSavingsAnchor } = useSavingsAnchors();
+  const { anchors: savingsAnchors } = useSavingsAnchors();
   const { allTransactions } = useTransactions();
   const todayStr = today();
 
   const savingsData = useMemo(() => {
-    const allSavings = allTransactions.filter((t) => t.type === 'savings');
     let totalSaved = 0;
     const goals = savingsGoals.map((goal) => {
-      const activeAnchor = getSavingsAnchor(goal.id, todayStr);
-      let balance: number;
-      if (activeAnchor) {
-        const after = allSavings.filter(
-          (t) => t.savingsGoalId === goal.id && t.date > activeAnchor.date,
-        );
-        balance = activeAnchor.balanceCents + after.reduce((sum, t) => sum + t.amountCents, 0);
-      } else {
-        balance = allSavings
-          .filter((t) => t.savingsGoalId === goal.id)
-          .reduce((sum, t) => sum + t.amountCents, 0);
-      }
+      const balance = savingsBalanceOn(savingsAnchors, allTransactions, goal.id, todayStr);
       totalSaved += balance;
       return { name: goal.name, balance, target: goal.targetAmountCents };
     });
     return { totalSaved, goals };
-  }, [savingsGoals, allTransactions, getSavingsAnchor, todayStr]);
+  }, [savingsGoals, allTransactions, savingsAnchors, todayStr]);
 
   // Top 3 spending categories
   const topCategories = useMemo(() => {

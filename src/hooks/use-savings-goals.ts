@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { savingsBalanceOn } from '@/lib/balances';
 import { db } from '@/lib/db';
 import type { SavingsGoal, CreateEntity } from '@/lib/types';
 import { today } from '@/lib/dates';
@@ -88,26 +89,13 @@ export function useSavingsGoals() {
   const deleteSavingsGoal = useCallback(async (id: string) => {
     const goal = await db.savingsGoals.get(id);
 
-    // Calculate current balance: anchor + transactions after anchor, or sum all
+    // The goal's balance today, which is what goes back to cash
     const todayStr = today();
-    const allGoalTransactions = await db.transactions
+    const goalTransactions = await db.transactions
       .filter((t) => t.type === 'savings' && t.savingsGoalId === id)
       .toArray();
-
-    const anchors = await db.savingsAnchors.where('savingsGoalId').equals(id).toArray();
-    const activeAnchor = anchors
-      .filter((a) => a.date <= todayStr)
-      .sort((a, b) => b.date.localeCompare(a.date))[0];
-
-    let currentBalance: number;
-    if (activeAnchor) {
-      const transactionsAfterAnchor = allGoalTransactions.filter((t) => t.date > activeAnchor.date);
-      currentBalance =
-        activeAnchor.balanceCents +
-        transactionsAfterAnchor.reduce((sum, t) => sum + t.amountCents, 0);
-    } else {
-      currentBalance = allGoalTransactions.reduce((sum, t) => sum + t.amountCents, 0);
-    }
+    const goalAnchors = await db.savingsAnchors.where('savingsGoalId').equals(id).toArray();
+    const currentBalance = savingsBalanceOn(goalAnchors, goalTransactions, id, todayStr);
 
     // If there's a positive balance, create a withdrawal to return funds to cash
     if (currentBalance > 0) {

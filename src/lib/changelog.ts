@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.53.2',
+    date: '2026-10-13',
+    changes: [
+      'A transfer to savings on the same day as a savings balance you entered now counts towards that goal',
+      'A transfer to savings dated in the future no longer counts towards a goal until its date arrives',
+    ],
+  },
+  {
     version: '0.53.1',
     date: '2026-10-13',
     changes: [

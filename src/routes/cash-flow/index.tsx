@@ -36,6 +36,7 @@ import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { CategoryProgressBar } from '@/components/cash-flow/category-progress-bar';
 import { buildMonthlyLimitsByCategory } from '@/lib/category-limits';
 import { calculateBillsSetAside } from '@/lib/bill-set-aside';
+import { savingsBalanceOn } from '@/lib/balances';
 import { formatISODate, MONTH_NAMES, today as getToday } from '@/lib/dates';
 
 interface OutletContext {
@@ -138,7 +139,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
   const { categories } = useCategories();
   const { savingsGoals } = useSavingsGoals();
   const { allTransactions } = useTransactions();
-  const { getActiveAnchor } = useSavingsAnchors();
+  const { anchors: savingsAnchors } = useSavingsAnchors();
   // Selected period state - defaults to current month
   const [selectedMonth, setSelectedMonth] = useState(() => new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -553,27 +554,14 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
       periodCashFlow.savings.actual
     : 0;
 
-  // Total savings balance across all goals (anchor + transactions after anchor)
+  // Total savings balance across all goals, as of today
   const totalSavingsBalance = useMemo(() => {
     const todayStr = getToday();
-    let total = 0;
-    for (const goal of savingsGoals) {
-      const anchor = getActiveAnchor(goal.id, todayStr);
-      if (anchor) {
-        const txAfter = allTransactions
-          .filter(
-            (t) => t.type === 'savings' && t.savingsGoalId === goal.id && t.date > anchor.date,
-          )
-          .reduce((sum, t) => sum + t.amountCents, 0);
-        total += anchor.balanceCents + txAfter;
-      } else {
-        total += allTransactions
-          .filter((t) => t.type === 'savings' && t.savingsGoalId === goal.id)
-          .reduce((sum, t) => sum + t.amountCents, 0);
-      }
-    }
-    return total;
-  }, [savingsGoals, allTransactions, getActiveAnchor]);
+    return savingsGoals.reduce(
+      (total, goal) => total + savingsBalanceOn(savingsAnchors, allTransactions, goal.id, todayStr),
+      0,
+    );
+  }, [savingsGoals, allTransactions, savingsAnchors]);
 
   if (isLoading) {
     return null;

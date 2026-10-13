@@ -1,6 +1,6 @@
 # Balance maths has no single home, and Net Wealth ignores savings anchors
 
-- **Status:** in progress. Steps 1 and 2 are done and step 3 is next. Steps written
+- **Status:** in progress. Steps 1 to 3 are done and step 4 is next. Steps written
   and decisions made 2026-10-13 at 0.49.1.
 - **Goal:** one tested module works out a cash balance and a savings goal's
   balance as of a date, from anchors and transactions, and every screen uses

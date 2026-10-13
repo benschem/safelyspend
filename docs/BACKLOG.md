@@ -115,3 +115,4 @@ else.
 - [bug]     Cash Flow starting balance may ignore adjustments in the period _(cash-flow)_
 - [cleanup] getEarliestAnchorDate in use-savings-anchors.ts has no caller _(tooling)_
 - [bug]     Confirming the check-in's cash estimate counts today's transactions twice _(cash-flow)_
+- [bug]     Deleting a goal leaves its future-dated transfers out of cash → work/delete-cascades.md _(savings)_
