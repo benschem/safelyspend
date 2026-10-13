@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.53.3',
+    date: '2026-10-13',
+    changes: [
+      'Fixed Net Wealth leaving out savings balances you entered, so its savings now match the Savings page',
+      'Fixed Net Wealth dropping after you deleted a savings goal that began with an entered balance',
+    ],
+  },
+  {
     version: '0.53.2',
     date: '2026-10-13',
     changes: [

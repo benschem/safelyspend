@@ -18,7 +18,8 @@ import { useScenarios } from '@/hooks/use-scenarios';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
-import { cashBalanceOn } from '@/lib/balances';
+import { useSavingsAnchors } from '@/hooks/use-savings-anchors';
+import { cashBalanceOn, savingsBalanceOn } from '@/lib/balances';
 import { today as getToday } from '@/lib/dates';
 import { formatCents } from '@/lib/utils';
 
@@ -69,23 +70,23 @@ export function NetWealthPage() {
   // Get all transactions for calculations
   const { allTransactions, isLoading: transactionsLoading } = useTransactions();
 
-  // Calculate total savings (all time)
+  const { savingsGoals, emergencyFund, isLoading: savingsLoading } = useSavingsGoals();
+  const { anchors: savingsAnchors, isLoading: savingsAnchorsLoading } = useSavingsAnchors();
+
+  const isLoading = transactionsLoading || savingsLoading || savingsAnchorsLoading;
+
+  // Total saved today, across every goal
   const totalSavings = useMemo(() => {
-    return allTransactions
-      .filter((t) => t.type === 'savings')
-      .reduce((sum, t) => sum + t.amountCents, 0);
-  }, [allTransactions]);
+    return savingsGoals.reduce(
+      (total, goal) => total + savingsBalanceOn(savingsAnchors, allTransactions, goal.id, today),
+      0,
+    );
+  }, [savingsGoals, savingsAnchors, allTransactions, today]);
 
-  // Get emergency fund and calculate its balance
-  const { emergencyFund, isLoading: savingsLoading } = useSavingsGoals();
-
-  const isLoading = transactionsLoading || savingsLoading;
   const emergencyFundBalance = useMemo(() => {
     if (!emergencyFund) return null;
-    return allTransactions
-      .filter((t) => t.type === 'savings' && t.savingsGoalId === emergencyFund.id)
-      .reduce((sum, t) => sum + t.amountCents, 0);
-  }, [emergencyFund, allTransactions]);
+    return savingsBalanceOn(savingsAnchors, allTransactions, emergencyFund.id, today);
+  }, [emergencyFund, savingsAnchors, allTransactions, today]);
 
   // Cash right now, or null when no balance has been set on or before today
   const currentBalance = useMemo(
