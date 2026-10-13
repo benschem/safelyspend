@@ -3,7 +3,7 @@
  *
  * A pure byte codec: it lays out headers, calls AES-GCM, and parses headers
  * back. It never derives a key, never touches storage, and never decides
- * policy. See `docs/crypto-design.md` section 4 for the specification.
+ * policy. See `docs/reference/crypto-design.md` section 4 for the specification.
  *
  * Three variants, named for what you reach for rather than for the mechanism:
  *

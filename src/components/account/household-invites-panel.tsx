@@ -82,8 +82,8 @@ const CANCEL_LABEL: Record<Exclude<InviteState, 'joined'>, string> = {
  * sees or cancels what they have sent, and approves someone who has signed up.
  *
  * A first cut: re-sending is Cancel, then Send, and nothing prompts the member
- * to approve; they come here and press Approve. `docs/BACKLOG.md` lists what
- * was left out.
+ * to approve; they come here and press Approve. `docs/work/household-join.md`
+ * lists what was left out.
  *
  * The send form shows only while no invite is live (`hasLiveInvite`). It does
  * show beside a joined row, because a joined invite outlives its recipient

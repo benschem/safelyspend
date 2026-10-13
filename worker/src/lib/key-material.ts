@@ -5,7 +5,7 @@
  *  Malicious-but-well-formed input is caught client-side at decrypt time by the AAD
  *  binding (crypto-design section 4), not here.
  *
- *  Rules come from 02_backend_schema_endpoints_design.md section 8 and
+ *  Rules come from docs/reference/api-design.md section 8 and
  *  crypto-design.md sections 3.2, 4 and 6.3.
  */
 

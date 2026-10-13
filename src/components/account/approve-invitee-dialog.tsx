@@ -70,7 +70,7 @@ const APPROVAL_FAILURE_WORDING = 'We could not approve them. Please try again.';
  * the household key.
  *
  * A first cut: one screen, and Cancel is the whole of "they do not match".
- * `docs/BACKLOG.md` lists what was left out.
+ * `docs/work/household-join.md` lists what was left out.
  *
  * It stays open after approving, with both numbers still showing. The
  * invitee's screen asks for this member's number next, and this dialog is the

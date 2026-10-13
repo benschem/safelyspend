@@ -1,6 +1,6 @@
 /**
- * Argon2id conformance — the gate on `hash-wasm` described in
- * `docs/auth-rewrite/03_client_crypto_rewrite.md` step 3.
+ * Argon2id conformance — the gate on `hash-wasm`, the library that
+ * `docs/reference/crypto-design.md` section 3 relies on.
  *
  * Everything in the wrapped-key scheme hangs off this one primitive. A
  * library that is fast, small and subtly wrong derives a key that looks fine,

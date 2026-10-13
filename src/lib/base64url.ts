@@ -2,7 +2,7 @@
  * base64url codec for the wire.
  *
  * Every binary field the API carries is base64url — salts, verifiers, public
- * keys, wrapped blobs (`02_backend_schema_endpoints_design.md` section 11).
+ * keys, wrapped blobs (`docs/reference/api-design.md` section 11).
  * `worker/src/lib/bytes.ts` is the server's half of this, and the two must
  * agree byte for byte.
  *

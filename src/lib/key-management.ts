@@ -10,7 +10,7 @@
  * `envelope.ts` is bytes, this file is keys, `key-vault.ts` is the in-memory
  * holder for the keys a live session has already unwrapped.
  *
- * Specified by `docs/crypto-design.md`. Section references below point into it.
+ * Specified by `docs/reference/crypto-design.md`. Section references below point into it.
  */
 
 import { argon2id } from 'hash-wasm';
@@ -67,7 +67,7 @@ const RECOVERY_HKDF_INFO = 'safelyspend-recovery-kek-v1';
 const HANDOFF_HKDF_INFO = 'ss-handoff-v1';
 
 /**
- * Length of the truncated pubkey digest behind a safety number (section 8).
+ * Length of the truncated pubkey digest behind a safety number (section 7.2).
  * 64 bits: a second-preimage search at this width is far beyond anyone who
  * would bother, and it is short enough to read aloud over the phone, which is
  * the whole point of the artefact. `formatSafetyNumber` is how it is displayed.

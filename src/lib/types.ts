@@ -232,7 +232,7 @@ export interface ExpandedForecast {
 }
 
 // -----------------------------------------------------------------------------
-// Key material (see docs/crypto-design.md section 2)
+// Key material (see docs/reference/crypto-design.md section 2)
 // -----------------------------------------------------------------------------
 
 /**

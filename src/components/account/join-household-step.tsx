@@ -15,12 +15,12 @@ import {
  * the safety numbers have been confirmed.
  *
  * The phrase is asked for again because nothing kept it since signup, and the
- * rewrap needs it (`docs/auth-rewrite/07_invite_flow.md`, 2026-09-16).
+ * rewrap needs it (decided 2026-09-16; `completeHandoff` in `account.ts` says why).
  *
  * Joining replaces the budget on this device with the household's, so the
  * screen always warns and always offers a backup first. It cannot tell
- * whether there is anything here to lose; `docs/BACKLOG.md` has the version
- * that only asks when there is.
+ * whether there is anything here to lose; `docs/work/sync-prompt.md` has the
+ * version that only asks when there is.
  *
  * The phrase is checked against BIP-39 here before submitting, as
  * `RecoveryPhraseEntryStep` does. Nothing is spent by a wrong one here, since

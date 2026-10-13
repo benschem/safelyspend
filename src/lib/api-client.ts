@@ -81,8 +81,7 @@ export type KekKind = 'pwd' | 'recovery' | 'ecies';
 /**
  * The KDF metadata columns that travel beside every wrapped blob. Shapes below
  * mirror the built worker (`services/key-bundle.ts`, `services/users.ts`,
- * `services/households.ts`) rather than the Phase 2 design doc — section 13 of
- * that doc lists where the two diverged.
+ * `services/households.ts`), which `docs/reference/api-design.md` describes.
  *
  * `kekSalt` and `kekKdfParams` are null or empty depending on the kind, not
  * interchangeably: a `pwd` row carries a 16-byte salt and 9 Argon2id parameter
@@ -192,7 +191,7 @@ export interface PendingInvite {
  *
  * Phase 7 owns what to do with them. They cannot be accepted as things stand —
  * a signup creates a household, and `UNIQUE(household_members.user_id)` allows
- * only one (§13 of the Phase 2 design doc) — so nothing in v1 reads this field.
+ * only one (`api-design.md` §3.6) — so nothing in v1 reads this field.
  */
 export interface SignupResponse extends SessionResponse {
   pendingInvites: PendingInvite[];
@@ -227,8 +226,9 @@ export interface InviteForRecipient {
  * mirrors the CHECK constraint on `invites.status`.
  *
  * All but `declined` are reachable in v1: `expired` is set by the lapse sweep
- * and `revoked` by the sender. `declined` belongs to the path 2 fork, which
- * `07_invite_flow.md` defers, so nothing sets it yet.
+ * and `revoked` by the sender. `declined` belongs to the path 2 fork (joining
+ * without the invite link), which is on the wishlist in `docs/BACKLOG.md`, so
+ * nothing sets it yet.
  */
 export type InviteStatus =
   | 'open'
@@ -501,7 +501,7 @@ export const api = {
      * and creates no membership — the MasterKey arrives later through the
      * handoff.
      *
-     * One household per user (Q5, `00_overview.md`), so this answers 409
+     * One household per user (`docs/reference/DECISIONS.md`), so this answers 409
      * HOUSEHOLD_FULL for anyone who signed up ordinarily, since that created a
      * household. In v1 that is the common case rather than the exception, and
      * the caller owns saying so plainly.

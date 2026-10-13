@@ -9,9 +9,8 @@
  * component so it can be tested without rendering anything, and so exactly one
  * module knows how a wrapped-key row is shaped.
  *
- * Specified by `docs/crypto-design.md` sections 2, 3, 6 and 7, and by
- * `docs/auth-rewrite/02_backend_schema_endpoints_design.md` sections 3.4, 3.7
- * and 4.
+ * Specified by `docs/reference/crypto-design.md` sections 2, 3, 6 and 7, and
+ * by `docs/reference/api-design.md` sections 3.4, 3.7 and 4.
  */
 
 import { bytesToBase64url, base64urlToBytes } from './base64url';
@@ -54,14 +53,14 @@ import type {
 import type { Kek, MasterKey, PrivateKeyBytes } from './types';
 
 /**
- * The household has no name in v1 and no way to set one — renaming is deferred
- * in `docs/auth-rewrite/00_overview.md`. The worker defaults to this same
+ * The household has no name in v1 and no way to set one — renaming is on the
+ * wishlist in `docs/BACKLOG.md`. The worker defaults to this same
  * string when the field is blank; sending it explicitly keeps the default in
  * one readable place rather than in a server-side fallback.
  */
 const DEFAULT_HOUSEHOLD_NAME = 'Household';
 
-/** Phase 4's floor, from `crypto-design.md` section 8. No strength meter — deferred, not rejected. */
+/** Phase 4's floor, from `crypto-design.md` section 3.6. No strength meter — deferred, not rejected. */
 export const MINIMUM_PASSWORD_LENGTH = 12;
 
 /**
@@ -193,7 +192,7 @@ export async function buildSignupMaterial(
   return {
     body: {
       ...account.body,
-      // Client-generated, per the locked conventions in `00_overview.md`.
+      // Client-generated: ids are made on the client throughout.
       household: { id: generateId(), name: DEFAULT_HOUSEHOLD_NAME },
       memberKeys: await wrapMemberKeys(masterKey, account),
     },
@@ -640,8 +639,9 @@ export async function buildHandoffWrap(
  * envelope, and rewrap under their own keys, for
  * `POST /households/:householdId/members/:userId/rewrap`.
  *
- * The recovery phrase is asked for again because nothing kept it since signup;
- * `docs/auth-rewrite/07_invite_flow.md` records why.
+ * The recovery phrase is asked for again because nothing kept it since signup:
+ * it is cleared the moment the account exists and never stored, by design,
+ * and the handoff can land days later.
  *
  * **Both credentials are proven before anything is wrapped.** A mistyped
  * phrase that passes the BIP-39 checksum derives a perfectly good KEK, just

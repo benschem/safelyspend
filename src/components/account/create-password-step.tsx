@@ -9,7 +9,7 @@ import { MINIMUM_PASSWORD_LENGTH } from '@/lib/account';
  * Choose the password that will wrap the keys to the cloud vault.
  *
  * The copy carries the weight that a strength meter would: `zxcvbn` is
- * deferred rather than rejected (`crypto-design.md` section 8), so the floor is
+ * deferred rather than rejected (`crypto-design.md` section 3.6), so the floor is
  * a length and the advice is to let a password manager generate one.
  *
  * What this password is *not* is a lock on the data sitting in this browser.
