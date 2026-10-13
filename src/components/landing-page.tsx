@@ -220,10 +220,6 @@ export function LandingPage({ onViewDemo }: LandingPageProps) {
                   tone={total.tone}
                   amountCents={total.amountCents}
                   subtitle={total.subtitle}
-                  differsFromPlan={false}
-                  delta={0}
-                  showDelta={false}
-                  comparedToName="Current Plan"
                 />
               ))}
             </div>

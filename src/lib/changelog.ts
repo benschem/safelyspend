@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.51.0',
+    date: '2026-10-13',
+    changes: [
+      'A scenario no longer shows purple differences from your current plan. Each page shows the figures for the scenario you have selected',
+      'The purple header still tells you when you are looking at a scenario other than your current plan',
+    ],
+  },
+  {
     version: '0.50.0',
     date: '2026-10-13',
     changes: [

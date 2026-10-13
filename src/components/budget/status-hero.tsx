@@ -1,6 +1,5 @@
 import { Banknote, CreditCard, Scale, Sparkles } from 'lucide-react';
 import { cn, formatCents } from '@/lib/utils';
-import { ScenarioDelta } from '@/components/ui/scenario-delta';
 
 export type BudgetStatus = 'shortfall' | 'balanced' | 'surplus';
 
@@ -12,15 +11,6 @@ interface BudgetStatusHeroProps {
   amountCents: number;
   /** The cadence the figure is quoted at, e.g. "per month". */
   periodLabel: string;
-  /**
-   * Whether this scenario's surplus differs from the plan, which tints the figure.
-   * Separate from `delta` because that is suppressed while viewing the default
-   * scenario, and the tint still needs to show in what-if mode.
-   */
-  differsFromPlan: boolean;
-  delta: number;
-  showDelta: boolean;
-  comparedToName: string;
 }
 
 const STATUS_HEADINGS = {
@@ -31,18 +21,13 @@ const STATUS_HEADINGS = {
 
 /**
  * The headline figure at the top of the budget plan: what is left once income,
- * bills and savings are accounted for. Turns violet when the active scenario
- * differs from the plan it is compared against.
+ * bills and savings are accounted for.
  */
 export function BudgetStatusHero({
   scenarioName,
   status,
   amountCents,
   periodLabel,
-  differsFromPlan,
-  delta,
-  showDelta,
-  comparedToName,
 }: BudgetStatusHeroProps) {
   const heading = status ? STATUS_HEADINGS[status] : null;
 
@@ -65,19 +50,12 @@ export function BudgetStatusHero({
             <heading.icon className="h-4 w-4" />
             {heading.label}
           </p>
-          <p
-            className={cn(
-              'mt-2 text-5xl font-bold tracking-tight',
-              differsFromPlan ? 'text-violet-600 dark:text-violet-400' : heading.color,
-            )}
-          >
+          <p className={cn('mt-2 text-5xl font-bold tracking-tight', heading.color)}>
             {status === 'balanced'
               ? 'Every dollar accounted for'
               : formatCents(Math.abs(amountCents))}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">{periodLabel}</p>
-          <div className="mx-auto mt-4 mb-3 h-px w-24 bg-border" />
-          <ScenarioDelta delta={delta} show={showDelta} comparedToName={comparedToName} />
         </div>
       )}
     </div>

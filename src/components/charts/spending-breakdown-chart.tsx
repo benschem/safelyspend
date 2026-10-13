@@ -23,8 +23,6 @@ interface SpendingBreakdownChartProps {
   incomeMarker?: number;
   /** Array of segment IDs that should show dollar amounts instead of percentages in legend */
   showDollarAmountIds?: string[];
-  /** Optional deltas for each segment (in cents) to show comparison with default scenario */
-  segmentDeltas?: Record<string, number> | undefined;
 }
 
 export function SpendingBreakdownChart({
@@ -37,7 +35,6 @@ export function SpendingBreakdownChart({
   toggleableIds = [],
   incomeMarker,
   showDollarAmountIds = [],
-  segmentDeltas,
 }: SpendingBreakdownChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredSegment, setHoveredSegment] = useState<BreakdownSegment | null>(null);
@@ -247,8 +244,6 @@ export function SpendingBreakdownChart({
             const canToggle = !disableToggle || toggleableIds.includes(segment.id);
             const showDollar = showDollarAmountIds.includes(segment.id);
             const displayValue = showDollar ? formatCents(segment.amount) : `${percentage}%`;
-            const delta = segmentDeltas?.[segment.id];
-            const hasDelta = delta !== undefined && delta !== 0;
             return canToggle ? (
               <button
                 key={segment.id}
@@ -264,12 +259,6 @@ export function SpendingBreakdownChart({
                 />
                 <span className={isHidden ? 'line-through' : ''}>
                   {segment.name} ({displayValue})
-                  {hasDelta && (
-                    <span className="ml-1 text-violet-600 dark:text-violet-400">
-                      {delta > 0 ? '+' : ''}
-                      {formatCents(delta)}
-                    </span>
-                  )}
                 </span>
               </button>
             ) : (
@@ -283,12 +272,6 @@ export function SpendingBreakdownChart({
                 />
                 <span>
                   {segment.name} ({displayValue})
-                  {hasDelta && (
-                    <span className="ml-1 text-violet-600 dark:text-violet-400">
-                      {delta > 0 ? '+' : ''}
-                      {formatCents(delta)}
-                    </span>
-                  )}
                 </span>
               </div>
             );

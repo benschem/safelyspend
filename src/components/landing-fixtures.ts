@@ -64,10 +64,6 @@ export const BUDGET_STATUS = {
   status: 'surplus' as const,
   amountCents: MONTHLY_SURPLUS,
   periodLabel: 'per month',
-  differsFromPlan: false,
-  delta: 0,
-  showDelta: false,
-  comparedToName: 'Current Plan',
 };
 
 // --- The four totals ---
@@ -148,7 +144,6 @@ function spendingSoFar(): { date: string; amount: number }[] {
 }
 
 export const SPENDING_PACE = {
-  showDeltas: false,
   pacesDiffer: true,
   projectedVariable: 165000,
   variable: MONTHLY_BUDGETED,

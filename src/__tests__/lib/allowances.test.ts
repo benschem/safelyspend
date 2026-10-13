@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   allowanceLabel,
-  allowanceMatchKey,
   allowancesForCategory,
   expandBudgetsByCategory,
   isAllowanceNameTaken,
@@ -123,30 +122,6 @@ describe('isAllowanceNameTaken', () => {
         true,
       );
     });
-  });
-});
-
-describe('allowanceMatchKey', () => {
-  it('pairs an allowance with its copy in another scenario', () => {
-    const copyInAnotherScenario = { ...LASHES, id: 'lashes-copy', scenarioId: 'scenario-2' };
-
-    expect(allowanceMatchKey(copyInAnotherScenario)).toBe(allowanceMatchKey(LASHES));
-  });
-
-  it('tells two allowances in one category apart', () => {
-    expect(allowanceMatchKey(LASHES)).not.toBe(allowanceMatchKey(NAILS));
-  });
-
-  it('tells the same name in two categories apart', () => {
-    const lashesElsewhere = { ...LASHES, categoryId: 'groceries' };
-
-    expect(allowanceMatchKey(lashesElsewhere)).not.toBe(allowanceMatchKey(LASHES));
-  });
-
-  it('tells an unnamed allowance from a named one in the same category', () => {
-    const generalSpending = allowance({ id: 'general' });
-
-    expect(allowanceMatchKey(generalSpending)).not.toBe(allowanceMatchKey(LASHES));
   });
 });
 

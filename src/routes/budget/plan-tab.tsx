@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { PiggyBank, BanknoteArrowUp, BanknoteArrowDown, ChartPie } from 'lucide-react';
 import { formatISODate } from '@/lib/dates';
-import { cn, formatCents } from '@/lib/utils';
+import { formatCents } from '@/lib/utils';
 import { averageMonthlySpendingByCategory } from '@/lib/spending-averages';
 import { CHART_COLORS } from '@/lib/chart-colors';
 import { sumForecastRulesForPeriod, toPeriodCents } from '@/lib/plan-amounts';
@@ -24,7 +24,6 @@ import { BudgetStatusHero } from '@/components/budget/status-hero';
 import { BudgetSummaryCard } from '@/components/budget/summary-card';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 import { IncomeSection, ExpensesSection, SavingsSection } from '@/components/budget/plan-sections';
-import { useScenarioDiff } from '@/hooks/use-scenario-diff';
 import type { Expense } from '@/lib/expenses';
 import { replaceExpenseWithOtherKind } from '@/lib/replace-expense';
 import type { Cadence, Category, ForecastRule, ForecastType } from '@/lib/types';
@@ -79,9 +78,6 @@ interface PlanTabProps {
 
 export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
   const { activeScenario } = useScenarios();
-  const { getTotalDelta, isViewingDefault, defaultScenarioName, defaultTotals } = useScenarioDiff();
-  const showDeltas = !isViewingDefault;
-  const comparedToName = defaultScenarioName;
   const { categories, activeCategories, isLoading: categoriesLoading } = useCategories();
   const {
     budgetRules,
@@ -315,47 +311,6 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     const totalSpending = totalFixed + totalVariable;
     const unallocated = income - totalSpending - savings;
 
-    // Monthly totals for scenario comparison
-    const monthlyIncome = sumForecastRulesForPeriod(forecastRules, 'income', 'monthly');
-    const monthlyFixed = Math.round(
-      categoryRows
-        .filter((r) => !r.category.isArchived)
-        .reduce((sum, r) => {
-          const yearly =
-            r.fixedAmount *
-            (breakdownPeriod === 'weekly'
-              ? 52
-              : breakdownPeriod === 'fortnightly'
-                ? 26
-                : breakdownPeriod === 'monthly'
-                  ? 12
-                  : breakdownPeriod === 'quarterly'
-                    ? 4
-                    : 1);
-          return sum + yearly / 12;
-        }, 0),
-    );
-    const monthlyVariable = Math.round(
-      categoryRows
-        .filter((r) => !r.category.isArchived)
-        .reduce((sum, r) => {
-          const yearly =
-            r.variableAmount *
-            (breakdownPeriod === 'weekly'
-              ? 52
-              : breakdownPeriod === 'fortnightly'
-                ? 26
-                : breakdownPeriod === 'monthly'
-                  ? 12
-                  : breakdownPeriod === 'quarterly'
-                    ? 4
-                    : 1);
-          return sum + yearly / 12;
-        }, 0),
-    );
-    const monthlySavings = sumForecastRulesForPeriod(forecastRules, 'savings', 'monthly');
-    const monthlySurplus = monthlyIncome - monthlyFixed - monthlyVariable - monthlySavings;
-
     return {
       income,
       fixed: totalFixed,
@@ -363,11 +318,6 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
       savings,
       totalSpending,
       unallocated,
-      monthlyIncome,
-      monthlyFixed,
-      monthlyVariable,
-      monthlySavings,
-      monthlySurplus,
     };
   }, [categoryRows, forecastRules, breakdownPeriod]);
 
@@ -453,14 +403,6 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
     return null;
   }
 
-  // Compute deltas directly (bypass getTotalDelta which short-circuits when isViewingDefault,
-  // blocking what-if mode detection)
-  const incomeDelta = showDeltas ? totals.monthlyIncome - defaultTotals.income : 0;
-  const fixedDelta = showDeltas ? totals.monthlyFixed - defaultTotals.fixedExpenses : 0;
-  const budgetDelta = showDeltas ? totals.monthlyVariable - defaultTotals.budgetedExpenses : 0;
-  const savingsDelta = showDeltas ? totals.monthlySavings - defaultTotals.savings : 0;
-  const surplusDelta = showDeltas ? totals.monthlySurplus - defaultTotals.surplus : 0;
-
   // Cards only quote a share of income when both figures are present.
   const shareOfIncome = (amount: number): string | undefined =>
     totals.income > 0 && amount > 0
@@ -499,15 +441,11 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
                     : null
             }
             amountCents={totals.unallocated}
-            differsFromPlan={surplusDelta !== 0}
             periodLabel={
               isOvercommitted && totals.income === 0
                 ? 'Add income to cover your planned expenses and savings'
                 : FREQUENCY_PER_LABELS[breakdownPeriod]
             }
-            delta={getTotalDelta('surplus', totals.monthlySurplus)}
-            showDelta={showDeltas}
-            comparedToName={comparedToName}
           />
         </div>
       )}
@@ -518,15 +456,11 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           icon={BanknoteArrowUp}
           tone="income"
           amountCents={totals.income > 0 ? totals.income : null}
-          differsFromPlan={incomeDelta !== 0}
           subtitle={
             totals.income > 0
               ? `${incomeRules.length} source${incomeRules.length !== 1 ? 's' : ''}`
               : undefined
           }
-          delta={getTotalDelta('income', totals.monthlyIncome)}
-          showDelta={showDeltas}
-          comparedToName={comparedToName}
           onClick={() => scrollToSection('income', setIncomeOpen)}
         />
 
@@ -535,11 +469,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           icon={BanknoteArrowDown}
           tone="expense"
           amountCents={totals.fixed > 0 ? totals.fixed : null}
-          differsFromPlan={fixedDelta !== 0}
           subtitle={shareOfIncome(totals.fixed)}
-          delta={getTotalDelta('fixed', totals.monthlyFixed)}
-          showDelta={showDeltas}
-          comparedToName={comparedToName}
           onClick={() => scrollToSection('expenses', setExpensesOpen)}
         />
 
@@ -548,11 +478,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           icon={BanknoteArrowDown}
           tone="expense"
           amountCents={totals.variable > 0 ? totals.variable : null}
-          differsFromPlan={budgetDelta !== 0}
           subtitle={shareOfIncome(totals.variable)}
-          delta={getTotalDelta('budget', totals.monthlyVariable)}
-          showDelta={showDeltas}
-          comparedToName={comparedToName}
           onClick={() => scrollToSection('expenses', setExpensesOpen)}
         />
 
@@ -561,11 +487,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           icon={PiggyBank}
           tone="savings"
           amountCents={totals.savings}
-          differsFromPlan={savingsDelta !== 0}
           subtitle={shareOfIncome(totals.savings)}
-          delta={getTotalDelta('savings', totals.monthlySavings)}
-          showDelta={showDeltas}
-          comparedToName={comparedToName}
           onClick={() => scrollToSection('savings', setSavingsOpen)}
         />
       </div>
@@ -575,21 +497,8 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
         (() => {
           const surplusHidden = hiddenSegments.has('surplus');
           const budgetTotal = totals.fixed + totals.savings + totals.variable;
-          const segmentDeltas = showDeltas
-            ? {
-                fixed: getTotalDelta('fixed', totals.monthlyFixed),
-                savings: getTotalDelta('savings', totals.monthlySavings),
-                variable: getTotalDelta('budget', totals.monthlyVariable),
-                surplus: getTotalDelta('surplus', totals.monthlySurplus),
-              }
-            : undefined;
           return (
-            <div
-              className={cn(
-                'mb-8 rounded-xl border bg-card p-5',
-                showDeltas && 'border-violet-500/30',
-              )}
-            >
+            <div className="mb-8 rounded-xl border bg-card p-5">
               <div className="mb-2 flex items-center gap-2">
                 <ChartPie className="h-5 w-5 text-muted-foreground" />
                 <h3 className="text-lg font-semibold">
@@ -597,30 +506,9 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
                 </h3>
               </div>
               <p className="mb-4 text-sm text-muted-foreground">
-                {surplusHidden ? (
-                  `How your ${formatCents(budgetTotal)} budget is allocated`
-                ) : (
-                  <>
-                    How your {formatCents(totals.income)}
-                    {(() => {
-                      const incomeDelta = showDeltas
-                        ? getTotalDelta('income', totals.monthlyIncome)
-                        : 0;
-                      return (
-                        <span
-                          className={
-                            incomeDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'hidden'
-                          }
-                        >
-                          {' '}
-                          ({incomeDelta > 0 ? '+' : ''}
-                          {formatCents(incomeDelta)})
-                        </span>
-                      );
-                    })()}{' '}
-                    income is allocated
-                  </>
-                )}
+                {surplusHidden
+                  ? `How your ${formatCents(budgetTotal)} budget is allocated`
+                  : `How your ${formatCents(totals.income)} income is allocated`}
               </p>
               <SpendingBreakdownChart
                 segments={budgetBreakdownSegments}
@@ -631,7 +519,6 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
                 hiddenSegmentIds={hiddenSegments}
                 onSegmentToggle={handleSegmentToggle}
                 showDollarAmountIds={surplusHidden ? ['surplus'] : []}
-                segmentDeltas={segmentDeltas}
                 {...(incomeMarkerPercent !== undefined &&
                   !surplusHidden && { incomeMarker: incomeMarkerPercent })}
               />
@@ -662,7 +549,6 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           onDeleteRule={handleDeleteForecastRule}
           periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
           periodTotal={totals.income}
-          monthlyDelta={showDeltas ? getTotalDelta('income', totals.monthlyIncome) : undefined}
         />
       </div>
 
@@ -686,12 +572,6 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           period={breakdownPeriod}
           periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
           periodTotal={totals.totalSpending}
-          monthlyDelta={
-            showDeltas
-              ? getTotalDelta('fixed', totals.monthlyFixed) +
-                getTotalDelta('budget', totals.monthlyVariable)
-              : undefined
-          }
         />
       </div>
 
@@ -712,7 +592,6 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           onDeleteRule={handleDeleteForecastRule}
           periodLabel={FREQUENCY_PER_LABELS[breakdownPeriod]}
           periodTotal={totals.savings}
-          monthlyDelta={showDeltas ? getTotalDelta('savings', totals.monthlySavings) : undefined}
         />
       </div>
 

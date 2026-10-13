@@ -10,7 +10,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  ChevronUp,
   Pin,
   Tag,
   Sparkles,
@@ -18,7 +17,6 @@ import {
   X,
 } from 'lucide-react';
 import { useScenarios } from '@/hooks/use-scenarios';
-import { useScenarioDiff } from '@/hooks/use-scenario-diff';
 import { useAppConfig } from '@/hooks/use-app-config';
 
 import { useBudgetRules } from '@/hooks/use-budget-rules';
@@ -136,8 +134,6 @@ interface CashFlowContentProps {
 
 function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
   const { activeScenario } = useScenarios();
-  const { isViewingDefault, defaultBudgetByCategoryMonthly, defaultTotals, defaultScenarioName } =
-    useScenarioDiff();
   const { budgetRules } = useBudgetRules(activeScenarioId);
   const { categories } = useCategories();
   const { savingsGoals } = useSavingsGoals();
@@ -189,10 +185,6 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
     selectedMonth,
     viewMode: 'month',
   });
-
-  // Show deltas when viewing a non-default scenario, but never for past
-  // periods — comparing historical actuals to plan deltas is confusing
-  const showDeltas = !isViewingDefault && !isPastPeriod;
 
   // Navigation handlers
   const goToPrevious = () => {
@@ -561,17 +553,6 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
       periodCashFlow.savings.actual
     : 0;
 
-  // Scenario deltas (per-row)
-  const incomeDelta = showDeltas ? periodCashFlow.income.expected - defaultTotals.income : 0;
-  const fixedDelta = showDeltas
-    ? periodCashFlow.expenses.expected - defaultTotals.fixedExpenses
-    : 0;
-  const variableDelta = showDeltas
-    ? periodCashFlow.budgeted.expected - defaultTotals.budgetedExpenses
-    : 0;
-  const savingsDelta = showDeltas ? periodCashFlow.savings.expected - defaultTotals.savings : 0;
-  const endDelta = showDeltas ? incomeDelta - fixedDelta - variableDelta - savingsDelta : 0;
-
   // Total savings balance across all goals (anchor + transactions after anchor)
   const totalSavingsBalance = useMemo(() => {
     const todayStr = getToday();
@@ -721,7 +702,6 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
           isCurrentPeriod={isCurrentPeriod}
           isPastPeriod={isPastPeriod}
           hasAnchor={hasAnchor}
-          showDeltas={showDeltas}
           netChange={netChange}
           projectedNetChange={projectedNetChange}
           pastActualNetChange={pastActualNetChange}
@@ -735,8 +715,6 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
           isCurrentPeriod={isCurrentPeriod}
           isPastPeriod={isPastPeriod}
           periodCashFlow={periodCashFlow}
-          showDeltas={showDeltas}
-          savingsDelta={savingsDelta}
           pacesDiffer={pacesDiffer}
           projectedSavings={projectedSavings}
           totalSavingsBalance={totalSavingsBalance}
@@ -746,7 +724,6 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
       {/* Spending Pace */}
       {isCurrentPeriod && budgetStatus?.hasBudget && burnRateData.totalBudget > 0 && (
         <SpendingPaceCard
-          showDeltas={showDeltas}
           pacesDiffer={pacesDiffer}
           projectedVariable={projectedVariable}
           variable={variable}
@@ -764,7 +741,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
       )}
 
       {/* Cash Flow Breakdown */}
-      <div className={cn('rounded-xl border bg-card p-6', showDeltas && 'border-violet-500/30')}>
+      <div className="rounded-xl border bg-card p-6">
         <div className="mb-4 flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/10">
             <Banknote className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
@@ -786,24 +763,17 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
           }
           pastActualFixed={pastActualFixed}
           pastActualNetChange={pastActualNetChange}
-          showDeltas={showDeltas}
-          incomeDelta={incomeDelta}
-          fixedDelta={fixedDelta}
-          variableDelta={variableDelta}
-          savingsDelta={savingsDelta}
-          endDelta={endDelta}
           pacesDiffer={pacesDiffer}
           projectedVariable={projectedVariable}
           projectedNetChange={projectedNetChange}
           projectedSavings={projectedSavings}
-          defaultScenarioName={defaultScenarioName}
           scenarioName={activeScenario?.name ?? 'Scenario'}
-          isDefaultScenario={isViewingDefault}
+          isDefaultScenario={activeScenario?.isDefault ?? true}
         />
       </div>
 
       {/* Expenses & Savings Breakdown */}
-      <div className={cn('rounded-xl border bg-card p-6', showDeltas && 'border-violet-500/30')}>
+      <div className="rounded-xl border bg-card p-6">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-rose-500/10">
@@ -843,11 +813,6 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
             </div>
           )}
         </div>
-        <p
-          className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
-        >
-          {`Based on "${activeScenario?.name ?? 'scenario'}"`}
-        </p>
 
         {categoryProgress.length === 0 && savingsProgress.length === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">
@@ -978,24 +943,6 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
                       {hasBudget && (
                         <span className="text-xs text-muted-foreground">
                           Budgeted {formatCents(item.budget)}
-                          {(() => {
-                            const defaultBudget = defaultBudgetByCategoryMonthly[item.id] ?? 0;
-                            const currentBudget =
-                              monthlyLimitsByCategory[item.id]?.allowanceCents ?? 0;
-                            const delta = currentBudget - defaultBudget;
-                            if (!showDeltas || delta === 0) return null;
-                            return (
-                              <span className="ml-1 inline-flex items-center text-violet-600 dark:text-violet-400">
-                                (
-                                {delta > 0 ? (
-                                  <ChevronUp className="h-3 w-3" />
-                                ) : (
-                                  <ChevronDown className="h-3 w-3" />
-                                )}
-                                {formatCents(Math.abs(delta))})
-                              </span>
-                            );
-                          })()}
                         </span>
                       )}
                     </div>
@@ -1167,17 +1114,10 @@ interface SummaryCardProps {
   actualNetChange: number;
   pastActualFixed: number;
   pastActualNetChange: number;
-  showDeltas: boolean;
-  incomeDelta: number;
-  fixedDelta: number;
-  variableDelta: number;
-  savingsDelta: number;
-  endDelta: number;
   pacesDiffer: boolean;
   projectedVariable: number | null;
   projectedNetChange: number;
   projectedSavings: number;
-  defaultScenarioName: string;
   scenarioName: string;
   isDefaultScenario: boolean;
 }
@@ -1190,11 +1130,6 @@ function BreakdownTable({
   hasAnchor,
   startingBalance,
   periodCashFlow,
-  showDeltas,
-  incomeDelta,
-  fixedDelta,
-  variableDelta,
-  savingsDelta,
   pacesDiffer,
   projectedVariable,
   projectedSavings,
@@ -1211,16 +1146,6 @@ function BreakdownTable({
 
   const fmtSigned = (amount: number, prefix: string) => `${prefix}${formatCents(Math.abs(amount))}`;
 
-  const renderDelta = (delta: number) => {
-    if (!showDeltas || delta === 0) return null;
-    return (
-      <span className="ml-1.5 inline-flex items-center text-xs text-muted-foreground">
-        ({delta > 0 ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-        {formatCents(Math.abs(delta))})
-      </span>
-    );
-  };
-
   const income = periodCashFlow.income.expected;
   const fixed = periodCashFlow.expenses.expected;
   const variable = periodCashFlow.budgeted.expected;
@@ -1230,7 +1155,6 @@ function BreakdownTable({
     : 0;
 
   const plannedTotal = income - fixed - variable - savings;
-  const totalDelta = incomeDelta - fixedDelta - variableDelta - savingsDelta;
   const totalColor = (amount: number) =>
     amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400';
   // Column labels based on period type
@@ -1395,11 +1319,7 @@ function BreakdownTable({
             middle={fmtSigned(income, '+')}
             right={fmtSigned(income, '+')}
             leftColor="text-green-600 dark:text-green-400"
-            middleColor={
-              showDeltas && incomeDelta !== 0
-                ? 'text-violet-600 dark:text-violet-400'
-                : 'text-green-600 dark:text-green-400'
-            }
+            middleColor="text-green-600 dark:text-green-400"
             rightColor="text-green-600 dark:text-green-400"
             mobileColumn={mobileColumn}
             dimMiddle
@@ -1415,11 +1335,7 @@ function BreakdownTable({
             middle={fixed > 0 ? fmtSigned(fixed, '−') : '—'}
             right={fixed > 0 ? fmtSigned(fixed, '−') : '—'}
             leftColor="text-red-600 dark:text-red-400"
-            middleColor={
-              showDeltas && fixedDelta !== 0
-                ? 'text-violet-600 dark:text-violet-400'
-                : 'text-red-600 dark:text-red-400'
-            }
+            middleColor="text-red-600 dark:text-red-400"
             rightColor="text-red-600 dark:text-red-400"
             mobileColumn={mobileColumn}
             dimMiddle
@@ -1435,11 +1351,7 @@ function BreakdownTable({
             middle={variable > 0 ? fmtSigned(variable, '−') : '—'}
             right={pv > 0 ? fmtSigned(pv, '−') : '—'}
             leftColor="text-red-600 dark:text-red-400"
-            middleColor={
-              showDeltas && variableDelta !== 0
-                ? 'text-violet-600 dark:text-violet-400'
-                : 'text-red-600 dark:text-red-400'
-            }
+            middleColor="text-red-600 dark:text-red-400"
             rightColor="text-red-600 dark:text-red-400"
             mobileColumn={mobileColumn}
             dimMiddle
@@ -1450,11 +1362,7 @@ function BreakdownTable({
             middle={fmtSigned(savings, '−')}
             right={fmtSigned(projectedSavings, '−')}
             leftColor="text-blue-600 dark:text-blue-400"
-            middleColor={
-              showDeltas && savingsDelta !== 0
-                ? 'text-violet-600 dark:text-violet-400'
-                : 'text-blue-600 dark:text-blue-400'
-            }
+            middleColor="text-blue-600 dark:text-blue-400"
             rightColor="text-blue-600 dark:text-blue-400"
             mobileColumn={mobileColumn}
             dimMiddle={projectedSavings === savings}
@@ -1475,11 +1383,7 @@ function BreakdownTable({
                 middle={fmtSigned(plannedTotal, plannedTotal >= 0 ? '+' : '−')}
                 right={fmtSigned(projectedTotal, projectedTotal >= 0 ? '+' : '−')}
                 leftColor={totalColor(actualTotal)}
-                middleColor={
-                  showDeltas && totalDelta !== 0
-                    ? 'text-violet-600 dark:text-violet-400'
-                    : totalColor(plannedTotal)
-                }
+                middleColor={totalColor(plannedTotal)}
                 rightColor={totalColor(projectedTotal)}
                 mobileColumn={mobileColumn}
                 isBold
@@ -1544,11 +1448,7 @@ function BreakdownTable({
             right={fmtSigned(income, '+')}
             mobileColumn={mobileColumn}
             leftColor="text-green-600 dark:text-green-400"
-            rightColor={
-              showDeltas && incomeDelta !== 0
-                ? 'text-violet-600 dark:text-violet-400'
-                : 'text-green-600 dark:text-green-400'
-            }
+            rightColor="text-green-600 dark:text-green-400"
             dimRight
           />
           <TwoColRow
@@ -1561,11 +1461,7 @@ function BreakdownTable({
             right={fixed > 0 ? fmtSigned(fixed, '−') : '—'}
             mobileColumn={mobileColumn}
             leftColor="text-red-600 dark:text-red-400"
-            rightColor={
-              showDeltas && fixedDelta !== 0
-                ? 'text-violet-600 dark:text-violet-400'
-                : 'text-red-600 dark:text-red-400'
-            }
+            rightColor="text-red-600 dark:text-red-400"
             dimRight
           />
           <TwoColRow
@@ -1578,11 +1474,7 @@ function BreakdownTable({
             right={variable > 0 ? fmtSigned(variable, '−') : '—'}
             mobileColumn={mobileColumn}
             leftColor="text-red-600 dark:text-red-400"
-            rightColor={
-              showDeltas && variableDelta !== 0
-                ? 'text-violet-600 dark:text-violet-400'
-                : 'text-red-600 dark:text-red-400'
-            }
+            rightColor="text-red-600 dark:text-red-400"
             dimRight
           />
           <TwoColRow
@@ -1591,11 +1483,7 @@ function BreakdownTable({
             right={fmtSigned(savings, '−')}
             mobileColumn={mobileColumn}
             leftColor="text-blue-600 dark:text-blue-400"
-            rightColor={
-              showDeltas && savingsDelta !== 0
-                ? 'text-violet-600 dark:text-violet-400'
-                : 'text-blue-600 dark:text-blue-400'
-            }
+            rightColor="text-blue-600 dark:text-blue-400"
             dimRight
           />
         </div>
@@ -1613,11 +1501,7 @@ function BreakdownTable({
                 right={fmtSigned(plannedTotal, plannedTotal >= 0 ? '+' : '−')}
                 mobileColumn={mobileColumn}
                 leftColor={totalColor(actualTotal)}
-                rightColor={
-                  showDeltas && totalDelta !== 0
-                    ? 'text-violet-600 dark:text-violet-400'
-                    : totalColor(plannedTotal)
-                }
+                rightColor={totalColor(plannedTotal)}
                 isBold
                 dimRight
               />
@@ -1647,41 +1531,25 @@ function BreakdownTable({
         <SingleRow
           label="+ Income"
           value={fmtSigned(income, '+')}
-          delta={renderDelta(incomeDelta)}
           className="text-green-600 dark:text-green-400"
-          valueColor={
-            showDeltas && incomeDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : undefined
-          }
           href="/budget?section=income"
         />
         <SingleRow
           label="− Bills"
           value={fixed > 0 ? fmtSigned(fixed, '−') : '—'}
-          delta={renderDelta(-fixedDelta)}
           className="text-red-600 dark:text-red-400"
-          valueColor={
-            showDeltas && fixedDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : undefined
-          }
           href="/budget?section=fixed"
         />
         <SingleRow
           label="− Day-to-day spending"
           value={variable > 0 ? fmtSigned(variable, '−') : '—'}
-          delta={renderDelta(-variableDelta)}
           className="text-red-600 dark:text-red-400"
-          valueColor={
-            showDeltas && variableDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : undefined
-          }
           href="/budget?section=variable"
         />
         <SingleRow
           label="− Saving"
           value={fmtSigned(savings, '−')}
-          delta={renderDelta(-savingsDelta)}
           className="text-blue-600 dark:text-blue-400"
-          valueColor={
-            showDeltas && savingsDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : undefined
-          }
           href="/budget?section=savings"
         />
       </div>
@@ -1689,12 +1557,8 @@ function BreakdownTable({
         <SingleRow
           label="Net change"
           value={fmtSigned(plannedTotal, plannedTotal >= 0 ? '+' : '−')}
-          delta={renderDelta(totalDelta)}
           isBold
           className={totalColor(plannedTotal)}
-          valueColor={
-            showDeltas && totalDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : undefined
-          }
         />
       </div>
     </div>
@@ -1707,9 +1571,7 @@ function BreakdownTable({
 function SingleRow({
   label,
   value,
-  delta,
   annotation,
-  valueColor,
   className,
   href,
   isBold = false,
@@ -1718,9 +1580,7 @@ function SingleRow({
 }: {
   label: React.ReactNode;
   value: string;
-  delta?: React.ReactNode;
   annotation?: string | undefined;
-  valueColor?: string | undefined;
   className?: string;
   href?: string;
   isBold?: boolean;
@@ -1735,7 +1595,6 @@ function SingleRow({
         'w-20 text-right font-mono text-sm tabular-nums hover:underline sm:w-28',
         isBold && 'font-semibold',
         className,
-        valueColor,
         dimCls,
       )}
     >
@@ -1747,7 +1606,6 @@ function SingleRow({
         'w-20 text-right font-mono text-sm tabular-nums sm:w-28',
         isBold && 'font-semibold',
         className,
-        valueColor,
         dimCls,
       )}
     >
@@ -1761,7 +1619,6 @@ function SingleRow({
         className={cn('text-sm text-muted-foreground', isBold && 'font-semibold text-foreground')}
       >
         {label}
-        {delta}
       </span>
       {valContent}
       <span

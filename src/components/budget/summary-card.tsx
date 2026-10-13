@@ -1,6 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
 import { cn, formatCents } from '@/lib/utils';
-import { ScenarioDelta } from '@/components/ui/scenario-delta';
 
 type SummaryTone = 'income' | 'expense' | 'savings';
 
@@ -18,22 +17,13 @@ interface BudgetSummaryCardProps {
   amountCents: number | null;
   /** Usually a share of income, e.g. "39% of income". */
   subtitle?: string | undefined;
-  /**
-   * Whether this total differs from the plan, which tints the figure. Separate from
-   * `delta` because that is suppressed while viewing the default scenario, and the
-   * tint still needs to show in what-if mode.
-   */
-  differsFromPlan: boolean;
-  delta: number;
-  showDelta: boolean;
-  comparedToName: string;
   /** Given, the card becomes a button. Without it the card is static. */
   onClick?: (() => void) | undefined;
 }
 
 /**
  * One total on the budget plan: income, fixed expenses, budgeted spending or
- * savings. The figure turns violet when this scenario differs from the plan.
+ * savings.
  */
 export function BudgetSummaryCard({
   label,
@@ -41,10 +31,6 @@ export function BudgetSummaryCard({
   tone,
   amountCents,
   subtitle,
-  differsFromPlan,
-  delta,
-  showDelta,
-  comparedToName,
   onClick,
 }: BudgetSummaryCardProps) {
   const tones = TONE_CLASSES[tone];
@@ -59,16 +45,10 @@ export function BudgetSummaryCard({
         </div>
         <span className="text-sm text-muted-foreground">{label}</span>
       </div>
-      <p
-        className={cn(
-          'mt-2 text-2xl font-bold',
-          differsFromPlan && 'text-violet-600 dark:text-violet-400',
-        )}
-      >
+      <p className="mt-2 text-2xl font-bold">
         {amountCents === null ? '—' : formatCents(amountCents)}
       </p>
       {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
-      <ScenarioDelta delta={delta} show={showDelta} comparedToName={comparedToName} />
     </>
   );
 

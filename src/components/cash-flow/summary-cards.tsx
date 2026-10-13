@@ -22,7 +22,6 @@ interface CashBalanceCardProps {
   isCurrentPeriod: boolean;
   isPastPeriod: boolean;
   hasAnchor: boolean;
-  showDeltas: boolean;
   netChange: number;
   projectedNetChange: number;
   pastActualNetChange: number;
@@ -40,8 +39,6 @@ interface SavingsGrowthCardProps {
   isCurrentPeriod: boolean;
   isPastPeriod: boolean;
   periodCashFlow: { savings: { expected: number; actual: number } };
-  showDeltas: boolean;
-  savingsDelta: number;
   pacesDiffer: boolean;
   projectedSavings: number;
   totalSavingsBalance: number;
@@ -52,7 +49,6 @@ export function CashBalanceCard(props: CashBalanceCardProps) {
     isCurrentPeriod,
     isPastPeriod,
     hasAnchor,
-    showDeltas,
     netChange,
     projectedNetChange,
     pastActualNetChange,
@@ -72,7 +68,7 @@ export function CashBalanceCard(props: CashBalanceCardProps) {
 
   if (!hasAnchor) {
     return (
-      <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
+      <div className="rounded-xl border bg-card p-5">
         <div className="flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/10">
             <Banknote className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
@@ -91,7 +87,6 @@ export function CashBalanceCard(props: CashBalanceCardProps) {
   }
 
   // Determine which value/label/change to show based on period
-  const isFuture = !isCurrentPeriod && !isPastPeriod;
   let endValue: number | null;
   let endChange: number;
   let endLabel: string;
@@ -142,7 +137,7 @@ export function CashBalanceCard(props: CashBalanceCardProps) {
     : 'text-muted-foreground';
 
   return (
-    <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
+    <div className="rounded-xl border bg-card p-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/10">
@@ -160,14 +155,7 @@ export function CashBalanceCard(props: CashBalanceCardProps) {
             {endLabel}
           </p>
           <div className="mt-0.5 flex items-baseline gap-1.5">
-            <p
-              className={cn(
-                'text-3xl font-semibold tabular-nums',
-                showDeltas && isFuture && 'text-violet-600 dark:text-violet-400',
-              )}
-            >
-              {fmtBalance(endValue)}
-            </p>
+            <p className="text-3xl font-semibold tabular-nums">{fmtBalance(endValue)}</p>
             <span
               className={cn(
                 'inline-flex items-center text-xs font-semibold tabular-nums',
@@ -261,8 +249,6 @@ export function SavingsGrowthCard(props: SavingsGrowthCardProps) {
     isCurrentPeriod,
     isPastPeriod,
     periodCashFlow,
-    showDeltas,
-    savingsDelta,
     pacesDiffer,
     projectedSavings,
     totalSavingsBalance,
@@ -290,7 +276,7 @@ export function SavingsGrowthCard(props: SavingsGrowthCardProps) {
   const projectedGrowth = showPace ? projectedSavings : null;
 
   return (
-    <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
+    <div className="rounded-xl border bg-card p-5">
       <div className="flex items-center gap-2">
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/10">
           <PiggyBank className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -333,12 +319,7 @@ export function SavingsGrowthCard(props: SavingsGrowthCardProps) {
               Planned month end
             </p>
             <div className="mt-0.5 flex items-baseline gap-1.5">
-              <p
-                className={cn(
-                  'text-3xl font-semibold tabular-nums',
-                  showDeltas && savingsDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : '',
-                )}
-              >
+              <p className="text-3xl font-semibold tabular-nums">
                 {fmtBalance(isFuturePeriod ? savingsNow + savings : savingsPlannedEnd)}
               </p>
               <span

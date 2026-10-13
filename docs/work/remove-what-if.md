@@ -1,6 +1,6 @@
 # Remove the What If sliders and keep scenarios as plain plans
 
-- **Status:** in progress, step 3 done. Decisions made 2026-10-13.
+- **Status:** in progress, step 4 done. Decisions made 2026-10-13.
 - **Goal:** the sliders, What If mode, the violet difference figures and the
   comparison against the default plan are gone, and scenarios remain as named
   plans that can be copied, edited and switched between.
@@ -125,7 +125,7 @@ Copying a scenario does not depend on the sliders: `ScenarioDialog` has a
    Expenses, Savings. The three open states in `plan-tab.tsx` become one
    selected tab, and clicking a summary card selects its tab where it now
    opens and scrolls to its section. Each section's total and Add button
-   need a place once the collapsible header is gone.
+   need a place once the collapsible header is gone, hopefully just in the tab itself.
 6. **Copy and landing.** Sidebar label and page title to "Scenarios"; reword
    the info alert, the "What-If Scenarios" heading and the empty state in
    `scenarios/index.tsx`, and the description in `scenario-dialog.tsx`.

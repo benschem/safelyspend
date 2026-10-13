@@ -13,7 +13,7 @@ import {
   PiggyBank,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn, formatCents, CADENCE_PER_LABELS, type CadenceType } from '@/lib/utils';
+import { formatCents, CADENCE_PER_LABELS, type CadenceType } from '@/lib/utils';
 import { allowanceLabel, sumAllowancesForPeriod } from '@/lib/allowances';
 import {
   describeBillDue,
@@ -108,8 +108,6 @@ interface IncomeSectionProps {
   onDeleteRule: (ruleId: string) => void;
   periodLabel: string;
   periodTotal: number;
-  /** Monthly delta from default scenario (current - default) */
-  monthlyDelta?: number | undefined;
 }
 
 export function IncomeSection({
@@ -121,7 +119,6 @@ export function IncomeSection({
   onDeleteRule,
   periodLabel,
   periodTotal,
-  monthlyDelta,
 }: IncomeSectionProps) {
   return (
     <Collapsible open={isOpen} onOpenChange={onOpenChange} className="mb-4">
@@ -132,22 +129,7 @@ export function IncomeSection({
             <BanknoteArrowUp className="h-4 w-4 text-green-500" />
             <span className="font-medium">Income</span>
             <span className="text-sm text-muted-foreground">
-              <span
-                className={cn(
-                  monthlyDelta !== undefined &&
-                    monthlyDelta !== 0 &&
-                    'text-violet-600 dark:text-violet-400',
-                )}
-              >
-                {formatCents(periodTotal)}
-              </span>{' '}
-              {periodLabel}
-              <span
-                className={`ml-1 inline-block min-w-[4.5rem] ${monthlyDelta !== undefined && monthlyDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
-              >
-                ({monthlyDelta !== undefined && monthlyDelta > 0 ? '+' : ''}
-                {formatCents(monthlyDelta ?? 0)})
-              </span>
+              {formatCents(periodTotal)} {periodLabel}
             </span>
           </CollapsibleTrigger>
           <Button
@@ -214,8 +196,6 @@ interface ExpensesSectionProps {
   period: Cadence;
   periodLabel: string;
   periodTotal: number;
-  /** Monthly delta from default scenario (current - default) */
-  monthlyDelta?: number | undefined;
   /** What each category has cost on average, shown under its heading */
   spendingAverages: SpendingAverages | null;
 }
@@ -233,7 +213,6 @@ export function ExpensesSection({
   period,
   periodLabel,
   periodTotal,
-  monthlyDelta,
 }: ExpensesSectionProps) {
   const expenseGroups = useMemo(
     () => groupExpensesByCategory(billRules, allowanceRules, categories),
@@ -249,22 +228,7 @@ export function ExpensesSection({
             <BanknoteArrowDown className="h-4 w-4 text-rose-500" />
             <span className="font-medium">Expenses</span>
             <span className="text-sm text-muted-foreground">
-              <span
-                className={cn(
-                  monthlyDelta !== undefined &&
-                    monthlyDelta !== 0 &&
-                    'text-violet-600 dark:text-violet-400',
-                )}
-              >
-                {formatCents(periodTotal)}
-              </span>{' '}
-              {periodLabel}
-              <span
-                className={`ml-1 inline-block min-w-[4.5rem] ${monthlyDelta !== undefined && monthlyDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
-              >
-                ({monthlyDelta !== undefined && monthlyDelta > 0 ? '+' : ''}
-                {formatCents(monthlyDelta ?? 0)})
-              </span>
+              {formatCents(periodTotal)} {periodLabel}
             </span>
           </CollapsibleTrigger>
           <Button
@@ -377,8 +341,6 @@ interface SavingsSectionProps {
   onDeleteRule: (ruleId: string) => void;
   periodLabel: string;
   periodTotal: number;
-  /** Monthly delta from default scenario (current - default) */
-  monthlyDelta?: number | undefined;
 }
 
 export function SavingsSection({
@@ -391,7 +353,6 @@ export function SavingsSection({
   onDeleteRule,
   periodLabel,
   periodTotal,
-  monthlyDelta,
 }: SavingsSectionProps) {
   const getGoalName = (id: string | null) =>
     id ? (savingsGoals.find((g) => g.id === id)?.name ?? 'Unknown') : 'Savings';
@@ -405,22 +366,7 @@ export function SavingsSection({
             <PiggyBank className="h-4 w-4 text-blue-500" />
             <span className="font-medium">Savings</span>
             <span className="text-sm text-muted-foreground">
-              <span
-                className={cn(
-                  monthlyDelta !== undefined &&
-                    monthlyDelta !== 0 &&
-                    'text-violet-600 dark:text-violet-400',
-                )}
-              >
-                {formatCents(periodTotal)}
-              </span>{' '}
-              {periodLabel}
-              <span
-                className={`ml-1 inline-block min-w-[4.5rem] ${monthlyDelta !== undefined && monthlyDelta !== 0 ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
-              >
-                ({monthlyDelta !== undefined && monthlyDelta > 0 ? '+' : ''}
-                {formatCents(monthlyDelta ?? 0)})
-              </span>
+              {formatCents(periodTotal)} {periodLabel}
             </span>
           </CollapsibleTrigger>
           <Button

@@ -48,14 +48,6 @@ export function isAllowanceNameTaken(
   );
 }
 
-/**
- * The key that pairs an allowance with the same allowance in another scenario.
- * Ids differ between scenarios, so the pair is found by category and name.
- */
-export function allowanceMatchKey(allowance: Pick<BudgetRule, 'categoryId' | 'name'>): string {
-  return JSON.stringify([allowance.categoryId, comparableName(allowance.name)]);
-}
-
 /** Every allowance in one category, in the order given */
 export function allowancesForCategory(allowances: BudgetRule[], categoryId: string): BudgetRule[] {
   return allowances.filter((allowance) => allowance.categoryId === categoryId);

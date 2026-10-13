@@ -8,7 +8,6 @@ import { BurnRateChart } from '@/components/charts/burn-rate-chart';
  * itself needs is forwarded straight through, so callers pass one flat set of props.
  */
 interface SpendingPaceCardProps extends ComponentProps<typeof BurnRateChart> {
-  showDeltas: boolean;
   /** True when the projected spend differs from the planned spend. */
   pacesDiffer: boolean;
   projectedVariable: number | null;
@@ -17,7 +16,6 @@ interface SpendingPaceCardProps extends ComponentProps<typeof BurnRateChart> {
 }
 
 export function SpendingPaceCard({
-  showDeltas,
   pacesDiffer,
   projectedVariable,
   variable,
@@ -27,7 +25,7 @@ export function SpendingPaceCard({
   const isSlower = pacesDiffer && projectedVariable !== null && projectedVariable < variable;
 
   return (
-    <div className={cn('rounded-xl border bg-card p-6', showDeltas && 'border-violet-500/30')}>
+    <div className="rounded-xl border bg-card p-6">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500/10">

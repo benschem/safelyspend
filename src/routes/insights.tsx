@@ -19,8 +19,6 @@ import { useBalanceAnchors } from '@/hooks/use-balance-anchors';
 import { useSavingsAnchors } from '@/hooks/use-savings-anchors';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useSavingsGoals } from '@/hooks/use-savings-goals';
-import { useScenarios } from '@/hooks/use-scenarios';
-import { useScenarioDiff } from '@/hooks/use-scenario-diff';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
 import { today as getToday } from '@/lib/dates';
 import { formatCompactDate, TIMELINE_UNIT_BOUNDS } from '@/lib/utils';
@@ -80,10 +78,6 @@ function formatTimelineDescription(amount: number, unit: TimelineUnit, mode: Tim
 
 export function InsightsPage() {
   const { activeScenarioId } = useOutletContext<OutletContext>();
-  const { activeScenario } = useScenarios();
-  const { isViewingDefault } = useScenarioDiff();
-  // Show purple indicators when viewing a non-default scenario
-  const showDeltas = !isViewingDefault;
 
   const [searchParams, setSearchParams] = useSearchParams();
   const {
@@ -586,7 +580,7 @@ export function InsightsPage() {
       {isLoading ? (
         <PageLoading />
       ) : activeTab === 'spending' ? (
-        <div className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}>
+        <div className="rounded-xl border bg-card p-5">
           <div className="mb-4">
             <h2 className="flex items-center gap-1.5 text-lg font-semibold">
               <CalendarDays className="h-4 w-4 text-muted-foreground" />
@@ -598,11 +592,6 @@ export function InsightsPage() {
                 : 'Actual and expected spending vs budget'}
             </p>
           </div>
-          <p
-            className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
-          >
-            {`Based on "${activeScenario?.name ?? 'scenario'}"`}
-          </p>
           <BudgetComparisonChart
             monthlyBudgetComparison={monthlyBudgetComparison}
             budgetCategories={budgetCategories}
@@ -633,9 +622,7 @@ export function InsightsPage() {
               </AlertDescription>
             </Alert>
           )}
-          <div
-            className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}
-          >
+          <div className="rounded-xl border bg-card p-5">
             <div className="mb-4">
               <h2 className="flex items-center gap-1.5 text-lg font-semibold">
                 <CalendarDays className="h-4 w-4 text-muted-foreground" />
@@ -647,11 +634,6 @@ export function InsightsPage() {
                   : 'Cash and savings over time, including planned income, spending and saving'}
               </p>
             </div>
-            <p
-              className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
-            >
-              {`Based on "${activeScenario?.name ?? 'scenario'}"`}
-            </p>
             <CashFlowChart
               monthlyNetFlow={monthlyNetFlow}
               startingBalance={balanceInfo.startingBalance}
@@ -674,9 +656,7 @@ export function InsightsPage() {
               </AlertDescription>
             </Alert>
           )}
-          <div
-            className={cn('rounded-xl border bg-card p-5', showDeltas && 'border-violet-500/30')}
-          >
+          <div className="rounded-xl border bg-card p-5">
             <div className="mb-4">
               <h2 className="flex items-center gap-1.5 text-lg font-semibold">
                 <CalendarDays className="h-4 w-4 text-muted-foreground" />
@@ -708,11 +688,6 @@ export function InsightsPage() {
                 )}
               </div>
             </div>
-            <p
-              className={`mb-3 text-xs ${showDeltas ? 'text-violet-600 dark:text-violet-400' : 'invisible'}`}
-            >
-              {`Based on "${activeScenario?.name ?? 'scenario'}"`}
-            </p>
 
             {effectiveSavingsView === 'total' ? (
               <SavingsOverTimeChart
