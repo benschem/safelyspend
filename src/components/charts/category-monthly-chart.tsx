@@ -23,11 +23,16 @@ const STATUS_COLORS = {
 interface MonthlyData {
   month: string;
   actual: number;
+  /**
+   * The category's limit for this month: the bills due in it plus the
+   * allowance. It differs month to month, because a quarterly or yearly bill
+   * only counts in the month it falls due. Null when the month has neither.
+   */
+  budget: number | null;
 }
 
 interface CategoryMonthlyChartProps {
   monthlyData: MonthlyData[];
-  monthlyBudget: number | null;
   currentMonth: string;
 }
 
@@ -130,32 +135,29 @@ function CustomTooltip({
   );
 }
 
-export function CategoryMonthlyChart({
-  monthlyData,
-  monthlyBudget,
-  currentMonth,
-}: CategoryMonthlyChartProps) {
+export function CategoryMonthlyChart({ monthlyData, currentMonth }: CategoryMonthlyChartProps) {
   const chartData: ChartDataPoint[] = useMemo(() => {
     return monthlyData.map((m) => {
       const isCurrentMonth = m.month === currentMonth;
       const budgetPercent =
-        monthlyBudget && monthlyBudget > 0 ? Math.round((m.actual / monthlyBudget) * 100) : null;
+        m.budget && m.budget > 0 ? Math.round((m.actual / m.budget) * 100) : null;
 
       // For current month, show remaining budget as separate segment
-      const remaining = isCurrentMonth && monthlyBudget ? Math.max(0, monthlyBudget - m.actual) : 0;
+      const remaining = isCurrentMonth && m.budget ? Math.max(0, m.budget - m.actual) : 0;
 
       return {
         month: m.month,
         actual: m.actual,
         remaining,
-        budget: monthlyBudget,
+        budget: m.budget,
         isCurrentMonth,
         budgetPercent,
       };
     });
-  }, [monthlyData, monthlyBudget, currentMonth]);
+  }, [monthlyData, currentMonth]);
 
-  const hasData = monthlyData.some((m) => m.actual > 0) || monthlyBudget !== null;
+  const hasAnyBudget = monthlyData.some((m) => m.budget !== null);
+  const hasData = monthlyData.some((m) => m.actual > 0) || hasAnyBudget;
 
   if (!hasData) {
     return (
@@ -166,7 +168,7 @@ export function CategoryMonthlyChart({
   }
 
   // Calculate Y-axis max to ensure budget line is visible
-  const maxValue = Math.max(...monthlyData.map((m) => m.actual), monthlyBudget ?? 0);
+  const maxValue = Math.max(...monthlyData.map((m) => Math.max(m.actual, m.budget ?? 0)));
   const yAxisMax = Math.ceil((maxValue * 1.1) / 10000) * 10000 || 10000;
 
   return (
@@ -190,10 +192,12 @@ export function CategoryMonthlyChart({
           />
           <Tooltip content={<CustomTooltip />} />
 
-          {/* Budget line (dashed) */}
-          {monthlyBudget !== null && (
+          {/* Budget line (dashed). Stepped, because each month has its own
+              limit and a curve between two months would show a limit that
+              never applied. */}
+          {hasAnyBudget && (
             <Line
-              type="monotone"
+              type="step"
               dataKey="budget"
               name="Budget"
               stroke={CHART_COLORS.budget}
@@ -239,7 +243,7 @@ export function CategoryMonthlyChart({
 
       {/* Legend */}
       <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-        {monthlyBudget !== null ? (
+        {hasAnyBudget ? (
           <>
             <div className="flex items-center gap-1.5">
               <div className="h-3 w-3 rounded" style={{ backgroundColor: STATUS_COLORS.under }} />

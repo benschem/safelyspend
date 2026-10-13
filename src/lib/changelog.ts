@@ -21,6 +21,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.44.6',
+    date: '2026-10-13',
+    changes: [
+      'A quarterly or yearly bill now counts in full in the month it is due on Cash Flow, the category page and Insights, where before it was spread thinly across every month',
+      'A weekly or fortnightly bill now counts each payment that actually falls in the month',
+      "The chart on a category's page now shows each month's own limit",
+    ],
+  },
+  {
     version: '0.44.5',
     date: '2026-10-13',
     changes: [

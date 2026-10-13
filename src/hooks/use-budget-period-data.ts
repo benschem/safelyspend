@@ -318,8 +318,9 @@ export function calculateSummary(
   // A category is tracked when it has an allowance in this period. Its
   // spending is judged against the whole limit, bills included, because a
   // bill's transaction counts as spending in the category too.
-  // The helper returns a monthly figure, so this is only exact in month view:
-  // over a quarter or year, a rule active for part of it counts for all of it.
+  // Bills are everything due in the period. The allowance comes back as a
+  // monthly figure, so it is only exact in month view: over a quarter or year,
+  // an allowance active for part of it counts for all of it.
   const monthlyLimitsByCategory = buildMonthlyLimitsByCategory(
     budgetRules,
     forecastRules,
@@ -333,7 +334,8 @@ export function calculateSummary(
   );
 
   for (const categoryId of trackedCategoryIds) {
-    const periodBudget = (monthlyLimitsByCategory[categoryId]?.totalCents ?? 0) * periodMultiplier;
+    const limit = monthlyLimitsByCategory[categoryId];
+    const periodBudget = (limit?.billsCents ?? 0) + (limit?.allowanceCents ?? 0) * periodMultiplier;
 
     const spent = allTransactions
       .filter(
@@ -389,8 +391,9 @@ export function calculatePeriodSpending(
   );
 
   // Each category's budget is its whole limit, bills included, so it
-  // matches what the over/on-track counts judge against. The helper returns a
-  // monthly figure, so this is only exact in month view.
+  // matches what the over/on-track counts judge against. Bills are everything
+  // due in the period; the allowance comes back as a monthly figure, so it is
+  // only exact in month view.
   const periodMultiplier = viewMode === 'year' ? 12 : viewMode === 'quarter' ? 3 : 1;
   const monthlyLimitsByCategory = buildMonthlyLimitsByCategory(
     budgetRules,
@@ -400,7 +403,7 @@ export function calculatePeriodSpending(
   );
   const budgetByCategory = new Map<string, number>();
   for (const [categoryId, limit] of Object.entries(monthlyLimitsByCategory)) {
-    budgetByCategory.set(categoryId, limit.totalCents * periodMultiplier);
+    budgetByCategory.set(categoryId, limit.billsCents + limit.allowanceCents * periodMultiplier);
   }
 
   const byCategory: Record<string, number> = {};

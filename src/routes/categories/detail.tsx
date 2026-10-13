@@ -163,7 +163,7 @@ export function CategoryDetailPage() {
     return isRuleActiveBetween(ruleForCategory, periodStart, periodEnd) ? ruleForCategory : null;
   }, [budgetRules, id, periodStart, periodEnd]);
 
-  // This month's limit: the category's bills plus its allowance.
+  // This month's limit: the bills due this month plus the allowance.
   // Null when it has neither.
   const monthlyLimit = useMemo(() => {
     if (!id) return null;
@@ -177,7 +177,7 @@ export function CategoryDetailPage() {
   }, [id, budgetRules, forecastRules, periodStart, periodEnd]);
 
   const monthlyBudget = monthlyLimit ? monthlyLimit.totalCents : null;
-  const monthlyFixedExpenses = monthlyLimit?.billsCents ?? 0;
+  const billsDueThisMonth = monthlyLimit?.billsCents ?? 0;
 
   // Calculate totals
   const thisMonthSpent = useMemo(
@@ -198,18 +198,28 @@ export function CategoryDetailPage() {
       byMonth[month] = (byMonth[month] ?? 0) + tx.amountCents;
     }
 
-    // Generate all 12 months in range
-    const months: { month: string; actual: number }[] = [];
+    // Generate all 12 months in range. Each month gets its own limit, because
+    // a quarterly or yearly bill only counts in the month it falls due.
+    const months: { month: string; actual: number; budget: number | null }[] = [];
     for (let i = 11; i >= 0; i--) {
       const date = new Date(currentYear, currentMonthIndex - i, 1);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthStart = formatISODate(date);
+      const monthEnd = formatISODate(new Date(date.getFullYear(), date.getMonth() + 1, 0));
+      const limitsByCategory = buildMonthlyLimitsByCategory(
+        budgetRules,
+        forecastRules,
+        monthStart,
+        monthEnd,
+      );
       months.push({
         month: monthKey,
         actual: byMonth[monthKey] ?? 0,
+        budget: id ? (limitsByCategory[id]?.totalCents ?? null) : null,
       });
     }
     return months;
-  }, [chartTransactions, currentYear, currentMonthIndex]);
+  }, [chartTransactions, currentYear, currentMonthIndex, budgetRules, forecastRules, id]);
 
   // Budget calculations
   const budgetUsedPercent =
@@ -312,12 +322,12 @@ export function CategoryDetailPage() {
                     ({formatCents(monthlyLimit?.allowanceCents ?? 0)}/mo)
                   </span>
                 )}
-                {monthlyFixedExpenses > 0 && (
-                  <> plus {formatCents(monthlyFixedExpenses)} a month in bills</>
+                {billsDueThisMonth > 0 && (
+                  <> plus {formatCents(billsDueThisMonth)} in bills due this month</>
                 )}
               </>
-            ) : monthlyFixedExpenses > 0 ? (
-              <>Bills: {formatCents(monthlyFixedExpenses)}/mo</>
+            ) : billsDueThisMonth > 0 ? (
+              <>Bills due this month: {formatCents(billsDueThisMonth)}</>
             ) : (
               <Link to="/budget?tab=plan" className="text-primary hover:underline">
                 No allowance set – Set one →
@@ -506,11 +516,7 @@ export function CategoryDetailPage() {
       {/* Spending Over Time Chart */}
       <div className="rounded-xl border bg-card p-6">
         <h2 className="mb-4 font-semibold">Monthly Spending</h2>
-        <CategoryMonthlyChart
-          monthlyData={monthlySpending}
-          monthlyBudget={monthlyBudget}
-          currentMonth={today.slice(0, 7)}
-        />
+        <CategoryMonthlyChart monthlyData={monthlySpending} currentMonth={today.slice(0, 7)} />
       </div>
 
       {/* Two Column Layout: Breakdown + Recent Transactions */}

@@ -1,10 +1,12 @@
+import { expandForecastRule } from '@/lib/cadence';
 import type { BudgetRule, ForecastRule } from '@/lib/types';
 import { toMonthlyCents } from '@/lib/utils';
 
 /**
- * What a category can spend in a month: its bills (expense forecast rules) plus
- * its allowance (budget rule). Spending in the category is measured against the
- * total, because a bill's transaction counts as spending in that category too.
+ * What a category can spend in a month: the bills (expense forecast rules) that
+ * fall due in it plus its allowance (budget rule). Spending in the category is
+ * measured against the total, because a bill's transaction counts as spending
+ * in that category too.
  */
 export interface CategoryMonthlyLimit {
   billsCents: number;
@@ -30,14 +32,22 @@ export function isRuleActiveBetween(
 
 /**
  * Build every category's monthly limit for the month running from monthStart
- * to monthEnd, keyed by category id. A category with neither a bill nor an
+ * to monthEnd, keyed by category id. A category with no bill due and no
  * allowance in that month has no entry.
  *
- * Rules that ended before the month or start after it are left out. A rule
- * active for only part of the month still counts in full.
+ * Bills count on the dates they fall due, at their real amount. A $300
+ * quarterly bill adds $300 to the month it is due in and nothing to the other
+ * two; a weekly bill adds four or five payments depending on the month. A
+ * bill's own start and end dates and its excluded dates are honoured, so an
+ * occurrence outside them is not due.
  *
- * Bills are averaged to a monthly figure whatever their cadence, so a $300
- * quarterly bill adds $100 to every month.
+ * Allowances are averaged to a monthly figure whatever their cadence, because
+ * an allowance is a rate of spending and has no due date. One that ended before
+ * the month or starts after it is left out; one active for only part of the
+ * month still counts in full.
+ *
+ * Given a range longer than a month, the bills are everything due in that
+ * range and the allowance is still one month's worth.
  *
  * Allowances are summed. Only one budget rule per category is meant to exist,
  * but imported data can hold more, and the page totals add up every rule, so
@@ -64,10 +74,12 @@ export function buildMonthlyLimitsByCategory(
   // object's key order, so swapping the two loops would reorder its rows.
   for (const forecastRule of forecastRules) {
     if (forecastRule.type !== 'expense' || !forecastRule.categoryId) continue;
-    if (!isRuleActiveBetween(forecastRule, monthStart, monthEnd)) continue;
+
+    const occurrencesDue = expandForecastRule(forecastRule, monthStart, monthEnd);
+    if (occurrencesDue.length === 0) continue;
 
     const limit = limitFor(forecastRule.categoryId);
-    limit.billsCents += toMonthlyCents(forecastRule.amountCents, forecastRule.cadence);
+    limit.billsCents += occurrencesDue.reduce((sum, occurrence) => sum + occurrence.amountCents, 0);
   }
 
   for (const budgetRule of budgetRules) {
