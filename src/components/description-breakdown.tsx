@@ -57,7 +57,7 @@ export function DescriptionBreakdown({ transactions, totalSpent }: DescriptionBr
   }, [transactions, totalSpent]);
 
   if (transactions.length === 0) {
-    return <p className="text-sm text-muted-foreground">No transactions in this period.</p>;
+    return <p className="text-sm text-muted-foreground">No spending in the last 12 months.</p>;
   }
 
   const allItems = breakdown.other ? [...breakdown.items, breakdown.other] : breakdown.items;

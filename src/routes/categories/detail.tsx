@@ -226,10 +226,21 @@ export function CategoryDetailPage() {
         ? 100
         : 0;
 
-  // Recent transactions (last 10 from this month)
+  // What Where It Went's shares are a share of: the same 12 months as the chart
+  const chartSpent = useMemo(
+    () => chartTransactions.reduce((sum, t) => sum + t.amountCents, 0),
+    [chartTransactions],
+  );
+
+  // The latest 10 whatever the month. Anything dated after this month is left
+  // out, so the list ends where the chart does.
   const recentTransactions = useMemo(
-    () => [...periodTransactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10),
-    [periodTransactions],
+    () =>
+      allCategoryTransactions
+        .filter((t) => t.date <= periodEnd)
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, 10),
+    [allCategoryTransactions, periodEnd],
   );
 
   // Check if category can be deleted (no transactions)
@@ -385,22 +396,7 @@ export function CategoryDetailPage() {
           <p className="mt-4 text-sm text-muted-foreground">Spent</p>
           <p className="mt-1 text-2xl font-semibold">{formatCents(thisMonthSpent)}</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            {periodTransactions.length > 0 ? (
-              <a
-                href="#recent-transactions"
-                className="cursor-pointer hover:underline"
-                onClick={(e) => {
-                  e.preventDefault();
-                  document
-                    .getElementById('recent-transactions')
-                    ?.scrollIntoView({ behavior: 'smooth' });
-                }}
-              >
-                {periodTransactions.length} transaction{periodTransactions.length !== 1 ? 's' : ''}
-              </a>
-            ) : (
-              <span>{periodTransactions.length} transactions</span>
-            )}
+            {periodTransactions.length} transaction{periodTransactions.length !== 1 ? 's' : ''}
           </p>
         </div>
 
@@ -513,7 +509,7 @@ export function CategoryDetailPage() {
 
       {/* Spending Over Time Chart */}
       <div className="rounded-xl border bg-card p-6">
-        <h2 className="mb-4 font-semibold">Monthly Spending</h2>
+        <PanelHeading title="Monthly Spending" period="last 12 months" className="mb-4" />
         <CategoryMonthlyChart monthlyData={monthlySpending} currentMonth={today.slice(0, 7)} />
       </div>
 
@@ -521,26 +517,24 @@ export function CategoryDetailPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Description Breakdown */}
         <div className="rounded-xl border bg-card p-6">
-          <h2 className="mb-4 font-semibold">Where It Went</h2>
-          <DescriptionBreakdown transactions={periodTransactions} totalSpent={thisMonthSpent} />
+          <PanelHeading title="Where It Went" period="last 12 months" className="mb-4" />
+          <DescriptionBreakdown transactions={chartTransactions} totalSpent={chartSpent} />
         </div>
 
         {/* Recent Transactions */}
-        <div id="recent-transactions" className="rounded-xl border bg-card p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-semibold">Recent Transactions</h2>
-            {periodTransactions.length > 10 && (
-              <Link
-                to={`/transactions?category=${id}`}
-                className="flex items-center gap-1 text-sm text-primary hover:underline"
-              >
-                View all
-                <ArrowRight className="h-3 w-3" />
-              </Link>
-            )}
+        <div className="rounded-xl border bg-card p-6">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <PanelHeading title="Recent Transactions" period="latest 10" />
+            <Link
+              to={`/transactions?category=${id}`}
+              className="flex shrink-0 items-center gap-1 text-sm text-primary hover:underline"
+            >
+              View all
+              <ArrowRight className="h-3 w-3" />
+            </Link>
           </div>
           {recentTransactions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No transactions this month.</p>
+            <p className="text-sm text-muted-foreground">No transactions yet.</p>
           ) : (
             <div className="space-y-3">
               {recentTransactions.map((tx) => (
@@ -559,6 +553,24 @@ export function CategoryDetailPage() {
         addCategory={addCategory}
         updateCategory={updateCategory}
       />
+    </div>
+  );
+}
+
+/** A panel's heading with the period the panel covers beside it */
+function PanelHeading({
+  title,
+  period,
+  className,
+}: {
+  title: string;
+  period: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn('flex flex-wrap items-baseline gap-x-2', className)}>
+      <h2 className="font-semibold">{title}</h2>
+      <span className="text-sm text-muted-foreground">· {period}</span>
     </div>
   );
 }

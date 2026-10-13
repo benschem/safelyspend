@@ -21,6 +21,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.54.0',
+    date: '2026-10-14',
+    changes: [
+      'A category page now shows where the money went over the last 12 months, not only this month',
+      'Recent Transactions on a category page lists the latest 10 whatever the month, and View all is always there',
+      'Each part of a category page now says what period it covers',
+    ],
+  },
+  {
     version: '0.53.4',
     date: '2026-10-14',
     changes: [
