@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.50.0',
+    date: '2026-10-13',
+    changes: [
+      'Removed the sliders from the Budget page. Income, expenses and savings are now plain rows, and an amount changes only when you edit it',
+      'Each expense category on the Budget page now has its own card, with the category name and total as its heading',
+    ],
+  },
+  {
     version: '0.49.1',
     date: '2026-10-13',
     changes: [

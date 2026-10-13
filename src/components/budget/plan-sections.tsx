@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
@@ -11,13 +11,9 @@ import {
   BanknoteArrowUp,
   BanknoteArrowDown,
   PiggyBank,
-  Tag,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn, formatCents, type CadenceType } from '@/lib/utils';
-import { BudgetSlider, getSliderRange, getIncomeSliderRange } from './budget-slider';
-import { useWhatIf } from '@/contexts/what-if-context';
-import { useScenarioDiff } from '@/hooks/use-scenario-diff';
+import { cn, formatCents, CADENCE_PER_LABELS, type CadenceType } from '@/lib/utils';
 import { allowanceLabel, sumAllowancesForPeriod } from '@/lib/allowances';
 import {
   describeBillDue,
@@ -29,7 +25,7 @@ import { sumForecastRulesForPeriod } from '@/lib/plan-amounts';
 import { describeAverageSpending, type SpendingAverages } from '@/lib/spending-averages';
 import type { ForecastRule, BudgetRule, Cadence, Category, SavingsGoal } from '@/lib/types';
 
-function SliderActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
+function RowActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
   return (
     <span className="flex gap-0.5">
       <TooltipProvider>
@@ -66,6 +62,43 @@ function SliderActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () 
   );
 }
 
+interface PlanRowProps {
+  label: string;
+  /** Optional link destination for the label */
+  labelHref?: string | undefined;
+  /** Optional muted line under the label, such as when a bill is due */
+  hint?: string | null;
+  amountCents: number;
+  cadence: CadenceType;
+  /** Edit and delete buttons, shown beside the label */
+  actions: ReactNode;
+}
+
+/** One income source, expense or savings contribution: what it is and how much. */
+function PlanRow({ label, labelHref, hint, amountCents, cadence, actions }: PlanRowProps) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-2.5 text-sm">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          {labelHref ? (
+            <Link to={labelHref} className="hover:underline">
+              {label}
+            </Link>
+          ) : (
+            <span>{label}</span>
+          )}
+          {actions}
+        </div>
+        {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
+      </div>
+      <div className="shrink-0 text-right">
+        <span className="tabular-nums">{formatCents(amountCents)}</span>{' '}
+        <span className="text-sm text-muted-foreground">{CADENCE_PER_LABELS[cadence]}</span>
+      </div>
+    </div>
+  );
+}
+
 interface IncomeSectionProps {
   incomeRules: ForecastRule[];
   isOpen: boolean;
@@ -79,7 +112,7 @@ interface IncomeSectionProps {
   monthlyDelta?: number | undefined;
 }
 
-export function IncomeSliderSection({
+export function IncomeSection({
   incomeRules,
   isOpen,
   onOpenChange,
@@ -90,9 +123,6 @@ export function IncomeSliderSection({
   periodTotal,
   monthlyDelta,
 }: IncomeSectionProps) {
-  const { adjustments, baselineValues, setIncomeAdjustment } = useWhatIf();
-  const { isIncomeDifferent, defaultIncomeByDescription, defaultScenarioName } = useScenarioDiff();
-
   return (
     <Collapsible open={isOpen} onOpenChange={onOpenChange} className="mb-4">
       <div className="overflow-hidden rounded-lg border">
@@ -133,9 +163,9 @@ export function IncomeSliderSection({
           </Button>
         </div>
         <CollapsibleContent>
-          <div className="space-y-3 border-t p-4">
+          <div className="border-t px-4 py-1">
             {incomeRules.length === 0 ? (
-              <p className="py-2 text-center text-sm text-muted-foreground">
+              <p className="py-5 text-center text-sm text-muted-foreground">
                 No income sources yet.{' '}
                 <button
                   onClick={onAddClick}
@@ -145,37 +175,22 @@ export function IncomeSliderSection({
                 </button>
               </p>
             ) : (
-              incomeRules.map((rule) => {
-                const baseline = baselineValues.incomeAdjustments[rule.id] ?? rule.amountCents;
-                const value = adjustments.incomeAdjustments[rule.id] ?? baseline;
-                const range = getIncomeSliderRange(baseline);
-                const differsFromDefault = isIncomeDifferent(rule.description, baseline);
-                const defaultValue = defaultIncomeByDescription[rule.description];
-
-                return (
-                  <BudgetSlider
+              <div className="divide-y">
+                {incomeRules.map((rule) => (
+                  <PlanRow
                     key={rule.id}
                     label={rule.description}
-                    value={value}
-                    baseline={baseline}
-                    min={range.min}
-                    max={range.max}
-                    step={range.step}
-                    onChange={(cents) => setIncomeAdjustment(rule.id, cents)}
+                    amountCents={rule.amountCents}
                     cadence={rule.cadence as CadenceType}
-                    variant="income"
-                    differsFromDefault={differsFromDefault}
-                    defaultValue={defaultValue}
-                    defaultScenarioName={defaultScenarioName}
                     actions={
-                      <SliderActions
+                      <RowActions
                         onEdit={() => onEditRule(rule)}
                         onDelete={() => onDeleteRule(rule.id)}
                       />
                     }
                   />
-                );
-              })
+                ))}
+              </div>
             )}
           </div>
         </CollapsibleContent>
@@ -205,7 +220,7 @@ interface ExpensesSectionProps {
   spendingAverages: SpendingAverages | null;
 }
 
-export function ExpensesSliderSection({
+export function ExpensesSection({
   billRules,
   allowanceRules,
   categories,
@@ -220,16 +235,6 @@ export function ExpensesSliderSection({
   periodTotal,
   monthlyDelta,
 }: ExpensesSectionProps) {
-  const { adjustments, baselineValues, setFixedExpenseAdjustment, setBudgetAdjustment } =
-    useWhatIf();
-  const {
-    isExpenseDifferent,
-    defaultExpenseByDescription,
-    isBudgetDifferent,
-    getDefaultAllowanceAmount,
-    defaultScenarioName,
-  } = useScenarioDiff();
-
   const expenseGroups = useMemo(
     () => groupExpensesByCategory(billRules, allowanceRules, categories),
     [billRules, allowanceRules, categories],
@@ -291,112 +296,65 @@ export function ExpensesSliderSection({
                 const averageSpendingHint = group.categoryId
                   ? describeAverageSpending(spendingAverages, group.categoryId, period)
                   : null;
-                // The allowances arrive with any What If adjustment applied.
-                // The heading quotes the saved amounts, as the section's total
-                // above it does, so the headings add up to that total.
-                const savedBills = group.bills.map((rule) => ({
-                  ...rule,
-                  amountCents: baselineValues.fixedExpenseAdjustments[rule.id] ?? rule.amountCents,
-                }));
-                const savedAllowances = group.allowances.map((rule) => ({
-                  ...rule,
-                  amountCents: baselineValues.budgetAdjustments[rule.id] ?? rule.amountCents,
-                }));
                 const groupTotal =
-                  sumForecastRulesForPeriod(savedBills, 'expense', period) +
-                  sumAllowancesForPeriod(savedAllowances, period);
+                  sumForecastRulesForPeriod(group.bills, 'expense', period) +
+                  sumAllowancesForPeriod(group.allowances, period);
 
                 return (
-                  <div key={group.categoryId ?? UNCATEGORISED_LABEL}>
-                    <div className="mb-2">
-                      <div className="flex items-center justify-between gap-2 text-sm font-medium text-muted-foreground">
-                        <span className="flex items-center gap-1.5">
-                          <Tag className="h-3.5 w-3.5" />
-                          {group.categoryId ? (
-                            <Link
-                              to={`/categories/${group.categoryId}?from=budget`}
-                              className="hover:underline"
-                            >
-                              {group.name}
-                            </Link>
-                          ) : (
-                            group.name
-                          )}
-                        </span>
+                  <div
+                    key={group.categoryId ?? UNCATEGORISED_LABEL}
+                    className="overflow-hidden rounded-lg border"
+                  >
+                    <div className="bg-muted/50 px-4 py-3">
+                      <div className="flex items-center justify-between gap-2 font-semibold">
+                        {group.categoryId ? (
+                          <Link
+                            to={`/categories/${group.categoryId}?from=budget`}
+                            className="hover:underline"
+                          >
+                            {group.name}
+                          </Link>
+                        ) : (
+                          <span>{group.name}</span>
+                        )}
                         <span className="tabular-nums">
                           {formatCents(groupTotal)} {periodLabel}
                         </span>
                       </div>
                       {averageSpendingHint && (
-                        <p className="mt-1 text-xs text-muted-foreground">{averageSpendingHint}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{averageSpendingHint}</p>
                       )}
                     </div>
-                    <div className="space-y-3">
-                      {group.bills.map((rule) => {
-                        const baseline =
-                          baselineValues.fixedExpenseAdjustments[rule.id] ?? rule.amountCents;
-                        const value = adjustments.fixedExpenseAdjustments[rule.id] ?? baseline;
-                        const range = getSliderRange(baseline);
-                        const differsFromDefault = isExpenseDifferent(rule.description, baseline);
-                        const defaultValue = defaultExpenseByDescription[rule.description];
-
-                        return (
-                          <BudgetSlider
-                            key={rule.id}
-                            label={rule.description}
-                            hint={describeBillDue(rule)}
-                            value={value}
-                            baseline={baseline}
-                            min={range.min}
-                            max={range.max}
-                            step={range.step}
-                            onChange={(cents) => setFixedExpenseAdjustment(rule.id, cents)}
-                            cadence={rule.cadence as CadenceType}
-                            variant="expense"
-                            differsFromDefault={differsFromDefault}
-                            defaultValue={defaultValue}
-                            defaultScenarioName={defaultScenarioName}
-                            actions={
-                              <SliderActions
-                                onEdit={() => onEditExpense({ kind: 'bill', rule })}
-                                onDelete={() => onDeleteExpense({ kind: 'bill', rule })}
-                              />
-                            }
-                          />
-                        );
-                      })}
-                      {group.allowances.map((rule) => {
-                        const baseline =
-                          baselineValues.budgetAdjustments[rule.id] ?? rule.amountCents;
-                        const value = adjustments.budgetAdjustments[rule.id] ?? baseline;
-                        const range = getSliderRange(baseline);
-                        const differsFromDefault = isBudgetDifferent(rule, baseline);
-                        const defaultValue = getDefaultAllowanceAmount(rule, baseline);
-
-                        return (
-                          <BudgetSlider
-                            key={rule.id}
-                            label={allowanceLabel(rule)}
-                            value={value}
-                            baseline={baseline}
-                            min={range.min}
-                            max={range.max}
-                            step={range.step}
-                            onChange={(cents) => setBudgetAdjustment(rule.id, cents)}
-                            cadence={rule.cadence as CadenceType}
-                            variant="expense"
-                            differsFromDefault={differsFromDefault}
-                            defaultValue={defaultValue}
-                            defaultScenarioName={defaultScenarioName}
-                            actions={
-                              <SliderActions
-                                onEdit={() => onEditExpense({ kind: 'allowance', rule })}
-                                onDelete={() => onDeleteExpense({ kind: 'allowance', rule })}
-                              />
-                            }
-                          />
-                        );
-                      })}
+                    <div className="divide-y border-t px-4">
+                      {group.bills.map((rule) => (
+                        <PlanRow
+                          key={rule.id}
+                          label={rule.description}
+                          hint={describeBillDue(rule)}
+                          amountCents={rule.amountCents}
+                          cadence={rule.cadence as CadenceType}
+                          actions={
+                            <RowActions
+                              onEdit={() => onEditExpense({ kind: 'bill', rule })}
+                              onDelete={() => onDeleteExpense({ kind: 'bill', rule })}
+                            />
+                          }
+                        />
+                      ))}
+                      {group.allowances.map((rule) => (
+                        <PlanRow
+                          key={rule.id}
+                          label={allowanceLabel(rule)}
+                          amountCents={rule.amountCents}
+                          cadence={rule.cadence as CadenceType}
+                          actions={
+                            <RowActions
+                              onEdit={() => onEditExpense({ kind: 'allowance', rule })}
+                              onDelete={() => onDeleteExpense({ kind: 'allowance', rule })}
+                            />
+                          }
+                        />
+                      ))}
                     </div>
                   </div>
                 );
@@ -423,7 +381,7 @@ interface SavingsSectionProps {
   monthlyDelta?: number | undefined;
 }
 
-export function SavingsSliderSection({
+export function SavingsSection({
   savingsRules,
   savingsGoals,
   isOpen,
@@ -435,10 +393,6 @@ export function SavingsSliderSection({
   periodTotal,
   monthlyDelta,
 }: SavingsSectionProps) {
-  const { adjustments, baselineValues, setSavingsAdjustment } = useWhatIf();
-  const { isSavingsDifferent, defaultSavingsByDescription, defaultScenarioName } =
-    useScenarioDiff();
-
   const getGoalName = (id: string | null) =>
     id ? (savingsGoals.find((g) => g.id === id)?.name ?? 'Unknown') : 'Savings';
 
@@ -482,9 +436,9 @@ export function SavingsSliderSection({
           </Button>
         </div>
         <CollapsibleContent>
-          <div className="space-y-3 border-t p-4">
+          <div className="border-t px-4 py-1">
             {savingsRules.length === 0 ? (
-              <p className="py-2 text-center text-sm text-muted-foreground">
+              <p className="py-5 text-center text-sm text-muted-foreground">
                 No savings contributions yet.{' '}
                 <button
                   onClick={onAddClick}
@@ -494,39 +448,23 @@ export function SavingsSliderSection({
                 </button>
               </p>
             ) : (
-              savingsRules.map((rule) => {
-                const baseline = baselineValues.savingsAdjustments[rule.id] ?? rule.amountCents;
-                const value = adjustments.savingsAdjustments[rule.id] ?? baseline;
-                const range = getSliderRange(baseline);
-                const goalName = getGoalName(rule.savingsGoalId);
-                const differsFromDefault = isSavingsDifferent(rule.description, baseline);
-                const defaultValue = defaultSavingsByDescription[rule.description];
-
-                return (
-                  <BudgetSlider
+              <div className="divide-y">
+                {savingsRules.map((rule) => (
+                  <PlanRow
                     key={rule.id}
-                    label={goalName}
+                    label={getGoalName(rule.savingsGoalId)}
                     labelHref="/savings"
-                    value={value}
-                    baseline={baseline}
-                    min={range.min}
-                    max={range.max}
-                    step={range.step}
-                    onChange={(cents) => setSavingsAdjustment(rule.id, cents)}
+                    amountCents={rule.amountCents}
                     cadence={rule.cadence as CadenceType}
-                    variant="savings"
-                    differsFromDefault={differsFromDefault}
-                    defaultValue={defaultValue}
-                    defaultScenarioName={defaultScenarioName}
                     actions={
-                      <SliderActions
+                      <RowActions
                         onEdit={() => onEditRule(rule)}
                         onDelete={() => onDeleteRule(rule.id)}
                       />
                     }
                   />
-                );
-              })
+                ))}
+              </div>
             )}
           </div>
         </CollapsibleContent>

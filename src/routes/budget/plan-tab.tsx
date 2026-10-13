@@ -24,11 +24,7 @@ import { SpendingBreakdownChart } from '@/components/charts/spending-breakdown-c
 import { BudgetStatusHero } from '@/components/budget/status-hero';
 import { BudgetSummaryCard } from '@/components/budget/summary-card';
 import { buildCategoryColorMap } from '@/lib/chart-colors';
-import {
-  IncomeSliderSection,
-  ExpensesSliderSection,
-  SavingsSliderSection,
-} from '@/components/budget/slider-sections';
+import { IncomeSection, ExpensesSection, SavingsSection } from '@/components/budget/plan-sections';
 import { useWhatIf } from '@/contexts/what-if-context';
 import { useScenarioDiff } from '@/hooks/use-scenario-diff';
 import type { Expense, NewExpense } from '@/lib/expenses';
@@ -256,7 +252,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
   // Chart visibility state
   const [hiddenSegments, setHiddenSegments] = useState<Set<string>>(new Set());
 
-  // Filter forecast rules by type (base rules for slider sections)
+  // Filter forecast rules by type (base rules for the plan sections)
   const incomeRules = useMemo(
     () => forecastRules.filter((r) => r.type === 'income'),
     [forecastRules],
@@ -696,7 +692,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           sectionRefs.current['income'] = el;
         }}
       >
-        <IncomeSliderSection
+        <IncomeSection
           incomeRules={incomeRules}
           isOpen={incomeOpen}
           onOpenChange={setIncomeOpen}
@@ -716,7 +712,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           sectionRefs.current['expenses'] = el;
         }}
       >
-        <ExpensesSliderSection
+        <ExpensesSection
           billRules={expenseRules}
           allowanceRules={budgetRules}
           categories={categories}
@@ -745,7 +741,7 @@ export function PlanTab({ activeScenarioId, breakdownPeriod }: PlanTabProps) {
           sectionRefs.current['savings'] = el;
         }}
       >
-        <SavingsSliderSection
+        <SavingsSection
           savingsRules={savingsRules}
           savingsGoals={savingsGoals}
           isOpen={savingsOpen}
