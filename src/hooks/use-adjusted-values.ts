@@ -60,6 +60,41 @@ export function useAdjustedBudgets(
 }
 
 /**
+ * Apply What If adjustments to dated forecasts.
+ *
+ * An adjustment is the new amount for a rule, keyed by the rule's id. Each
+ * forecast from that rule is scaled by the same ratio as the rule, so a rule
+ * moved from $1,000 to $1,500 turns every one of its forecasts into one and a
+ * half times its amount.
+ *
+ * A forecast that did not come from a rule, such as interest, is left alone.
+ * So is a forecast whose rule has no adjustment. When the original rule is
+ * missing or its amount is zero there is no ratio to scale by, and the forecast
+ * takes the adjusted amount outright.
+ */
+export function adjustForecasts(
+  forecasts: ExpandedForecast[],
+  adjustmentMap: Record<string, number>,
+  originalRules: ForecastRule[],
+): ExpandedForecast[] {
+  return forecasts.map((forecast) => {
+    if (forecast.sourceType !== 'rule') return forecast;
+
+    const adjustment = adjustmentMap[forecast.sourceId];
+    if (adjustment !== undefined) {
+      // Find original rule to calculate ratio
+      const originalRule = originalRules.find((r) => r.id === forecast.sourceId);
+      if (originalRule && originalRule.amountCents > 0) {
+        const ratio = adjustment / originalRule.amountCents;
+        return { ...forecast, amountCents: Math.round(forecast.amountCents * ratio) };
+      }
+      return { ...forecast, amountCents: adjustment };
+    }
+    return forecast;
+  });
+}
+
+/**
  * Returns forecast rules and expanded forecasts with what-if adjustments applied
  */
 export function useAdjustedForecasts(
@@ -98,29 +133,6 @@ export function useAdjustedForecasts(
       return rule;
     });
   }, [rules, adjustments]);
-
-  // Helper to adjust expanded forecasts
-  const adjustForecasts = (
-    forecasts: ExpandedForecast[],
-    adjustmentMap: Record<string, number>,
-    originalRules: ForecastRule[],
-  ): ExpandedForecast[] => {
-    return forecasts.map((forecast) => {
-      if (forecast.sourceType !== 'rule') return forecast;
-
-      const adjustment = adjustmentMap[forecast.sourceId];
-      if (adjustment !== undefined) {
-        // Find original rule to calculate ratio
-        const originalRule = originalRules.find((r) => r.id === forecast.sourceId);
-        if (originalRule && originalRule.amountCents > 0) {
-          const ratio = adjustment / originalRule.amountCents;
-          return { ...forecast, amountCents: Math.round(forecast.amountCents * ratio) };
-        }
-        return { ...forecast, amountCents: adjustment };
-      }
-      return forecast;
-    });
-  };
 
   // Adjust each type of forecast
   const adjustedIncomeForecasts = useMemo(
