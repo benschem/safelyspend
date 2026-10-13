@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { findActiveAnchor } from '@/lib/balances';
 import { db } from '@/lib/db';
 import type { BalanceAnchor, CreateEntity } from '@/lib/types';
 import { generateId, now } from '@/lib/utils';
@@ -27,14 +28,7 @@ export function useBalanceAnchors() {
 
   // Get the active anchor for a given date (latest anchor on or before that date)
   const getActiveAnchor = useCallback(
-    (asOfDate: string): BalanceAnchor | null => {
-      for (const anchor of sortedAnchors) {
-        if (anchor.date <= asOfDate) {
-          return anchor;
-        }
-      }
-      return null;
-    },
+    (asOfDate: string): BalanceAnchor | null => findActiveAnchor(sortedAnchors, asOfDate),
     [sortedAnchors],
   );
 

@@ -126,6 +126,7 @@ src/
 │   ├── import-schema.ts    # Zod validation for file imports and sync pulls
 │   ├── dates.ts            # Today, and YYYY-MM-DD to Date and back, in local time
 │   ├── cadence.ts          # Expanding rules into dated occurrences
+│   ├── balances.ts         # A cash or savings balance as of a date, from anchors
 │   ├── category-limits.ts  # A category's limit: bills due plus allowance
 │   ├── bill-set-aside.ts   # Cash already spoken for by bills not yet due
 │   ├── envelope.ts, key-management.ts, key-vault.ts, account.ts   # Encryption and keys

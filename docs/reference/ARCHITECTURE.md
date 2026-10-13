@@ -29,6 +29,8 @@ These exist independent of any scenario:
 - **SavingsAnchor**: a known balance on a date for one savings goal.
 - **CategoryRule**: an import rule that assigns a category to imported transactions.
 
+A balance as of a date is the latest anchor on or before it plus the transactions from the anchor's date up to that date. An anchor is the balance at the start of its day. The maths for cash and for a savings goal lives in `src/lib/balances.ts`.
+
 ### Scenario-scoped entities (plans)
 
 These belong to one scenario:

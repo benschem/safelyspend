@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { findActiveAnchor } from '@/lib/balances';
 import { db } from '@/lib/db';
 import type { SavingsAnchor, CreateEntity } from '@/lib/types';
 import { generateId, now } from '@/lib/utils';
@@ -35,15 +36,8 @@ export function useSavingsAnchors() {
 
   // Get the active anchor for a given goal and date (latest anchor on or before that date)
   const getActiveAnchor = useCallback(
-    (goalId: string, asOfDate: string): SavingsAnchor | null => {
-      const goalAnchors = getAnchorsForGoal(goalId);
-      for (const anchor of goalAnchors) {
-        if (anchor.date <= asOfDate) {
-          return anchor;
-        }
-      }
-      return null;
-    },
+    (goalId: string, asOfDate: string): SavingsAnchor | null =>
+      findActiveAnchor(getAnchorsForGoal(goalId), asOfDate),
     [getAnchorsForGoal],
   );
 
