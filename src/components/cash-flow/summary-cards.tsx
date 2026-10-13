@@ -8,7 +8,9 @@ import {
   Sparkles,
   Target,
 } from 'lucide-react';
-import { cn, formatCents } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { sumSetAsideCents, type BillSetAside } from '@/lib/bill-set-aside';
+import { cn, formatCents, formatDate } from '@/lib/utils';
 
 /**
  * The two summary cards at the top of the cash flow page. Both are presentational:
@@ -27,6 +29,11 @@ interface CashBalanceCardProps {
   plannedEnd: number | null;
   paceEnd: number | null;
   pastActualEnd: number | null;
+  /**
+   * What should be set aside at month end for each quarterly and yearly bill
+   * that is not due yet. Empty hides the line. Not shown for a past month.
+   */
+  billsSetAsideAtMonthEnd: BillSetAside[];
 }
 
 interface SavingsGrowthCardProps {
@@ -52,6 +59,7 @@ export function CashBalanceCard(props: CashBalanceCardProps) {
     plannedEnd,
     paceEnd,
     pastActualEnd,
+    billsSetAsideAtMonthEnd,
   } = props;
 
   const fmtBalance = (amount: number) => {
@@ -174,9 +182,75 @@ export function CashBalanceCard(props: CashBalanceCardProps) {
               {formatCents(Math.abs(endChange))}
             </span>
           </div>
+          {!isPastPeriod && billsSetAsideAtMonthEnd.length > 0 && (
+            <BillsSetAsideLine
+              billsSetAside={billsSetAsideAtMonthEnd}
+              monthEndBalanceCents={endValue}
+            />
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+interface BillsSetAsideLineProps {
+  billsSetAside: BillSetAside[];
+  monthEndBalanceCents: number;
+}
+
+/**
+ * The line under the month end balance saying how much of it is spoken for by
+ * bills that are not due yet. Opens a list of the bills that make it up.
+ */
+function BillsSetAsideLine({ billsSetAside, monthEndBalanceCents }: BillsSetAsideLineProps) {
+  const totalSetAsideCents = sumSetAsideCents(billsSetAside);
+  // "Of which" only makes sense while the balance covers the bills
+  const shortfallCents = totalSetAsideCents - monthEndBalanceCents;
+  const isShort = shortfallCents > 0;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            'mt-1 cursor-pointer rounded text-left text-xs underline decoration-dotted underline-offset-2 hover:decoration-solid focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            isShort ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground',
+          )}
+        >
+          {isShort
+            ? `${formatCents(totalSetAsideCents)} needed for bills, ${formatCents(shortfallCents)} more than the balance`
+            : `of which ${formatCents(totalSetAsideCents)} will be set aside for bills`}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-3" align="start">
+        <p className="text-sm font-medium">Set aside for bills at month end</p>
+        <ul className="mt-2 max-h-72 space-y-2 overflow-y-auto">
+          {billsSetAside.map((billSetAside) => (
+            <li key={billSetAside.ruleId} className="flex items-baseline justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm">{billSetAside.description}</p>
+                <p className="text-xs text-muted-foreground">
+                  Due {formatDate(billSetAside.nextDueDate)}
+                </p>
+              </div>
+              <p className="shrink-0 text-sm tabular-nums">
+                {formatCents(billSetAside.setAsideCents)}
+                <span className="text-muted-foreground">
+                  {' '}
+                  of {formatCents(billSetAside.amountCents)}
+                </span>
+              </p>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-2 flex items-baseline justify-between border-t pt-2 text-sm font-medium">
+          <span>Total</span>
+          <span className="tabular-nums">{formatCents(totalSetAsideCents)}</span>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 

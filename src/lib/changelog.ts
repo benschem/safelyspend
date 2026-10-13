@@ -21,6 +21,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.45.0',
+    date: '2026-10-13',
+    changes: [
+      'The Cash card on Cash Flow now shows how much of your month end balance should be set aside for quarterly and yearly bills that are not due yet',
+      'Click that line to see each bill, how much is set aside for it and when it is next due',
+    ],
+  },
+  {
     version: '0.44.7',
     date: '2026-10-13',
     changes: [

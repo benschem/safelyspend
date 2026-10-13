@@ -37,6 +37,7 @@ import { SpendingPaceCard } from '@/components/cash-flow/spending-pace-card';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { CategoryProgressBar } from '@/components/cash-flow/category-progress-bar';
 import { buildMonthlyLimitsByCategory } from '@/lib/category-limits';
+import { calculateBillsSetAside } from '@/lib/bill-set-aside';
 
 const MONTHS = [
   'January',
@@ -558,6 +559,17 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
   const projectedNetChange =
     projectedVariable !== null ? income - fixed - projectedVariable - projectedSavings : netChange;
 
+  // What should be set aside at month end for quarterly and yearly bills that
+  // are not due yet. Display only: it does not feed any figure above.
+  const billsSetAsideAtMonthEnd = useMemo(() => {
+    if (isPastPeriod) return [];
+    // A bill due on the last day has already come out of the month end balance,
+    // but the function counts a bill as still owed in full on its due date
+    return calculateBillsSetAside(forecastRules, periodEnd).filter(
+      (billSetAside) => billSetAside.nextDueDate !== periodEnd,
+    );
+  }, [isPastPeriod, forecastRules, periodEnd]);
+
   // Past period specifics
   const pastActualEnd = isPastPeriod ? cashSurplusData.cashSurplus : null;
   const pastActualFixed = isPastPeriod
@@ -738,6 +750,7 @@ function CashFlowContent({ activeScenarioId }: CashFlowContentProps) {
           plannedEnd={plannedEnd}
           paceEnd={paceEnd}
           pastActualEnd={pastActualEnd}
+          billsSetAsideAtMonthEnd={billsSetAsideAtMonthEnd}
         />
 
         <SavingsGrowthCard
