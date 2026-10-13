@@ -22,9 +22,15 @@ interface PeriodCashFlow {
   income: { expected: number; actual: number };
   budgeted: { expected: number };
   savings: { expected: number; actual: number };
-  expenses: { expected: number; actual: number; dueToDate: number };
+  expenses: {
+    expected: number;
+    actual: number;
+    /** The part of actual spending that went on bills; the rest is day-to-day */
+    paidTowardsBills: number;
+  };
   net: { projected: number; forecasted: number };
   projection: {
+    /** Day-to-day spending so far: actual spending less what went on bills */
     variableActual: number;
     projectedVariable: number;
     projectedTotal: number;
@@ -101,6 +107,62 @@ interface UseBudgetPeriodDataResult {
 }
 
 /**
+ * How much of the spending so far is day-to-day, as opposed to paying bills.
+ *
+ * Nothing links a transaction to the bill it pays, so the category stands in:
+ * spending in a category counts towards that category's bills for the whole
+ * period first, and only what is left over is day-to-day. That gives the same
+ * answer whether a bill is paid early, late or on the day it is due.
+ *
+ * It also means that in a category with both a bill and day-to-day spending,
+ * anything spent before the bill is paid reads as progress on the bill.
+ *
+ * A bill with no category has nothing to stand in for it. Those are taken off
+ * spending that has no category either, and only once they are due. The dialog
+ * does not allow a bill without a category, so this only arises from imports.
+ */
+function sumDayToDaySpending(
+  periodForecasts: ExpandedForecast[],
+  expenseTransactionsSoFar: Transaction[],
+  effectiveDate: string,
+): number {
+  const billsByCategory = new Map<string, number>();
+  let uncategorisedBillsDueSoFar = 0;
+
+  for (const forecast of periodForecasts) {
+    if (forecast.type !== 'expense') continue;
+
+    if (forecast.categoryId) {
+      const billsSoFar = billsByCategory.get(forecast.categoryId) ?? 0;
+      billsByCategory.set(forecast.categoryId, billsSoFar + forecast.amountCents);
+    } else if (forecast.date <= effectiveDate) {
+      uncategorisedBillsDueSoFar += forecast.amountCents;
+    }
+  }
+
+  const spentByCategory = new Map<string, number>();
+  let uncategorisedSpent = 0;
+
+  for (const transaction of expenseTransactionsSoFar) {
+    if (transaction.categoryId) {
+      const spentSoFar = spentByCategory.get(transaction.categoryId) ?? 0;
+      spentByCategory.set(transaction.categoryId, spentSoFar + transaction.amountCents);
+    } else {
+      uncategorisedSpent += transaction.amountCents;
+    }
+  }
+
+  let dayToDaySpending = Math.max(0, uncategorisedSpent - uncategorisedBillsDueSoFar);
+
+  for (const [categoryId, spent] of spentByCategory) {
+    const billsForCategory = billsByCategory.get(categoryId) ?? 0;
+    dayToDaySpending += Math.max(0, spent - billsForCategory);
+  }
+
+  return dayToDaySpending;
+}
+
+/**
  * Calculate period cash flow data
  */
 export function calculatePeriodCashFlow(
@@ -170,11 +232,6 @@ export function calculatePeriodCashFlow(
     .filter((f) => f.type === 'expense')
     .reduce((sum, f) => sum + f.amountCents, 0);
 
-  // Bills due up to effective date (for progress tracking)
-  const expensesDueToDate = periodForecasts
-    .filter((f) => f.type === 'expense' && f.date <= effectiveDate)
-    .reduce((sum, f) => sum + f.amountCents, 0);
-
   // Total allowances for the period, from the same limits the category rows
   // use, so the total is the sum of the rows. The helper returns a monthly
   // figure, so this is only exact in month view.
@@ -193,9 +250,10 @@ export function calculatePeriodCashFlow(
     .reduce((sum, t) => sum + t.amountCents, 0);
 
   // Actual expenses so far
-  const actualExpenses = allTransactions
-    .filter((t) => t.type === 'expense' && t.date >= periodStart && t.date <= effectiveDate)
-    .reduce((sum, t) => sum + t.amountCents, 0);
+  const expenseTransactionsSoFar = allTransactions.filter(
+    (t) => t.type === 'expense' && t.date >= periodStart && t.date <= effectiveDate,
+  );
+  const actualExpenses = expenseTransactionsSoFar.reduce((sum, t) => sum + t.amountCents, 0);
 
   // Net for period
   const actualNet = actualIncome - actualExpenses - actualSavings;
@@ -228,7 +286,12 @@ export function calculatePeriodCashFlow(
 
   // Smart projection: separate fixed vs variable spending
   const periodProgress = dayOfPeriod / daysInPeriod;
-  const variableActual = Math.max(0, actualExpenses - expensesDueToDate);
+  const variableActual = sumDayToDaySpending(
+    periodForecasts,
+    expenseTransactionsSoFar,
+    effectiveDate,
+  );
+  const paidTowardsBills = actualExpenses - variableActual;
   const projectedVariable =
     periodProgress > 0 ? Math.round(variableActual / periodProgress) : Math.round(totalBudget);
   const projectedTotal = Math.round(expectedExpenses) + projectedVariable;
@@ -242,7 +305,7 @@ export function calculatePeriodCashFlow(
     expenses: {
       expected: Math.round(expectedExpenses),
       actual: actualExpenses,
-      dueToDate: Math.round(expensesDueToDate),
+      paidTowardsBills,
     },
     net: { projected: projectedNet, forecasted: forecastedNet },
     projection: {

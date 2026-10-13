@@ -21,6 +21,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.44.7',
+    date: '2026-10-13',
+    changes: [
+      'Paying a bill a few days early no longer makes Cash Flow think you are overspending for the rest of the month',
+      'A bill that is overdue and not yet paid no longer hides your day-to-day spending on Cash Flow',
+      'The Bills line under "Now" on Cash Flow shows what you have actually paid, not what was due',
+    ],
+  },
+  {
     version: '0.44.6',
     date: '2026-10-13',
     changes: [

@@ -362,3 +362,179 @@ describe('calculatePeriodCashFlow', () => {
     expect(cashFlow.projection.variableActual).toBe(5000);
   });
 });
+
+// Nothing links a transaction to the bill it pays, so spending in a category
+// counts towards that category's bills first. These cases hold the day-to-day
+// spending steady at $300 and move only when the $900 bill is paid. The
+// projection should not care.
+describe('calculatePeriodCashFlow when a bill is not paid on its due date', () => {
+  const REGISTRATION_CENTS = 90000;
+  const GROCERIES_CENTS = 30000;
+
+  const groceries = expense({
+    id: 'groceries-shop',
+    date: '2026-10-03',
+    amountCents: GROCERIES_CENTS,
+    description: 'Groceries',
+    categoryId: 'groceries',
+  });
+
+  function registrationDueOn(dueDate: string): ExpandedForecast {
+    return forecast({
+      date: dueDate,
+      amountCents: REGISTRATION_CENTS,
+      description: 'Car registration',
+      categoryId: 'car',
+    });
+  }
+
+  function registrationPaidOn(paidDate: string): Transaction {
+    return expense({
+      id: 'registration-payment',
+      date: paidDate,
+      amountCents: REGISTRATION_CENTS,
+      description: 'Car registration',
+      categoryId: 'car',
+    });
+  }
+
+  it('projects day-to-day spending from the pace so far when the bill is paid on its due date', () => {
+    const cashFlow = cashFlowFor({
+      isCurrentPeriod: true,
+      effectiveDate: '2026-10-20',
+      periodForecasts: [registrationDueOn('2026-10-20')],
+      transactions: [groceries, registrationPaidOn('2026-10-20')],
+    });
+
+    // $300 over 20 of 31 days is $465 for the month
+    expect(cashFlow.projection.variableActual).toBe(GROCERIES_CENTS);
+    expect(cashFlow.projection.projectedVariable).toBe(46500);
+    expect(cashFlow.projection.projectedTotal).toBe(REGISTRATION_CENTS + 46500);
+  });
+
+  it('does not count a bill paid ten days early as day-to-day spending', () => {
+    const cashFlow = cashFlowFor({
+      isCurrentPeriod: true,
+      effectiveDate: '2026-10-10',
+      periodForecasts: [registrationDueOn('2026-10-20')],
+      transactions: [groceries, registrationPaidOn('2026-10-10')],
+    });
+
+    // $300 over 10 of 31 days is $930 for the month
+    expect(cashFlow.projection.variableActual).toBe(GROCERIES_CENTS);
+    expect(cashFlow.projection.projectedVariable).toBe(93000);
+    expect(cashFlow.projection.projectedTotal).toBe(REGISTRATION_CENTS + 93000);
+  });
+
+  it('does not count a bill debited a day early as day-to-day spending', () => {
+    const cashFlow = cashFlowFor({
+      isCurrentPeriod: true,
+      effectiveDate: '2026-10-14',
+      periodForecasts: [registrationDueOn('2026-10-15')],
+      transactions: [groceries, registrationPaidOn('2026-10-14')],
+    });
+
+    // $300 over 14 of 31 days is $664.29 for the month
+    expect(cashFlow.projection.variableActual).toBe(GROCERIES_CENTS);
+    expect(cashFlow.projection.projectedVariable).toBe(66429);
+    expect(cashFlow.projection.projectedTotal).toBe(REGISTRATION_CENTS + 66429);
+  });
+
+  it('does not hide day-to-day spending behind a bill that is overdue and unpaid', () => {
+    const cashFlow = cashFlowFor({
+      isCurrentPeriod: true,
+      effectiveDate: '2026-10-22',
+      periodForecasts: [registrationDueOn('2026-10-20')],
+      transactions: [groceries],
+    });
+
+    // $300 over 22 of 31 days is $422.73 for the month
+    expect(cashFlow.projection.variableActual).toBe(GROCERIES_CENTS);
+    expect(cashFlow.projection.projectedVariable).toBe(42273);
+    expect(cashFlow.projection.projectedTotal).toBe(REGISTRATION_CENTS + 42273);
+  });
+
+  it('splits actual spending into what went on bills and what was day-to-day', () => {
+    const cashFlow = cashFlowFor({
+      isCurrentPeriod: true,
+      effectiveDate: '2026-10-10',
+      periodForecasts: [registrationDueOn('2026-10-20')],
+      transactions: [groceries, registrationPaidOn('2026-10-10')],
+    });
+
+    expect(cashFlow.expenses.actual).toBe(REGISTRATION_CENTS + GROCERIES_CENTS);
+    expect(cashFlow.expenses.paidTowardsBills).toBe(REGISTRATION_CENTS);
+    expect(cashFlow.projection.variableActual).toBe(GROCERIES_CENTS);
+  });
+
+  it('shows nothing paid towards bills while a bill is overdue and unpaid', () => {
+    const cashFlow = cashFlowFor({
+      isCurrentPeriod: true,
+      effectiveDate: '2026-10-22',
+      periodForecasts: [registrationDueOn('2026-10-20')],
+      transactions: [groceries],
+    });
+
+    expect(cashFlow.expenses.paidTowardsBills).toBe(0);
+  });
+
+  it('counts spending beyond a bill, in the same category, as day-to-day', () => {
+    const cashFlow = cashFlowFor({
+      isCurrentPeriod: true,
+      effectiveDate: '2026-10-20',
+      periodForecasts: [registrationDueOn('2026-10-20')],
+      transactions: [
+        registrationPaidOn('2026-10-20'),
+        expense({ id: 'car-wash', date: '2026-10-12', amountCents: 4000, categoryId: 'car' }),
+      ],
+    });
+
+    expect(cashFlow.projection.variableActual).toBe(4000);
+  });
+
+  // The known limit of standing the category in for a link to the bill
+  it('reads spending in a category as progress on its bill until the bill is covered', () => {
+    const cashFlow = cashFlowFor({
+      isCurrentPeriod: true,
+      effectiveDate: '2026-10-12',
+      periodForecasts: [registrationDueOn('2026-10-20')],
+      transactions: [
+        expense({ id: 'car-wash', date: '2026-10-12', amountCents: 4000, categoryId: 'car' }),
+      ],
+    });
+
+    expect(cashFlow.projection.variableActual).toBe(0);
+    expect(cashFlow.expenses.paidTowardsBills).toBe(4000);
+  });
+
+  it('takes a bill with no category off uncategorised spending once it is due', () => {
+    const uncategorisedBill = forecast({
+      date: '2026-10-10',
+      amountCents: 5000,
+      description: 'Imported bill',
+      categoryId: null,
+    });
+    const uncategorisedSpending = expense({
+      id: 'uncategorised',
+      date: '2026-10-05',
+      amountCents: 8000,
+      categoryId: null,
+    });
+
+    const beforeItIsDue = cashFlowFor({
+      isCurrentPeriod: true,
+      effectiveDate: '2026-10-08',
+      periodForecasts: [uncategorisedBill],
+      transactions: [uncategorisedSpending],
+    });
+    const onceItIsDue = cashFlowFor({
+      isCurrentPeriod: true,
+      effectiveDate: '2026-10-12',
+      periodForecasts: [uncategorisedBill],
+      transactions: [uncategorisedSpending],
+    });
+
+    expect(beforeItIsDue.projection.variableActual).toBe(8000);
+    expect(onceItIsDue.projection.variableActual).toBe(3000);
+  });
+});

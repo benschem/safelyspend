@@ -1171,7 +1171,7 @@ interface SummaryCardProps {
     income: { expected: number; actual: number };
     budgeted: { expected: number };
     savings: { expected: number; actual: number };
-    expenses: { expected: number; actual: number; dueToDate: number };
+    expenses: { expected: number; actual: number; paidTowardsBills: number };
     projection: { variableActual: number; projectedVariable: number; projectedTotal: number };
   };
   netChange: number;
@@ -1419,8 +1419,8 @@ function BreakdownTable({
           <ThreeColRow
             label="− Bills"
             left={
-              periodCashFlow.expenses.dueToDate > 0
-                ? fmtSigned(periodCashFlow.expenses.dueToDate, '−')
+              periodCashFlow.expenses.paidTowardsBills > 0
+                ? fmtSigned(periodCashFlow.expenses.paidTowardsBills, '−')
                 : '—'
             }
             middle={fixed > 0 ? fmtSigned(fixed, '−') : '—'}
@@ -1474,7 +1474,7 @@ function BreakdownTable({
         {(() => {
           const actualTotal =
             periodCashFlow.income.actual -
-            periodCashFlow.expenses.dueToDate -
+            periodCashFlow.expenses.paidTowardsBills -
             periodCashFlow.projection.variableActual -
             periodCashFlow.savings.actual;
           const projectedTotal = income - fixed - pv - projectedSavings;
@@ -1565,8 +1565,8 @@ function BreakdownTable({
           <TwoColRow
             label="− Bills"
             left={
-              periodCashFlow.expenses.dueToDate > 0
-                ? fmtSigned(periodCashFlow.expenses.dueToDate, '−')
+              periodCashFlow.expenses.paidTowardsBills > 0
+                ? fmtSigned(periodCashFlow.expenses.paidTowardsBills, '−')
                 : '—'
             }
             right={fixed > 0 ? fmtSigned(fixed, '−') : '—'}
@@ -1613,7 +1613,7 @@ function BreakdownTable({
         {(() => {
           const actualTotal =
             periodCashFlow.income.actual -
-            periodCashFlow.expenses.dueToDate -
+            periodCashFlow.expenses.paidTowardsBills -
             periodCashFlow.projection.variableActual -
             periodCashFlow.savings.actual;
           return (
