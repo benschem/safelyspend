@@ -254,7 +254,9 @@ export function ExpenseDialog({
     : 0;
   const unallocatedAfterSave =
     unallocatedAmount - (toPeriodCents(enteredAmountCents, cadence, period) - savedPeriodCents);
-  const showBudgetImpact = hasIncome && enteredAmountCents > 0;
+  // Shown with a blank or zero amount too, so the note does not vanish while
+  // the amount is being retyped and make an overcommitted budget look fine
+  const showBudgetImpact = hasIncome;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -264,7 +266,7 @@ export function ExpenseDialog({
           <DialogDescription>
             {isEditing
               ? 'Change this expense.'
-              : 'Pick a category, or type a new one, and say what it costs.'}
+              : 'Say what it costs, then pick a category or type a new one.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -289,11 +291,6 @@ export function ExpenseDialog({
           )}
 
           <div className="space-y-2">
-            <Label className="select-none">Category</Label>
-            <CategorySelect value={categoryId} onChange={setCategoryId} />
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="expense-name" className="select-none">
               Name
               {!hasDueDate && (
@@ -314,37 +311,52 @@ export function ExpenseDialog({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="expense-amount" className="select-none">
-                Amount ($)
-              </Label>
-              <Input
-                id="expense-amount"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="expense-amount" className="select-none">
+                  Amount ($)
+                </Label>
+                <Input
+                  id="expense-amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="select-none">Frequency</Label>
+                <Select value={cadence} onValueChange={(value) => setCadence(value as Cadence)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="fortnightly">Fortnightly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="select-none">Frequency</Label>
-              <Select value={cadence} onValueChange={(value) => setCadence(value as Cadence)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="fortnightly">Fortnightly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="quarterly">Quarterly</SelectItem>
-                  <SelectItem value="yearly">Yearly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {showBudgetImpact &&
+              (unallocatedAfterSave >= 0 ? (
+                <p className="text-xs text-green-600">
+                  Room in budget: {formatCents(unallocatedAfterSave)} {CADENCE_PER_LABELS[period]}{' '}
+                  remaining
+                </p>
+              ) : (
+                <p className="text-xs text-orange-600">
+                  Overcommitted by {formatCents(Math.abs(unallocatedAfterSave))}{' '}
+                  {CADENCE_PER_LABELS[period]}
+                </p>
+              ))}
           </div>
 
           <div className="space-y-2">
@@ -368,20 +380,14 @@ export function ExpenseDialog({
             <ScheduleDayFields cadence={cadence} days={scheduleDays} onChange={setScheduleDays} />
           )}
 
+          <div className="space-y-2">
+            <Label className="select-none">Category</Label>
+            <CategorySelect value={categoryId} onChange={setCategoryId} />
+          </div>
+
           {averageSpendingHint && (
             <p className="text-xs text-muted-foreground">{averageSpendingHint}</p>
           )}
-
-          {showBudgetImpact &&
-            (unallocatedAfterSave >= 0 ? (
-              <p className="text-xs text-green-600">
-                Room in budget: {formatCents(unallocatedAfterSave)} remaining
-              </p>
-            ) : (
-              <p className="text-xs text-orange-600">
-                Overcommitting by {formatCents(Math.abs(unallocatedAfterSave))}
-              </p>
-            ))}
 
           <div className="flex items-center justify-between gap-3 pt-2">
             <div>

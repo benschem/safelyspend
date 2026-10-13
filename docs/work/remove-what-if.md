@@ -1,6 +1,6 @@
 # Remove the What If sliders and keep scenarios as plain plans
 
-- **Status:** in progress, step 5 done. Decisions made 2026-10-13.
+- **Status:** in progress, step 6 done. Decisions made 2026-10-13.
 - **Goal:** the sliders, What If mode, the violet difference figures and the
   comparison against the default plan are gone, and scenarios remain as named
   plans that can be copied, edited and switched between.
@@ -87,12 +87,12 @@ Copying a scenario does not depend on the sliders: `ScenarioDialog` has a
 - **The Income, Expenses and Savings sections become tabs**, as step 5. It
   comes after the comparison goes so the violet difference beside each
   section total is not carried into the tab labels first.
+- **Each step a user can see takes the next sensible version**, chosen when
+  the step is done.
 
 ## Proposed
 
-- **Version for step 6.** Step 4 is 0.51.0 and step 5 is 0.52.0. The rename
-  in step 6 needs a version of its own, since no other commit is left for it
-  to ride with.
+Nothing is waiting on a yes.
 
 ## Steps
 
@@ -126,14 +126,18 @@ Copying a scenario does not depend on the sliders: `ScenarioDialog` has a
    selected tab, and clicking a summary card selects its tab where it now
    opens and scrolls to its section. Each section's total and Add button
    need a place once the collapsible header is gone, hopefully just in the tab itself.
-6. **Copy and landing.** Sidebar label and page title to "Scenarios"; reword
+6. **Category last in the expense dialog.** In `expense-dialog.tsx`, move
+   the Category field below the name, amount, frequency and due date, and
+   reword the dialog's description to match. Move the room-in-budget and
+   overcommitting line up to sit under the amount.
+7. **Copy and landing.** Sidebar label and page title to "Scenarios"; reword
    the info alert, the "What-If Scenarios" heading and the empty state in
    `scenarios/index.tsx`, and the description in `scenario-dialog.tsx`.
    Delete the slider section, `ScenarioSliderDemo` and its constants from
    `landing-page.tsx`, then `ui/slider.tsx` and `@radix-ui/react-slider`.
    Reword `index.html`'s meta description and the what-if line in
    `README.md`.
-7. **Docs.** In `ARCHITECTURE.md`, delete the "What If system" section, the
+8. **Docs.** In `ARCHITECTURE.md`, delete the "What If system" section, the
    `WhatIfProvider` nodes in the state flow diagram, and the `WhatIfContext`
    lines. Fix `DEVELOPMENT.md` and `CLAUDE.md`. Create
    `docs/work/landing-rewrite.md`, link the Wishlist line to it, and note
@@ -164,6 +168,4 @@ Prettier on the files touched.
 - The other files that show violet (`year-grid.tsx`, `trend-sparkline.tsx`,
   the wizards) use it for "Projected" and icons, read from a search only.
   They are assumed unrelated and left alone.
-- How the tabs in step 5 fit `plan-tab.tsx`. The open states and the
-  scroll-to-section were seen in passing, not read through.
-- Steps 4 onwards have not been run.
+- Steps 7 and 8 have not been run.

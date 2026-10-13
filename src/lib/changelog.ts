@@ -21,6 +21,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.52.1',
+    date: '2026-10-13',
+    changes: [
+      'The category now comes last when you add or edit an expense',
+      'The note saying how much room is left in your budget now sits under the amount, and says whether it is per week, month or year',
+      'Fixed that note disappearing when an expense was set to zero, which made an overcommitted budget look fine',
+    ],
+  },
+  {
     version: '0.52.0',
     date: '2026-10-13',
     changes: [
