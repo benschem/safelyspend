@@ -11,6 +11,7 @@ tooling.
 ## Now (at most three)
 
 - [feature] Sync merges both people's edits → work/sync-merge.md _(sync)_
+- [cleanup] Faster tests, and a pre-push hook runs every check → work/ci.md _(tooling)_
 
 ## Next (aim for 5 in here)
 
@@ -34,7 +35,6 @@ tooling.
 - [feature] Safe to spend → work/bills-set-aside.md _(bills, cash-flow)_
 - [cleanup] Split the Cash Flow page; one table, not four → work/review-findings.md _(cash-flow)_
 - [bug]     Deletes leave references behind, and undo is partial → work/delete-cascades.md _(categories, savings, scenarios)_
-- [cleanup] One command runs every test, and CI runs the checks → work/ci.md _(tooling)_
 - [bug]     Signup with an invite can overwrite a user's keys → work/review-findings.md _(auth, household)_
 - [feature] Join a household with a code → work/household-join.md _(household, auth)_
 - [bug]     No floor on Argon2id parameters from the server → work/review-findings.md _(auth)_
@@ -63,6 +63,7 @@ tooling.
 - [polish]  Landing page still sets bills apart from allowances _(landing)_
 - [cleanup] Put `components.json` back for the shadcn CLI _(tooling)_
 - [bug]     The worker accepts any string as an invite address → work/invite-address-check.md _(household)_
+- [cleanup] Test against a real Dexie database with `fake-indexeddb` → work/fake-indexeddb.md _(tooling)_
 
 ## Someday / Maybe
 
