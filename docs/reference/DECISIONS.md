@@ -127,7 +127,7 @@ Removing `userId` would be a large refactor across every entity and hook. Keepin
 
 ## Why Australian financial year defaults?
 
-The default date range is July 1 to June 30 (Australian financial year). The original author is Australian. There is no locale or calendar system yet, so it is hardcoded. Currency selection and a configurable financial year are on the wishlist in `docs/BACKLOG.md`.
+The default date range is July 1 to June 30 (Australian financial year). The original author is Australian. There is no locale or calendar system yet, so it is hardcoded. Currency selection and a configurable financial year are under Maybe in `docs/BACKLOG.md`.
 
 ## Why `adjustment` transactions?
 

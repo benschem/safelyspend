@@ -1,6 +1,6 @@
 # Up Bank sync (parked)
 
-- **Status:** parked. Wishlist. Explored 2026-10-13 and found viable. The
+- **Status:** parked. Under Maybe. Explored 2026-10-13 and found viable. The
   maintainer wants to live with the app as it is first, and the backlog is
   already long. Nothing here has been built, and this file records what it
   would take; it has no steps. Needs `sync-merge.md` first.

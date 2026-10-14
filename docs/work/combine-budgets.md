@@ -1,6 +1,6 @@
 # Combine two existing budgets when two people join up
 
-- **Status:** parked. Wishlist. Needs `sync-merge.md` and `category-duplicates.md`
+- **Status:** parked. Under Maybe. Needs `sync-merge.md` and `category-duplicates.md`
   first.
 - **Goal:** two people who each already have a budget can combine them.
 - **Touches:** the merge function from `sync-merge.md`, categories, scenarios and balance anchors.

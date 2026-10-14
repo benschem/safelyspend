@@ -96,7 +96,7 @@ user-visible, so none bumps the version or touches the changelog.
    it names as fully formatted becomes this one.
 2. `chore:` every test from one command, in a few seconds.
    - The plan: the queue line in Now, this file, `fake-indexeddb.md` with
-     its line in Later, and the link in `review-findings.md`.
+     its line in Later.
    - In `account.test.ts`, mock `@/lib/key-management` so `ARGON2ID_PARAMS`
      is the fast set, and drop `ARGON2ID_TIMEOUT_MS` and the per-test
      timeouts it exists for.

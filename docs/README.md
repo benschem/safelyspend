@@ -21,10 +21,13 @@ no separate roadmap, to-do list or wishlist.
 - **One line per item.** Detail goes in a work file, never in the queue.
 - **Position is priority.** The top line of Now is the next thing to do. There
   are no priority labels.
-- **Sections, in order:** Now (at most three items), Next, Later, Wishlist,
-  Inbox.
+- **Sections, in order:** Now (at most three items), Next, Later, Maybe,
+  Inbox. Later will be done. Maybe is not yet decided either way.
 - **Line format:** `- [type]    What is wrong or wanted → work/slug.md _(area, area)_`.
   The link is left off when one line says it all.
+- **Waiting on other work:** a line that cannot start until another piece of
+  work lands ends with `· after <slug>`. Its work file's Status says why.
+  The top line of Now never waits.
 - **Pad after the type** so every description starts in the same column:
   `[feature]` and `[cleanup]` take one space, `[polish]` two, `[bug]` five.
 - **Keep the description short**, about sixty characters. It names the item;

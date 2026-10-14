@@ -138,7 +138,7 @@ key during signup, while the phrase is still in hand, and joins in one call.
   in `docs/reference/`.
 - **An existing account joining a household** (path 2 in `crypto-design.md`
   §7.4, and an invite that arrives after signup). Unchanged by this plan and
-  still parked: it is "Join without the invite link" on the wishlist in
+  still parked: it is "Join without the invite link" under Maybe in
   `BACKLOG.md`.
 - **Leaving or removing a member.** Still needs a key rotation whichever way
   joining works.
