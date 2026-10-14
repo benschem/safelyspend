@@ -193,6 +193,8 @@ a matching file is read or edited. It is not repeated here.
   `src/components/` and `src/routes/`
 - `schema-versioning.md`: Dexie schema versions and import compatibility, for
   `src/lib/db.ts`, `src/lib/types.ts` and `src/lib/import-schema.ts`
+- `leave-it-better.md`: what to tidy in the code a change already touches, for
+  anything under `src/components/`, `src/routes/` and `src/hooks/`
 - `deployment-doc.md`: why `docs/reference/DEPLOYMENT.md` is committed and what must
   never go in it, for that file and `README.md`
 - `docs-writing.md`: how to write docs here, for anything under `docs/`, the
