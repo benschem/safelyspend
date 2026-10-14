@@ -1,8 +1,8 @@
 # Sync merge plan
 
-- **Status:** not started. Planned 2026-10-12 and 2026-10-13. Nothing in `src`
-  mentions tombstones as of 0.49.0. The merge is built against a `BudgetRule`
-  that has a `name` and no `items`.
+- **Status:** in progress, step 0 done on 2026-10-14 at 0.55.1. Planned
+  2026-10-12 and 2026-10-13. Nothing in `src` mentions tombstones as of 0.49.0.
+  The merge is built against a `BudgetRule` that has a `name` and no `items`.
 - **Goal:** one Sync button merges both people's edits record by record, so
   two people can edit the household's budget at once and neither loses work.
 - **Touches:** `src/lib/import-schema.ts`, `src/lib/db.ts`, `src/lib/types.ts`,
@@ -120,9 +120,11 @@ ties go to remote, so every sync would strip the field and push the loss back.
   checks it comes back from `validateImport` unchanged, so the next field
   added to `types.ts` and forgotten here fails a test.
 
-Checked 2026-10-13 at 0.47.1: `budgetRuleSchema` has every field of
-`BudgetRule`, and `src/__tests__/lib/import-schema.test.ts` has no such test.
-The other schemas were not compared with their types.
+Done 2026-10-14: "a backup with every field set" in
+`src/__tests__/lib/import-schema.test.ts`. Every schema matched its type. The
+fixture is typed `Required<>`, so a new field fails `npm run build` until the
+fixture sets it. The test failed as expected with `importSource` removed from
+the schema.
 
 ### 1. Tombstones
 

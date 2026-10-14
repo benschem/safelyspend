@@ -10,9 +10,10 @@ tooling.
 
 ## Now (at most three)
 
+- [feature] Sync merges both people's edits → work/sync-merge.md _(sync)_
+
 ## Next (aim for 5 in here)
 
-- [feature] Sync merges both people's edits → work/sync-merge.md _(sync)_
 - [feature] Show unsynced changes and changes to pull → work/sync-indicator.md _(sync)_
 - [feature] One sync prompt, and sign-in syncs → work/sync-prompt.md _(sync, household)_
 - [bug]     An older app version drops newer fields on a sync pull, prevent pulling if the version is newer → work/sync-newer-data.md _(sync)_

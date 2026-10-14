@@ -7,6 +7,18 @@ import {
   CURRENT_DATA_VERSION,
 } from '@/lib/import-schema';
 import { z } from 'zod';
+import type { BudgetBackup } from '@/lib/db';
+import type {
+  BalanceAnchor,
+  BudgetRule,
+  Category,
+  CategoryRule,
+  ForecastRule,
+  SavingsAnchor,
+  SavingsGoal,
+  Scenario,
+  Transaction,
+} from '@/lib/types';
 
 // =============================================================================
 // sanitizeObject Tests
@@ -382,6 +394,149 @@ describe('validateImport', () => {
     const result = validateImport(malicious);
     expect(result).toBeDefined();
     expect((result as Record<string, unknown>)['isAdmin']).toBeUndefined();
+  });
+});
+
+// =============================================================================
+// Round trip of every field
+// =============================================================================
+
+// Zod drops keys a schema does not list, so a field in types.ts that is missing
+// from import-schema.ts is stripped by every restore and every sync pull.
+// `Required<>` makes this fixture stop compiling when a field is added to a
+// type, and the round trip then fails until the schema lists it too.
+describe('a backup with every field set', () => {
+  const baseFields = {
+    userId: 'local',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-02-01T00:00:00.000Z',
+  };
+
+  const scenario: Required<Scenario> = {
+    ...baseFields,
+    id: 'scenario-1',
+    name: 'Main plan',
+    description: 'The plan we follow',
+    isDefault: true,
+  };
+
+  const category: Required<Category> = {
+    ...baseFields,
+    id: 'category-1',
+    name: 'Groceries',
+    isArchived: false,
+  };
+
+  const savingsGoal: Required<SavingsGoal> = {
+    ...baseFields,
+    id: 'goal-1',
+    name: 'Emergency fund',
+    targetAmountCents: 1000000,
+    deadline: '2027-06-30',
+    annualInterestRate: 4.5,
+    compoundingFrequency: 'monthly',
+    isEmergencyFund: true,
+    interestRateSchedule: [{ effectiveDate: '2026-07-01', annualRate: 4.25 }],
+  };
+
+  const budgetRule: Required<BudgetRule> = {
+    ...baseFields,
+    id: 'budget-rule-1',
+    scenarioId: scenario.id,
+    categoryId: category.id,
+    name: 'Weekly shop',
+    amountCents: 20000,
+    cadence: 'weekly',
+    startDate: '2026-01-01',
+    endDate: '2026-12-31',
+  };
+
+  const forecastRule: Required<ForecastRule> = {
+    ...baseFields,
+    id: 'forecast-rule-1',
+    scenarioId: scenario.id,
+    type: 'savings',
+    amountCents: 50000,
+    cadence: 'quarterly',
+    dayOfMonth: 15,
+    dayOfWeek: 3,
+    monthOfYear: 6,
+    monthOfQuarter: 1,
+    startDate: '2026-01-01',
+    endDate: '2026-12-31',
+    description: 'Top up the emergency fund',
+    categoryId: category.id,
+    savingsGoalId: savingsGoal.id,
+    notes: 'Raise this after the pay rise',
+    excludedDates: ['2026-04-15'],
+  };
+
+  const transaction: Required<Transaction> = {
+    ...baseFields,
+    id: 'transaction-1',
+    type: 'expense',
+    date: '2026-01-10',
+    amountCents: 8450,
+    description: 'Supermarket',
+    categoryId: category.id,
+    savingsGoalId: savingsGoal.id,
+    notes: 'Included the party food',
+    importFingerprint: '2026-01-10|8450|supermarket',
+    importSource: 'up-csv',
+    importedAt: '2026-01-11T09:00:00.000Z',
+  };
+
+  const balanceAnchor: Required<BalanceAnchor> = {
+    ...baseFields,
+    id: 'balance-anchor-1',
+    date: '2026-01-01',
+    balanceCents: 250000,
+    label: 'Opening balance',
+  };
+
+  const savingsAnchor: Required<SavingsAnchor> = {
+    ...baseFields,
+    id: 'savings-anchor-1',
+    savingsGoalId: savingsGoal.id,
+    date: '2026-01-01',
+    balanceCents: 300000,
+    label: 'Bank statement balance',
+  };
+
+  const categoryRule: Required<CategoryRule> = {
+    ...baseFields,
+    id: 'category-rule-1',
+    name: 'Supermarkets',
+    matchField: 'description',
+    matchType: 'contains',
+    matchValue: 'supermarket',
+    categoryId: category.id,
+    amountMinCents: 100,
+    amountMaxCents: 50000,
+    transactionType: 'expense',
+    priority: 1,
+    enabled: true,
+  };
+
+  const backup: Required<BudgetBackup> = {
+    version: CURRENT_DATA_VERSION,
+    exportedAt: '2026-02-01T12:00:00.000Z',
+    activeScenarioId: scenario.id,
+    checkInCadence: 'fortnightly',
+    lastCheckInDate: '2026-01-25',
+    scenarios: [scenario],
+    categories: [category],
+    budgetRules: [budgetRule],
+    forecastRules: [forecastRule],
+    transactions: [transaction],
+    savingsGoals: [savingsGoal],
+    balanceAnchors: [balanceAnchor],
+    savingsAnchors: [savingsAnchor],
+    categoryRules: [categoryRule],
+  };
+
+  it('comes back from validateImport unchanged', () => {
+    expect(validateImport(backup)).toStrictEqual(backup);
   });
 });
 
