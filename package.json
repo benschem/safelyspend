@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
+    "typecheck": "tsc -b . worker --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
     "audit": "npm audit --audit-level=high"

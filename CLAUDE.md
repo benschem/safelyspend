@@ -23,14 +23,16 @@ npm run dev      # Start Vite dev server with hot reload
 npm run build    # Build for production (tsc + vite build)
 npm run preview  # Serve the production build locally
 npm run lint     # Run ESLint
+npm run typecheck # Type-check the app and the worker (build covers only the app)
+npm run test:run # Run every test once, app and worker (npm test watches)
 npx prettier --write "src/**/*.{ts,tsx}" "worker/src/**/*.ts"  # Format code
 ```
 
 ### Formatting
 
 **Run Prettier on the files you touched before calling any piece of work
-done**, as the last step before committing, alongside `npm run lint` and
-`npm run build`:
+done**, as the last step before committing, alongside `npm run lint`,
+`npm run typecheck` and `npm run build`:
 
 ```bash
 npx prettier --write src/routes/login.tsx src/components/layout/app-header.tsx

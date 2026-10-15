@@ -41,13 +41,14 @@ One expected error in the dev console: the analytics script at `/pa-stats/js/scr
 - `npm run build`: production build (`tsc -b`, then `vite build`)
 - `npm run preview`: serve the production build locally
 - `npm run lint`: ESLint
-- `npm run test`: Vitest in watch mode
-- `npm run test:run`: Vitest, one run
+- `npm run typecheck`: type-check the app and the worker in one `tsc -b`. `build` checks only the app, because Netlify runs it without the worker's packages
+- `npm run test`: every test, app and worker, in watch mode
+- `npm run test:run`: every test, app and worker, one run
 - `npx prettier --write <files>`: format the files you touched
 
 ## Worker setup
 
-The backend is a Cloudflare Worker in `worker/`. It is only needed for work on accounts, households or cloud sync.
+The backend is a Cloudflare Worker in `worker/`. Running it is only needed for work on accounts, households or cloud sync, but its packages are needed by every test run, since `npm run test:run` at the root runs the worker's tests too:
 
 ```bash
 cd worker
@@ -100,14 +101,16 @@ The worker has a daily cron (`0 3 * * *` UTC) that cleans up orphaned R2 objects
 
 ## Testing
 
-### Frontend tests
-
-In `src/__tests__/`, in `lib/`, `hooks/` and `routes/` folders that mirror `src/`. They use Vitest, with `happy-dom` and React Testing Library's `renderHook` for hooks.
+One Vitest run at the repo root covers both the app and the worker, as two projects in `vitest.config.ts`. The whole suite takes about six seconds.
 
 ```bash
 npm run test        # watch mode
 npm run test:run    # one run
 ```
+
+### Frontend tests
+
+In `src/__tests__/`, in `lib/`, `hooks/` and `routes/` folders that mirror `src/`. They use Vitest, with `happy-dom` and React Testing Library's `renderHook` for hooks.
 
 Covered: the pure logic in `src/lib/` (cadence, category limits, bills set aside, imports, the crypto and account code) and several hooks.
 
@@ -115,13 +118,15 @@ Not covered: nothing renders a component, so routes, dialogs and wizards have no
 
 ### Worker tests
 
-In `worker/src/__tests__/`. They have their own Vitest config and do not run from the root:
+In `worker/src/__tests__/`, under their own config in `worker/vitest.config.ts`, which runs them inside workerd. The root's `npm run test:run` and `npm run typecheck` cover them. They also run on their own from `worker/`:
 
 ```bash
 cd worker
 npm run test:run
 npm run typecheck
 ```
+
+How they share storage is in [`worker/README.md`](../../worker/README.md).
 
 ### Writing new tests
 

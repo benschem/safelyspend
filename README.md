@@ -53,8 +53,9 @@ npm run dev       # start Vite dev server
 npm run build     # type-check and build for production
 npm run preview   # serve the production build locally
 npm run lint      # run ESLint
-npm run test      # run tests in watch mode
-npm run test:run  # run tests once
+npm run typecheck # type-check the app and the worker
+npm run test      # run every test, app and worker, in watch mode
+npm run test:run  # run every test once
 ```
 
 See [`worker/README.md`](worker/README.md) for backend commands.

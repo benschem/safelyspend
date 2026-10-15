@@ -42,16 +42,17 @@ npm run typecheck   # tsc --noEmit
 
 Tests use `@cloudflare/vitest-plugin` to run inside workerd with real D1
 and R2 bindings. They need no external services or secrets: the test secrets
-are set in `vitest.config.ts`.
+are set in `vitest.config.ts`. The repo root's `npm run test:run` runs them too,
+alongside the app's tests.
 
 Storage is shared by every test in a file, not reset per test. Each test
 creates its own user and household, and `resetRateLimits` in
 `src/__tests__/helpers/setup.ts` clears the rate-limit counters before each
 test.
 
-Run `npm run typecheck` as well as the tests. The worker has its own
-`tsconfig.json` and is not covered by the repo root's `npm run build`, so
-nothing else type-checks it.
+Run a type-check as well as the tests. The worker has its own `tsconfig.json`,
+which the repo root's `npm run build` does not cover. The root's
+`npm run typecheck` checks it together with the app.
 
 ## Writing a migration
 
