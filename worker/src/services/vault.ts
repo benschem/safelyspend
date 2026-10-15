@@ -186,7 +186,16 @@ export async function putData(
         .prepare(
           'INSERT INTO vaults (id, household_id, version, r2_key, size_bytes, checksum, created_at, idempotency_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         )
-        .bind(vaultId, householdId, newVersion, r2Key, sizeBytes, checksum, now, idempotencyKey ?? null),
+        .bind(
+          vaultId,
+          householdId,
+          newVersion,
+          r2Key,
+          sizeBytes,
+          checksum,
+          now,
+          idempotencyKey ?? null,
+        ),
       syncState
         ? db
             .prepare(
@@ -211,7 +220,9 @@ export async function putData(
         .prepare('SELECT current_version FROM sync_state WHERE household_id = ?')
         .bind(householdId)
         .first<{ current_version: number }>();
-      throw conflict('Version conflict', { currentVersion: latest?.current_version ?? currentVersion });
+      throw conflict('Version conflict', {
+        currentVersion: latest?.current_version ?? currentVersion,
+      });
     }
   } catch (err) {
     // Unique constraint violation on vaults(household_id, version) means concurrent write
@@ -221,15 +232,19 @@ export async function putData(
         .prepare('SELECT current_version FROM sync_state WHERE household_id = ?')
         .bind(householdId)
         .first<{ current_version: number }>();
-      throw conflict('Version conflict', { currentVersion: latest?.current_version ?? currentVersion });
+      throw conflict('Version conflict', {
+        currentVersion: latest?.current_version ?? currentVersion,
+      });
     }
     // Clean up orphaned R2 object before re-throwing
     await bucket.delete(r2Key).catch((deleteErr) =>
-      console.error(JSON.stringify({
-        event: 'r2_cleanup_failed',
-        r2Key,
-        error: deleteErr instanceof Error ? deleteErr.message : 'Unknown error',
-      })),
+      console.error(
+        JSON.stringify({
+          event: 'r2_cleanup_failed',
+          r2Key,
+          error: deleteErr instanceof Error ? deleteErr.message : 'Unknown error',
+        }),
+      ),
     );
     throw err;
   }
@@ -312,10 +327,7 @@ export async function getTotalStorage(
   };
 }
 
-export async function cleanupOrphanedR2Objects(
-  db: D1Database,
-  bucket: R2Bucket,
-): Promise<void> {
+export async function cleanupOrphanedR2Objects(db: D1Database, bucket: R2Bucket): Promise<void> {
   let scanned = 0;
   let deleted = 0;
   let cursor: string | undefined;

@@ -15,10 +15,22 @@ import * as inviteService from '../services/invites.js';
 import type { HonoEnv } from '../types.js';
 
 const pendingRateLimit = rateLimit({ max: 60, windowSeconds: 60, keyPrefix: 'handoffs:pending' });
-const incomingRateLimit = rateLimit({ max: 120, windowSeconds: 60, keyPrefix: 'handoffs:incoming' });
+const incomingRateLimit = rateLimit({
+  max: 120,
+  windowSeconds: 60,
+  keyPrefix: 'handoffs:incoming',
+});
 
-const pendingUserLimit = userRateLimit({ max: 60, windowSeconds: 60, keyPrefix: 'handoffs:pending' });
-const incomingUserLimit = userRateLimit({ max: 120, windowSeconds: 60, keyPrefix: 'handoffs:incoming' });
+const pendingUserLimit = userRateLimit({
+  max: 60,
+  windowSeconds: 60,
+  keyPrefix: 'handoffs:pending',
+});
+const incomingUserLimit = userRateLimit({
+  max: 120,
+  windowSeconds: 60,
+  keyPrefix: 'handoffs:incoming',
+});
 
 const handoffs = new Hono<HonoEnv>();
 

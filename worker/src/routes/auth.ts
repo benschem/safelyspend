@@ -8,13 +8,7 @@ import {
   issueSessionCookie,
   sessionLifetimeSeconds,
 } from '../lib/session.js';
-import {
-  badRequest,
-  coded,
-  internal,
-  notFound,
-  unauthorized,
-} from '../lib/errors.js';
+import { badRequest, coded, internal, notFound, unauthorized } from '../lib/errors.js';
 import {
   assertPubkey,
   assertVerifier,
@@ -84,7 +78,11 @@ const sessionRateLimit = rateLimit({ max: 30, windowSeconds: 60, keyPrefix: 'aut
 // Rate limiters — per authenticated user, for the routes that have one before the
 // handler runs. The rest are enforced inline, keyed on an email or on the user id the
 // bridge token resolves to (see enforceSubjectRateLimit).
-const keyBundleUserLimit = userRateLimit({ max: 30, windowSeconds: 60, keyPrefix: 'auth:key-bundle' });
+const keyBundleUserLimit = userRateLimit({
+  max: 30,
+  windowSeconds: 60,
+  keyPrefix: 'auth:key-bundle',
+});
 const rewrapUserLimit = userRateLimit({ max: 1, windowSeconds: 3600, keyPrefix: 'auth:rewrap' });
 
 const auth = new Hono<HonoEnv>();
@@ -163,7 +161,9 @@ auth.post('/login', loginRateLimit, async (c) => {
   // Check lockout — return 200 silently to prevent email enumeration
   const lockedOut = await isUserLockedOut(c.env.DB, user.id);
   if (lockedOut) {
-    console.warn(JSON.stringify({ event: 'user_locked_out', requestId: c.get('requestId'), userId: user.id }));
+    console.warn(
+      JSON.stringify({ event: 'user_locked_out', requestId: c.get('requestId'), userId: user.id }),
+    );
     return c.json({ message: 'Code sent' });
   }
 
@@ -172,22 +172,28 @@ auth.post('/login', loginRateLimit, async (c) => {
   try {
     await sendAuthCode(c.env.RESEND_API_KEY, c.env.FROM_EMAIL, email, code);
   } catch (err) {
-    console.error(JSON.stringify({
-      event: 'email_send_failed', requestId: c.get('requestId'),
-      error: err instanceof Error ? err.message : 'Unknown error',
-    }));
+    console.error(
+      JSON.stringify({
+        event: 'email_send_failed',
+        requestId: c.get('requestId'),
+        error: err instanceof Error ? err.message : 'Unknown error',
+      }),
+    );
     throw internal('Unable to send login code. Please try again later.');
   }
 
   console.info(JSON.stringify({ event: 'login_code_sent', requestId: c.get('requestId') }));
 
   const requestId = c.get('requestId');
-  const logFailure = (task: string) => (err: unknown) => console.error(JSON.stringify({
-    event: 'background_task_failed',
-    requestId,
-    task,
-    error: err instanceof Error ? err.message : 'Unknown error',
-  }));
+  const logFailure = (task: string) => (err: unknown) =>
+    console.error(
+      JSON.stringify({
+        event: 'background_task_failed',
+        requestId,
+        task,
+        error: err instanceof Error ? err.message : 'Unknown error',
+      }),
+    );
 
   c.executionCtx.waitUntil(
     Promise.all([
@@ -239,7 +245,9 @@ auth.post('/verify-otp', verifyRateLimit, async (c) => {
   const authPendingToken = await createAuthPending(c.env.DB, user.id);
   const challenge = await getVerifierChallenge(c.env.DB, user.id);
 
-  console.info(JSON.stringify({ event: 'otp_verified', requestId: c.get('requestId'), userId: user.id }));
+  console.info(
+    JSON.stringify({ event: 'otp_verified', requestId: c.get('requestId'), userId: user.id }),
+  );
 
   return c.json({ authPendingToken, ...challenge });
 });
@@ -262,7 +270,9 @@ auth.post('/login-complete', verifyRateLimit, async (c) => {
     const stored = await getPasswordVerifier(c.env.DB, userId);
     const candidate = decodeRequired(body['verifierCandidate']);
     if (!stored || !constantTimeEquals(stored, candidate)) {
-      console.warn(JSON.stringify({ event: 'verifier_mismatch', requestId: c.get('requestId'), userId }));
+      console.warn(
+        JSON.stringify({ event: 'verifier_mismatch', requestId: c.get('requestId'), userId }),
+      );
       throw coded('Incorrect password', 401, 'VERIFIER_MISMATCH');
     }
   }
@@ -288,9 +298,14 @@ auth.post('/login-complete', verifyRateLimit, async (c) => {
     lifetime,
   );
 
-  console.info(JSON.stringify({
-    event: 'login_completed', requestId: c.get('requestId'), userId, viaRecovery,
-  }));
+  console.info(
+    JSON.stringify({
+      event: 'login_completed',
+      requestId: c.get('requestId'),
+      userId,
+      viaRecovery,
+    }),
+  );
 
   return c.json({
     user: { id: user.id, email: user.email },
@@ -355,8 +370,20 @@ auth.post('/signup', signupRateLimit, async (c) => {
       upsertUserKeyStatement(c.env.DB, userId, userKeys.recovery, now),
       householdService.createHouseholdStatement(c.env.DB, household, now),
       householdService.addMemberStatement(c.env.DB, household.id, userId, 'owner', now),
-      householdService.upsertMemberKeyStatement(c.env.DB, household.id, userId, memberKeys.pwd, now),
-      householdService.upsertMemberKeyStatement(c.env.DB, household.id, userId, memberKeys.recovery, now),
+      householdService.upsertMemberKeyStatement(
+        c.env.DB,
+        household.id,
+        userId,
+        memberKeys.pwd,
+        now,
+      ),
+      householdService.upsertMemberKeyStatement(
+        c.env.DB,
+        household.id,
+        userId,
+        memberKeys.recovery,
+        now,
+      ),
       insertSessionStatement(c.env.DB, sessionId, userId, sessionExpiresAt),
     ]);
   } catch (err) {
@@ -372,9 +399,14 @@ auth.post('/signup', signupRateLimit, async (c) => {
     lifetime,
   );
 
-  console.info(JSON.stringify({
-    event: 'signup_completed', requestId: c.get('requestId'), userId, householdId: household.id,
-  }));
+  console.info(
+    JSON.stringify({
+      event: 'signup_completed',
+      requestId: c.get('requestId'),
+      userId,
+      householdId: household.id,
+    }),
+  );
 
   // Sweep for invites addressed to this email (crypto-design section 7.4 path 2). The
   // client does not read them, and none can be accepted: this user now has a household
@@ -474,9 +506,13 @@ auth.post('/signup-with-invite', signupRateLimit, async (c) => {
 
   const claimed = await inviteService.claim(c.env.DB, inviteToken, userId, user.email);
 
-  console.info(JSON.stringify({
-    event: 'signup_with_invite_completed', requestId: c.get('requestId'), userId,
-  }));
+  console.info(
+    JSON.stringify({
+      event: 'signup_with_invite_completed',
+      requestId: c.get('requestId'),
+      userId,
+    }),
+  );
 
   return c.json({
     user: { id: user.id, email: user.email },
@@ -524,7 +560,9 @@ auth.post(
 
     const wrappedPrivKey = decodeRequired(readNested(body, 'newUserKeysPwd', 'wrappedPrivKey'));
     assertWrappedPrivKey(wrappedPrivKey);
-    const wrappedMasterKey = decodeRequired(readNested(body, 'newMemberKeysPwd', 'wrappedMasterKey'));
+    const wrappedMasterKey = decodeRequired(
+      readNested(body, 'newMemberKeysPwd', 'wrappedMasterKey'),
+    );
     assertWrappedMasterKey(wrappedMasterKey);
 
     const now = new Date().toISOString();
@@ -552,7 +590,9 @@ auth.post(
       ),
     ]);
 
-    console.info(JSON.stringify({ event: 'keys_rewrapped', requestId: c.get('requestId'), userId: user.id }));
+    console.info(
+      JSON.stringify({ event: 'keys_rewrapped', requestId: c.get('requestId'), userId: user.id }),
+    );
 
     return c.json({ ok: true });
   },
@@ -621,7 +661,9 @@ auth.post('/recovery-reset', authMiddleware, rewrapRateLimit, async (c) => {
     householdService.upsertMemberKeyStatement(c.env.DB, householdId, user.id, memberKeyPwd, now),
   ]);
 
-  console.info(JSON.stringify({ event: 'recovery_reset', requestId: c.get('requestId'), userId: user.id }));
+  console.info(
+    JSON.stringify({ event: 'recovery_reset', requestId: c.get('requestId'), userId: user.id }),
+  );
 
   return c.json({ ok: true });
 });
@@ -636,7 +678,9 @@ auth.post('/logout', authMiddleware, sessionRateLimit, async (c) => {
   await deleteSession(c.env.DB, payload.sid);
   clearSessionCookie(c);
 
-  console.info(JSON.stringify({ event: 'logout', requestId: c.get('requestId'), userId: payload.sub }));
+  console.info(
+    JSON.stringify({ event: 'logout', requestId: c.get('requestId'), userId: payload.sub }),
+  );
 
   return c.json({ message: 'Logged out' });
 });
@@ -674,20 +718,35 @@ auth.delete('/account', authMiddleware, requireFullSession, sessionRateLimit, as
 
   clearSessionCookie(c);
 
-  console.info(JSON.stringify({ event: 'account_deleted', requestId: c.get('requestId'), userId: user.id }));
+  console.info(
+    JSON.stringify({ event: 'account_deleted', requestId: c.get('requestId'), userId: user.id }),
+  );
 
   return c.json({ message: 'Account deleted' });
 });
 
 // POST /auth/revoke-all-sessions
-auth.post('/revoke-all-sessions', authMiddleware, requireFullSession, sessionRateLimit, async (c) => {
-  const payload = c.get('jwtPayload');
-  const revoked = await deleteAllSessionsExcept(c.env.DB, payload.sub, payload.sid);
+auth.post(
+  '/revoke-all-sessions',
+  authMiddleware,
+  requireFullSession,
+  sessionRateLimit,
+  async (c) => {
+    const payload = c.get('jwtPayload');
+    const revoked = await deleteAllSessionsExcept(c.env.DB, payload.sub, payload.sid);
 
-  console.info(JSON.stringify({ event: 'sessions_revoked', requestId: c.get('requestId'), userId: payload.sub, count: revoked }));
+    console.info(
+      JSON.stringify({
+        event: 'sessions_revoked',
+        requestId: c.get('requestId'),
+        userId: payload.sub,
+        count: revoked,
+      }),
+    );
 
-  return c.json({ revoked });
-});
+    return c.json({ revoked });
+  },
+);
 
 // GET /auth/sessions
 auth.get('/sessions', authMiddleware, requireFullSession, sessionRateLimit, async (c) => {
@@ -717,7 +776,14 @@ auth.delete('/sessions/:id', authMiddleware, requireFullSession, sessionRateLimi
     throw notFound('Session not found');
   }
 
-  console.info(JSON.stringify({ event: 'session_revoked', requestId: c.get('requestId'), userId: payload.sub, sessionId }));
+  console.info(
+    JSON.stringify({
+      event: 'session_revoked',
+      requestId: c.get('requestId'),
+      userId: payload.sub,
+      sessionId,
+    }),
+  );
 
   return c.json({ message: 'Session revoked' });
 });

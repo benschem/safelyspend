@@ -56,30 +56,41 @@ export function rateLimit(config: RateLimitConfig): MiddlewareHandler<HonoEnv> {
         c.header('Retry-After', String(result.retryAfter));
         const requestId = c.get('requestId');
         const userId = (c.get('user') as User | undefined)?.id;
-        console.warn(JSON.stringify({ event: 'rate_limited', requestId, userId, limiter: config.keyPrefix }));
+        console.warn(
+          JSON.stringify({ event: 'rate_limited', requestId, userId, limiter: config.keyPrefix }),
+        );
         throw tooManyRequests('Too many requests. Please try again later.');
       }
     } catch (err) {
       // Re-throw rate limit rejections
       if (err instanceof AppError) throw err;
       // D1 failure — degrade open rather than blocking all requests
-      console.error(JSON.stringify({
-        event: 'rate_limit_degraded', requestId: c.get('requestId'),
-        limiter: config.keyPrefix,
-        error: err instanceof Error ? err.message : 'Unknown error',
-      }));
+      console.error(
+        JSON.stringify({
+          event: 'rate_limit_degraded',
+          requestId: c.get('requestId'),
+          limiter: config.keyPrefix,
+          error: err instanceof Error ? err.message : 'Unknown error',
+        }),
+      );
     }
 
     // Probabilistic cleanup of expired entries (1% of requests)
     const now = Math.floor(Date.now() / 1000);
     if (Math.random() < 0.01) {
       c.executionCtx.waitUntil(
-        c.env.DB.prepare('DELETE FROM rate_limits WHERE reset_at <= ?').bind(now).run()
-          .catch((cleanupErr) => console.error(JSON.stringify({
-            event: 'background_task_failed',
-            task: 'rate_limit_cleanup',
-            error: cleanupErr instanceof Error ? cleanupErr.message : 'Unknown error',
-          }))),
+        c.env.DB.prepare('DELETE FROM rate_limits WHERE reset_at <= ?')
+          .bind(now)
+          .run()
+          .catch((cleanupErr) =>
+            console.error(
+              JSON.stringify({
+                event: 'background_task_failed',
+                task: 'rate_limit_cleanup',
+                error: cleanupErr instanceof Error ? cleanupErr.message : 'Unknown error',
+              }),
+            ),
+          ),
       );
     }
 
@@ -98,19 +109,27 @@ export function userRateLimit(config: RateLimitConfig): MiddlewareHandler<HonoEn
 
       if (!result.allowed) {
         c.header('Retry-After', String(result.retryAfter));
-        console.warn(JSON.stringify({
-          event: 'rate_limited', requestId: c.get('requestId'),
-          userId: user.id, limiter: `${config.keyPrefix}:user`,
-        }));
+        console.warn(
+          JSON.stringify({
+            event: 'rate_limited',
+            requestId: c.get('requestId'),
+            userId: user.id,
+            limiter: `${config.keyPrefix}:user`,
+          }),
+        );
         throw tooManyRequests('Too many requests. Please try again later.');
       }
     } catch (err) {
       if (err instanceof AppError) throw err;
-      console.error(JSON.stringify({
-        event: 'rate_limit_degraded', requestId: c.get('requestId'),
-        userId: user.id, limiter: `${config.keyPrefix}:user`,
-        error: err instanceof Error ? err.message : 'Unknown error',
-      }));
+      console.error(
+        JSON.stringify({
+          event: 'rate_limit_degraded',
+          requestId: c.get('requestId'),
+          userId: user.id,
+          limiter: `${config.keyPrefix}:user`,
+          error: err instanceof Error ? err.message : 'Unknown error',
+        }),
+      );
     }
 
     await next();

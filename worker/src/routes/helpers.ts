@@ -77,20 +77,24 @@ export async function enforceSubjectRateLimit(
     const result = await checkRateLimit(c.env.DB, key, limit.max, limit.windowSeconds);
     if (!result.allowed) {
       c.header('Retry-After', String(result.retryAfter));
-      console.warn(JSON.stringify({
-        event: 'rate_limited',
-        requestId: c.get('requestId'),
-        limiter: limit.limiter,
-      }));
+      console.warn(
+        JSON.stringify({
+          event: 'rate_limited',
+          requestId: c.get('requestId'),
+          limiter: limit.limiter,
+        }),
+      );
       throw tooManyRequests('Too many requests. Please try again later.');
     }
   } catch (err) {
     if (err instanceof AppError) throw err;
-    console.error(JSON.stringify({
-      event: 'rate_limit_degraded',
-      requestId: c.get('requestId'),
-      limiter: limit.limiter,
-      error: err instanceof Error ? err.message : 'Unknown error',
-    }));
+    console.error(
+      JSON.stringify({
+        event: 'rate_limit_degraded',
+        requestId: c.get('requestId'),
+        limiter: limit.limiter,
+        error: err instanceof Error ? err.message : 'Unknown error',
+      }),
+    );
   }
 }

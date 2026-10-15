@@ -37,7 +37,14 @@ export const authMiddleware = createMiddleware<HonoEnv>(async (c, next) => {
 
   const session = await findBySession(c.env.DB, payload.sub, payload.sid);
   if (!session) {
-    console.warn(JSON.stringify({ event: 'auth_failed', requestId, userId: payload.sub, reason: 'session_expired' }));
+    console.warn(
+      JSON.stringify({
+        event: 'auth_failed',
+        requestId,
+        userId: payload.sub,
+        reason: 'session_expired',
+      }),
+    );
     throw unauthorized('Session expired or invalid');
   }
 
@@ -55,7 +62,10 @@ export const authMiddleware = createMiddleware<HonoEnv>(async (c, next) => {
     const expiresAt = await getSessionExpiresAt(c.env.DB, payload.sid);
     if (expiresAt) {
       const newSessionId = await rotateSession(c.env.DB, payload.sid, user.id, expiresAt);
-      const remainingSeconds = Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000));
+      const remainingSeconds = Math.max(
+        0,
+        Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000),
+      );
 
       // The cookie is reissued through the same path that minted it at login, so the
       // flags cannot drift apart. Carrying `viaRecovery` matters: dropping it would

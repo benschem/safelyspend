@@ -18,7 +18,11 @@ const revokeRateLimit = rateLimit({ max: 30, windowSeconds: 60, keyPrefix: 'invi
 const issueUserLimit = userRateLimit({ max: 5, windowSeconds: 3600, keyPrefix: 'invites:issue' });
 const listUserLimit = userRateLimit({ max: 30, windowSeconds: 60, keyPrefix: 'invites:list' });
 const acceptUserLimit = userRateLimit({ max: 3, windowSeconds: 3600, keyPrefix: 'invites:accept' });
-const revokeUserLimit = userRateLimit({ max: 10, windowSeconds: 3600, keyPrefix: 'invites:revoke' });
+const revokeUserLimit = userRateLimit({
+  max: 10,
+  windowSeconds: 3600,
+  keyPrefix: 'invites:revoke',
+});
 
 const invites = new Hono<HonoEnv>();
 
@@ -91,17 +95,24 @@ invites.post('/', issueRateLimit, requireHousehold, issueUserLimit, async (c) =>
     );
   } catch (err) {
     await inviteService.deleteById(c.env.DB, invite.id);
-    console.error(JSON.stringify({
-      event: 'invite_email_failed',
-      requestId: c.get('requestId'),
-      error: err instanceof Error ? err.message : 'Unknown error',
-    }));
+    console.error(
+      JSON.stringify({
+        event: 'invite_email_failed',
+        requestId: c.get('requestId'),
+        error: err instanceof Error ? err.message : 'Unknown error',
+      }),
+    );
     throw coded('Unable to send the invitation. Please try again later.', 500, 'INTERNAL_ERROR');
   }
 
-  console.info(JSON.stringify({
-    event: 'invite_issued', requestId: c.get('requestId'), userId: user.id, inviteId: invite.id,
-  }));
+  console.info(
+    JSON.stringify({
+      event: 'invite_issued',
+      requestId: c.get('requestId'),
+      userId: user.id,
+      inviteId: invite.id,
+    }),
+  );
 
   return c.json(
     {
@@ -151,9 +162,14 @@ invites.post('/:token/accept', acceptRateLimit, acceptUserLimit, async (c) => {
 
   const claimed = await inviteService.claim(c.env.DB, token, user.id, user.email);
 
-  console.info(JSON.stringify({
-    event: 'invite_accepted', requestId: c.get('requestId'), userId: user.id, inviteId: claimed.id,
-  }));
+  console.info(
+    JSON.stringify({
+      event: 'invite_accepted',
+      requestId: c.get('requestId'),
+      userId: user.id,
+      inviteId: claimed.id,
+    }),
+  );
 
   return c.json({
     household: null,
@@ -179,9 +195,14 @@ invites.delete('/:id', revokeRateLimit, revokeUserLimit, async (c) => {
 
   await inviteService.revoke(c.env.DB, inviteId);
 
-  console.info(JSON.stringify({
-    event: 'invite_revoked', requestId: c.get('requestId'), userId: user.id, inviteId,
-  }));
+  console.info(
+    JSON.stringify({
+      event: 'invite_revoked',
+      requestId: c.get('requestId'),
+      userId: user.id,
+      inviteId,
+    }),
+  );
 
   return c.json({ ok: true });
 });

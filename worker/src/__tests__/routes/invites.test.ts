@@ -160,9 +160,12 @@ describe('invites.status', () => {
   // The CHECK constraint and INVITE_STATUSES are two copies of one list, and SQLite
   // cannot extend a CHECK in place. A value added to the union without a matching
   // table rebuild type-checks everywhere and only fails on the write.
-  it.each(inviteService.INVITE_STATUSES)('accepts %s, which the type union declares', async (status) => {
-    await expect(insertWithStatus(status)).resolves.not.toThrow();
-  });
+  it.each(inviteService.INVITE_STATUSES)(
+    'accepts %s, which the type union declares',
+    async (status) => {
+      await expect(insertWithStatus(status)).resolves.not.toThrow();
+    },
+  );
 
   it('rejects a status the union does not declare', async () => {
     await expect(insertWithStatus('mislaid')).rejects.toThrow();
@@ -234,8 +237,7 @@ describe('POST /invites', () => {
     expect(res.status).toBe(500);
 
     // An invite nobody received would otherwise occupy the one-open-invite slot.
-    const row = await env.DB
-      .prepare('SELECT id FROM invites WHERE recipient_email = ?')
+    const row = await env.DB.prepare('SELECT id FROM invites WHERE recipient_email = ?')
       .bind('unreachable@example.com')
       .first();
     expect(row).toBeNull();
@@ -248,7 +250,11 @@ describe('POST /invites', () => {
     await completeHandoff(inviter, partner);
 
     const res = await appFetch(
-      jsonRequest('/v1/invites', { recipientEmail: 'third-wheel@example.com' }, { cookie: inviter.cookie }),
+      jsonRequest(
+        '/v1/invites',
+        { recipientEmail: 'third-wheel@example.com' },
+        { cookie: inviter.cookie },
+      ),
     );
 
     expect(res.status).toBe(409);
@@ -316,7 +322,10 @@ describe('POST /auth/signup-with-invite', () => {
     const res = await appFetch(
       jsonRequest(
         '/v1/auth/signup-with-invite',
-        fixtures.signupWithInviteBody(await bridgeToken('swi-unknown@example.com'), 'no-such-token'),
+        fixtures.signupWithInviteBody(
+          await bridgeToken('swi-unknown@example.com'),
+          'no-such-token',
+        ),
       ),
     );
 
@@ -328,8 +337,7 @@ describe('POST /auth/signup-with-invite', () => {
     const inviter = await createInviter('swi-expired-inviter@example.com');
     const token = await issueInvite(inviter.cookie, 'swi-expired@example.com');
 
-    await env.DB
-      .prepare('UPDATE invites SET expires_at = ? WHERE token = ?')
+    await env.DB.prepare('UPDATE invites SET expires_at = ? WHERE token = ?')
       .bind(new Date(Date.now() - 1000).toISOString(), token)
       .run();
 
@@ -416,19 +424,16 @@ describe('DELETE /invites/:id', () => {
     );
     const { invite } = (await res.json()) as { invite: { id: string } };
 
-    const deleteRes = await appFetch(
-      authedRequest(`/v1/invites/${invite.id}`, cookie, 'DELETE'),
-    );
+    const deleteRes = await appFetch(authedRequest(`/v1/invites/${invite.id}`, cookie, 'DELETE'));
 
     expect(deleteRes.status).toBe(200);
-    const row = await env.DB
-      .prepare('SELECT status FROM invites WHERE id = ?')
+    const row = await env.DB.prepare('SELECT status FROM invites WHERE id = ?')
       .bind(invite.id)
       .first<{ status: string }>();
     expect(row?.status).toBe('revoked');
   });
 
-  it('refuses to revoke someone else\'s invite', async () => {
+  it("refuses to revoke someone else's invite", async () => {
     const inviter = await createInviter('revoke-owner@example.com');
     const stranger = await createInviter('revoke-stranger@example.com');
     const res = await appFetch(
@@ -530,18 +535,21 @@ describe('the handoff, end to end', () => {
 
     // Both polls are now quiet, and the invite is done.
     expect(
-      ((await (await appFetch(authedRequest('/v1/handoffs/incoming', partner.cookie))).json()) as {
-        handoffs: unknown[];
-      }).handoffs,
+      (
+        (await (await appFetch(authedRequest('/v1/handoffs/incoming', partner.cookie))).json()) as {
+          handoffs: unknown[];
+        }
+      ).handoffs,
     ).toHaveLength(0);
     expect(
-      ((await (await appFetch(authedRequest('/v1/handoffs/pending', inviter.cookie))).json()) as {
-        handoffs: unknown[];
-      }).handoffs,
+      (
+        (await (await appFetch(authedRequest('/v1/handoffs/pending', inviter.cookie))).json()) as {
+          handoffs: unknown[];
+        }
+      ).handoffs,
     ).toHaveLength(0);
 
-    const invite = await env.DB
-      .prepare('SELECT status FROM invites WHERE token = ?')
+    const invite = await env.DB.prepare('SELECT status FROM invites WHERE token = ?')
       .bind(token)
       .first<{ status: string }>();
     expect(invite?.status).toBe('completed');
@@ -566,7 +574,7 @@ describe('the handoff, end to end', () => {
 });
 
 describe('POST /households/:householdId/members', () => {
-  it('rejects a sender public key that is not the caller\'s own', async () => {
+  it("rejects a sender public key that is not the caller's own", async () => {
     const inviter = await createInviter('sub-a@example.com');
     const token = await issueInvite(inviter.cookie, 'sub-b@example.com');
     const partner = await acceptAsNewUser('sub-b@example.com', token);
@@ -618,7 +626,7 @@ describe('POST /households/:householdId/members', () => {
     expect(((await res.json()) as { code: string }).code).toBe('INVALID_BLOB');
   });
 
-  it('refuses to add a member to somebody else\'s household', async () => {
+  it("refuses to add a member to somebody else's household", async () => {
     const inviter = await createInviter('other-a@example.com');
     const stranger = await createInviter('other-stranger@example.com');
     const token = await issueInvite(inviter.cookie, 'other-b@example.com');
@@ -657,10 +665,14 @@ describe('POST /households/:householdId/members', () => {
     };
 
     const first = await appFetch(
-      jsonRequest(`/v1/households/${inviter.householdId}/members`, body, { cookie: inviter.cookie }),
+      jsonRequest(`/v1/households/${inviter.householdId}/members`, body, {
+        cookie: inviter.cookie,
+      }),
     );
     const second = await appFetch(
-      jsonRequest(`/v1/households/${inviter.householdId}/members`, body, { cookie: inviter.cookie }),
+      jsonRequest(`/v1/households/${inviter.householdId}/members`, body, {
+        cookie: inviter.cookie,
+      }),
     );
 
     expect(first.status).toBe(200);
@@ -669,8 +681,9 @@ describe('POST /households/:householdId/members', () => {
     // or a client whose first response was lost gets a different shape back.
     expect(await second.json()).toEqual(await first.json());
 
-    const count = await env.DB
-      .prepare('SELECT COUNT(*) AS count FROM household_members WHERE household_id = ?')
+    const count = await env.DB.prepare(
+      'SELECT COUNT(*) AS count FROM household_members WHERE household_id = ?',
+    )
       .bind(inviter.householdId)
       .first<{ count: number }>();
     expect(count?.count).toBe(2);
@@ -678,7 +691,7 @@ describe('POST /households/:householdId/members', () => {
 });
 
 describe('POST /households/:householdId/members/:userId/rewrap', () => {
-  it('refuses to rewrap somebody else\'s keys', async () => {
+  it("refuses to rewrap somebody else's keys", async () => {
     const inviter = await createInviter('rw-a@example.com');
     const token = await issueInvite(inviter.cookie, 'rw-b@example.com');
     const partner = await acceptAsNewUser('rw-b@example.com', token);
@@ -747,10 +760,9 @@ describe('POST /households/:householdId/members/:userId/rewrap', () => {
     expect(((await res.json()) as { code: string }).code).toBe('INVALID_BLOB');
 
     // And the transient row must survive, so the invitee can retry.
-    const ecies = await env.DB
-      .prepare(
-        "SELECT kek_kind FROM household_member_keys WHERE user_id = ? AND kek_kind = 'ecies'",
-      )
+    const ecies = await env.DB.prepare(
+      "SELECT kek_kind FROM household_member_keys WHERE user_id = ? AND kek_kind = 'ecies'",
+    )
       .bind(partner.userId)
       .first();
     expect(ecies).not.toBeNull();
@@ -791,10 +803,9 @@ describe('POST /households/:householdId/members/:userId/rewrap', () => {
     expect(res.status).toBe(400);
     expect(((await res.json()) as { code: string }).code).toBe('INVALID_BLOB');
 
-    const ecies = await env.DB
-      .prepare(
-        "SELECT kek_kind FROM household_member_keys WHERE user_id = ? AND kek_kind = 'ecies'",
-      )
+    const ecies = await env.DB.prepare(
+      "SELECT kek_kind FROM household_member_keys WHERE user_id = ? AND kek_kind = 'ecies'",
+    )
       .bind(partner.userId)
       .first();
     expect(ecies).not.toBeNull();

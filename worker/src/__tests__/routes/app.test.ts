@@ -13,7 +13,7 @@ describe('GET /nonexistent', () => {
   it('returns 404', async () => {
     const res = await appFetch(new Request('http://localhost/nonexistent'));
     expect(res.status).toBe(404);
-    const body = await res.json() as { code: string };
+    const body = (await res.json()) as { code: string };
     expect(body.code).toBe('NOT_FOUND');
   });
 });

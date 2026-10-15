@@ -23,7 +23,7 @@ npm run dev      # Start Vite dev server with hot reload
 npm run build    # Build for production (tsc + vite build)
 npm run preview  # Serve the production build locally
 npm run lint     # Run ESLint
-npx prettier --write "src/**/*.{ts,tsx}"  # Format code
+npx prettier --write "src/**/*.{ts,tsx}" "worker/src/**/*.ts"  # Format code
 ```
 
 ### Formatting
@@ -36,15 +36,15 @@ done**, as the last step before committing, alongside `npm run lint` and
 npx prettier --write src/routes/login.tsx src/components/layout/app-header.tsx
 ```
 
-`src/` is fully formatted as of `6c4f000`, so this only ever touches lines you
-wrote. If Prettier does reformat code you didn't write, something has drifted.
+`src/` and `worker/src/` are fully formatted, so this only ever touches lines
+you wrote. If Prettier does reformat code you didn't write, something has drifted.
 Land that as its own `style:` commit, not inside a feature diff.
 
 Nothing enforces this: there is no pre-commit hook and no CI workflow. Check
 what is still unformatted with:
 
 ```bash
-npx prettier --list-different "src/**/*.{ts,tsx}"
+npx prettier --list-different "src/**/*.{ts,tsx}" "worker/src/**/*.ts"
 ```
 
 ## Architecture Overview

@@ -21,10 +21,7 @@ function rowToUser(row: UserRow): User {
   };
 }
 
-export async function findByEmail(
-  db: D1Database,
-  email: string,
-): Promise<User | null> {
+export async function findByEmail(db: D1Database, email: string): Promise<User | null> {
   const row = await db
     .prepare('SELECT id, email, created_at, updated_at FROM users WHERE email = ?')
     .bind(email)
@@ -33,10 +30,7 @@ export async function findByEmail(
   return row ? rowToUser(row) : null;
 }
 
-export async function findById(
-  db: D1Database,
-  id: string,
-): Promise<User | null> {
+export async function findById(db: D1Database, id: string): Promise<User | null> {
   const row = await db
     .prepare('SELECT id, email, created_at, updated_at FROM users WHERE id = ?')
     .bind(id)
@@ -45,10 +39,7 @@ export async function findById(
   return row ? rowToUser(row) : null;
 }
 
-export async function create(
-  db: D1Database,
-  email: string,
-): Promise<User> {
+export async function create(db: D1Database, email: string): Promise<User> {
   const id = generateId();
   const now = new Date().toISOString();
 
@@ -65,14 +56,8 @@ export async function create(
   };
 }
 
-export async function deleteUser(
-  db: D1Database,
-  id: string,
-): Promise<void> {
-  await db
-    .prepare('DELETE FROM users WHERE id = ?')
-    .bind(id)
-    .run();
+export async function deleteUser(db: D1Database, id: string): Promise<void> {
+  await db.prepare('DELETE FROM users WHERE id = ?').bind(id).run();
 }
 
 /** Resolve the session to its user and current household in one query. The household
@@ -110,7 +95,9 @@ export async function createSession(
 
   // Enforce session cap — delete oldest active sessions if at limit
   const countRow = await db
-    .prepare("SELECT COUNT(*) as count FROM sessions WHERE user_id = ? AND expires_at > datetime('now')")
+    .prepare(
+      "SELECT COUNT(*) as count FROM sessions WHERE user_id = ? AND expires_at > datetime('now')",
+    )
     .bind(userId)
     .first<{ count: number }>();
 
@@ -128,9 +115,7 @@ export async function createSession(
   }
 
   await db
-    .prepare(
-      'INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)',
-    )
+    .prepare('INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)')
     .bind(id, userId, expiresAt)
     .run();
 
@@ -151,14 +136,8 @@ export function insertSessionStatement(
     .bind(sessionId, userId, expiresAt);
 }
 
-export async function deleteSession(
-  db: D1Database,
-  sessionId: string,
-): Promise<void> {
-  await db
-    .prepare('DELETE FROM sessions WHERE id = ?')
-    .bind(sessionId)
-    .run();
+export async function deleteSession(db: D1Database, sessionId: string): Promise<void> {
+  await db.prepare('DELETE FROM sessions WHERE id = ?').bind(sessionId).run();
 }
 
 export async function deleteAllSessionsExcept(
@@ -208,10 +187,7 @@ export interface SessionInfo {
   createdAt: string;
 }
 
-export async function listSessions(
-  db: D1Database,
-  userId: string,
-): Promise<SessionInfo[]> {
+export async function listSessions(db: D1Database, userId: string): Promise<SessionInfo[]> {
   const rows = await db
     .prepare(
       "SELECT id, created_at FROM sessions WHERE user_id = ? AND expires_at > datetime('now') ORDER BY created_at DESC",
@@ -234,9 +210,7 @@ export async function deleteSessionForUser(
 }
 
 export async function cleanupExpiredSessions(db: D1Database): Promise<void> {
-  await db
-    .prepare("DELETE FROM sessions WHERE expires_at < datetime('now')")
-    .run();
+  await db.prepare("DELETE FROM sessions WHERE expires_at < datetime('now')").run();
 }
 
 // --- Key material ---
@@ -257,7 +231,11 @@ export async function getVerifierChallenge(
   const row = await db
     .prepare('SELECT verifier_salt, verifier_kdf_kind, verifier_kdf_params FROM users WHERE id = ?')
     .bind(userId)
-    .first<{ verifier_salt: unknown; verifier_kdf_kind: number | null; verifier_kdf_params: unknown }>();
+    .first<{
+      verifier_salt: unknown;
+      verifier_kdf_kind: number | null;
+      verifier_kdf_params: unknown;
+    }>();
 
   return {
     verifierSalt: blobToBase64url(row?.verifier_salt),

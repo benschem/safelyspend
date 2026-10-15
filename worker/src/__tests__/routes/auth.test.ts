@@ -50,9 +50,7 @@ async function getBridge(email: string): Promise<{
 /** Sign up a brand-new cloud-sync account and hand back its session cookie. */
 async function signUp(email: string): Promise<{ cookie: string; body: Record<string, unknown> }> {
   const { authPendingToken } = await getBridge(email);
-  const res = await appFetch(
-    jsonRequest('/v1/auth/signup', fixtures.signupBody(authPendingToken)),
-  );
+  const res = await appFetch(jsonRequest('/v1/auth/signup', fixtures.signupBody(authPendingToken)));
   expect(res.status).toBe(200);
 
   return {
@@ -137,9 +135,7 @@ describe('POST /auth/verify-otp', () => {
     const email = 'otp-nocookie@example.com';
     await appFetch(jsonRequest('/v1/auth/login', { email }));
 
-    const res = await appFetch(
-      jsonRequest('/v1/auth/verify-otp', { email, code: capturedCode() }),
-    );
+    const res = await appFetch(jsonRequest('/v1/auth/verify-otp', { email, code: capturedCode() }));
 
     expect(res.headers.get('set-cookie')).toBeNull();
   });
@@ -166,8 +162,7 @@ describe('POST /auth/signup', () => {
     expect(json.keyBundle.userKeys).toHaveLength(2);
     expect(json.keyBundle.memberKeys).toHaveLength(2);
 
-    const member = await env.DB
-      .prepare('SELECT role FROM household_members WHERE user_id = ?')
+    const member = await env.DB.prepare('SELECT role FROM household_members WHERE user_id = ?')
       .bind(json.user.id)
       .first<{ role: string }>();
     expect(member?.role).toBe('owner');
@@ -176,7 +171,12 @@ describe('POST /auth/signup', () => {
   it('stores the recovery row with a null salt rather than treating it as missing', async () => {
     const { body } = await signUp('signup-recovery@example.com');
     const keyBundle = body['keyBundle'] as {
-      userKeys: Array<{ kekKind: string; kekSalt: string | null; kekKdfKind: number; kekKdfParams: string }>;
+      userKeys: Array<{
+        kekKind: string;
+        kekSalt: string | null;
+        kekKdfKind: number;
+        kekKdfParams: string;
+      }>;
     };
 
     const recovery = keyBundle.userKeys.find((key) => key.kekKind === 'recovery');
@@ -589,8 +589,7 @@ describe('POST /auth/logout', () => {
     const res = await appFetch(authedRequest('/v1/auth/logout', cookie, 'POST'));
 
     expect(res.status).toBe(200);
-    const session = await env.DB
-      .prepare('SELECT id FROM sessions WHERE id = ?')
+    const session = await env.DB.prepare('SELECT id FROM sessions WHERE id = ?')
       .bind(sessionId)
       .first();
     expect(session).toBeNull();
@@ -609,8 +608,7 @@ describe('DELETE /auth/account', () => {
     expect(userRow).toBeNull();
 
     // households has no foreign key to users, so this only goes if the handler removes it.
-    const householdRow = await env.DB
-      .prepare('SELECT id FROM households WHERE id = ?')
+    const householdRow = await env.DB.prepare('SELECT id FROM households WHERE id = ?')
       .bind(householdId)
       .first();
     expect(householdRow).toBeNull();
@@ -625,8 +623,7 @@ describe('DELETE /auth/account', () => {
     const res = await appFetch(authedRequest('/v1/auth/account', partner.cookie, 'DELETE'));
     expect(res.status).toBe(200);
 
-    const householdRow = await env.DB
-      .prepare('SELECT id FROM households WHERE id = ?')
+    const householdRow = await env.DB.prepare('SELECT id FROM households WHERE id = ?')
       .bind(owner.householdId)
       .first();
     expect(householdRow).not.toBeNull();
@@ -649,8 +646,7 @@ describe('session management', () => {
     expect(res.status).toBe(200);
     expect(((await res.json()) as { revoked: number }).revoked).toBe(2);
 
-    const current = await env.DB
-      .prepare('SELECT id FROM sessions WHERE id = ?')
+    const current = await env.DB.prepare('SELECT id FROM sessions WHERE id = ?')
       .bind(sessionId)
       .first();
     expect(current).not.toBeNull();
@@ -673,7 +669,7 @@ describe('session management', () => {
     expect(body.sessions.find((s) => s.id === extra)?.isCurrent).toBe(false);
   });
 
-  it('does not leak another user\'s sessions', async () => {
+  it("does not leak another user's sessions", async () => {
     const { cookie } = await createAuthenticatedUser(env.DB);
     const { sessionId: otherSessionId } = await createAuthenticatedUser(env.DB);
 
@@ -690,7 +686,7 @@ describe('session management', () => {
     expect(res.status).toBe(400);
   });
 
-  it('returns 404 for another user\'s session', async () => {
+  it("returns 404 for another user's session", async () => {
     const { cookie } = await createAuthenticatedUser(env.DB);
     const { sessionId: otherSessionId } = await createAuthenticatedUser(env.DB);
 
@@ -795,8 +791,7 @@ describe('session rotation on JWT renewal', () => {
     const setCookie = res.headers.get('set-cookie');
     expect(setCookie).toContain('__budget_session=');
 
-    const oldSession = await env.DB
-      .prepare('SELECT id FROM sessions WHERE id = ?')
+    const oldSession = await env.DB.prepare('SELECT id FROM sessions WHERE id = ?')
       .bind(sessionId)
       .first();
     expect(oldSession).toBeNull();

@@ -189,10 +189,7 @@ function toMemberKeyRow(row: MemberKeyDbRow): MemberKeyRow {
 const MEMBER_KEY_COLUMNS = `kek_kind, wrapped_master_key, kek_salt, kek_kdf_kind,
                             kek_kdf_params, sender_user_id, sender_pubkey`;
 
-export async function listMemberKeys(
-  db: D1Database,
-  userId: string,
-): Promise<MemberKeyRow[]> {
+export async function listMemberKeys(db: D1Database, userId: string): Promise<MemberKeyRow[]> {
   const { results } = await db
     .prepare(
       `SELECT ${MEMBER_KEY_COLUMNS} FROM household_member_keys

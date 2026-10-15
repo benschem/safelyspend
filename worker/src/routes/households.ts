@@ -20,8 +20,16 @@ const BODY_BYTES = 16 * 1024;
 const addMemberRateLimit = rateLimit({ max: 10, windowSeconds: 3600, keyPrefix: 'households:add' });
 const rewrapRateLimit = rateLimit({ max: 10, windowSeconds: 3600, keyPrefix: 'households:rewrap' });
 
-const addMemberUserLimit = userRateLimit({ max: 5, windowSeconds: 3600, keyPrefix: 'households:add' });
-const rewrapUserLimit = userRateLimit({ max: 3, windowSeconds: 3600, keyPrefix: 'households:rewrap' });
+const addMemberUserLimit = userRateLimit({
+  max: 5,
+  windowSeconds: 3600,
+  keyPrefix: 'households:add',
+});
+const rewrapUserLimit = userRateLimit({
+  max: 3,
+  windowSeconds: 3600,
+  keyPrefix: 'households:rewrap',
+});
 
 const households = new Hono<HonoEnv>();
 
@@ -128,13 +136,15 @@ households.post('/:householdId/members', addMemberRateLimit, addMemberUserLimit,
     throw err;
   }
 
-  console.info(JSON.stringify({
-    event: 'household_member_added',
-    requestId: c.get('requestId'),
-    userId: user.id,
-    householdId,
-    inviteeUserId,
-  }));
+  console.info(
+    JSON.stringify({
+      event: 'household_member_added',
+      requestId: c.get('requestId'),
+      userId: user.id,
+      householdId,
+      inviteeUserId,
+    }),
+  );
 
   return c.json({
     ok: true,
@@ -147,52 +157,71 @@ households.post('/:householdId/members', addMemberRateLimit, addMemberUserLimit,
 // The invitee has unwrapped the handoff envelope with their private key and re-wrapped
 // the MasterKey under their own password and recovery KEKs. The transient handoff row
 // goes in the same batch, so the household ends up with exactly the two durable rows.
-households.post('/:householdId/members/:userId/rewrap', rewrapRateLimit, rewrapUserLimit, async (c) => {
-  const user = c.get('user');
-  const householdId = c.req.param('householdId');
-  const targetUserId = c.req.param('userId');
+households.post(
+  '/:householdId/members/:userId/rewrap',
+  rewrapRateLimit,
+  rewrapUserLimit,
+  async (c) => {
+    const user = c.get('user');
+    const householdId = c.req.param('householdId');
+    const targetUserId = c.req.param('userId');
 
-  if (targetUserId !== user.id) {
-    throw coded('You can only rewrap your own keys', 403, 'NOT_OWN_KEYS');
-  }
+    if (targetUserId !== user.id) {
+      throw coded('You can only rewrap your own keys', 403, 'NOT_OWN_KEYS');
+    }
 
-  const household = await householdService.findById(c.env.DB, householdId);
-  if (!household) {
-    throw notFound('Household not found');
-  }
+    const household = await householdService.findById(c.env.DB, householdId);
+    if (!household) {
+      throw notFound('Household not found');
+    }
 
-  const body = await parseJsonBody<Record<string, unknown>>(c, BODY_BYTES);
-  const memberKeys = parseKeyPair(body['memberKeys'], 'wrappedMasterKey');
+    const body = await parseJsonBody<Record<string, unknown>>(c, BODY_BYTES);
+    const memberKeys = parseKeyPair(body['memberKeys'], 'wrappedMasterKey');
 
-  const hasEcies = await householdService.hasMemberKey(c.env.DB, householdId, user.id, 'ecies');
-  if (!hasEcies) {
-    throw coded('There is no pending handoff to complete', 409, 'NO_PENDING_HANDOFF');
-  }
+    const hasEcies = await householdService.hasMemberKey(c.env.DB, householdId, user.id, 'ecies');
+    if (!hasEcies) {
+      throw coded('There is no pending handoff to complete', 409, 'NO_PENDING_HANDOFF');
+    }
 
-  const userPasswordKey = (await listUserKeys(c.env.DB, user.id)).find(
-    (key) => key.kekKind === 'pwd',
-  );
-  if (!userPasswordKey) {
-    throw coded('This account has no password key to match', 409, 'NO_PASSWORD_KEY');
-  }
-  assertSamePasswordKek(userPasswordKey, memberKeys.pwd);
+    const userPasswordKey = (await listUserKeys(c.env.DB, user.id)).find(
+      (key) => key.kekKind === 'pwd',
+    );
+    if (!userPasswordKey) {
+      throw coded('This account has no password key to match', 409, 'NO_PASSWORD_KEY');
+    }
+    assertSamePasswordKek(userPasswordKey, memberKeys.pwd);
 
-  const now = new Date().toISOString();
+    const now = new Date().toISOString();
 
-  await c.env.DB.batch([
-    householdService.upsertMemberKeyStatement(c.env.DB, householdId, user.id, memberKeys.pwd, now),
-    householdService.upsertMemberKeyStatement(c.env.DB, householdId, user.id, memberKeys.recovery, now),
-    householdService.deleteEciesMemberKeyStatement(c.env.DB, householdId, user.id),
-  ]);
+    await c.env.DB.batch([
+      householdService.upsertMemberKeyStatement(
+        c.env.DB,
+        householdId,
+        user.id,
+        memberKeys.pwd,
+        now,
+      ),
+      householdService.upsertMemberKeyStatement(
+        c.env.DB,
+        householdId,
+        user.id,
+        memberKeys.recovery,
+        now,
+      ),
+      householdService.deleteEciesMemberKeyStatement(c.env.DB, householdId, user.id),
+    ]);
 
-  console.info(JSON.stringify({
-    event: 'member_keys_rewrapped',
-    requestId: c.get('requestId'),
-    userId: user.id,
-    householdId,
-  }));
+    console.info(
+      JSON.stringify({
+        event: 'member_keys_rewrapped',
+        requestId: c.get('requestId'),
+        userId: user.id,
+        householdId,
+      }),
+    );
 
-  return c.json({ ok: true });
-});
+    return c.json({ ok: true });
+  },
+);
 
 export default households;

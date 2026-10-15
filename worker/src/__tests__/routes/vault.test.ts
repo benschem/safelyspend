@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { env } from 'cloudflare:test';
-import { applyMigrations, authedRequest, createAuthenticatedUser, appFetch } from '../helpers/setup.js';
+import {
+  applyMigrations,
+  authedRequest,
+  createAuthenticatedUser,
+  appFetch,
+} from '../helpers/setup.js';
 import { EnvelopeKind, FORMAT_VERSION } from '../../lib/key-material.js';
 
 beforeAll(async () => {
@@ -228,7 +233,9 @@ describe('PUT /vault/data (idempotency)', () => {
       version: number;
       vaultId: string;
     };
-    const second = (await (await appFetch(uploadRequest(cookie, data, 0, 'idem-retry'))).json()) as {
+    const second = (await (
+      await appFetch(uploadRequest(cookie, data, 0, 'idem-retry'))
+    ).json()) as {
       version: number;
       vaultId: string;
     };
@@ -316,9 +323,11 @@ describe('household scoping', () => {
     });
     expect((await appFetch(authedRequest('/v1/vault/data', outsider.cookie))).status).toBe(404);
     expect(
-      ((await (await appFetch(authedRequest('/v1/vault/history', outsider.cookie))).json()) as {
-        versions: unknown[];
-      }).versions,
+      (
+        (await (await appFetch(authedRequest('/v1/vault/history', outsider.cookie))).json()) as {
+          versions: unknown[];
+        }
+      ).versions,
     ).toHaveLength(0);
   });
 

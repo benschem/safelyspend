@@ -67,15 +67,17 @@ app.onError((err, c) => {
   // userId is only available after authMiddleware has run
   const userId = (c.get('jwtPayload') as JwtPayload | undefined)?.sub;
 
-  console.error(JSON.stringify({
-    event: 'unhandled_error',
-    requestId,
-    userId,
-    method: c.req.method,
-    path: c.req.path,
-    error: err instanceof Error ? err.message : 'Unknown error',
-    stack: err instanceof Error ? err.stack : undefined,
-  }));
+  console.error(
+    JSON.stringify({
+      event: 'unhandled_error',
+      requestId,
+      userId,
+      method: c.req.method,
+      path: c.req.path,
+      error: err instanceof Error ? err.message : 'Unknown error',
+      stack: err instanceof Error ? err.stack : undefined,
+    }),
+  );
   return c.json({ error: 'Internal server error', code: 'INTERNAL_ERROR' }, 500);
 });
 
@@ -100,12 +102,15 @@ export default {
   fetch: app.fetch,
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(
-      vaultService.cleanupOrphanedR2Objects(env.DB, env.VAULT_BUCKET)
-        .catch((err) => console.error(JSON.stringify({
-          event: 'scheduled_task_failed',
-          task: 'orphan_cleanup',
-          error: err instanceof Error ? err.message : 'Unknown error',
-        }))),
+      vaultService.cleanupOrphanedR2Objects(env.DB, env.VAULT_BUCKET).catch((err) =>
+        console.error(
+          JSON.stringify({
+            event: 'scheduled_task_failed',
+            task: 'orphan_cleanup',
+            error: err instanceof Error ? err.message : 'Unknown error',
+          }),
+        ),
+      ),
     );
   },
 };

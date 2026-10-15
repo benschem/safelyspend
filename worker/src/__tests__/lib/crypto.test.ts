@@ -10,9 +10,7 @@ import {
 describe('sha256', () => {
   it('produces consistent hex hash for known input', async () => {
     const hash = await sha256('hello');
-    expect(hash).toBe(
-      '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824',
-    );
+    expect(hash).toBe('2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824');
   });
 
   it('produces different hashes for different inputs', async () => {
@@ -28,9 +26,7 @@ describe('sha256ArrayBuffer', () => {
     const buffer = encoder.encode('hello').buffer as ArrayBuffer;
     const hash = await sha256ArrayBuffer(buffer);
     // Same input as sha256('hello') should produce same hash
-    expect(hash).toBe(
-      '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824',
-    );
+    expect(hash).toBe('2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824');
   });
 });
 
@@ -68,9 +64,7 @@ describe('jwtSign and jwtVerify', () => {
   it('rejects tokens signed with a different secret', async () => {
     const token = await jwtSign(payload, secret, 3600);
 
-    await expect(jwtVerify(token, 'wrong-secret')).rejects.toThrow(
-      'Invalid token signature',
-    );
+    await expect(jwtVerify(token, 'wrong-secret')).rejects.toThrow('Invalid token signature');
   });
 
   it('rejects expired tokens', async () => {
@@ -81,13 +75,9 @@ describe('jwtSign and jwtVerify', () => {
   });
 
   it('rejects malformed token strings', async () => {
-    await expect(jwtVerify('not-a-jwt', secret)).rejects.toThrow(
-      'Invalid token format',
-    );
+    await expect(jwtVerify('not-a-jwt', secret)).rejects.toThrow('Invalid token format');
 
-    await expect(jwtVerify('a.b', secret)).rejects.toThrow(
-      'Invalid token format',
-    );
+    await expect(jwtVerify('a.b', secret)).rejects.toThrow('Invalid token format');
   });
 
   it('includes iat and exp in the verified payload', async () => {

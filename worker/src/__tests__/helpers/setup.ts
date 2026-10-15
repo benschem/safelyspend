@@ -56,9 +56,7 @@ export async function createAuthenticatedUser(
   const now = new Date().toISOString();
 
   await db
-    .prepare(
-      'INSERT INTO users (id, email, pubkey, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-    )
+    .prepare('INSERT INTO users (id, email, pubkey, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
     .bind(userId, email, new Uint8Array(32).fill(7), now, now)
     .run();
 
@@ -121,11 +119,7 @@ export async function requestBridgeToken(
 }
 
 /** Build an authenticated request with no body. */
-export function authedRequest(
-  path: string,
-  cookie: string,
-  method = 'GET',
-): Request {
+export function authedRequest(path: string, cookie: string, method = 'GET'): Request {
   return new Request(`http://localhost${path}`, { method, headers: { Cookie: cookie } });
 }
 

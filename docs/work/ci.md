@@ -1,6 +1,6 @@
 # Faster tests, and a pre-push hook runs every check
 
-- **Status:** in progress. Steps written and reviewed. Step 1 not started.
+- **Status:** in progress. Step 1 done, step 2 not started.
 - **Goal:** the whole suite, frontend and worker, runs from one command in
   well under ten seconds, and nothing reaches GitHub, and so Netlify, without
   passing lint, the type-checks, Prettier's check, every test and
@@ -92,11 +92,9 @@ user-visible, so none bumps the version or touches the changelog.
 1. `style:` format the worker. Prettier over `worker/src`, where 22 files are
    unformatted, and no other code in the diff, so the reformat can be
    reviewed and reverted on its own. `CLAUDE.md`'s Formatting section
-   changes with it: its Prettier commands cover `worker/src`, and the commit
-   it names as fully formatted becomes this one.
+   changes with it: its Prettier commands cover `worker/src`, and it no
+   longer names a commit as the point both were formatted.
 2. `chore:` every test from one command, in a few seconds.
-   - The plan: the queue line in Now, this file, `fake-indexeddb.md` with
-     its line in Later.
    - In `account.test.ts`, mock `@/lib/key-management` so `ARGON2ID_PARAMS`
      is the fast set, and drop `ARGON2ID_TIMEOUT_MS` and the per-test
      timeouts it exists for.

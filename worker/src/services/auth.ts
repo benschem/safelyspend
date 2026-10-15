@@ -8,21 +8,16 @@ const AUTH_PENDING_EXPIRY_MINUTES = 5;
 const MAX_ATTEMPTS = 5;
 const MAX_DAILY_FAILED_ATTEMPTS = 15;
 
-export async function createAuthCode(
-  db: D1Database,
-  userId: string,
-): Promise<string> {
+export async function createAuthCode(db: D1Database, userId: string): Promise<string> {
   const code = generateAuthCode();
   const codeHash = await sha256(code);
   const id = generateId();
 
-  const expiresAt = new Date(
-    Date.now() + AUTH_CODE_EXPIRY_MINUTES * 60 * 1000,
-  ).toISOString();
+  const expiresAt = new Date(Date.now() + AUTH_CODE_EXPIRY_MINUTES * 60 * 1000).toISOString();
 
   await db
     .prepare(
-      'INSERT INTO auth_codes (id, user_id, code_hash, expires_at, attempt_count, created_at) VALUES (?, ?, ?, ?, 0, datetime(\'now\'))',
+      "INSERT INTO auth_codes (id, user_id, code_hash, expires_at, attempt_count, created_at) VALUES (?, ?, ?, ?, 0, datetime('now'))",
     )
     .bind(id, userId, codeHash, expiresAt)
     .run();
@@ -45,7 +40,11 @@ export async function verifyAuthCode(
     .bind(userId, now)
     .first<{ max_attempts: number | null }>();
 
-  if (maxAttempts && maxAttempts.max_attempts !== null && maxAttempts.max_attempts >= MAX_ATTEMPTS) {
+  if (
+    maxAttempts &&
+    maxAttempts.max_attempts !== null &&
+    maxAttempts.max_attempts >= MAX_ATTEMPTS
+  ) {
     throw tooManyRequests('Too many verification attempts. Please request a new code.');
   }
 
@@ -73,9 +72,7 @@ export async function verifyAuthCode(
 
   // Mark matched code as used and invalidate all other active codes
   await db.batch([
-    db
-      .prepare('UPDATE auth_codes SET used_at = ? WHERE id = ?')
-      .bind(now, row.id),
+    db.prepare('UPDATE auth_codes SET used_at = ? WHERE id = ?').bind(now, row.id),
     db
       .prepare(
         'UPDATE auth_codes SET used_at = ? WHERE user_id = ? AND id != ? AND expires_at > ? AND used_at IS NULL',
@@ -101,9 +98,7 @@ export async function isUserLockedOut(db: D1Database, userId: string): Promise<b
 export async function cleanupExpiredCodes(db: D1Database): Promise<void> {
   // Use SQLite's datetime() for consistent format comparison with created_at
   // (created_at uses datetime('now') which returns 'YYYY-MM-DD HH:MM:SS')
-  await db
-    .prepare("DELETE FROM auth_codes WHERE created_at < datetime('now', '-1 hour')")
-    .run();
+  await db.prepare("DELETE FROM auth_codes WHERE created_at < datetime('now', '-1 hour')").run();
 }
 
 // --- Bridge tokens (auth_pending) ---
@@ -113,9 +108,7 @@ export async function cleanupExpiredCodes(db: D1Database): Promise<void> {
  *  a purpose claim is only as good as every handler remembering to check it. */
 export async function createAuthPending(db: D1Database, userId: string): Promise<string> {
   const token = randomToken();
-  const expiresAt = new Date(
-    Date.now() + AUTH_PENDING_EXPIRY_MINUTES * 60 * 1000,
-  ).toISOString();
+  const expiresAt = new Date(Date.now() + AUTH_PENDING_EXPIRY_MINUTES * 60 * 1000).toISOString();
 
   await db
     .prepare('INSERT INTO auth_pending (id, user_id, expires_at) VALUES (?, ?, ?)')
@@ -135,10 +128,7 @@ export async function createAuthPending(db: D1Database, userId: string): Promise
  *  against a token that was already spent. The cost is that a failure after this
  *  point burns the token and the user redoes the OTP.
  */
-export async function consumeAuthPending(
-  db: D1Database,
-  token: string,
-): Promise<string | null> {
+export async function consumeAuthPending(db: D1Database, token: string): Promise<string | null> {
   const now = new Date().toISOString();
   const row = await db
     .prepare(
@@ -153,7 +143,5 @@ export async function consumeAuthPending(
 }
 
 export async function cleanupExpiredAuthPending(db: D1Database): Promise<void> {
-  await db
-    .prepare("DELETE FROM auth_pending WHERE expires_at < datetime('now', '-1 hour')")
-    .run();
+  await db.prepare("DELETE FROM auth_pending WHERE expires_at < datetime('now', '-1 hour')").run();
 }

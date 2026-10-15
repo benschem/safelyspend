@@ -52,10 +52,7 @@ function base64urlEncode(data: Uint8Array): string {
   for (const byte of data) {
     binary += String.fromCharCode(byte);
   }
-  return btoa(binary)
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 function base64urlDecode(str: string): Uint8Array {
@@ -110,20 +107,13 @@ export async function jwtSign(
 
   const key = await getHmacKey(secret);
   const encoder = new TextEncoder();
-  const signature = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    encoder.encode(signingInput),
-  );
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(signingInput));
 
   const signatureB64 = base64urlEncode(new Uint8Array(signature));
   return `${signingInput}.${signatureB64}`;
 }
 
-export async function jwtVerify(
-  token: string,
-  secret: string,
-): Promise<JwtPayload> {
+export async function jwtVerify(token: string, secret: string): Promise<JwtPayload> {
   const parts = token.split('.');
   if (parts.length !== 3) {
     throw unauthorized('Invalid token format');
@@ -137,12 +127,7 @@ export async function jwtVerify(
   const encoder = new TextEncoder();
   const signature = base64urlDecode(signatureB64);
 
-  const valid = await crypto.subtle.verify(
-    'HMAC',
-    key,
-    signature,
-    encoder.encode(signingInput),
-  );
+  const valid = await crypto.subtle.verify('HMAC', key, signature, encoder.encode(signingInput));
 
   if (!valid) {
     throw unauthorized('Invalid token signature');
