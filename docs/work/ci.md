@@ -1,9 +1,7 @@
 # Faster tests, and a pre-push hook runs every check
 
-- **Status:** in progress. Steps 1 and 2 done, step 2 as three commits.
-  Step 3 not started.
-  `@cloudflare/vitest-plugin` 1.4.0 was under 7 days old on 2026-10-15, so
-  the worker is on 1.3.7. Step 3 may move it.
+- **Status:** in progress. Steps 1 to 3 done, step 2 as three commits.
+  Step 4 not started.
 - **Goal:** the whole suite, frontend and worker, runs from one command in
   well under ten seconds, and nothing reaches GitHub, and so Netlify, without
   passing lint, the type-checks, Prettier's check, every test and
@@ -103,14 +101,28 @@ user-visible, so none bumps the version or touches the changelog.
 1. `style:` format the worker. Done.
 2. Done as three commits: the Argon2id speed-up, the worker on vitest 4,
    and one command each for every test and every type-check.
-3. `fix:` clear the high-severity audit findings. On 2026-10-15 the root had
-   10 (`brace-expansion`, `braces`, `source-map-js`, through eslint and its
-   plugins) and the worker 6 (`undici`, `ws`, `sharp`, `esbuild`, through
-   `wrangler` and `miniflare`). All are dev tooling; the worker's only
-   runtime dependency is `hono`. On its own so step 4's audit passes the
-   first time it runs, and so the bumps can be reverted alone. A fix that
-   needs a release under 7 days old is reported, not overridden.
-4. `chore:` a pre-push hook runs every check.
+3. `fix:` record the bundled packages of `@tailwindcss/oxide-wasm32-wasi`
+   in the root lockfile. Done. Without them npm 12 opens that package's
+   tarball to read them, wrongly classes the registry URL as a remote fetch,
+   and refuses every root install, dry runs included, under its default
+   `allow-remote=none` ([npm/cli#9800](https://github.com/npm/cli/issues/9800)).
+   Written once with `npm install --package-lock-only --allow-remote=all`;
+   default settings work from then on.
+4. `fix:` clear the high-severity audit findings. On 2026-10-15 the root had
+   10 and the worker 7, all dev tooling; the worker's only runtime
+   dependency is `hono`. On its own so step 5's audit passes the first time
+   it runs, and so the bumps can be reverted alone.
+   - Root: typescript-eslint to 8.71.1. From 8.48.0 it uses `tinyglobby`
+     instead of `fast-glob`, which drops `micromatch` and `braces`. `braces`
+     has no fixed release, so removing it is the only fix.
+   - Root: `npm update brace-expansion source-map-js`, lockfile only.
+   - Worker: `wrangler` 4.149.0 and `@cloudflare/vitest-plugin` 1.4.0. Both
+     pin miniflare 5.20261006.1-alpha and esbuild 0.28.2, so the plugin's
+     nested copies go. Both were six hours short of 7 days old, and are
+     installed once with `--min-release-age=0` rather than waiting.
+   - Not `npm audit fix` in the worker: it would downgrade wrangler to
+     4.15.2, below the vulnerable range. It does honour `min-release-age`.
+5. `chore:` a pre-push hook runs every check.
    - `npm run check`: eslint, `npm run typecheck`, `prettier --check` over `src/` and `worker/src/`, both suites with
      `--allowOnly=false`, and the audit in both places with its message. If
      the message does not fit a `package.json` line, it goes in a small
