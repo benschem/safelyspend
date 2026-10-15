@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeAll } from 'vitest';
-import { env } from 'cloudflare:test';
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { env } from 'cloudflare:workers';
 import {
   applyMigrations,
+  resetRateLimits,
   authedRequest,
   createAuthenticatedUser,
   appFetch,
@@ -10,6 +11,10 @@ import { EnvelopeKind, FORMAT_VERSION } from '../../lib/key-material.js';
 
 beforeAll(async () => {
   await applyMigrations(env.DB);
+});
+
+beforeEach(async () => {
+  await resetRateLimits(env.DB);
 });
 
 /** A structurally valid format-v2 vault envelope carrying a recognisable payload.

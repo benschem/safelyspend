@@ -6,9 +6,10 @@
  */
 
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
-import { env } from 'cloudflare:test';
+import { env } from 'cloudflare:workers';
 import {
   applyMigrations,
+  resetRateLimits,
   authedRequest,
   createAuthenticatedUser,
   jsonRequest,
@@ -25,10 +26,11 @@ beforeAll(async () => {
   await applyMigrations(env.DB);
 });
 
-beforeEach(() => {
+beforeEach(async () => {
   mockSendAuthCode.mockClear();
   mockSendInvite.mockClear();
   mockSendInvite.mockResolvedValue(undefined);
+  await resetRateLimits(env.DB);
 });
 
 function capturedCode(): string {

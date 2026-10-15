@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, vi, beforeEach } from 'vitest';
-import { env } from 'cloudflare:test';
+import { env } from 'cloudflare:workers';
 import {
   applyMigrations,
+  resetRateLimits,
   authedRequest,
   createAuthenticatedUser,
   jsonRequest,
@@ -19,8 +20,9 @@ beforeAll(async () => {
   await applyMigrations(env.DB);
 });
 
-beforeEach(() => {
+beforeEach(async () => {
   mockSendAuthCode.mockClear();
+  await resetRateLimits(env.DB);
 });
 
 function capturedCode(): string {

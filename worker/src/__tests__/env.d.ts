@@ -1,6 +1,9 @@
-import type { Env } from '../types.js';
+// Renamed on import: inside the Cloudflare namespace, `Env` is Cloudflare.Env itself.
+import type { Env as WorkerEnv } from '../types.js';
 
-declare module 'cloudflare:test' {
-  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-  interface ProvidedEnv extends Env {}
+declare global {
+  namespace Cloudflare {
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    interface Env extends WorkerEnv {}
+  }
 }

@@ -40,9 +40,14 @@ npm run test:run    # single run
 npm run typecheck   # tsc --noEmit
 ```
 
-Tests use `@cloudflare/vitest-pool-workers` to run inside workerd with real D1
+Tests use `@cloudflare/vitest-plugin` to run inside workerd with real D1
 and R2 bindings. They need no external services or secrets: the test secrets
 are set in `vitest.config.ts`.
+
+Storage is shared by every test in a file, not reset per test. Each test
+creates its own user and household, and `resetRateLimits` in
+`src/__tests__/helpers/setup.ts` clears the rate-limit counters before each
+test.
 
 Run `npm run typecheck` as well as the tests. The worker has its own
 `tsconfig.json` and is not covered by the repo root's `npm run build`, so

@@ -1,4 +1,5 @@
-import { env, createExecutionContext, waitOnExecutionContext } from 'cloudflare:test';
+import { createExecutionContext, waitOnExecutionContext } from 'cloudflare:test';
+import { env } from 'cloudflare:workers';
 import { jwtSign } from '../../lib/crypto.js';
 import { generateId } from '../../lib/id.js';
 import { COOKIE_NAME, JWT_EXPIRY_SECONDS } from '../../lib/session.js';
@@ -19,6 +20,14 @@ async function execStatements(db: D1Database, sql: string): Promise<void> {
 
 export async function applyMigrations(db: D1Database): Promise<void> {
   await execStatements(db, migration0001);
+}
+
+/**
+ * Storage is shared by every test in a file, so rate-limit counters from earlier
+ * tests would trip the limiter in later ones. Call from `beforeEach`.
+ */
+export async function resetRateLimits(db: D1Database): Promise<void> {
+  await db.prepare('DELETE FROM rate_limits').run();
 }
 
 // Re-exported so the tests assert against the values the app actually ships, rather
