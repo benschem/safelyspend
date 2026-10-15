@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import {
   buildHandoffWrap,
   buildInviteSignupMaterial,
@@ -53,12 +53,17 @@ const MISTYPED_RECOVERY_PHRASE =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon';
 
 /**
- * Argon2id at the locked parameters costs roughly 130 ms a derivation, and a
- * signup pays it twice — so a test that builds one and opens it again is
- * several hundred milliseconds of real work, not a hang. Generous enough that
- * a slower machine does not produce a flake.
+ * These tests are about how keys are wrapped and unwrapped, not about Argon2id's
+ * cost, and at the production parameters this file took over ten seconds. The
+ * parameters each row records are the ones used to unlock it, so a cheap set
+ * still runs the whole round trip. The real parameters are pinned in
+ * key-management.test.ts and checked against reference vectors in
+ * argon2-conformance.test.ts.
  */
-const ARGON2ID_TIMEOUT_MS = 20_000;
+vi.mock('@/lib/key-management', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/key-management')>()),
+  ARGON2ID_PARAMS: { memoryKib: 256, iterations: 1, parallelism: 1 },
+}));
 
 /**
  * Reassemble the key bundle the server would hand back, from the material we
@@ -113,20 +118,16 @@ describe('buildSignupMaterial', () => {
 
   beforeAll(async () => {
     material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
-  }, ARGON2ID_TIMEOUT_MS);
+  });
 
-  it(
-    'refuses a recovery phrase that is not a valid mnemonic',
-    async () => {
-      // The message, not a bare throw: an unrelated failure inside a signup
-      // would satisfy `rejects.toThrow()` and leave this passing for the wrong
-      // reason, which on a validation test is the only reason that matters.
-      await expect(buildSignupMaterial(PASSWORD, 'not a mnemonic')).rejects.toThrow(
-        'Recovery phrase is not a valid BIP-39 mnemonic',
-      );
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+  it('refuses a recovery phrase that is not a valid mnemonic', async () => {
+    // The message, not a bare throw: an unrelated failure inside a signup
+    // would satisfy `rejects.toThrow()` and leave this passing for the wrong
+    // reason, which on a validation test is the only reason that matters.
+    await expect(buildSignupMaterial(PASSWORD, 'not a mnemonic')).rejects.toThrow(
+      'Recovery phrase is not a valid BIP-39 mnemonic',
+    );
+  });
 
   it('sends both a pwd and a recovery user key', () => {
     expect(material.body.userKeys.map((row) => row.kekKind).sort()).toEqual(['pwd', 'recovery']);
@@ -200,30 +201,22 @@ describe('buildSignupMaterial', () => {
 describe('unlockKeyBundle', () => {
   const backup = { transactions: [{ id: 'txn-1' }] } as unknown as BudgetBackup;
 
-  it(
-    'recovers a master key that decrypts what the signup key encrypted',
-    async () => {
-      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
-      const sealed = await encryptVault(material.keys.masterKey, backup);
+  it('recovers a master key that decrypts what the signup key encrypted', async () => {
+    const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+    const sealed = await encryptVault(material.keys.masterKey, backup);
 
-      const reopened = await unlockKeyBundle(PASSWORD, bundleFrom(material));
+    const reopened = await unlockKeyBundle(PASSWORD, bundleFrom(material));
 
-      expect(await decryptVault(reopened.masterKey, sealed)).toEqual(backup);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    expect(await decryptVault(reopened.masterKey, sealed)).toEqual(backup);
+  });
 
-  it(
-    'recovers the same private key',
-    async () => {
-      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+  it('recovers the same private key', async () => {
+    const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
 
-      const reopened = await unlockKeyBundle(PASSWORD, bundleFrom(material));
+    const reopened = await unlockKeyBundle(PASSWORD, bundleFrom(material));
 
-      expect(reopened.privateKey).toEqual(material.keys.privateKey);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    expect(reopened.privateKey).toEqual(material.keys.privateKey);
+  });
 
   /**
    * NFKD normalisation is applied once, inside `deriveKek`. A password that
@@ -233,60 +226,44 @@ describe('unlockKeyBundle', () => {
    * "café" composed (U+00E9) and decomposed (e + U+0301) are different byte
    * strings that NFKD folds together.
    */
-  it(
-    'unlocks under a differently-composed spelling of the same password',
-    async () => {
-      const decomposed = 'cafe\u0301 passphrase';
-      const composed = 'caf\u00e9 passphrase';
-      expect(decomposed).not.toBe(composed);
+  it('unlocks under a differently-composed spelling of the same password', async () => {
+    const decomposed = 'cafe\u0301 passphrase';
+    const composed = 'caf\u00e9 passphrase';
+    expect(decomposed).not.toBe(composed);
 
-      const material = await buildSignupMaterial(decomposed, RECOVERY_PHRASE);
+    const material = await buildSignupMaterial(decomposed, RECOVERY_PHRASE);
 
-      await expect(unlockKeyBundle(composed, bundleFrom(material))).resolves.toBeDefined();
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    await expect(unlockKeyBundle(composed, bundleFrom(material))).resolves.toBeDefined();
+  });
 
   /** Guards `assertSameKek` in `account.ts`, which carries the reasoning. */
-  it(
-    'refuses when the two rows were wrapped under different KEKs',
-    async () => {
-      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
-      const bundle = bundleFrom(material);
-      const memberKey = bundle.memberKeys.find((row) => row.kekKind === 'pwd');
-      memberKey!.kekSalt = 'AAAAAAAAAAAAAAAAAAAAAA';
+  it('refuses when the two rows were wrapped under different KEKs', async () => {
+    const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+    const bundle = bundleFrom(material);
+    const memberKey = bundle.memberKeys.find((row) => row.kekKind === 'pwd');
+    memberKey!.kekSalt = 'AAAAAAAAAAAAAAAAAAAAAA';
 
-      await expect(unlockKeyBundle(PASSWORD, bundle)).rejects.toThrow(KeyBundleError);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    await expect(unlockKeyBundle(PASSWORD, bundle)).rejects.toThrow(KeyBundleError);
+  });
 
-  it(
-    'fails on the wrong password',
-    async () => {
-      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+  it('fails on the wrong password', async () => {
+    const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
 
-      // A typed error, not a bare GCM tag failure: both call sites have to tell
-      // this apart from a structural one, and neither should be reading a
-      // DOMException's name to do it.
-      await expect(unlockKeyBundle('some other password', bundleFrom(material))).rejects.toThrow(
-        WrongPasswordError,
-      );
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    // A typed error, not a bare GCM tag failure: both call sites have to tell
+    // this apart from a structural one, and neither should be reading a
+    // DOMException's name to do it.
+    await expect(unlockKeyBundle('some other password', bundleFrom(material))).rejects.toThrow(
+      WrongPasswordError,
+    );
+  });
 
-  it(
-    'rejects a bundle with no password-wrapped rows',
-    async () => {
-      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
-      const bundle = bundleFrom(material);
-      bundle.userKeys = bundle.userKeys.filter((row) => row.kekKind !== 'pwd');
+  it('rejects a bundle with no password-wrapped rows', async () => {
+    const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+    const bundle = bundleFrom(material);
+    bundle.userKeys = bundle.userKeys.filter((row) => row.kekKind !== 'pwd');
 
-      await expect(unlockKeyBundle(PASSWORD, bundle)).rejects.toThrow(KeyBundleError);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    await expect(unlockKeyBundle(PASSWORD, bundle)).rejects.toThrow(KeyBundleError);
+  });
 });
 
 describe('the recovery-wrapped rows', () => {
@@ -294,111 +271,83 @@ describe('the recovery-wrapped rows', () => {
    * The path nobody walks until someone has actually lost their password,
    * which is the worst moment to discover it was never wired up.
    */
-  it(
-    'opens the master key with the recovery phrase alone',
-    async () => {
-      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
-      const sealed = await encryptVault(material.keys.masterKey, {
-        categories: [],
-      } as unknown as BudgetBackup);
+  it('opens the master key with the recovery phrase alone', async () => {
+    const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+    const sealed = await encryptVault(material.keys.masterKey, {
+      categories: [],
+    } as unknown as BudgetBackup);
 
-      const row = material.body.memberKeys.find((entry) => entry.kekKind === 'recovery');
-      const kek = await deriveRecoveryKek(RECOVERY_PHRASE);
-      const masterKey = await unwrapMasterKey(kek, base64urlToBytes(row!.wrappedMasterKey));
+    const row = material.body.memberKeys.find((entry) => entry.kekKind === 'recovery');
+    const kek = await deriveRecoveryKek(RECOVERY_PHRASE);
+    const masterKey = await unwrapMasterKey(kek, base64urlToBytes(row!.wrappedMasterKey));
 
-      expect(await decryptVault(masterKey, sealed)).toEqual({ categories: [] });
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    expect(await decryptVault(masterKey, sealed)).toEqual({ categories: [] });
+  });
 });
 
 describe('unlockKeyBundleWithPhrase', () => {
   const backup = { transactions: [{ id: 'txn-1' }] } as unknown as BudgetBackup;
 
-  it(
-    'recovers the master key that sealed the vault',
-    async () => {
-      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
-      const sealed = await encryptVault(material.keys.masterKey, backup);
+  it('recovers the master key that sealed the vault', async () => {
+    const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+    const sealed = await encryptVault(material.keys.masterKey, backup);
 
-      const reopened = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
+    const reopened = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
 
-      expect(await decryptVault(reopened.masterKey, sealed)).toEqual(backup);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    expect(await decryptVault(reopened.masterKey, sealed)).toEqual(backup);
+  });
 
-  it(
-    'recovers the private key as well as the master key',
-    async () => {
-      // Section 7's handoff needs PrivKey in memory. A recovery that produced
-      // only the MasterKey would leave someone unable to accept an invite.
-      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+  it('recovers the private key as well as the master key', async () => {
+    // Section 7's handoff needs PrivKey in memory. A recovery that produced
+    // only the MasterKey would leave someone unable to accept an invite.
+    const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
 
-      const reopened = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
+    const reopened = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
 
-      expect(reopened.privateKey).toHaveLength(32);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    expect(reopened.privateKey).toHaveLength(32);
+  });
 
-  it(
-    'reports a valid but wrong phrase as a wrong phrase',
-    async () => {
-      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+  it('reports a valid but wrong phrase as a wrong phrase', async () => {
+    const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
 
-      await expect(
-        unlockKeyBundleWithPhrase(OTHER_RECOVERY_PHRASE, bundleFrom(material)),
-      ).rejects.toThrow(WrongPhraseError);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    await expect(
+      unlockKeyBundleWithPhrase(OTHER_RECOVERY_PHRASE, bundleFrom(material)),
+    ).rejects.toThrow(WrongPhraseError);
+  });
 
-  it(
-    'reports a phrase failing its checksum as a wrong phrase too',
-    async () => {
-      // Same sentence as a valid-but-wrong phrase, because the user can do
-      // nothing different about either. What matters is that it is a
-      // WrongPhraseError and not the bare Error deriveRecoveryKek throws.
-      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+  it('reports a phrase failing its checksum as a wrong phrase too', async () => {
+    // Same sentence as a valid-but-wrong phrase, because the user can do
+    // nothing different about either. What matters is that it is a
+    // WrongPhraseError and not the bare Error deriveRecoveryKek throws.
+    const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
 
-      await expect(
-        unlockKeyBundleWithPhrase(MISTYPED_RECOVERY_PHRASE, bundleFrom(material)),
-      ).rejects.toThrow(WrongPhraseError);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    await expect(
+      unlockKeyBundleWithPhrase(MISTYPED_RECOVERY_PHRASE, bundleFrom(material)),
+    ).rejects.toThrow(WrongPhraseError);
+  });
 
-  it(
-    'reports a missing recovery row as structural, not as a wrong phrase',
-    async () => {
-      // An account with no way back in is not the user mistyping, and telling
-      // them it is would send them hunting for a phrase that cannot help.
-      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
-      const bundle = bundleFrom(material);
-      bundle.userKeys = bundle.userKeys.filter((row) => row.kekKind !== 'recovery');
+  it('reports a missing recovery row as structural, not as a wrong phrase', async () => {
+    // An account with no way back in is not the user mistyping, and telling
+    // them it is would send them hunting for a phrase that cannot help.
+    const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+    const bundle = bundleFrom(material);
+    bundle.userKeys = bundle.userKeys.filter((row) => row.kekKind !== 'recovery');
 
-      await expect(unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundle)).rejects.toThrow(
-        KeyBundleError,
-      );
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    await expect(unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundle)).rejects.toThrow(
+      KeyBundleError,
+    );
+  });
 
-  it(
-    'refuses a recovery row naming a KDF it cannot perform',
-    async () => {
-      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
-      const bundle = bundleFrom(material);
-      const row = bundle.memberKeys.find((entry) => entry.kekKind === 'recovery');
-      row!.kekKdfKind = KdfKind.reservedPbkdf2;
+  it('refuses a recovery row naming a KDF it cannot perform', async () => {
+    const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+    const bundle = bundleFrom(material);
+    const row = bundle.memberKeys.find((entry) => entry.kekKind === 'recovery');
+    row!.kekKdfKind = KdfKind.reservedPbkdf2;
 
-      await expect(unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundle)).rejects.toThrow(
-        KeyBundleError,
-      );
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    await expect(unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundle)).rejects.toThrow(
+      KeyBundleError,
+    );
+  });
 });
 
 describe('buildPasswordResetMaterial', () => {
@@ -411,118 +360,90 @@ describe('buildPasswordResetMaterial', () => {
    * new password over a *different* master key would pass every shape check
    * above and silently strand the user's data.
    */
-  it(
-    'leaves the new password opening the vault the old one sealed',
-    async () => {
-      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
-      const sealed = await encryptVault(material.keys.masterKey, backup);
+  it('leaves the new password opening the vault the old one sealed', async () => {
+    const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+    const sealed = await encryptVault(material.keys.masterKey, backup);
 
-      const recovered = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
-      const reset = await buildPasswordResetMaterial(NEW_PASSWORD, recovered);
+    const recovered = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
+    const reset = await buildPasswordResetMaterial(NEW_PASSWORD, recovered);
 
-      const reopened = await unlockKeyBundle(NEW_PASSWORD, bundleAfterReset(material, reset));
+    const reopened = await unlockKeyBundle(NEW_PASSWORD, bundleAfterReset(material, reset));
 
-      expect(await decryptVault(reopened.masterKey, sealed)).toEqual(backup);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    expect(await decryptVault(reopened.masterKey, sealed)).toEqual(backup);
+  });
 
-  it(
-    'leaves the old password unable to open the rewrapped rows',
-    async () => {
-      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
-      const recovered = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
-      const reset = await buildPasswordResetMaterial(NEW_PASSWORD, recovered);
+  it('leaves the old password unable to open the rewrapped rows', async () => {
+    const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+    const recovered = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
+    const reset = await buildPasswordResetMaterial(NEW_PASSWORD, recovered);
 
-      await expect(unlockKeyBundle(PASSWORD, bundleAfterReset(material, reset))).rejects.toThrow(
-        WrongPasswordError,
-      );
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    await expect(unlockKeyBundle(PASSWORD, bundleAfterReset(material, reset))).rejects.toThrow(
+      WrongPasswordError,
+    );
+  });
 
-  it(
-    'leaves the recovery phrase still working afterwards',
-    async () => {
-      // The server never overwrites the recovery rows, so a reset must not
-      // assume it can replace them. Someone who has just used their phrase
-      // still has only that phrase.
-      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
-      const recovered = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
-      const reset = await buildPasswordResetMaterial(NEW_PASSWORD, recovered);
+  it('leaves the recovery phrase still working afterwards', async () => {
+    // The server never overwrites the recovery rows, so a reset must not
+    // assume it can replace them. Someone who has just used their phrase
+    // still has only that phrase.
+    const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+    const recovered = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
+    const reset = await buildPasswordResetMaterial(NEW_PASSWORD, recovered);
 
-      const again = await unlockKeyBundleWithPhrase(
-        RECOVERY_PHRASE,
-        bundleAfterReset(material, reset),
-      );
+    const again = await unlockKeyBundleWithPhrase(
+      RECOVERY_PHRASE,
+      bundleAfterReset(material, reset),
+    );
 
-      expect(again.privateKey).toEqual(recovered.privateKey);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    expect(again.privateKey).toEqual(recovered.privateKey);
+  });
 
-  it(
-    'produces a verifier the server will accept for the new password',
-    async () => {
-      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
-      const recovered = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
-      const reset = await buildPasswordResetMaterial(NEW_PASSWORD, recovered);
+  it('produces a verifier the server will accept for the new password', async () => {
+    const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+    const recovered = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
+    const reset = await buildPasswordResetMaterial(NEW_PASSWORD, recovered);
 
-      const candidate = await deriveLoginVerifier(NEW_PASSWORD, reset.newVerifier);
+    const candidate = await deriveLoginVerifier(NEW_PASSWORD, reset.newVerifier);
 
-      expect(candidate).toBe(reset.newVerifier.verifierCandidate);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    expect(candidate).toBe(reset.newVerifier.verifierCandidate);
+  });
 
-  it(
-    'uses fresh, independent salts rather than the ones it is replacing',
-    async () => {
-      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
-      const recovered = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
-      const reset = await buildPasswordResetMaterial(NEW_PASSWORD, recovered);
+  it('uses fresh, independent salts rather than the ones it is replacing', async () => {
+    const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+    const recovered = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
+    const reset = await buildPasswordResetMaterial(NEW_PASSWORD, recovered);
 
-      const oldKekSalt = material.body.userKeys.find((row) => row.kekKind === 'pwd')!.kekSalt;
+    const oldKekSalt = material.body.userKeys.find((row) => row.kekKind === 'pwd')!.kekSalt;
 
-      expect(reset.newUserKeyPwd.kekSalt).not.toBe(oldKekSalt);
-      expect(reset.newVerifier.verifierSalt).not.toBe(material.body.verifierSalt);
-      expect(reset.newVerifier.verifierSalt).not.toBe(reset.newUserKeyPwd.kekSalt);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    expect(reset.newUserKeyPwd.kekSalt).not.toBe(oldKekSalt);
+    expect(reset.newVerifier.verifierSalt).not.toBe(material.body.verifierSalt);
+    expect(reset.newVerifier.verifierSalt).not.toBe(reset.newUserKeyPwd.kekSalt);
+  });
 
-  it(
-    'wraps both rows under the one KEK, as unlockKeyBundle requires',
-    async () => {
-      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
-      const recovered = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
-      const reset = await buildPasswordResetMaterial(NEW_PASSWORD, recovered);
+  it('wraps both rows under the one KEK, as unlockKeyBundle requires', async () => {
+    const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+    const recovered = await unlockKeyBundleWithPhrase(RECOVERY_PHRASE, bundleFrom(material));
+    const reset = await buildPasswordResetMaterial(NEW_PASSWORD, recovered);
 
-      expect(reset.newMemberKeyPwd.kekSalt).toBe(reset.newUserKeyPwd.kekSalt);
-      expect(reset.newMemberKeyPwd.kekKdfParams).toBe(reset.newUserKeyPwd.kekKdfParams);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    expect(reset.newMemberKeyPwd.kekSalt).toBe(reset.newUserKeyPwd.kekSalt);
+    expect(reset.newMemberKeyPwd.kekKdfParams).toBe(reset.newUserKeyPwd.kekKdfParams);
+  });
 });
 
 describe('deriveLoginVerifier', () => {
-  it(
-    'reproduces the verifier the account was created with',
-    async () => {
-      // If these two ever disagree, every sign-in reports a wrong password
-      // against a password that is right.
-      const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
+  it('reproduces the verifier the account was created with', async () => {
+    // If these two ever disagree, every sign-in reports a wrong password
+    // against a password that is right.
+    const material = await buildSignupMaterial(PASSWORD, RECOVERY_PHRASE);
 
-      const candidate = await deriveLoginVerifier(PASSWORD, {
-        verifierSalt: material.body.verifierSalt,
-        verifierKdfKind: material.body.verifierKdfKind,
-        verifierKdfParams: material.body.verifierKdfParams,
-      });
+    const candidate = await deriveLoginVerifier(PASSWORD, {
+      verifierSalt: material.body.verifierSalt,
+      verifierKdfKind: material.body.verifierKdfKind,
+      verifierKdfParams: material.body.verifierKdfParams,
+    });
 
-      expect(candidate).toBe(material.body.verifierCandidate);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    expect(candidate).toBe(material.body.verifierCandidate);
+  });
 
   it('refuses a challenge naming a KDF it cannot perform', async () => {
     await expect(
@@ -551,7 +472,7 @@ describe('buildInviteSignupMaterial', () => {
 
   beforeAll(async () => {
     material = await buildInviteSignupMaterial(PASSWORD, RECOVERY_PHRASE);
-  }, ARGON2ID_TIMEOUT_MS);
+  });
 
   it('sends both a pwd and a recovery user key', () => {
     expect(material.body.userKeys.map((row) => row.kekKind).sort()).toEqual(['pwd', 'recovery']);
@@ -584,7 +505,7 @@ describe('the invite handoff', () => {
     handoff = confirmed(
       await buildHandoffWrap(owner.keys, markPublicKeyConfirmed(invitee.body.pubkey)),
     );
-  }, ARGON2ID_TIMEOUT_MS);
+  });
 
   /** The handoff once the invitee has confirmed the sender's safety number. */
   function confirmed(wrap: HandoffWrap): ConfirmedHandoff {
@@ -631,81 +552,61 @@ describe('the invite handoff', () => {
    * The whole feature, end to end. A vault the owner sealed must open for the
    * invitee through nothing but their own password, after the handoff.
    */
-  it(
-    "leaves the invitee's password opening the owner's vault",
-    async () => {
-      const sealed = await encryptVault(owner.keys.masterKey, backup);
+  it("leaves the invitee's password opening the owner's vault", async () => {
+    const sealed = await encryptVault(owner.keys.masterKey, backup);
 
-      const { body } = await completeHandoff(inviteeCredentials(), inviteeBundle(), handoff);
-      const reopened = await unlockKeyBundle(
-        INVITEE_PASSWORD,
-        inviteeBundleAfterRewrap(body.memberKeys),
-      );
+    const { body } = await completeHandoff(inviteeCredentials(), inviteeBundle(), handoff);
+    const reopened = await unlockKeyBundle(
+      INVITEE_PASSWORD,
+      inviteeBundleAfterRewrap(body.memberKeys),
+    );
 
-      expect(await decryptVault(reopened.masterKey, sealed)).toEqual(backup);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    expect(await decryptVault(reopened.masterKey, sealed)).toEqual(backup);
+  });
 
-  it(
-    "leaves the invitee's recovery phrase opening it too",
-    async () => {
-      const sealed = await encryptVault(owner.keys.masterKey, backup);
+  it("leaves the invitee's recovery phrase opening it too", async () => {
+    const sealed = await encryptVault(owner.keys.masterKey, backup);
 
-      const { body } = await completeHandoff(inviteeCredentials(), inviteeBundle(), handoff);
-      const reopened = await unlockKeyBundleWithPhrase(
-        RECOVERY_PHRASE,
-        inviteeBundleAfterRewrap(body.memberKeys),
-      );
+    const { body } = await completeHandoff(inviteeCredentials(), inviteeBundle(), handoff);
+    const reopened = await unlockKeyBundleWithPhrase(
+      RECOVERY_PHRASE,
+      inviteeBundleAfterRewrap(body.memberKeys),
+    );
 
-      expect(await decryptVault(reopened.masterKey, sealed)).toEqual(backup);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    expect(await decryptVault(reopened.masterKey, sealed)).toEqual(backup);
+  });
 
-  it(
-    'reuses the password row salt rather than drawing a new one',
-    async () => {
-      // A fresh salt would pass every other check here and then fail
-      // assertSameKek on every sign-in afterwards.
-      const { body } = await completeHandoff(inviteeCredentials(), inviteeBundle(), handoff);
+  it('reuses the password row salt rather than drawing a new one', async () => {
+    // A fresh salt would pass every other check here and then fail
+    // assertSameKek on every sign-in afterwards.
+    const { body } = await completeHandoff(inviteeCredentials(), inviteeBundle(), handoff);
 
-      const userPasswordRow = invitee.body.userKeys.find((row) => row.kekKind === 'pwd');
-      const memberPasswordRow = body.memberKeys.find((row) => row.kekKind === 'pwd');
-      expect(memberPasswordRow?.kekSalt).toBe(userPasswordRow?.kekSalt);
-      expect(memberPasswordRow?.kekKdfParams).toBe(userPasswordRow?.kekKdfParams);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    const userPasswordRow = invitee.body.userKeys.find((row) => row.kekKind === 'pwd');
+    const memberPasswordRow = body.memberKeys.find((row) => row.kekKind === 'pwd');
+    expect(memberPasswordRow?.kekSalt).toBe(userPasswordRow?.kekSalt);
+    expect(memberPasswordRow?.kekKdfParams).toBe(userPasswordRow?.kekKdfParams);
+  });
 
-  it(
-    'refuses the wrong password',
-    async () => {
-      await expect(
-        completeHandoff(inviteeCredentials({ password: PASSWORD }), inviteeBundle(), handoff),
-      ).rejects.toThrow(WrongPasswordError);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+  it('refuses the wrong password', async () => {
+    await expect(
+      completeHandoff(inviteeCredentials({ password: PASSWORD }), inviteeBundle(), handoff),
+    ).rejects.toThrow(WrongPasswordError);
+  });
 
   /**
    * The sharp edge of re-asking for the phrase. This one passes its checksum,
    * so without the proof step it would derive a KEK, wrap the MasterKey under
    * it, and write a recovery row that can never open.
    */
-  it(
-    'refuses a valid phrase belonging to nobody, before wrapping anything',
-    async () => {
-      await expect(
-        completeHandoff(
-          inviteeCredentials({ recoveryPhrase: OTHER_RECOVERY_PHRASE }),
-          inviteeBundle(),
-          handoff,
-        ),
-      ).rejects.toThrow(WrongPhraseError);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+  it('refuses a valid phrase belonging to nobody, before wrapping anything', async () => {
+    await expect(
+      completeHandoff(
+        inviteeCredentials({ recoveryPhrase: OTHER_RECOVERY_PHRASE }),
+        inviteeBundle(),
+        handoff,
+      ),
+    ).rejects.toThrow(WrongPhraseError);
+  });
 
   it('refuses a phrase failing its checksum', async () => {
     await expect(
@@ -717,38 +618,27 @@ describe('the invite handoff', () => {
     ).rejects.toThrow(WrongPhraseError);
   });
 
-  it(
-    'refuses an envelope naming a different sender from the one confirmed',
-    async () => {
-      // The server substituting its own wrap: the invitee confirmed one key's
-      // safety number, and the envelope was sealed by another.
-      const confirmedSomeoneElse = bytesToBase64url(generateKeypair().publicKey);
+  it('refuses an envelope naming a different sender from the one confirmed', async () => {
+    // The server substituting its own wrap: the invitee confirmed one key's
+    // safety number, and the envelope was sealed by another.
+    const confirmedSomeoneElse = bytesToBase64url(generateKeypair().publicKey);
 
-      await expect(
-        completeHandoff(inviteeCredentials(), inviteeBundle(), {
-          ...handoff,
-          senderPubkey: markPublicKeyConfirmed(confirmedSomeoneElse),
-        }),
-      ).rejects.toThrow(HandoffRefusedError);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    await expect(
+      completeHandoff(inviteeCredentials(), inviteeBundle(), {
+        ...handoff,
+        senderPubkey: markPublicKeyConfirmed(confirmedSomeoneElse),
+      }),
+    ).rejects.toThrow(HandoffRefusedError);
+  });
 
-  it(
-    'refuses a wrap addressed to a different key',
-    async () => {
-      const strangerPubkey = bytesToBase64url(generateKeypair().publicKey);
-      const misaddressed = await buildHandoffWrap(
-        owner.keys,
-        markPublicKeyConfirmed(strangerPubkey),
-      );
+  it('refuses a wrap addressed to a different key', async () => {
+    const strangerPubkey = bytesToBase64url(generateKeypair().publicKey);
+    const misaddressed = await buildHandoffWrap(owner.keys, markPublicKeyConfirmed(strangerPubkey));
 
-      await expect(
-        completeHandoff(inviteeCredentials(), inviteeBundle(), confirmed(misaddressed)),
-      ).rejects.toThrow(HandoffRefusedError);
-    },
-    ARGON2ID_TIMEOUT_MS,
-  );
+    await expect(
+      completeHandoff(inviteeCredentials(), inviteeBundle(), confirmed(misaddressed)),
+    ).rejects.toThrow(HandoffRefusedError);
+  });
 
   it('proves the phrase before paying for the password', async () => {
     // Both wrong: the cheap check runs first, so this fails without Argon2id.

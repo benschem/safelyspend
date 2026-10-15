@@ -234,8 +234,10 @@ async function buildAccountMaterial(
   const kekSalt = generateSalt();
   const verifierSalt = generateSalt();
 
-  const verifier = await deriveVerifier(password, verifierSalt);
-  const kekPwd = await deriveKek(password, kekSalt);
+  // The same ARGON2ID_PARAMS that encodedArgon2idParams() writes into the rows,
+  // so what is stored always describes what was used.
+  const verifier = await deriveVerifier(password, verifierSalt, ARGON2ID_PARAMS);
+  const kekPwd = await deriveKek(password, kekSalt, ARGON2ID_PARAMS);
   const kekRecovery = await deriveRecoveryKek(recoveryPhrase);
 
   const argon2idParams = encodedArgon2idParams();
@@ -582,9 +584,10 @@ export async function buildPasswordResetMaterial(
   const kekSalt = generateSalt();
   const verifierSalt = generateSalt();
 
-  // Sequential, not concurrent, as in `buildAccountMaterial`.
-  const verifier = await deriveVerifier(newPassword, verifierSalt);
-  const kekPwd = await deriveKek(newPassword, kekSalt);
+  // Sequential, not concurrent, as in `buildAccountMaterial`. Explicit params for
+  // the same reason as there.
+  const verifier = await deriveVerifier(newPassword, verifierSalt, ARGON2ID_PARAMS);
+  const kekPwd = await deriveKek(newPassword, kekSalt, ARGON2ID_PARAMS);
 
   const argon2idParams = encodedArgon2idParams();
   const metadata = {
