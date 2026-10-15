@@ -44,8 +44,8 @@ them.
 
 Each starts with:
 
-- **Status:** not started, in progress (with the step reached), or parked (with
-  the reason).
+- **Status:** not started, in progress (with the step reached out of the
+  total, as in "steps 1 to 4 of 5 done"), or parked (with the reason).
 - **Goal:** what is true when it is done.
 - **Touches:** the main files or modules it will change.
 

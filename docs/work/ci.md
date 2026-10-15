@@ -1,7 +1,7 @@
 # Faster tests, and a pre-push hook runs every check
 
-- **Status:** in progress. Steps 1 to 3 done, step 2 as three commits.
-  Step 4 not started.
+- **Status:** in progress. Steps 1 to 4 of 5 done, step 2 as three commits.
+  Step 5 not started.
 - **Goal:** the whole suite, frontend and worker, runs from one command in
   well under ten seconds, and nothing reaches GitHub, and so Netlify, without
   passing lint, the type-checks, Prettier's check, every test and
@@ -119,7 +119,10 @@ user-visible, so none bumps the version or touches the changelog.
    - Worker: `wrangler` 4.149.0 and `@cloudflare/vitest-plugin` 1.4.0. Both
      pin miniflare 5.20261006.1-alpha and esbuild 0.28.2, so the plugin's
      nested copies go. Both were six hours short of 7 days old, and are
-     installed once with `--min-release-age=0` rather than waiting.
+     installed once with `--min-release-age=0` rather than waiting. Every
+     other package that install brought in was over 7 days old.
+   - Worker: `@cloudflare/workers-types` from 4.x to 5.20261008.1, which
+     wrangler 4.149.0 requires as a peer.
    - Not `npm audit fix` in the worker: it would downgrade wrangler to
      4.15.2, below the vulnerable range. It does honour `min-release-age`.
 5. `chore:` a pre-push hook runs every check.
