@@ -42,7 +42,9 @@ Read 2026-10-13, none of them exercised:
   challenge holds to `deriveVerifier`, and `decodeArgon2idParams`
   (`envelope.ts:223`) checks only the length. A malicious server could ask
   for cheap parameters and brute-force the verifier it gets back. Remedy:
-  refuse anything below `ARGON2ID_PARAMS`.
+  refuse anything below `ARGON2ID_PARAMS`. `account.test.ts` swaps
+  `ARGON2ID_PARAMS` for cheap ones with `vi.mock`, so the floor must follow
+  that constant, or the account tests will fail.
 - **A rolled-back vault cannot be told from a current one.** The associated
   data is version and kind only (`envelope.ts:244`), and a pull stores
   whatever version it is given (`use-sync.ts:145-157`). Remedy: bind the

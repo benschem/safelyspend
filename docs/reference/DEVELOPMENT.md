@@ -16,7 +16,7 @@ Read these first, in this order:
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 22, the version in `.nvmrc`
 - npm 10+
 - A Cloudflare account, for deploying the worker only. Not needed for frontend work.
 
@@ -26,11 +26,13 @@ Read these first, in this order:
 git clone <repo-url>
 cd safelyspend
 npm install
+git config core.hooksPath .githooks
 
 npm run dev
 # → http://localhost:5173
 ```
 
+The `core.hooksPath` line switches on the pre-push hook, which runs `npm run check` and stops the push if anything fails. The check also runs the worker's tests, so it needs the worker's packages, installed as in [Worker setup](#worker-setup). [DECISIONS.md](DECISIONS.md) says why it is a hook.
 That is all frontend work needs. The app runs fully offline on IndexedDB; the backend only matters for accounts and cloud sync.
 
 One expected error in the dev console: the analytics script at `/pa-stats/js/script.manual.js` fails to load. The `/pa-stats/*` proxy is a Netlify redirect, so it only exists on a deployed site. It is harmless, and no analytics are sent from local development.
@@ -45,6 +47,9 @@ One expected error in the dev console: the analytics script at `/pa-stats/js/scr
 - `npm run test`: every test, app and worker, in watch mode
 - `npm run test:run`: every test, app and worker, one run
 - `npx prettier --write <files>`: format the files you touched
+- `npm run format:check`: list the files Prettier would change, in `src/` and `worker/src/`
+- `npm run audit`: `npm audit` at high severity, in the root and in `worker/`
+- `npm run check`: everything the pre-push hook runs: lint, both type-checks, `format:check`, every test with `.only` refused, and `audit`
 
 ## Worker setup
 

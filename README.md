@@ -39,6 +39,7 @@ This is a monorepo with two packages:
 
 ```bash
 npm install
+git config core.hooksPath .githooks   # run every check before each push
 npm run dev       # start Vite dev server with hot reload
 ```
 
@@ -56,6 +57,7 @@ npm run lint      # run ESLint
 npm run typecheck # type-check the app and the worker
 npm run test      # run every test, app and worker, in watch mode
 npm run test:run  # run every test once
+npm run check     # lint, type-check, format check, tests and audit, as before a push
 ```
 
 See [`worker/README.md`](worker/README.md) for backend commands.

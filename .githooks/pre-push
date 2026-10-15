@@ -1,0 +1,3 @@
+#!/bin/sh
+# Switched on per clone with: git config core.hooksPath .githooks
+exec npm run check

@@ -14,7 +14,6 @@ single home in the app.
 ## Now (at most three)
 
 - [feature] Sync merges both people's edits → work/sync-merge.md _(sync)_
-- [cleanup] Faster tests, and a pre-push hook runs every check → work/ci.md _(tooling)_
 
 ## Next (aim for 5 in here)
 

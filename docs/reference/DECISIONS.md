@@ -174,6 +174,18 @@ D1 rolls a batch back only when a statement raises an error. A guarded `UPDATE` 
 
 React Router 7 was chosen because the project started with React Router 6 and the upgrade path was smooth. TanStack Router offers better type safety for route params, but wasn't worth a rewrite.
 
+## Why a pre-push hook, not CI?
+
+**Chosen:** `.githooks/pre-push` runs `npm run check` and stops the push if anything fails. There is no GitHub Actions workflow.
+
+A push to `main` deploys the frontend on Netlify straight away, so a check that runs after the push reports too late. Actions can be added later if the hook proves not to be enough.
+
+- **Switched on per clone** with `git config core.hooksPath .githooks`. Plain git, no dependency. No `prepare` script does it automatically, because that would also run in Netlify's build.
+- **The audit blocks the push**, at `--audit-level=high`, in the root and in `worker/`, which has its own lockfile. `scripts/audit.sh` prints what to do when it fails.
+- **Tests run with `--allowOnly=false`.** Vitest refuses `.only` only when `CI` is set, so in a local hook a forgotten `it.only` would pass with most tests skipped.
+- **`vite build` is left out.** Netlify runs it, and `npm run typecheck` catches the type errors.
+- **`.nvmrc` pins Node 22.** Netlify reads it, so the deploy builds on the same Node as the machine that pushed.
+
 ## Why landing-page-only analytics?
 
 **Chosen:** Self-hosted Plausible, proxied first-party, firing on the landing page and nowhere else.

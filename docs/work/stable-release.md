@@ -36,7 +36,7 @@ Each names the work files that meet it.
   `sync-indicator.md`, `sync-merge-duplicates.md`.
 - **A newcomer can finish setup:** `onboarding-questions.md`,
   `account-page.md`.
-- **Checks are enforced:** `ci.md`.
+- **Checks are enforced:** met. The pre-push hook runs `npm run check`.
 - **Security findings are fixed, or accepted with a reason in
   `DECISIONS.md`:** `security-hardening.md`.
 - **The "no users yet" shortcuts end.** From 1.0, every released data

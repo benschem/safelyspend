@@ -25,6 +25,7 @@ npm run preview  # Serve the production build locally
 npm run lint     # Run ESLint
 npm run typecheck # Type-check the app and the worker (build covers only the app)
 npm run test:run # Run every test once, app and worker (npm test watches)
+npm run check    # Everything the pre-push hook runs: lint, types, format, tests, audit
 npx prettier --write "src/**/*.{ts,tsx}" "worker/src/**/*.ts"  # Format code
 ```
 
@@ -42,12 +43,9 @@ npx prettier --write src/routes/login.tsx src/components/layout/app-header.tsx
 you wrote. If Prettier does reformat code you didn't write, something has drifted.
 Land that as its own `style:` commit, not inside a feature diff.
 
-Nothing enforces this: there is no pre-commit hook and no CI workflow. Check
-what is still unformatted with:
-
-```bash
-npx prettier --list-different "src/**/*.{ts,tsx}" "worker/src/**/*.ts"
-```
+The pre-push hook in `.githooks/` runs `npm run check`, which refuses a push
+with unformatted files, so formatting left until then blocks the push. Check
+what is still unformatted with `npm run format:check`.
 
 ## Architecture Overview
 
